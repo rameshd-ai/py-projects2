@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figma Data Extractor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctQpG6A+gM7u9U+6Dq9m8E+M5h+wYn9S" crossorigin="anonymous">
+    
+    <style>
+        /* Custom Variables and Aesthetics */
+        :root {
+            --bs-primary: #4F46E5; /* Indigo */
+            --bs-primary-rgb: 79, 70, 229;
+            --bs-body-bg: #f7f9fb;
+            --bs-font-sans-serif: 'Inter', sans-serif;
+        }
+        body { background-color: var(--bs-body-bg); }
+        
+        .card { 
+            border: none;
+            border-radius: 1.5rem !important; /* Rounded-4 */
+        }
+        
+        .input-card {
+            border-top: 8px solid var(--bs-primary);
+        }
+
+        /* High contrast code block */
+        pre {
+            background-color: #1a202c; /* Deep charcoal */
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.2);
+            overflow-x: auto;
+        }
+        
+        /* Input Focus Styling */
+        .form-control:focus {
+            border-color: #4338ca;
+            box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.25);
+        }
+
+        /* Custom button shadow for depth */
+        .btn-primary {
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(79, 70, 229, 0.5);
+        }
+
+        /* Image Placeholder/Container */
+        .image-container {
+            min-height: 300px;
+            background-color: #e5e7eb;
+            border: 2px dashed #9ca3af;
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            flex-grow: 1;
+        }
+        .image-output {
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="p-4 p-md-5">
+
+<div class="container-fluid">
+    <header class="text-center mb-5 pt-3">
+        <h1 class="display-5 fw-bolder text-dark mb-2">Figma Data Extractor 🚀</h1>
+        <p class="lead text-secondary">Access design data, including structure, variables, and rendered nodes.</p>
+    </header>
+
+    <div class="card shadow-lg input-card p-4 p-md-5 mb-5 mx-auto" style="max-width: 900px;">
+        <h2 class="h4 fw-bold text-dark mb-4">Configuration</h2>
+        <form method="POST" class="row g-3">
+            <div class="col-12">
+                <label for="token" class="form-label fw-semibold text-secondary">Figma Personal Access Token</label>
+                <input type="password" id="token" name="token" required value="{{ default_token }}"
+                       class="form-control form-control-lg rounded-3">
+                <div class="form-text mt-1 text-muted">Required scopes: <code class="text-primary fw-bold">file_read</code> and <code class="text-primary fw-bold">file_variables:read</code></div>
+            </div>
+            
+            <div class="col-12">
+                <label for="url" class="form-label fw-semibold text-secondary">Figma File Link (with Node ID)</label>
+                <input type="text" id="url" name="url" required value="{{ default_url }}"
+                       placeholder="e.g., https://www.figma.com/design/KEY/NAME?node-id=ID"
+                       class="form-control form-control-lg rounded-3">
+                <div class="form-text mt-1 text-muted">The link must include <code class="text-primary fw-bold">?node-id=...</code> for image and node details.</div>
+            </div>
+            
+            <div class="col-12 mt-4">
+                <button type="submit" class="btn btn-primary btn-lg rounded-pill">
+                    Fetch Figma Data
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {% if results %}
+        <h2 class="h3 fw-bolder text-dark border-bottom pb-3 mb-4">
+            File Results: <span class="text-primary">{{ results.file_key }}</span>
+        </h2>
+
+        {% if results.error %}
+            <div class="alert alert-danger border-start border-5 border-danger shadow-sm p-4 mb-5 rounded-4" role="alert">
+                <p class="h5 fw-bold mb-2">🛑 API Error Encountered</p>
+                <p class="mb-0">{{ results.error }}</p>
+                <p class="small mt-2">Please verify your **Personal Access Token** and the accessibility of the **Figma File URL/Node ID**.</p>
+            </div>
+        {% endif %}
+
+        <div class="row g-4 mb-5">
+            <div class="col-lg-4 d-flex">
+                <div class="card shadow-lg p-4 w-100 d-flex flex-column">
+                    <h3 class="h5 fw-bold text-dark border-bottom pb-2 mb-3">Rendered Node Image</h3>
+                    <p class="small text-muted mb-3">Node ID: <code class="font-monospace text-dark">{{ results.node_id }}</code></p>
+
+                    {% if results.image_url and results.image_url.startswith('http') %}
+                        <div class="image-container">
+                            <img src="{{ results.image_url }}" alt="Rendered Figma Node" 
+                                 class="img-fluid image-output">
+                        </div>
+                        <p class="small text-muted mt-3 text-truncate">
+                            <a href="{{ results.image_url }}" target="_blank" class="text-primary fw-semibold text-decoration-none">View Direct Link</a>
+                        </p>
+                    {% else %}
+                        <div class="image-container bg-warning-subtle text-warning-emphasis">
+                            <p class="fw-medium text-center">Image not available. Node ID might be 'N/A' or the node may be unrenderable.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="col-lg-8 d-flex">
+                <div class="card shadow-lg p-4 w-100">
+                    <h3 class="h5 fw-bold text-dark border-bottom pb-2 mb-3">Full Node Structure (JSON)</h3>
+                    <pre class="rounded-3">{{ results.node_details }}</pre>
+                </div>
+            </div>
+            
+            <div class="col-12 d-flex">
+                <div class="card shadow-lg p-4 w-100">
+                    <h3 class="h5 fw-bold text-dark border-bottom pb-2 mb-3">Local Design Variables</h3>
+                    <pre class="rounded-3">{{ results.variables_json }}</pre>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<footer class="text-center text-muted small mt-5 pt-4 border-top">
+    Figma API Integration Demo powered by Bootstrap 5
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>
+```eof
+
+This version correctly handles the full-page layout and the organization of the results, placing the rendered image next to the node JSON, followed by the local variables.
