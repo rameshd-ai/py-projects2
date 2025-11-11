@@ -1,0 +1,538 @@
+{
+    "title": "394279 Nationwide Hotel & Conference Center",
+    "link": "https://milestoneinc.slickplan.com/uh9lygwkz",
+    "pages": [
+        {
+            "id": "j1lzlu2b9k",
+            "text": "Home Page",
+            "level": "home",
+            "description": null,
+            "content_blocks": "Overview\nRooms\nDining\nMeetings/Weddings\nGallery\nLocation\n(what\nto\ndo\nand\nsee?)\n/Map\nEvent\nCalendar\nFAQs\n&nbsp;\n&nbsp;\nIncorporate\nOur\nHistory/Story\nsomewhere\non\nthe\nhome\npage\nwith\nblack\nand\nwhite?\nMake\nthis\nelegant\nnot\ncheesy",
+            "children": []
+        },
+        {
+            "id": "up6iiyynxfa3hr",
+            "text": "Our Property",
+            "level": "1",
+            "description": null,
+            "content_blocks": "",
+            "children": [
+                {
+                    "id": "oegeoiyom",
+                    "text": "Our Story",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription&nbsp;\nM1\nIntro&nbsp;\n(L1)\nH1&nbsp;\nOverview\nHistory\nTimeline\nFeature\n(L29)&nbsp;\n&nbsp;",
+                    "children": []
+                },
+                {
+                    "id": "arxjo0ubx6gr86",
+                    "text": "Gallery",
+                    "level": "2",
+                    "description": "This\nwill\nhave\ncategories\nlike\nWedding\nGallery,\nMeeting\nand\nEvents\nGallery\netc.",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\n**Use\nbackground\nwith\ngradient",
+                    "children": []
+                },
+                {
+                    "id": "svgdjttcxgmdimm69os",
+                    "text": "Location",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nOverview\n(L18)\nH1\nEmap&nbsp;\nHotel\nLocation\n(L17)\n-\nZIG\nZAG\nSnippet&nbsp;\nGetting\nhere\nby\npublic\ntransportation\nGetting\nhere\nby\ndriving\nGetting\nhere\nby\nair\nWhat&#039;s\nNearby\n(L17)\nSnippet&nbsp;\nWithin\nwalking\ndistance\nNearby\nattractions\nNearby\ndining\n&\nshopping\n&nbsp;",
+                    "children": [
+                        {
+                            "id": "ilqviu3mnc646",
+                            "text": "Transportation",
+                            "level": "3",
+                            "description": "Hotel\nAndaluz\nis\nclose\nto\na\nnumber\nof\ntransportation\noptions\nin\ndowntown\nAlbuquerque,\nmaking\nit\neasy\nto\nget\nhere.\n-\nMove\ninformation\nfrom\nthis\npage\nto\nLocation\npage.\nThen\ndelete\nthis\npage.",
+                            "content_blocks": "",
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": "svgdz1odvsjr571rut8",
+                    "text": "Contact",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nOverview\n(L20)\nH1\nOverview\nContact\nForm\nContact\nInfo\n(L23)",
+                    "children": []
+                },
+                {
+                    "id": "svgh36n87z6ir436eut",
+                    "text": "Property Map",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Intro\n(L2)\nH1\nOverview\nCTA\n-\nDownload\nMap\nInteractive\nProperty\nMap\n(Use\nsame\none\nfrom\nhomepage)",
+                    "children": []
+                },
+                {
+                    "id": "zqooobcv3hmzdl",
+                    "text": "Reviews",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\n&nbsp;",
+                    "children": []
+                },
+                {
+                    "id": "svgtnln2po9ddxtbqxe",
+                    "text": "Blogs",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1",
+                    "children": []
+                },
+                {
+                    "id": "svgav18qmmyv78ltj14",
+                    "text": "Press Releases",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgcn6whexcfa96of2q",
+                    "text": "FAQs",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Content\nWriter\nCreate\n25\nQuestions-\nClient\nhas\nFAQ\nSolutions\nmodule.\nPlease\nadd\nquestions\nto\ntop\n5\npages\nMeta\nTitle&nbsp;\nMeta\nDescription&nbsp;\nM2",
+                    "children": []
+                }
+            ]
+        },
+        {
+            "id": "e0lhewwdgho",
+            "text": "Weddings",
+            "level": "1",
+            "description": null,
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nModular\nNav\n(A2)\nIntro\n(L3)\nH1&nbsp;\nOverview\nCTA\n-\n(Primary)\nStart\nPlanning\n(Secondary)Virtual\nTour&nbsp;\nAwards\nHighlights&nbsp;\n(L24)\nFeature\nBoxes\n-\n2\ncolumn\n(wedding\nmodule)\nSpaces&nbsp;\nH4\nSnippet\nCTA\nWedding\nCelebrations\nWedding\nPackages\nCatering\n(PDF)\n-\nto\nbe\nconfirmed\nHospitality\nSuites\n-\nNeed\nto\nconfirm\nif\nwe\nneed\nthis\nsnippet\n(L13)\nClient\nVideos\nand\nTestimonials\n(L31)\nGallery\n(L30)\nFAQs\n(L15)\n&nbsp;",
+            "children": [
+                {
+                    "id": "u9bqaik",
+                    "text": "Our Spaces",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nCTA-\nStart\nPlanning\nFeature\nBoxes\n(as\nmany\nvenues)\nL4\n&nbsp;-\nZig\nZag\nCapacity\nChart\n(L32)\nLocal\nArt\n&\nArtists\n(L8)\nGallery\nL30",
+                    "children": []
+                },
+                {
+                    "id": "svgzcmu2hpkkv81l7ah",
+                    "text": "Wedding Celebrations",
+                    "level": "2",
+                    "description": "Consolidate\nthe\ncontent\nof\nthe\nsub\nmenu\nin\ngray\non\nthis\npage",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nFeature\nBoxes&nbsp;\n(L5)\nZig\nZag\nBridal\nShowers\nElopements\nEngagement\nParties\nHoneymoons\n&\nAnniversaries\nRehearsal\nDinners&nbsp;\nSend-Off\nBrunches\nWeddings\n&\nReceptions",
+                    "children": [
+                        {
+                            "id": "eh19uty9lcos",
+                            "text": "Bridal Showers",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "oklk3sstm",
+                            "text": "Elopements",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "ujc3u14lhi4rae",
+                            "text": "Engagement Parties",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "in1rzg2cgv",
+                            "text": "Honeymoons & Anniversaries",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "u2v3hq4ld",
+                            "text": "Rehearsal Dinners",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "xw1horhjbup6",
+                            "text": "Send-Off Brunches",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "6c7q68s1",
+                            "text": "Weddings & Receptions",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": "5hyafiye",
+                    "text": "Wedding Packages",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nPackages\n(L4)\nZig\nZag\nSnippet\nPackage\nIncludes\n+&nbsp;\nbullets\nCatering\n(L13)",
+                    "children": []
+                },
+                {
+                    "id": "svgdc9kpepmrayz2n6i",
+                    "text": "Meet the Team",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L9)\nH1\nOverview\nFeature\nBoxes\n(as\nmany\nteam\ninfo)\nName\nwith\nRole\nSnippet",
+                    "children": []
+                },
+                {
+                    "id": "svggcdp01t2eqvd9s66",
+                    "text": "Plan your Wedding",
+                    "level": "2",
+                    "description": "The\nuser\nwill\nhave\nthe\noption\nto\neither\nBook\na\nTour\nor\nContact\nthe\nhotel.\nThis\nwill\ninclude\nwedding\nservices\nas\nwell.",
+                    "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L2)\nH1&nbsp;\nOverview&nbsp;\nRFP\nForm\n(L19)\nWedding\nServices\n(L7)\nZig\nZag\nPreferred\nVendors\n(L7)",
+                    "children": [
+                        {
+                            "id": "svgvr712mit42il8tsu",
+                            "text": "Wedding Services",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgzcavt4kpqon6eyaz",
+                            "text": "Vendors",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgdzgyjqwzzble2bvb",
+                            "text": "RFP Form",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "ksdyctcbcivio",
+            "text": "Meetings and Events",
+            "level": "1",
+            "description": null,
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nModular\nNav\n(A2)\nIntro\n(L3)\nH1\nOverview\nCTA\n-\n(Primary)\nStart\nPlanning\n(Secondary)Virtual\nTour\nAwards\nHighlights\n(L24)\n4\nFeature\nBoxes\n-\n2\ncolumn\n(meeting\nmodule)\nMeeting\nSpaces\nPackages\nSpecial\nOccasions\nCatering\n(PDF)\nPrivate\nParties\n(L13)\nVirtual\nTours\n/\nVideos\n(L31)\nGallery\n(L30)\nFAQs\n(L15)",
+            "children": [
+                {
+                    "id": "ibdzjuj",
+                    "text": "Event & Expo Spaces",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nCTA-\nStart\nPlanning\nFeature\nBoxes\n(as\nmany\nvenues)\nL4\n-\nZig\nZag\nCapacity\nChart\n(L32)\nLocal\nArt\n&\nArtists\n(L8)\nGallery\nL30",
+                    "children": []
+                },
+                {
+                    "id": "svgxxb1jwniekbluaqx",
+                    "text": "Meeting Services",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nOverview\nH2-\nServices\nHighlights-3\nfeature\nboxes\n(L25)\nWifi&nbsp;\nAV\nEquipment&nbsp;\nMail\nand\nMessage\nDelivery\nH2-\nMeeting\nServices\n(L5A)\n10\nBullets\nfor\nServices\nH2-Floor\nPlans\n(L6)\nH2-\nPlan\nYour\nEvent\nWith\nUs\n(L13)\n&nbsp;CTA\n-\nStart\nplanning",
+                    "children": []
+                },
+                {
+                    "id": "zpfizf7bfsgc",
+                    "text": "Special Occasions",
+                    "level": "2",
+                    "description": "Consolidate\nthe\ndetails\nof\nsub\nmenu\npages\nunder\nthis\nheading",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nFeature\nBoxes\n(L5)\nZig\nZag\nReunions\nRetreats&nbsp;\nSocial\nEvents&nbsp;\n&nbsp;",
+                    "children": [
+                        {
+                            "id": "svggpnswnz0d740qp7s",
+                            "text": "Reunions",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgitvzqfbykpk8xaq6",
+                            "text": "Retreats",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgd6z3q8yxtuis762x",
+                            "text": "Social Events",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": "svgavox07gco1fjhm9d",
+                    "text": "Meeting Packages",
+                    "level": "2",
+                    "description": "Day\nMeetings\n-\nComplete\nMeetings\n-\nHalf\nDay\nMeetings\n(these\nare\nthe\nexisting\nmeeting\npackages)",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nPackages\n(L4)\nZig\nZag\nSnippet\nPackage\nIncludes\n+\nbullets",
+                    "children": []
+                },
+                {
+                    "id": "svgug2fz8pyc9i8v9kc",
+                    "text": "Plan your Meeting",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nOverview\nRFP\nForm",
+                    "children": [
+                        {
+                            "id": "svgeex5xw40mde9isni",
+                            "text": "RFP Form",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "vr2aoatvz6avnx4i",
+            "text": "Guest Rooms",
+            "level": "1",
+            "description": "renamed\nto\nguest\nrooms",
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nModular\nNav\n(A2)\nIntro\n(L1)\nH1\nOverview&nbsp;\nFeatured\nAmenities\n(L24)\nFeature\nBoxes\n(as\nmany\nrooms)\nL4\nZig\nZag\nFAQs\n(L15)",
+            "children": [
+                {
+                    "id": "svgkcyacwnkh28kr8hw",
+                    "text": "Parlor Rooms",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgyzal9eyby2b63so8",
+                    "text": "Deluxe Rooms",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgf3dap1ppz51cv566",
+                    "text": "Standard Rooms",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgb23j3fm9ib0gqq86",
+                    "text": "Suites",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgetyni5v6trnp2sel",
+                    "text": "Balcony Rooms",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgcshio18w17i70wt8",
+                    "text": "Room Packages",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "M1\nIntro\n(L1)\nPackages\n(L5A)\nzig\nzag",
+                    "children": [
+                        {
+                            "id": "svgfpqgy7i3hn11vtm9",
+                            "text": "Delaware On Draft Package",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgif1x19575zailaum",
+                            "text": "Columbus Zoo Package",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgxgcgzulkkv866q1p",
+                            "text": "Advance Purchase Rate",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgyzhd7763xra6vmok",
+                            "text": "Senior/AARP",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svgdq3dvmad7wzz7lph",
+                            "text": "Government Rate",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        },
+                        {
+                            "id": "svggdjh67lz2gvhdmtb",
+                            "text": "AAA Rate",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": "svghskk6zcn16wva9bx",
+                    "text": "Group Block",
+                    "level": "2",
+                    "description": "Our\nlargest\nroom\nblocks\nare\nthe\nAssociation\nMarket,\nCorporate\nMarket,\nSMERF\nMarket,\nWedding\nMarket,\nGovernment\nMarket,\nand\nSports\nMarket.",
+                    "content_blocks": "Design\nMeta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nGroup\nBlocks\nH2\nSnippet\nTabs\n-\nWeddings\nBlock&nbsp;\n|&nbsp;\nSports\nBlock\n(A1)\nH3\n-&nbsp;Wedding\nRoom\nBlocks\nin\nColumbus,\nOH\n(L7)\nSnippet\nwith\n3\naccordions&nbsp;\nCourtesy\nBlock\nAttrition\nBlock\nShuttle\n&nbsp;H3-\nSports\nRoom\nBlocks\nin\nColumbus,\nOH\n(L7-\nno\naccordions)\nSnippet\nRFP\n(L33)",
+                    "children": [
+                        {
+                            "id": "svgrz88tfn2lc20nn5c",
+                            "text": "RFP Form",
+                            "level": "3",
+                            "description": null,
+                            "content_blocks": "",
+                            "children": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "6eza2cvgjpqxyad",
+            "text": "Amenities",
+            "level": "1",
+            "description": "Ohio\nDining\nRoom\nThe\nPub\nFitness\nCenter\nPools\nPatios\nand\nGreen\nSpaces\nLocal\nArt\n&\nArtists\nHighbanks\nMetro\nPark\nPet\nFriendly\nHighlight\nStandard\namneties\nlisted\nas\none\nbullet\nlist",
+            "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L2)\nH1\nOverview\nAmenties\n(L24)\nHotel\nHighlights\n(L5)\nPool,\nDining,\nFitness\nCenter\nHotel\nAccessibility\nLocal\nArt\n&\nArtists\n(L8)\nMore\nHotels\n&\nAmenities\n(dark\nblue\nbackground)\nhttps://prnt.sc/fTzCC4dQVmB1\n3\ncolumn\nfeature\nhttps://prnt.sc/2SJO7xQW2Ti7&nbsp;\nHistory\nDining\nExplore\nOhio\nFAQs\n(L15)",
+            "children": []
+        },
+        {
+            "id": "bfkdg7u76qeywnvz",
+            "text": "Dining",
+            "level": "1",
+            "description": "The\ndifferent\ndining\noptions\nto\nbe\ndisplayed\nalong\nwith\ntimings\nand\nmenu",
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nFeature\nBoxes\n(L5)\nzig\nzag\nBreakfast\nBuffet&nbsp;\nThe\nOhio\nDining\nRoom\n&nbsp;Nationwide\nHotel\nand\nConference\nCenter\npub\n&nbsp;\nFAQs\n(L15)",
+            "children": [
+                {
+                    "id": "svgw6ov8utoqi6wi9uf",
+                    "text": "The Pub",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgorocj0tv2nhx2vbc",
+                    "text": "Catering",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                },
+                {
+                    "id": "svgofaqvpu7ved8xgi2",
+                    "text": "Lobby Grab & Go",
+                    "level": "2",
+                    "description": null,
+                    "content_blocks": "",
+                    "children": []
+                }
+            ]
+        },
+        {
+            "id": "svgnbkay45xbzd5a2g3",
+            "text": "Explore Ohio",
+            "level": "1",
+            "description": "This\npage\nwill\nbe\nsimilar\nto\none\navailable\nhere\nhttps://www.frederickhotelnyc.com/explore-nyc",
+            "content_blocks": "",
+            "children": []
+        },
+        {
+            "id": "svghkp42m6u5ihdzrg9",
+            "text": "Book a Tour",
+            "level": "foot",
+            "description": null,
+            "content_blocks": "",
+            "children": []
+        },
+        {
+            "id": "svgkad84hqemxbvlb5d",
+            "text": "Careers",
+            "level": "foot",
+            "description": null,
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nOverview",
+            "children": []
+        },
+        {
+            "id": "svgldidnrxmc05w885k",
+            "text": "Site Map",
+            "level": "foot",
+            "description": null,
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nSnippet",
+            "children": []
+        },
+        {
+            "id": "svgnmyeweisv7sh2mdv",
+            "text": "Accessibility",
+            "level": "foot",
+            "description": null,
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1",
+            "children": []
+        },
+        {
+            "id": "fzx9xiiox4nuxcvc",
+            "text": "Privacy Policy",
+            "level": "foot",
+            "description": null,
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1",
+            "children": []
+        },
+        {
+            "id": "svghbqzkv5hd6cxn8f7",
+            "text": "Hotel Policies",
+            "level": "foot",
+            "description": null,
+            "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription&nbsp;\nH1&nbsp;\nOverview\nhttps://www.nwhotelandconferencecenter.com/policies.html",
+            "children": []
+        }
+    ]
+}
