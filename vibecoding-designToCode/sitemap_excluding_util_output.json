@@ -7,7 +7,7 @@
             "text": "Home Page",
             "level": "home",
             "description": null,
-            "content_blocks": "Overview\nRooms\nDining\nMeetings/Weddings\nGallery\nLocation\n(what\nto\ndo\nand\nsee?)\n/Map\nEvent\nCalendar\nFAQs\n&nbsp;\n&nbsp;\nIncorporate\nOur\nHistory/Story\nsomewhere\non\nthe\nhome\npage\nwith\nblack\nand\nwhite?\nMake\nthis\nelegant\nnot\ncheesy",
+            "content_blocks": "<strong>Overview</strong>\n<strong>Rooms</strong>\n<strong>Dining</strong>\n<strong>Meetings/Weddings</strong>\n<strong>Gallery</strong>\n<strong>Location\n(what\nto\ndo\nand\nsee?)\n/Map</strong>\n<strong>Event\nCalendar</strong>\n<strong>FAQs</strong>\n<strong>\n</strong>\nIncorporate\nOur\nHistory/Story\nsomewhere\non\nthe\nhome\npage\nwith\nblack\nand\nwhite?\nMake\nthis\nelegant\nnot\ncheesy",
             "children": []
         },
         {
@@ -22,7 +22,7 @@
                     "text": "Our Story",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription&nbsp;\nM1\nIntro&nbsp;\n(L1)\nH1&nbsp;\nOverview\nHistory\nTimeline\nFeature\n(L29)&nbsp;\n&nbsp;",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\n<strong>History\nTimeline\nFeature\n(L29)\n</strong>",
                     "children": []
                 },
                 {
@@ -38,7 +38,7 @@
                     "text": "Location",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nOverview\n(L18)\nH1\nEmap&nbsp;\nHotel\nLocation\n(L17)\n-\nZIG\nZAG\nSnippet&nbsp;\nGetting\nhere\nby\npublic\ntransportation\nGetting\nhere\nby\ndriving\nGetting\nhere\nby\nair\nWhat&#039;s\nNearby\n(L17)\nSnippet&nbsp;\nWithin\nwalking\ndistance\nNearby\nattractions\nNearby\ndining\n&\nshopping\n&nbsp;",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Overview\n(L18)</strong>\nH1\nEmap\n<strong>Hotel\nLocation\n(L17)\n-\nZIG\nZAG</strong>\nSnippet\nGetting\nhere\nby\npublic\ntransportation\nGetting\nhere\nby\ndriving\nGetting\nhere\nby\nair\n<strong>What's\nNearby\n(L17)</strong>\nSnippet\nWithin\nwalking\ndistance\nNearby\nattractions\nNearby\ndining\n&\nshopping",
                     "children": [
                         {
                             "id": "ilqviu3mnc646",
@@ -55,7 +55,7 @@
                     "text": "Contact",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nOverview\n(L20)\nH1\nOverview\nContact\nForm\nContact\nInfo\n(L23)",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>Overview\n(L20)</strong>\nH1\n<strong>Overview</strong>\nContact\nForm\n<strong>Contact\nInfo\n(L23)</strong>",
                     "children": []
                 },
                 {
@@ -63,7 +63,7 @@
                     "text": "Property Map",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Intro\n(L2)\nH1\nOverview\nCTA\n-\nDownload\nMap\nInteractive\nProperty\nMap\n(Use\nsame\none\nfrom\nhomepage)",
+                    "content_blocks": "<strong>Intro\n(L2)</strong>\nH1\n<strong>Overview</strong>\nCTA\n-\nDownload\nMap\nInteractive\nProperty\nMap\n(Use\nsame\none\nfrom\nhomepage)",
                     "children": []
                 },
                 {
@@ -71,7 +71,7 @@
                     "text": "Reviews",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\n&nbsp;",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1",
                     "children": []
                 },
                 {
@@ -95,7 +95,7 @@
                     "text": "FAQs",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Content\nWriter\nCreate\n25\nQuestions-\nClient\nhas\nFAQ\nSolutions\nmodule.\nPlease\nadd\nquestions\nto\ntop\n5\npages\nMeta\nTitle&nbsp;\nMeta\nDescription&nbsp;\nM2",
+                    "content_blocks": "Content\nWriter\nCreate\n25\nQuestions-\nClient\nhas\nFAQ\nSolutions\nmodule.\nPlease\nadd\nquestions\nto\ntop\n5\npages\nMeta\nTitle\nMeta\nDescription\n<strong>M2</strong>",
                     "children": []
                 }
             ]
@@ -105,14 +105,14 @@
             "text": "Weddings",
             "level": "1",
             "description": null,
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nModular\nNav\n(A2)\nIntro\n(L3)\nH1&nbsp;\nOverview\nCTA\n-\n(Primary)\nStart\nPlanning\n(Secondary)Virtual\nTour&nbsp;\nAwards\nHighlights&nbsp;\n(L24)\nFeature\nBoxes\n-\n2\ncolumn\n(wedding\nmodule)\nSpaces&nbsp;\nH4\nSnippet\nCTA\nWedding\nCelebrations\nWedding\nPackages\nCatering\n(PDF)\n-\nto\nbe\nconfirmed\nHospitality\nSuites\n-\nNeed\nto\nconfirm\nif\nwe\nneed\nthis\nsnippet\n(L13)\nClient\nVideos\nand\nTestimonials\n(L31)\nGallery\n(L30)\nFAQs\n(L15)\n&nbsp;",
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Modular\nNav\n(A2)</strong>\n<strong>Intro\n(L3)</strong>\nH1\n<strong>Overview</strong>\nCTA\n-\n(Primary)\nStart\nPlanning\n(Secondary)Virtual\nTour\n<strong>Awards</strong>\n<strong>Highlights\n(L24)</strong>\n<strong>Feature\nBoxes\n-\n2\ncolumn\n(wedding\nmodule)</strong>\nSpaces\nH4\nSnippet\nCTA\n<strong>Wedding\nCelebrations</strong>\n<strong>Wedding\nPackages</strong>\n<strong>Catering\n(PDF)\n</strong>-\nto\nbe\nconfirmed\n<strong>\nHospitality\nSuites\n-\nNeed\nto\nconfirm\nif\nwe\nneed\nthis\nsnippet\n(L13)\n</strong>\n<strong>\nClient\nVideos\nand\nTestimonials\n(L31)\n</strong>\n<strong>\nGallery\n(L30)\n</strong>\n<strong>\nFAQs\n(L15)\n</strong>",
             "children": [
                 {
                     "id": "u9bqaik",
                     "text": "Our Spaces",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nCTA-\nStart\nPlanning\nFeature\nBoxes\n(as\nmany\nvenues)\nL4\n&nbsp;-\nZig\nZag\nCapacity\nChart\n(L32)\nLocal\nArt\n&\nArtists\n(L8)\nGallery\nL30",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\nCTA-\nStart\nPlanning\n<strong>Feature\nBoxes\n(as\nmany\nvenues)\nL4</strong>\n-\nZig\nZag\n<strong>Capacity\nChart\n(L32)</strong>\n<strong>\nLocal\nArt\n&\nArtists\n(L8)\n</strong>\n<strong>Gallery\nL30</strong>",
                     "children": []
                 },
                 {
@@ -120,7 +120,7 @@
                     "text": "Wedding Celebrations",
                     "level": "2",
                     "description": "Consolidate\nthe\ncontent\nof\nthe\nsub\nmenu\nin\ngray\non\nthis\npage",
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nFeature\nBoxes&nbsp;\n(L5)\nZig\nZag\nBridal\nShowers\nElopements\nEngagement\nParties\nHoneymoons\n&\nAnniversaries\nRehearsal\nDinners&nbsp;\nSend-Off\nBrunches\nWeddings\n&\nReceptions",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\n<strong>Feature\nBoxes\n(L5)\nZig\nZag</strong>\nBridal\nShowers\nElopements\nEngagement\nParties\nHoneymoons\n&\nAnniversaries\nRehearsal\nDinners\nSend-Off\nBrunches\nWeddings\n&\nReceptions",
                     "children": [
                         {
                             "id": "eh19uty9lcos",
@@ -185,7 +185,7 @@
                     "text": "Wedding Packages",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nPackages\n(L4)\nZig\nZag\nSnippet\nPackage\nIncludes\n+&nbsp;\nbullets\nCatering\n(L13)",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\n<strong>Packages\n(L4)\nZig\nZag</strong>\nSnippet\nPackage\nIncludes\n+\nbullets\n<strong>Catering\n(L13)</strong>",
                     "children": []
                 },
                 {
@@ -193,7 +193,7 @@
                     "text": "Meet the Team",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L9)\nH1\nOverview\nFeature\nBoxes\n(as\nmany\nteam\ninfo)\nName\nwith\nRole\nSnippet",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L9)</strong>\nH1\n<strong>Overview</strong>\n<strong>Feature\nBoxes\n(as\nmany\nteam\ninfo)</strong>\nName\nwith\nRole\nSnippet",
                     "children": []
                 },
                 {
@@ -201,7 +201,7 @@
                     "text": "Plan your Wedding",
                     "level": "2",
                     "description": "The\nuser\nwill\nhave\nthe\noption\nto\neither\nBook\na\nTour\nor\nContact\nthe\nhotel.\nThis\nwill\ninclude\nwedding\nservices\nas\nwell.",
-                    "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L2)\nH1&nbsp;\nOverview&nbsp;\nRFP\nForm\n(L19)\nWedding\nServices\n(L7)\nZig\nZag\nPreferred\nVendors\n(L7)",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong></strong>\n<strong>M1</strong>\n<strong>Intro\n(L2)</strong>\nH1\n<strong>Overview\n</strong>\n<strong>RFP\nForm\n(L19)</strong>\n<strong>Wedding\nServices\n(L7)\nZig\nZag</strong>\n<strong>Preferred\nVendors\n(L7)</strong>\n<strong></strong>",
                     "children": [
                         {
                             "id": "svgvr712mit42il8tsu",
@@ -236,14 +236,14 @@
             "text": "Meetings and Events",
             "level": "1",
             "description": null,
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nModular\nNav\n(A2)\nIntro\n(L3)\nH1\nOverview\nCTA\n-\n(Primary)\nStart\nPlanning\n(Secondary)Virtual\nTour\nAwards\nHighlights\n(L24)\n4\nFeature\nBoxes\n-\n2\ncolumn\n(meeting\nmodule)\nMeeting\nSpaces\nPackages\nSpecial\nOccasions\nCatering\n(PDF)\nPrivate\nParties\n(L13)\nVirtual\nTours\n/\nVideos\n(L31)\nGallery\n(L30)\nFAQs\n(L15)",
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Modular\nNav\n(A2)</strong>\n<strong>Intro\n(L3)</strong>\nH1\n<strong>Overview</strong>\nCTA\n-\n(Primary)\nStart\nPlanning\n(Secondary)Virtual\nTour\n<strong>Awards</strong>\n<strong>Highlights\n(L24)</strong>\n<strong>4\nFeature\nBoxes\n-\n2\ncolumn\n(meeting\nmodule)</strong>\n<strong>Meeting\nSpaces</strong>\n<strong>Packages</strong>\n<strong>Special\nOccasions</strong>\n<strong>\nCatering\n(PDF)\n</strong>\n<strong>Private\nParties\n(L13)</strong>\n<strong>\nVirtual\nTours\n/\nVideos\n(L31)\n</strong>\n<strong>\nGallery\n(L30)\n</strong>\n<strong>\nFAQs\n(L15)\n</strong><strong>\n</strong>",
             "children": [
                 {
                     "id": "ibdzjuj",
                     "text": "Event & Expo Spaces",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nCTA-\nStart\nPlanning\nFeature\nBoxes\n(as\nmany\nvenues)\nL4\n-\nZig\nZag\nCapacity\nChart\n(L32)\nLocal\nArt\n&\nArtists\n(L8)\nGallery\nL30",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\nCTA-\nStart\nPlanning\n<strong>Feature\nBoxes\n(as\nmany\nvenues)\nL4</strong>\n-\nZig\nZag\n<strong>Capacity\nChart\n(L32)</strong>\n<strong>\nLocal\nArt\n&\nArtists\n(L8)\n</strong>\n<strong>Gallery\nL30</strong>",
                     "children": []
                 },
                 {
@@ -251,7 +251,7 @@
                     "text": "Meeting Services",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nOverview\nH2-\nServices\nHighlights-3\nfeature\nboxes\n(L25)\nWifi&nbsp;\nAV\nEquipment&nbsp;\nMail\nand\nMessage\nDelivery\nH2-\nMeeting\nServices\n(L5A)\n10\nBullets\nfor\nServices\nH2-Floor\nPlans\n(L6)\nH2-\nPlan\nYour\nEvent\nWith\nUs\n(L13)\n&nbsp;CTA\n-\nStart\nplanning",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\n<strong>Overview</strong>\n<strong>H2-\nServices\nHighlights-3\nfeature\nboxes\n(L25)</strong><strong></strong>\n<strong>Wifi\n</strong>\n<strong>AV\nEquipment\nMail\nand\nMessage\nDelivery</strong>\n<strong>H2-\nMeeting\nServices\n(L5A)</strong>\n10\nBullets\nfor\nServices\n<strong>H2-Floor\nPlans\n(L6)</strong>\n<strong>H2-\nPlan\nYour\nEvent\nWith\nUs\n(L13)</strong>\nCTA\n-\nStart\nplanning",
                     "children": []
                 },
                 {
@@ -259,7 +259,7 @@
                     "text": "Special Occasions",
                     "level": "2",
                     "description": "Consolidate\nthe\ndetails\nof\nsub\nmenu\npages\nunder\nthis\nheading",
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nFeature\nBoxes\n(L5)\nZig\nZag\nReunions\nRetreats&nbsp;\nSocial\nEvents&nbsp;\n&nbsp;",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\n<strong>Feature\nBoxes\n(L5)\nZig\nZag</strong>\nReunions\nRetreats\nSocial\nEvents",
                     "children": [
                         {
                             "id": "svggpnswnz0d740qp7s",
@@ -292,7 +292,7 @@
                     "text": "Meeting Packages",
                     "level": "2",
                     "description": "Day\nMeetings\n-\nComplete\nMeetings\n-\nHalf\nDay\nMeetings\n(these\nare\nthe\nexisting\nmeeting\npackages)",
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nPackages\n(L4)\nZig\nZag\nSnippet\nPackage\nIncludes\n+\nbullets",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\n<strong>Packages\n(L4)\nZig\nZag</strong>\nSnippet\nPackage\nIncludes\n+\nbullets",
                     "children": []
                 },
                 {
@@ -300,7 +300,7 @@
                     "text": "Plan your Meeting",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nOverview\nRFP\nForm",
+                    "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\n<strong>Overview</strong>\n<strong>RFP\nForm</strong>",
                     "children": [
                         {
                             "id": "svgeex5xw40mde9isni",
@@ -319,7 +319,7 @@
             "text": "Guest Rooms",
             "level": "1",
             "description": "renamed\nto\nguest\nrooms",
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nModular\nNav\n(A2)\nIntro\n(L1)\nH1\nOverview&nbsp;\nFeatured\nAmenities\n(L24)\nFeature\nBoxes\n(as\nmany\nrooms)\nL4\nZig\nZag\nFAQs\n(L15)",
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>Hero\nbanner\n1</strong>\n<strong></strong>\n<strong>Guest\nRooms\nModule\nNavigation</strong>\n<strong></strong>\n<strong>l1-l8\nFeature\nLeft\nImage\n-\n2</strong>\nH1\n<strong>L24\nAmenities\nsection\n3</strong>\n<strong></strong>\n<strong>L4\nZig\nzag\nfeature\nbox\nwith\ngallery</strong>\n<strong></strong>\n<strong>Faqs-with-right-accordion</strong>",
             "children": [
                 {
                     "id": "svgkcyacwnkh28kr8hw",
@@ -366,7 +366,7 @@
                     "text": "Room Packages",
                     "level": "2",
                     "description": null,
-                    "content_blocks": "M1\nIntro\n(L1)\nPackages\n(L5A)\nzig\nzag",
+                    "content_blocks": "<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\n<strong>Packages\n(L5A)\nzig\nzag</strong>",
                     "children": [
                         {
                             "id": "svgfpqgy7i3hn11vtm9",
@@ -423,7 +423,7 @@
                     "text": "Group Block",
                     "level": "2",
                     "description": "Our\nlargest\nroom\nblocks\nare\nthe\nAssociation\nMarket,\nCorporate\nMarket,\nSMERF\nMarket,\nWedding\nMarket,\nGovernment\nMarket,\nand\nSports\nMarket.",
-                    "content_blocks": "Design\nMeta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nGroup\nBlocks\nH2\nSnippet\nTabs\n-\nWeddings\nBlock&nbsp;\n|&nbsp;\nSports\nBlock\n(A1)\nH3\n-&nbsp;Wedding\nRoom\nBlocks\nin\nColumbus,\nOH\n(L7)\nSnippet\nwith\n3\naccordions&nbsp;\nCourtesy\nBlock\nAttrition\nBlock\nShuttle\n&nbsp;H3-\nSports\nRoom\nBlocks\nin\nColumbus,\nOH\n(L7-\nno\naccordions)\nSnippet\nRFP\n(L33)",
+                    "content_blocks": "<strong>Design</strong>\n<strong>Meta\nTitle\n</strong>\n<strong>Meta\nDescription</strong>\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\nOverview\n<strong>Group\nBlocks</strong>\nH2\nSnippet<strong></strong>\n<strong>Tabs\n-\nWeddings\nBlock\n|\nSports\nBlock\n(A1)</strong>\n<strong>H3\n-\nWedding\nRoom\nBlocks\nin\nColumbus,\nOH\n(L7)</strong>\nSnippet\nwith\n3\naccordions\nCourtesy\nBlock\nAttrition\nBlock\nShuttle\n<strong>\nH3-\nSports\nRoom\nBlocks\nin\nColumbus,\nOH\n(L7-\nno\naccordions)</strong>\nSnippet\n<strong>RFP\n(L33)</strong>",
                     "children": [
                         {
                             "id": "svgrz88tfn2lc20nn5c",
@@ -442,7 +442,7 @@
             "text": "Amenities",
             "level": "1",
             "description": "Ohio\nDining\nRoom\nThe\nPub\nFitness\nCenter\nPools\nPatios\nand\nGreen\nSpaces\nLocal\nArt\n&\nArtists\nHighbanks\nMetro\nPark\nPet\nFriendly\nHighlight\nStandard\namneties\nlisted\nas\none\nbullet\nlist",
-            "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription\nM1\nIntro\n(L2)\nH1\nOverview\nAmenties\n(L24)\nHotel\nHighlights\n(L5)\nPool,\nDining,\nFitness\nCenter\nHotel\nAccessibility\nLocal\nArt\n&\nArtists\n(L8)\nMore\nHotels\n&\nAmenities\n(dark\nblue\nbackground)\nhttps://prnt.sc/fTzCC4dQVmB1\n3\ncolumn\nfeature\nhttps://prnt.sc/2SJO7xQW2Ti7&nbsp;\nHistory\nDining\nExplore\nOhio\nFAQs\n(L15)",
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L2)</strong>\nH1\n<strong>Overview</strong>\n<strong>Amenties\n(L24)</strong>\n<strong>Hotel\nHighlights\n(L5)</strong>\nPool,\nDining,\nFitness\nCenter\n<strong>Hotel\nAccessibility</strong>\n<strong>\nLocal\nArt\n&\nArtists\n(L8)\n</strong>\n<strong>\nMore\nHotels\n&\nAmenities\n(dark\nblue\nbackground)\nhttps://prnt.sc/fTzCC4dQVmB1\n</strong>\n3\ncolumn\nfeature\nhttps://prnt.sc/2SJO7xQW2Ti7\n<strong>\nHistory\n</strong>\n<strong>\nDining\n</strong>\n<strong>\nExplore\nOhio</strong>\n<strong>FAQs\n(L15)</strong>",
             "children": []
         },
         {
@@ -450,7 +450,7 @@
             "text": "Dining",
             "level": "1",
             "description": "The\ndifferent\ndining\noptions\nto\nbe\ndisplayed\nalong\nwith\ntimings\nand\nmenu",
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nM1\nIntro\n(L1)\nH1\nOverview\nFeature\nBoxes\n(L5)\nzig\nzag\nBreakfast\nBuffet&nbsp;\nThe\nOhio\nDining\nRoom\n&nbsp;Nationwide\nHotel\nand\nConference\nCenter\npub\n&nbsp;\nFAQs\n(L15)",
+            "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>M1</strong>\n<strong>Intro\n(L1)</strong>\nH1\n<strong>Overview</strong>\n<strong>Feature\nBoxes\n(L5)\nzig\nzag</strong>\n<strong>Breakfast\nBuffet\n</strong>\n<strong>The\nOhio\nDining\nRoom</strong>\n<strong>\nNationwide\nHotel\nand\nConference\nCenter\npub</strong>\n<strong>FAQs\n(L15)</strong>",
             "children": [
                 {
                     "id": "svgw6ov8utoqi6wi9uf",
@@ -499,7 +499,7 @@
             "text": "Careers",
             "level": "foot",
             "description": null,
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nOverview",
+            "content_blocks": "<strong>Meta\nTitle\n</strong>\n<strong>Meta\nDescription\n</strong>\n<strong>H1\n</strong>\nOverview",
             "children": []
         },
         {
@@ -507,7 +507,7 @@
             "text": "Site Map",
             "level": "foot",
             "description": null,
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1\nSnippet",
+            "content_blocks": "<strong>Meta\nTitle\n</strong>\n<strong>Meta\nDescription\n</strong>\n<strong>H1</strong>\nSnippet",
             "children": []
         },
         {
@@ -515,7 +515,7 @@
             "text": "Accessibility",
             "level": "foot",
             "description": null,
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1",
+            "content_blocks": "<strong>Meta\nTitle\n</strong>\n<strong>Meta\nDescription\n</strong>\n<strong>H1\n</strong>",
             "children": []
         },
         {
@@ -523,7 +523,7 @@
             "text": "Privacy Policy",
             "level": "foot",
             "description": null,
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\nH1",
+            "content_blocks": "<strong>Meta\nTitle\n</strong>\n<strong>Meta\nDescription\n</strong>\n<strong>H1\n</strong>",
             "children": []
         },
         {
@@ -531,7 +531,7 @@
             "text": "Hotel Policies",
             "level": "foot",
             "description": null,
-            "content_blocks": "Meta\nTitle&nbsp;\nMeta\nDescription&nbsp;\nH1&nbsp;\nOverview\nhttps://www.nwhotelandconferencecenter.com/policies.html",
+            "content_blocks": "<strong>Meta\nTitle\n</strong>\n<strong>Meta\nDescription\n</strong>\n<strong>H1\n</strong>\nOverview\nhttps://www.nwhotelandconferencecenter.com/policies.html",
             "children": []
         }
     ]

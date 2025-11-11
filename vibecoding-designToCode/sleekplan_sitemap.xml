@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemap scheme="2.2" checksum="184e7f471b382b168a4cabf18e7dd0fc">
   <title>394279 Nationwide Hotel &amp;amp; Conference Center</title>
-  <version>2.0</version>
-  <link>https://milestoneinc.slickplan.com/kx4lmnpf</link>
-  <pubDate>Mon, 10 Nov 2025 08:09:15 -0500</pubDate>
+  <version>3.0</version>
+  <link>https://milestoneinc.slickplan.com/uh9lygwkz</link>
+  <pubDate>Tue, 11 Nov 2025 12:51:08 -0500</pubDate>
   <settings>
     <language>en_US</language>
   </settings>
@@ -22,22 +22,292 @@
       <id>svgmainsection</id>
     </options>
     <cells>
-      <cell id="svgdz1odvsjr571rut8">
-        <order>4000</order>
-        <parent>up6iiyynxfa3hr</parent>
-        <level>2</level>
-        <text>Contact</text>
+      <cell id="vr2aoatvz6avnx4i" collapsed="1">
+        <text>Guest Rooms</text>
+        <order>5000</order>
+        <desc>&amp;lt;p&amp;gt;renamed to guest rooms&amp;lt;/p&amp;gt;</desc>
+        <level>1</level>
         <contents lang="en_US">
           <body>
             <wysiwyg>
-              <id>f4ha5pqwq</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview (L20)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+              <id>vjls4bi3d</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Hero banner 1&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Guest Rooms Module Navigation&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;l1-l8 Feature Left Image - 2&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;/div&amp;gt;
 &amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Contact Form&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Contact Info (L23)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
+&amp;lt;div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;L24 Amenities section 3&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;L4 Zig zag feature box with gallery&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Faqs-with-right-accordion&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;/div&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgug2fz8pyc9i8v9kc">
+        <order>5000</order>
+        <text>Plan your Meeting</text>
+        <parent>ksdyctcbcivio</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>kj2mn4x3o</id>
+              <content>&amp;lt;div&amp;gt;Meta Title&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;Meta Description&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;H1&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;RFP Form&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;/div&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgavox07gco1fjhm9d">
+        <desc>&amp;lt;p&amp;gt;Day Meetings - Complete Meetings - Half Day Meetings (these are the existing meeting packages)&amp;lt;/p&amp;gt;</desc>
+        <order>4000</order>
+        <parent>ksdyctcbcivio</parent>
+        <level>2</level>
+        <text>Meeting Packages</text>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>z46bdn9gj</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Packages (L4) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Package Includes +&amp;lt;/p&amp;gt;
+&amp;lt;ul&amp;gt;
+&amp;lt;li&amp;gt;bullets&amp;lt;/li&amp;gt;
+&amp;lt;/ul&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="zpfizf7bfsgc" collapsed="1">
+        <desc>&amp;lt;p&amp;gt;Consolidate the details of sub menu pages under this heading&amp;lt;/p&amp;gt;</desc>
+        <text>Special Occasions</text>
+        <order>3000</order>
+        <parent>ksdyctcbcivio</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>a4quwmgye</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (L5) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Reunions&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Retreats&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Social Events&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgxxb1jwniekbluaqx">
+        <order>2000</order>
+        <text>Meeting Services</text>
+        <parent>ksdyctcbcivio</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>d4lxyrz2p</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2- Services Highlights-3 feature boxes (L25)&amp;lt;/strong&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Wifi&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;AV Equipment&amp;amp;nbsp;&amp;lt;br&amp;gt;Mail and Message Delivery&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2- Meeting Services (L5A)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;10 Bullets for Services&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2-Floor Plans (L6)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2- Plan Your Event With Us (L13)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;amp;nbsp;CTA - Start planning&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="ibdzjuj">
+        <order>1000</order>
+        <text>Event &amp;amp; Expo Spaces</text>
+        <parent>ksdyctcbcivio</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>priib1vhz</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;CTA- Start Planning&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (as many venues) L4&amp;lt;/strong&amp;gt; - Zig Zag&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Capacity Chart (L32)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW185905076 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW185905076 BCX0&amp;quot;&amp;gt;Local Art &amp;amp; Artists (L8)&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW185905076 BCX0&amp;quot; data-ccp-props=&amp;quot;{}&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Gallery L30&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+            <wysiwyg>
+              <id>vj3ie79ul</id>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svggcdp01t2eqvd9s66">
+        <desc>&amp;lt;p&amp;gt;The user will have the option to either Book a Tour or Contact the hotel.&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;This will include wedding services as well.&amp;lt;/p&amp;gt;</desc>
+        <text>Plan your Wedding</text>
+        <order>5000</order>
+        <parent>e0lhewwdgho</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>bkv0afuya</id>
+              <content>&amp;lt;div&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;Meta Description&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Intro (L2)&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;H1&amp;amp;nbsp;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;RFP Form (L19)&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Wedding Services (L7) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Preferred Vendors (L7)&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;/div&amp;gt;
+&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgdc9kpepmrayz2n6i">
+        <order>4000</order>
+        <parent>e0lhewwdgho</parent>
+        <level>2</level>
+        <text>Meet the Team</text>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>eb5pia6s8</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L9)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (as many team info)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Name with Role&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="5hyafiye">
+        <text>Wedding Packages</text>
+        <order>3000</order>
+        <parent>e0lhewwdgho</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>cqnmtpeu8</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Packages (L4) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Package Includes +&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;ul&amp;gt;
+&amp;lt;li&amp;gt;bullets&amp;lt;/li&amp;gt;
+&amp;lt;/ul&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Catering (L13)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgzcmu2hpkkv81l7ah" collapsed="1">
+        <desc>&amp;lt;p&amp;gt;Consolidate the content of the sub menu in gray on this page&amp;lt;/p&amp;gt;</desc>
+        <text>Wedding Celebrations</text>
+        <order>2000</order>
+        <parent>e0lhewwdgho</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>ns5kmnlc4</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes&amp;amp;nbsp; (L5) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Bridal Showers&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Elopements&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Engagement Parties&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Honeymoons &amp;amp; Anniversaries&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Rehearsal Dinners&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Send-Off Brunches&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Weddings &amp;amp; Receptions&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="u9bqaik">
+        <text>Our Spaces</text>
+        <order>1000</order>
+        <parent>e0lhewwdgho</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>aouh7jta5</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;CTA- Start Planning&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (as many venues) L4&amp;lt;/strong&amp;gt;&amp;amp;nbsp;- Zig Zag&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Capacity Chart (L32)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW185905076 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW185905076 BCX0&amp;quot;&amp;gt;Local Art &amp;amp; Artists (L8)&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW185905076 BCX0&amp;quot; data-ccp-props=&amp;quot;{}&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Gallery L30&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;</content>
             </wysiwyg>
           </body>
         </contents>
@@ -51,8 +321,8 @@
           <body>
             <wysiwyg>
               <id>yvr816vzk</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;
@@ -73,24 +343,47 @@
           </body>
         </contents>
       </cell>
-      <cell id="vr2aoatvz6avnx4i" collapsed="1">
-        <text>Guest Rooms</text>
-        <order>5000</order>
-        <desc>&amp;lt;p&amp;gt;renamed to guest rooms&amp;lt;/p&amp;gt;</desc>
+      <cell id="oegeoiyom">
+        <text>Our Story</text>
+        <parent>up6iiyynxfa3hr</parent>
+        <order>1000</order>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>uesfu55xs</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro&amp;amp;nbsp; (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;History Timeline Feature (L29)&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="bfkdg7u76qeywnvz">
+        <desc>&amp;lt;p&amp;gt;The different dining options to be displayed along with timings and menu&amp;lt;/p&amp;gt;</desc>
+        <order>7000</order>
+        <text>Dining</text>
         <level>1</level>
         <contents lang="en_US">
           <body>
             <wysiwyg>
-              <id>vjls4bi3d</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+              <id>r146l7pff</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Modular Nav (A2)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Featured Amenities (L24)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (as many rooms) L4 &amp;lt;/strong&amp;gt;Zig Zag&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (L5) zig zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Breakfast Buffet&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;The Ohio Dining Room&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;amp;nbsp;Nationwide Hotel and Conference Center pub&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;FAQs (L15)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
             </wysiwyg>
           </body>
@@ -113,48 +406,23 @@
           <body>
             <wysiwyg>
               <id>szrkvd5ss</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L2)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Amenties (L24)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Hotel Highlights (L5)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;Pool, Dining, Fitness Center&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Hotel Accessibility&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;Local Art &amp;amp; Artists (L8)&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW169799660 BCX0&amp;quot; data-ccp-props=&amp;quot;{}&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;More Hotels &amp;amp; Amenities (dark blue background) https://prnt.sc/fTzCC4dQVmB1&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;br&amp;gt;3 column feature https://prnt.sc/2SJO7xQW2Ti7&amp;amp;nbsp;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;History&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;Dining&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW169799660 BCX0&amp;quot; data-ccp-props=&amp;quot;{}&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;Explore Ohio&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;br&amp;gt;3 column feature https://prnt.sc/2SJO7xQW2Ti7&amp;amp;nbsp;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;History&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW169799660 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW169799660 BCX0&amp;quot;&amp;gt;Dining&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW169799660 BCX0&amp;quot; data-ccp-props=&amp;quot;{}&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;Explore Ohio&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;FAQs (L15)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgxxb1jwniekbluaqx">
-        <order>2000</order>
-        <text>Meeting Services</text>
-        <parent>ksdyctcbcivio</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>d4lxyrz2p</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H1 &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2- Services Highlights-3 feature boxes (L25)&amp;lt;/strong&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Wifi&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;AV Equipment&amp;amp;nbsp;&amp;lt;br&amp;gt;Mail and Message Delivery&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2- Meeting Services (L5A)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;10 Bullets for Services&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2-Floor Plans (L6)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H2- Plan Your Event With Us (L13)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;CTA - Start planning&amp;lt;/p&amp;gt;</content>
             </wysiwyg>
           </body>
         </contents>
@@ -167,21 +435,21 @@
           <body>
             <wysiwyg>
               <id>em3i81jvz</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Modular Nav (A2)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L3)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;CTA - (Primary) Start Planning (Secondary)Virtual Tour&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Awards&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Awards&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Highlights (L24)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;4 Feature Boxes - 2 column (meeting module)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Meeting Spaces&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Packages&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Special Occasions&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Catering (PDF)&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meeting Spaces&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Packages&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Special Occasions&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Catering (PDF)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Private Parties (L13)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Virtual Tours / Videos (L31)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Gallery (L30)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
@@ -190,29 +458,166 @@
           </body>
         </contents>
       </cell>
-      <cell id="ibdzjuj">
-        <order>1000</order>
-        <text>Event &amp;amp; Expo Spaces</text>
-        <parent>ksdyctcbcivio</parent>
+      <cell id="e0lhewwdgho">
+        <order>2000</order>
+        <text>Weddings</text>
+        <level>1</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>dfnqj10ze</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Modular Nav (A2)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L3)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;CTA - (Primary) Start Planning (Secondary)Virtual Tour&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Awards&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Highlights&amp;amp;nbsp; (L24)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes - 2 column (wedding module)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Spaces&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H4&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;CTA&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Wedding Celebrations&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Wedding Packages&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;Catering (PDF) &amp;lt;/strong&amp;gt;- to be confirmed&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Hospitality Suites - Need to confirm if we need this snippet (L13)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Client Videos and Testimonials (L31)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Gallery (L30)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;FAQs (L15)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgcn6whexcfa96of2q">
+        <order>9000</order>
+        <parent>up6iiyynxfa3hr</parent>
+        <level>2</level>
+        <text>FAQs</text>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>ndzgin1fj</id>
+              <content>&amp;lt;p&amp;gt;Content Writer Create 25 Questions- Client has FAQ Solutions module. Please add questions to top 5 pages&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;br&amp;gt;Meta Description&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M2&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgtnln2po9ddxtbqxe">
+        <text>Blogs</text>
+        <order>7000</order>
+        <parent>up6iiyynxfa3hr</parent>
         <level>2</level>
         <contents lang="en_US">
           <body>
             <wysiwyg>
-              <id>priib1vhz</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;CTA- Start Planning&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (as many venues) L4&amp;lt;/strong&amp;gt; - Zig Zag&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Capacity Chart (L32)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW185905076 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW185905076 BCX0&amp;quot;&amp;gt;Local Art &amp;amp; Artists (L8)&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW185905076 BCX0&amp;quot; data-ccp-props=&amp;quot;{}&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Gallery L30&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
+              <id>w1f6knhfw</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;</content>
             </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="zqooobcv3hmzdl">
+        <order>6000</order>
+        <text>Reviews</text>
+        <parent>up6iiyynxfa3hr</parent>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
             <wysiwyg>
-              <id>vj3ie79ul</id>
+              <id>wmzxyeihi</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgh36n87z6ir436eut">
+        <order>5000</order>
+        <parent>up6iiyynxfa3hr</parent>
+        <level>2</level>
+        <text>Property Map</text>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>c7k4gefsn</id>
+              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L2)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;CTA - Download Map&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Interactive Property Map (Use same one from homepage)&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="svgdz1odvsjr571rut8">
+        <order>4000</order>
+        <parent>up6iiyynxfa3hr</parent>
+        <level>2</level>
+        <text>Contact</text>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>f4ha5pqwq</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview (L20)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Contact Form&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Contact Info (L23)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="arxjo0ubx6gr86">
+        <order>2000</order>
+        <parent>up6iiyynxfa3hr</parent>
+        <desc>&amp;lt;p&amp;gt;This will have categories like Wedding Gallery, Meeting and Events Gallery etc.&amp;lt;/p&amp;gt;</desc>
+        <text>Gallery</text>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>nvzjyjd49</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;em&amp;gt;**Use background with gradient&amp;lt;/em&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
+      <cell id="j1lzlu2b9k">
+        <text>Home Page</text>
+        <order>1000</order>
+        <level>home</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>r2ln9juea</id>
+              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Rooms&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Dining&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meetings/Weddings&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Gallery&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Location (what to do and see?) /Map&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Event Calendar&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;FAQs&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Incorporate Our History/Story somewhere on the home page with black and white? Make this elegant not cheesy&amp;lt;/p&amp;gt;</content>
             </wysiwyg>
           </body>
         </contents>
@@ -250,157 +655,6 @@
           </body>
         </contents>
       </cell>
-      <cell id="svggcdp01t2eqvd9s66">
-        <desc>&amp;lt;p&amp;gt;The user will have the option to either Book a Tour or Contact the hotel.&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;This will include wedding services as well.&amp;lt;/p&amp;gt;</desc>
-        <text>Plan your Wedding</text>
-        <order>5000</order>
-        <parent>e0lhewwdgho</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>bkv0afuya</id>
-              <content>&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Intro (L2)&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;H1&amp;amp;nbsp;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;Overview&amp;amp;nbsp;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;RFP Form (L19)&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Wedding Services (L7) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Preferred Vendors (L7)&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgug2fz8pyc9i8v9kc">
-        <order>5000</order>
-        <text>Plan your Meeting</text>
-        <parent>ksdyctcbcivio</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>kj2mn4x3o</id>
-              <content>&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;strong&amp;gt;H1 &amp;lt;/strong&amp;gt;&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;Overview&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;RFP Form&amp;lt;/div&amp;gt;
-&amp;lt;div&amp;gt;&amp;lt;/div&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgavox07gco1fjhm9d">
-        <desc>&amp;lt;p&amp;gt;Day Meetings - Complete Meetings - Half Day Meetings (these are the existing meeting packages)&amp;lt;/p&amp;gt;</desc>
-        <order>4000</order>
-        <parent>ksdyctcbcivio</parent>
-        <level>2</level>
-        <text>Meeting Packages</text>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>z46bdn9gj</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Packages (L4) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Package Includes +&amp;lt;/p&amp;gt;
-&amp;lt;ul&amp;gt;
-&amp;lt;li&amp;gt;bullets&amp;lt;/li&amp;gt;
-&amp;lt;/ul&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="zpfizf7bfsgc" collapsed="1">
-        <desc>&amp;lt;p&amp;gt;Consolidate the details of sub menu pages under this heading&amp;lt;/p&amp;gt;</desc>
-        <text>Special Occasions</text>
-        <order>3000</order>
-        <parent>ksdyctcbcivio</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>a4quwmgye</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (L5) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Reunions&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Retreats&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Social Events&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgzcmu2hpkkv81l7ah" collapsed="1">
-        <desc>&amp;lt;p&amp;gt;Consolidate the content of the sub menu in gray on this page&amp;lt;/p&amp;gt;</desc>
-        <text>Wedding Celebrations</text>
-        <order>2000</order>
-        <parent>e0lhewwdgho</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>ns5kmnlc4</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes&amp;amp;nbsp; (L5) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Bridal Showers&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Elopements&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Engagement Parties&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Honeymoons &amp;amp; Anniversaries&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Rehearsal Dinners&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Send-Off Brunches&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Weddings &amp;amp; Receptions&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="bfkdg7u76qeywnvz">
-        <desc>&amp;lt;p&amp;gt;The different dining options to be displayed along with timings and menu&amp;lt;/p&amp;gt;</desc>
-        <order>7000</order>
-        <text>Dining</text>
-        <level>1</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>r146l7pff</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (L5) zig zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Breakfast Buffet&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;The Ohio Dining Room&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;Nationwide Hotel and Conference Center pub&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;FAQs (L15)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
       <cell id="svgcshio18w17i70wt8">
         <order>6000</order>
         <text>Room Packages</text>
@@ -418,170 +672,11 @@
           </body>
         </contents>
       </cell>
-      <cell id="u9bqaik">
-        <text>Our Spaces</text>
-        <order>1000</order>
-        <parent>e0lhewwdgho</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>aouh7jta5</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;CTA- Start Planning&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes (as many venues) L4&amp;lt;/strong&amp;gt;&amp;amp;nbsp;- Zig Zag&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Capacity Chart (L32)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW185905076 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW185905076 BCX0&amp;quot;&amp;gt;Local Art &amp;amp; Artists (L8)&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW185905076 BCX0&amp;quot; data-ccp-props=&amp;quot;{}&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Gallery L30&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="5hyafiye">
-        <text>Wedding Packages</text>
-        <order>3000</order>
-        <parent>e0lhewwdgho</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>cqnmtpeu8</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Packages (L4) Zig Zag&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Package Includes +&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;ul&amp;gt;
-&amp;lt;li&amp;gt;bullets&amp;lt;/li&amp;gt;
-&amp;lt;/ul&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Catering (L13)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgdc9kpepmrayz2n6i">
-        <order>4000</order>
-        <parent>e0lhewwdgho</parent>
-        <level>2</level>
-        <text>Meet the Team</text>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>eb5pia6s8</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L9)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Feature Boxes (as many team info)&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Name with Role&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="e0lhewwdgho">
-        <order>2000</order>
-        <text>Weddings</text>
-        <level>1</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>dfnqj10ze</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Modular Nav (A2)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L3)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;CTA - (Primary) Start Planning (Secondary)Virtual Tour&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Awards&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Highlights&amp;amp;nbsp; (L24)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Feature Boxes - 2 column (wedding module)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Spaces&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H4&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Snippet&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;CTA&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Wedding Celebrations&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Wedding Packages&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Catering (PDF) - to be confirmed&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Hospitality Suites - Need to confirm if we need this snippet (L13)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Client Videos and Testimonials (L31)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;Gallery (L30)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;MsoNormal&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span lang=&amp;quot;en-us&amp;quot;&amp;gt;FAQs (L15)&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgcn6whexcfa96of2q">
-        <order>9000</order>
-        <parent>up6iiyynxfa3hr</parent>
-        <level>2</level>
-        <text>FAQs</text>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>ndzgin1fj</id>
-              <content>&amp;lt;p&amp;gt;Content Writer Create 25 Questions- Client has FAQ Solutions module. Please add questions to top 5 pages&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;br&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M2&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
       <cell id="svgav18qmmyv78ltj14">
         <order>8000</order>
         <parent>up6iiyynxfa3hr</parent>
         <level>2</level>
         <text>Press Releases</text>
-      </cell>
-      <cell id="svgtnln2po9ddxtbqxe">
-        <text>Blogs</text>
-        <order>7000</order>
-        <parent>up6iiyynxfa3hr</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>w1f6knhfw</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgh36n87z6ir436eut">
-        <order>5000</order>
-        <parent>up6iiyynxfa3hr</parent>
-        <level>2</level>
-        <text>Property Map</text>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>c7k4gefsn</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro (L2)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Overview&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;CTA - Download Map&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Interactive Property Map (Use same one from homepage)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
       </cell>
       <cell id="up6iiyynxfa3hr">
         <text>Our Property</text>
@@ -592,46 +687,6 @@
           <body>
             <wysiwyg>
               <id>hhrhgpf5u</id>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="arxjo0ubx6gr86">
-        <order>2000</order>
-        <parent>up6iiyynxfa3hr</parent>
-        <desc>&amp;lt;p&amp;gt;This will have categories like Wedding Gallery, Meeting and Events Gallery etc.&amp;lt;/p&amp;gt;</desc>
-        <text>Gallery</text>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>nvzjyjd49</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;em&amp;gt;**Use background with gradient&amp;lt;/em&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="oegeoiyom">
-        <text>Our Story</text>
-        <parent>up6iiyynxfa3hr</parent>
-        <order>1000</order>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>uesfu55xs</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Intro&amp;amp;nbsp; (L1)&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;History Timeline Feature (L29)&amp;amp;nbsp;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
             </wysiwyg>
           </body>
         </contents>
@@ -762,46 +817,6 @@
         <parent>svggcdp01t2eqvd9s66</parent>
         <level>3</level>
         <text>Wedding Services</text>
-      </cell>
-      <cell id="zqooobcv3hmzdl">
-        <order>6000</order>
-        <text>Reviews</text>
-        <parent>up6iiyynxfa3hr</parent>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>wmzxyeihi</id>
-              <content>&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Title &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;Meta Description &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;H1 &amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="j1lzlu2b9k">
-        <text>Home Page</text>
-        <order>1000</order>
-        <level>home</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>r2ln9juea</id>
-              <content>&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Rooms&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Dining&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Meetings/Weddings&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Gallery&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Location (what to do and see?) /Map&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Event Calendar&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;FAQs&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Incorporate Our History/Story somewhere on the home page with black and white? Make this elegant not cheesy&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
       </cell>
       <cell id="svgkad84hqemxbvlb5d">
         <order>3000</order>

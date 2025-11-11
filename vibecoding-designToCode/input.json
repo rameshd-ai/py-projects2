@@ -1,0 +1,525 @@
+{
+    "title": "394279 Nationwide Hotel & Conference Center",
+    "pages": [
+        {
+            "page_name": "Home Page",
+            "components": [
+                "Overview",
+                "Rooms",
+                "Dining",
+                "Meetings/Weddings",
+                "Gallery",
+                "Location (what to do and see?) /Map",
+                "Event Calendar",
+                "FAQs"
+            ],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Our Property",
+            "components": [],
+            "sub_pages": [
+                {
+                    "page_name": "Our Story",
+                    "components": [
+                        "Hero banner 1",
+                        "l1-l8 Feature Left Image - 2)",
+                        "L 32 Testimonial",
+                        "L29 Card with accordian 1"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Gallery",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Location",
+                    "components": [
+                        "M1",
+                        "Overview (L18)",
+                        "Hotel Location (L17) - ZIG ZAG",
+                        "What's Nearby (L17)"
+                    ],
+                    "sub_pages": [
+                        {
+                            "page_name": "Transportation",
+                            "components": [],
+                            "sub_pages": []
+                        }
+                    ]
+                },
+                {
+                    "page_name": "Contact",
+                    "components": [
+                        "Overview (L20)",
+                        "Overview",
+                        "Contact Info (L23)"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Property Map",
+                    "components": [
+                        "Intro (L2)",
+                        "Overview"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Reviews",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Blogs",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Press Releases",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "FAQs",
+                    "components": [
+                        "M2"
+                    ],
+                    "sub_pages": []
+                }
+            ]
+        },
+        {
+            "page_name": "Weddings",
+            "components": [
+                "M1",
+                "Modular Nav (A2)",
+                "Intro (L3)",
+                "Overview",
+                "Awards",
+                "Highlights (L24)",
+                "Feature Boxes - 2 column (wedding module)",
+                "Wedding Celebrations",
+                "Wedding Packages",
+                "Catering (PDF)",
+                "Hospitality Suites - Need to confirm if we need this snippet (L13)",
+                "Client Videos and Testimonials (L31)",
+                "Gallery (L30)",
+                "FAQs (L15)"
+            ],
+            "sub_pages": [
+                {
+                    "page_name": "Our Spaces",
+                    "components": [
+                        "M1",
+                        "Intro (L1)",
+                        "Overview",
+                        "Feature Boxes (as many venues) L4",
+                        "Capacity Chart (L32)",
+                        "Local Art & Artists (L8)",
+                        "Gallery L30"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Wedding Celebrations",
+                    "components": [
+                        "M1",
+                        "Intro (L1)",
+                        "Overview",
+                        "Feature Boxes (L5) Zig Zag"
+                    ],
+                    "sub_pages": [
+                        {
+                            "page_name": "Bridal Showers",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Elopements",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Engagement Parties",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Honeymoons & Anniversaries",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Rehearsal Dinners",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Send-Off Brunches",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Weddings & Receptions",
+                            "components": [],
+                            "sub_pages": []
+                        }
+                    ]
+                },
+                {
+                    "page_name": "Wedding Packages",
+                    "components": [
+                        "M1",
+                        "Intro (L1)",
+                        "Overview",
+                        "Packages (L4) Zig Zag",
+                        "Catering (L13)"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Meet the Team",
+                    "components": [
+                        "M1",
+                        "Intro (L9)",
+                        "Overview",
+                        "Feature Boxes (as many team info)"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Plan your Wedding",
+                    "components": [
+                        "M1",
+                        "Intro (L2)",
+                        "Overview",
+                        "RFP Form (L19)",
+                        "Wedding Services (L7) Zig Zag",
+                        "Preferred Vendors (L7)"
+                    ],
+                    "sub_pages": [
+                        {
+                            "page_name": "Wedding Services",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Vendors",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "RFP Form",
+                            "components": [],
+                            "sub_pages": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "page_name": "Meetings and Events",
+            "components": [
+                "M1",
+                "Modular Nav (A2)",
+                "Intro (L3)",
+                "Overview",
+                "Awards",
+                "Highlights (L24)",
+                "4 Feature Boxes - 2 column (meeting module)",
+                "Meeting Spaces",
+                "Packages",
+                "Special Occasions",
+                "Catering (PDF)",
+                "Private Parties (L13)",
+                "Virtual Tours / Videos (L31)",
+                "Gallery (L30)",
+                "FAQs (L15)"
+            ],
+            "sub_pages": [
+                {
+                    "page_name": "Event & Expo Spaces",
+                    "components": [
+                        "M1",
+                        "Intro (L1)",
+                        "Overview",
+                        "Feature Boxes (as many venues) L4",
+                        "Capacity Chart (L32)",
+                        "Local Art & Artists (L8)",
+                        "Gallery L30"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Meeting Services",
+                    "components": [
+                        "Overview",
+                        "H2- Services Highlights-3 feature boxes (L25)",
+                        "Wifi",
+                        "AV Equipment Mail and Message Delivery",
+                        "H2- Meeting Services (L5A)",
+                        "H2-Floor Plans (L6)",
+                        "H2- Plan Your Event With Us (L13)"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Special Occasions",
+                    "components": [
+                        "M1",
+                        "Intro (L1)",
+                        "Overview",
+                        "Feature Boxes (L5) Zig Zag"
+                    ],
+                    "sub_pages": [
+                        {
+                            "page_name": "Reunions",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Retreats",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Social Events",
+                            "components": [],
+                            "sub_pages": []
+                        }
+                    ]
+                },
+                {
+                    "page_name": "Meeting Packages",
+                    "components": [
+                        "M1",
+                        "Intro (L1)",
+                        "Overview",
+                        "Packages (L4) Zig Zag"
+                    ],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Plan your Meeting",
+                    "components": [
+                        "Overview",
+                        "RFP Form"
+                    ],
+                    "sub_pages": [
+                        {
+                            "page_name": "RFP Form",
+                            "components": [],
+                            "sub_pages": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "page_name": "Guest Rooms",
+            "components": [
+                    "Hero banner 1",
+                    "Guest Rooms Module Navigation",
+                    "l1-l8 Feature Left Image - 2",
+                    "L24 Amenities section 3",
+                    "L4 Zig zag feature box with gallery",
+                    "Faqs-with-right-accordion"
+            ],
+            "sub_pages": [
+                {
+                    "page_name": "Parlor Rooms",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Deluxe Rooms",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Standard Rooms",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Suites",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Balcony Rooms",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Room Packages",
+                    "components": [
+                        "M1",
+                        "Intro (L1)",
+                        "Packages (L5A) zig zag"
+                    ],
+                    "sub_pages": [
+                        {
+                            "page_name": "Delaware On Draft Package",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Columbus Zoo Package",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Advance Purchase Rate",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Senior/AARP",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Government Rate",
+                            "components": [],
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "AAA Rate",
+                            "components": [],
+                            "sub_pages": []
+                        }
+                    ]
+                },
+                {
+                    "page_name": "Group Block",
+                    "components": [
+                        "Design",
+                        "Meta Title",
+                        "Meta Description",
+                        "M1",
+                        "Intro (L1)",
+                        "Group Blocks",
+                        "Tabs - Weddings Block | Sports Block (A1)",
+                        "H3 - Wedding Room Blocks in Columbus, OH (L7)",
+                        "H3- Sports Room Blocks in Columbus, OH (L7- no accordions)",
+                        "RFP (L33)"
+                    ],
+                    "sub_pages": [
+                        {
+                            "page_name": "RFP Form",
+                            "components": [],
+                            "sub_pages": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "page_name": "Amenities",
+            "components": [
+                "M1",
+                "Intro (L2)",
+                "Overview",
+                "Amenties (L24)",
+                "Hotel Highlights (L5)",
+                "Hotel Accessibility",
+                "Local Art & Artists (L8)",
+                "More Hotels & Amenities (dark blue background) https://prnt.sc/fTzCC4dQVmB1",
+                "History",
+                "Dining",
+                "Explore Ohio",
+                "FAQs (L15)"
+            ],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Dining",
+            "components": [
+                "M1",
+                "Intro (L1)",
+                "Overview",
+                "Feature Boxes (L5) zig zag",
+                "Breakfast Buffet",
+                "The Ohio Dining Room",
+                "Nationwide Hotel and Conference Center pub",
+                "FAQs (L15)"
+            ],
+            "sub_pages": [
+                {
+                    "page_name": "The Pub",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Catering",
+                    "components": [],
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Lobby Grab & Go",
+                    "components": [],
+                    "sub_pages": []
+                }
+            ]
+        },
+        {
+            "page_name": "Explore Ohio",
+            "components": [],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Book a Tour",
+            "components": [],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Careers",
+            "components": [
+                "Meta Title",
+                "Meta Description",
+                "H1"
+            ],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Site Map",
+            "components": [
+                "Meta Title",
+                "Meta Description",
+                "H1"
+            ],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Accessibility",
+            "components": [
+                "Meta Title",
+                "Meta Description",
+                "H1"
+            ],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Privacy Policy",
+            "components": [
+                "Meta Title",
+                "Meta Description",
+                "H1"
+            ],
+            "sub_pages": []
+        },
+        {
+            "page_name": "Hotel Policies",
+            "components": [
+                "Meta Title",
+                "Meta Description",
+                "H1"
+            ],
+            "sub_pages": []
+        }
+    ]
+}

@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sleekplan Migration Wizard</title>
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* --- Base & Utility Styles --- */
+        :root {
+            --color-primary: #2563eb; /* blue-600 */
+            --color-primary-hover: #1d4ed8; /* blue-700 */
+            --color-success: #10b981; /* green-500 */
+            --color-background: #f9fafb; /* gray-50 */
+            --color-light-gray: #e5e7eb; /* gray-200 */
+            --color-text-dark: #1f2937; /* gray-800 */
+            --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --border-radius-xl: 0.75rem;
+            --border-radius-3xl: 1.5rem;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-background);
+            min-height: 100vh;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 0;
+            line-height: 1.5;
+            color: var(--color-text-dark);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f0f4f8; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .transition-all { transition: all 0.3s ease-in-out; }
+
+        /* --- Main Container Layout (80% width) --- */
+        .wizard-container {
+            width: 100%;
+            max-width: 1152px; /* Equivalent of max-w-6xl */
+            background-color: white;
+            border-radius: var(--border-radius-3xl);
+            box-shadow: var(--shadow-2xl);
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        @media (min-width: 1024px) { /* Equivalent to lg breakpoint */
+            .wizard-container {
+                /* CORRECTED: Setting to 80% as requested for desktop views */
+                width: 100%;
+                padding: 2.5rem;
+            }
+        }
+
+        /* --- Header and Progress --- */
+        .header-title {
+            font-size: 1.875rem; /* 3xl */
+            font-weight: 800; /* extrabold */
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #111827; /* gray-900 */
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background-color: #e5e7eb;
+            z-index: -10;
+            margin: 0 2.5rem;
+            display: none;
+        }
+
+        @media (min-width: 640px) { /* sm breakpoint */
+            .progress-line {
+                display: block;
+            }
+        }
+
+        .progress-bar {
+            height: 4px;
+            background-color: var(--color-primary);
+            transition: width 0.5s ease-in-out;
+        }
+
+        /* --- Step Indicators --- */
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            cursor: default;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px; /* full */
+            color: white;
+            font-weight: 700;
+            transition: all 0.3s;
+        }
+
+        .step-title {
+            font-size: 0.875rem; /* sm */
+            font-weight: 500;
+            margin-left: 0.75rem;
+            display: none;
+            transition: color 0.3s;
+        }
+
+        @media (min-width: 640px) {
+            .step-title {
+                display: block;
+            }
+        }
+        
+        /* Active Step Styles */
+        .step-active .step-circle {
+            background-color: var(--color-primary);
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.5), 0 4px 6px -2px rgba(37, 99, 235, 0.05); /* shadow-lg */
+        }
+        .step-active .step-title {
+            color: var(--color-primary);
+        }
+
+        /* Completed Step Styles */
+        .step-completed .step-circle {
+            background-color: var(--color-success);
+        }
+        .step-completed .step-title {
+            color: #6b7280; /* gray-500 */
+        }
+
+        /* Future Step Styles */
+        .step-future .step-circle {
+            background-color: #d1d5db; /* gray-300 */
+            color: #6b7280; /* gray-500 */
+        }
+        .step-future .step-title {
+            color: #6b7280;
+        }
+
+        /* --- Content Layout --- */
+        .step-content {
+            margin-top: 2rem;
+            min-height: 300px;
+        }
+
+        .content-hidden {
+            display: none;
+        }
+        
+        .content-wrapper-center {
+            max-width: 512px; /* max-w-lg */
+            margin-left: auto;
+            margin-right: auto;
+            padding-bottom: 3rem; /* Add some space before buttons */
+        }
+        
+        .content-wrapper-large {
+            max-width: 896px; /* max-w-2xl */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* --- Form Elements --- */
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151; /* gray-700 */
+            margin-bottom: 0.5rem;
+        }
+
+        .input-relative {
+            position: relative;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem; /* adjusted padding for icon */
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: var(--border-radius-xl);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.5); /* ring-blue-500 */
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 1.25rem;
+            width: 1.25rem;
+            color: #9ca3af; /* gray-400 */
+        }
+
+        /* --- File Upload Area --- */
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 10rem;
+            border: 2px dashed #d1d5db;
+            border-radius: var(--border-radius-xl);
+            cursor: pointer;
+            background-color: #f9fafb;
+            transition: all 0.2s;
+            padding: 1.5rem;
+        }
+        .upload-area:hover {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        .upload-icon {
+            width: 2rem;
+            height: 2rem;
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+        .upload-text {
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #4b5563; /* gray-600 */
+            font-weight: 600;
+        }
+        .upload-hint {
+            font-size: 0.75rem;
+            color: #6b7280; /* gray-500 */
+        }
+        .file-input { display: none; }
+
+        /* File Display Card */
+        .file-display-card {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background-color: white;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .file-display-card.active { display: flex; }
+
+        .file-info { display: flex; align-items: center; }
+        .file-icon { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; color: var(--color-primary); }
+        .file-name { font-size: 0.875rem; font-weight: 500; color: #374151; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .file-size { font-size: 0.75rem; color: #6b7280; margin-left: 1rem; }
+
+        /* --- Review Step --- */
+        .review-section {
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: var(--border-radius-xl);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+            border: 1px solid #f3f4f6;
+            margin-bottom: 2rem;
+        }
+        .review-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-primary);
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
+        .review-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem 1rem;
+        }
+        @media (min-width: 640px) {
+            .review-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        .review-dt {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+        }
+        .review-icon {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+            color: #60a5fa; /* blue-400 */
+        }
+        .review-dd {
+            margin-top: 0.25rem;
+            font-size: 1rem;
+            color: #1f2937;
+            word-wrap: break-word;
+        }
+
+        .alert-info {
+            padding: 1rem;
+            background-color: #fffbeb; /* yellow-50 */
+            border-left: 4px solid #fbbf24; /* yellow-400 */
+            color: #92400e; /* yellow-800 */
+            border-radius: 0 0.5rem 0.5rem 0; /* rounded-r-lg */
+        }
+        .alert-info p { margin: 0; }
+        .alert-info .font-semibold { font-weight: 600; }
+        .alert-info .text-sm { font-size: 0.875rem; }
+
+        /* File Review Card Status */
+        .file-review-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
+        }
+        .file-review-card.error {
+            border: 1px solid #fca5a5; /* red-300 */
+        }
+        .file-review-status { display: flex; align-items: center; }
+        .file-review-status .icon-status { margin-right: 0.25rem; }
+
+        /* --- Completion Message --- */
+        .completion-message {
+            text-align: center;
+            padding: 2.5rem 0;
+            display: none;
+        }
+        .completion-message .icon-check {
+            width: 4rem;
+            height: 4rem;
+            color: var(--color-success);
+            margin: 0 auto 1rem;
+            animation: bounce 1s infinite;
+        }
+        .completion-message h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            color: var(--color-text-dark);
+            margin-bottom: 0.75rem;
+        }
+        .completion-message p {
+            color: #4b5563; /* gray-600 */
+            margin-bottom: 1.5rem;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-5%); }
+            50% { transform: translateY(0); }
+        }
+
+
+        /* --- Navigation Buttons --- */
+        .navigation-buttons {
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .nav-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius-xl);
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .back-btn-default {
+            background-color: white;
+            color: #374151; /* gray-700 */
+            border: 1px solid #d1d5db; /* gray-300 */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .back-btn-default:hover {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        
+        .back-btn-hidden {
+            background-color: transparent !important;
+            color: transparent !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            border: none !important;
+        }
+
+        .next-btn-enabled {
+            background-color: var(--color-primary);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        }
+        .next-btn-enabled:hover {
+            background-color: var(--color-primary-hover);
+        }
+
+        .next-btn-disabled {
+            background-color: #93c5fd; /* blue-300 */
+            color: white;
+            cursor: not-allowed;
+        }
+    </style>
+    <!-- Use Google's Inter font for consistency -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="wizard-container" class="wizard-container transition-all">
+
+        <!-- Title -->
+        <h1 class="header-title">
+            Slickplan Migration Wizard
+        </h1>
+
+        <!-- Step Navigation Header -->
+        <div class="step-header">
+            <!-- Progress Line -->
+            <div class="progress-line">
+                <div id="progress-bar" class="progress-bar" style="width: 0%;"></div>
+            </div>
+            
+            <!-- Step 1: User Site Auth -->
+            <div id="step-indicator-1" class="step-indicator step-active">
+                <div class="step-circle step-1-circle">
+                    1
+                </div>
+                <span class="step-title step-1-title">User Site Auth</span>
+            </div>
+
+            <!-- Step 2: Sleekplan to JSON Setup -->
+            <div id="step-indicator-2" class="step-indicator step-future">
+                <div class="step-circle step-2-circle">
+                    2
+                </div>
+                <span class="step-title step-2-title">Sleekplan to JSON Setup</span>
+            </div>
+
+            <!-- Step 3: Review and Summary -->
+            <div id="step-indicator-3" class="step-indicator step-future">
+                <div class="step-circle step-3-circle">
+                    3
+                </div>
+                <span class="step-title step-3-title">Review and Summary</span>
+            </div>
+        </div>
+
+        <!-- Step Content Wrapper -->
+        <div id="step-content-wrapper">
+
+            <!-- STEP 1: User Site Auth Form -->
+            <div id="step-1-content" class="step-content">
+                <div class="content-wrapper-center">
+                    <!-- Site URL -->
+                    <div class="input-group">
+                        <label for="siteUrl" class="input-label">Site URL</label>
+                        <div class="input-relative">
+                            <input type="url" id="siteUrl" placeholder="https://your-site.com" required
+                                class="input-field transition-all" oninput="validateStep(1)">
+                            <i data-lucide="globe" class="input-icon"></i>
+                        </div>
+                    </div>
+                    <!-- Site Profile ID -->
+                    <div class="input-group">
+                        <label for="siteProfileId" class="input-label">Site Profile ID</label>
+                        <div class="input-relative">
+                            <input type="text" id="siteProfileId" placeholder="e.g., prod-profile-123" required
+                                class="input-field transition-all" oninput="validateStep(1)">
+                            <i data-lucide="user" class="input-icon"></i>
+                        </div>
+                    </div>
+                    <!-- Site ID -->
+                    <div class="input-group">
+                        <label for="siteId" class="input-label">Site ID</label>
+                        <div class="input-relative">
+                            <input type="text" id="siteId" placeholder="e.g., S-4567" required
+                                class="input-field transition-all" oninput="validateStep(1)">
+                            <i data-lucide="list" class="input-icon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: Sleekplan to JSON Setup -->
+            <div id="step-2-content" class="step-content content-hidden">
+                <div class="content-wrapper-large">
+                    <h3 style="font-size: 1.5rem; font-weight: 700; text-align: center; color: #374151; margin-bottom: 0.5rem;">Data Import</h3>
+                    <p style="font-size: 0.875rem; color: #4b5563; text-align: center; margin-bottom: 2rem;">
+                        Please upload the exported **XML file** from Sleekplan for conversion.
+                    </p>
+
+                    <label for="xmlFile" class="upload-area">
+                        <i data-lucide="upload" class="upload-icon"></i>
+                        <p id="file-upload-text" class="upload-text">
+                            Click to upload or drag and drop
+                        </p>
+                        <p class="upload-hint">XML file only (max 10MB limit in production)</p>
+                        <input 
+                            id="xmlFile" 
+                            type="file" 
+                            class="file-input" 
+                            accept=".xml" 
+                            onchange="handleFileChange(this); validateStep(2);" 
+                            required 
+                        />
+                    </label>
+                    
+                    <div id="file-display" class="file-display-card" style="margin-top: 1rem;">
+                        <div class="file-info">
+                            <i data-lucide="file-text" class="file-icon"></i>
+                            <span id="file-name" class="file-name"></span>
+                        </div>
+                        <span id="file-size" class="file-size"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: Review and Summary -->
+            <div id="step-3-content" class="step-content content-hidden">
+                <div style="padding: 1rem;">
+                    <h3 class="review-title" style="font-weight: 700; font-size: 1.5rem; color: #1f2937;">Review and Summary</h3>
+
+                    <!-- Authentication Details Review -->
+                    <div class="review-section">
+                        <h4 class="review-title" style="color: var(--color-primary); border-bottom: none; margin-bottom: 1.5rem;">1. Site Authentication Details</h4>
+                        <dl class="review-grid">
+                            <!-- Site URL -->
+                            <div>
+                                <dt class="review-dt">
+                                    <i data-lucide="globe" class="review-icon"></i>Site URL
+                                </dt>
+                                <dd id="review-siteUrl" class="review-dd"></dd>
+                            </div>
+                            <!-- Site Profile ID -->
+                            <div>
+                                <dt class="review-dt">
+                                    <i data-lucide="user" class="review-icon"></i>Site Profile ID
+                                </dt>
+                                <dd id="review-siteProfileId" class="review-dd"></dd>
+                            </div>
+                            <!-- Site ID -->
+                            <div>
+                                <dt class="review-dt">
+                                    <i data-lucide="list" class="review-icon"></i>Site ID
+                                </dt>
+                                <dd id="review-siteId" class="review-dd"></dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- File Status Review -->
+                    <div class="review-section">
+                        <h4 class="review-title" style="color: var(--color-primary); border-bottom: none; margin-bottom: 1.5rem;">2. Sleekplan Data File</h4>
+                        <div id="file-review-card" class="file-review-card">
+                            <!-- Content injected by updateReviewStep() -->
+                        </div>
+                    </div>
+                    
+                    <div class="alert-info">
+                        <p class="font-semibold">Ready for Submission:</p>
+                        <p class="text-sm">Please click **Complete Migration** to submit the data and begin the XML to JSON conversion process.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Completion Message (Initially hidden) -->
+            <div id="completion-message" class="completion-message">
+                <i data-lucide="check-circle" class="icon-check"></i>
+                <h1>Migration Setup Complete!</h1>
+                <p>
+                    The wizard setup is finished. Data has been submitted for processing.
+                </p>
+                <button
+                    onclick="resetWizard()"
+                    class="nav-btn next-btn-enabled"
+                >
+                    Start New Setup
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div id="navigation-buttons" class="navigation-buttons">
+            <button
+                id="back-btn"
+                onclick="prevStep()"
+                disabled
+                class="nav-btn back-btn-hidden"
+            >
+                Back
+            </button>
+
+            <button
+                id="next-btn"
+                onclick="nextStep()"
+                disabled
+                class="nav-btn next-btn-disabled"
+            >
+                Continue
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Global State
+        let currentStep = 1;
+        const totalSteps = 3;
+        let formData = {
+            siteUrl: '',
+            siteProfileId: '',
+            siteId: '',
+            xmlFile: null,
+        };
+
+        // --- DOM Elements Cache ---
+        const $ = (id) => document.getElementById(id);
+        const nextBtn = $('next-btn');
+        const backBtn = $('back-btn');
+        const stepContents = document.querySelectorAll('.step-content');
+        const fileUploadText = $('file-upload-text');
+        const fileDisplay = $('file-display');
+        const progressBar = $('progress-bar');
+        const completionMessage = $('completion-message');
+        const navigationButtons = $('navigation-buttons');
+
+        // --- Initialization and Rendering ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Replace lucide icons with SVG
+            lucide.createIcons(); 
+            // Initial render
+            updateUI();
+        });
+
+        function updateUI() {
+            const isStepOne = currentStep === 1;
+
+            // 1. Update Step Visibility
+            stepContents.forEach(content => content.classList.add('content-hidden'));
+            const currentContent = $(`step-${currentStep}-content`);
+            if (currentContent) {
+                currentContent.classList.remove('content-hidden');
+            }
+            if (currentStep === totalSteps) {
+                updateReviewStep();
+            }
+
+            // 2. Update Progress Bar
+            const progress = (currentStep - 1) / (totalSteps - 1) * 100;
+            progressBar.style.width = `${progress}%`;
+
+            // 3. Update Step Indicators
+            for (let i = 1; i <= totalSteps; i++) {
+                const indicator = $(`step-indicator-${i}`);
+                
+                // Clear all status classes first
+                indicator.classList.remove('step-active', 'step-completed', 'step-future');
+
+                if (i < currentStep) {
+                    indicator.classList.add('step-completed');
+                    // Update circle content for completed steps
+                    indicator.querySelector('.step-circle').innerHTML = '<i data-lucide="check-circle" style="width: 1.25rem; height: 1.25rem;"></i>';
+                } else if (i === currentStep) {
+                    indicator.classList.add('step-active');
+                    // Update circle content for active step
+                    indicator.querySelector('.step-circle').innerHTML = i;
+                } else {
+                    indicator.classList.add('step-future');
+                    // Update circle content for future steps
+                    indicator.querySelector('.step-circle').innerHTML = i;
+                }
+            }
+            lucide.createIcons(); // Re-render icons after DOM manipulation
+
+            // 4. Update Navigation Buttons
+            
+            backBtn.disabled = isStepOne;
+            backBtn.classList.remove('back-btn-default', 'back-btn-hidden');
+            backBtn.classList.add(isStepOne ? 'back-btn-hidden' : 'back-btn-default');
+
+            nextBtn.textContent = currentStep === totalSteps ? 'Complete Migration' : 'Continue';
+            validateStep(currentStep); // Update next button state
+        }
+
+        // --- Step Validation Logic ---
+
+        function validateStep(step) {
+            let canProceed = false;
+
+            // Collect current data for validation
+            if (step === 1) {
+                formData.siteUrl = $('siteUrl').value.trim();
+                formData.siteProfileId = $('siteProfileId').value.trim();
+                formData.siteId = $('siteId').value.trim();
+                canProceed = formData.siteUrl && formData.siteProfileId && formData.siteId;
+            } else if (step === 2) {
+                canProceed = formData.xmlFile !== null;
+            } else if (step === 3) {
+                canProceed = true;
+            }
+            
+            // Only update the current step's button state
+            if (step === currentStep) {
+                nextBtn.disabled = !canProceed;
+                nextBtn.classList.remove('next-btn-enabled', 'next-btn-disabled');
+                nextBtn.classList.add(canProceed ? 'next-btn-enabled' : 'next-btn-disabled');
+            }
+        }
+
+        // --- Handlers ---
+
+        function handleFileChange(input) {
+            const file = input.files[0];
+            formData.xmlFile = file || null;
+
+            if (file) {
+                fileUploadText.textContent = file.name;
+                $('file-name').textContent = file.name;
+                $('file-size').textContent = `(${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                fileDisplay.classList.add('active');
+            } else {
+                fileUploadText.textContent = "Click to upload or drag and drop";
+                fileDisplay.classList.remove('active');
+            }
+        }
+
+        function updateReviewStep() {
+            // Update Auth Details
+            $('review-siteUrl').textContent = formData.siteUrl || 'N/A';
+            $('review-siteProfileId').textContent = formData.siteProfileId || 'N/A';
+            $('review-siteId').textContent = formData.siteId || 'N/A';
+
+            // Update File Status
+            const fileCard = $('file-review-card');
+            
+            let fileStatusHtml = '';
+            fileCard.classList.remove('error');
+
+            if (formData.xmlFile) {
+                const fileSize = (formData.xmlFile.size / 1024 / 1024).toFixed(2);
+                fileStatusHtml = `
+                    <div class="file-info">
+                        <i data-lucide="file-text" style="width: 1.5rem; height: 1.5rem; margin-right: 0.75rem; color: var(--color-success);"></i>
+                        <div>
+                            <p style="font-size: 1rem; font-weight: 500; color: #1f2937;">${formData.xmlFile.name}</p>
+                            <p style="font-size: 0.875rem; color: #6b7280;">${fileSize} MB</p>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.875rem; font-weight: 600; color: var(--color-success);" class="file-review-status">
+                        <i data-lucide="check-circle" class="icon-status" style="width: 1rem; height: 1rem;"></i> Ready
+                    </p>
+                `;
+            } else {
+                fileStatusHtml = `
+                    <div class="file-info">
+                        <i data-lucide="upload" style="width: 1.5rem; height: 1.5rem; margin-right: 0.75rem; color: #ef4444;"></i>
+                        <div>
+                            <p style="font-size: 1rem; font-weight: 500; color: #1f2937;">No file uploaded</p>
+                            <p style="font-size: 0.875rem; color: #6b7280;">0 MB</p>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.875rem; font-weight: 600; color: #ef4444;" class="file-review-status">
+                        <i data-lucide="alert-triangle" class="icon-status" style="width: 1rem; height: 1rem;"></i> Missing
+                    </p>
+                `;
+                fileCard.classList.add('error');
+            }
+            fileCard.innerHTML = fileStatusHtml;
+            lucide.createIcons(); // Re-render icons
+        }
+
+        // --- Navigation Functions ---
+
+        function nextStep() {
+            if (!nextBtn.disabled) {
+                if (currentStep < totalSteps) {
+                    currentStep++;
+                    updateUI();
+                } else if (currentStep === totalSteps) {
+                    // Final submission action
+                    handleCompletion();
+                }
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        }
+
+        function handleCompletion() {
+            // Log final data (simulating submission)
+            console.log('--- Final Submission Data ---');
+            console.log('Site URL:', formData.siteUrl);
+            console.log('Profile ID:', formData.siteProfileId);
+            console.log('Site ID:', formData.siteId);
+            if (formData.xmlFile) {
+                console.log('File Name:', formData.xmlFile.name);
+            }
+            console.log('-----------------------------');
+
+            // Hide main content and show completion message
+            $('step-content-wrapper').classList.add('content-hidden');
+            completionMessage.classList.remove('content-hidden');
+            navigationButtons.classList.add('content-hidden');
+        }
+
+        function resetWizard() {
+            currentStep = 1;
+            formData = {
+                siteUrl: '',
+                siteProfileId: '',
+                siteId: '',
+                xmlFile: null,
+            };
+
+            // Reset form fields
+            $('siteUrl').value = '';
+            $('siteProfileId').value = '';
+            $('siteId').value = '';
+            $('xmlFile').value = '';
+            handleFileChange($('xmlFile')); // Reset file display
+
+            // Restore UI state
+            $('step-content-wrapper').classList.remove('content-hidden');
+            completionMessage.classList.add('content-hidden');
+            navigationButtons.classList.remove('content-hidden');
+            updateUI();
+        }
+
+    </script>
+</body>
+</html>
