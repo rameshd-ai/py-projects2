@@ -1,0 +1,17 @@
+[
+    {
+        "componentId": 526451,
+        "type": "MainComponent",
+        "componentName": "Zig-zag-feature-box-with-gallery"
+    },
+    {
+        "componentId": 526452,
+        "type": "Level1Child",
+        "componentName": "Zig-zag-feature-box-with-gallery-Icon-Text"
+    },
+    {
+        "componentId": 526466,
+        "type": "Level1Child",
+        "componentName": "accordian-list"
+    }
+]

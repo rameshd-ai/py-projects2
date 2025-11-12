@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 526296,
+        "type": "MainComponent",
+        "componentName": "Home-FAQs-with-left-title"
+    },
+    {
+        "componentId": 526297,
+        "type": "Level1Child",
+        "componentName": "FAQs-with-left-title-Items"
+    }
+]

@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 306520,
+            "ResourceTypeName": "Zig-zag-feature-box",
+            "ResourceTypeFolderName": "zig-zag-feature-box",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 1,
+            "ResourceWidth": 800,
+            "ResourceHeight": 600,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 1,
+            "TabletResourceWidth": 610,
+            "TabletResourceHeight": 458,
+            "MobileResourceWidth": 500,
+            "MobileResourceHeight": 375,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 90,
+            "MobileImageQuality": 90,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

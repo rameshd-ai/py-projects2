@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 306476,
+            "ResourceTypeName": "Redwood-Banner-Block",
+            "ResourceTypeFolderName": "redwood-banner-block",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 1,
+            "ResourceWidth": 1440,
+            "ResourceHeight": 600,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 1,
+            "TabletResourceWidth": 1440,
+            "TabletResourceHeight": 600,
+            "MobileResourceWidth": 600,
+            "MobileResourceHeight": 900,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 90,
+            "MobileImageQuality": 90,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}
