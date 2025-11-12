@@ -2,8 +2,8 @@ import json
 import os
 import uuid
 import base64
-from apis2 import login_token_generator,CreatePage,generateComponentSectionPayloadForPage,createPayloadJson,createRecordsPayload
-from apis import addUpdateRecordsToCMS,export_mi_block_component
+from apis2 import login_token_generator,generateComponentSectionPayloadForPage,createPayloadJson,createRecordsPayload
+from apis import addUpdateRecordsToCMS,export_mi_block_component,CreatePage
 import time
 import logging
 import zipfile
@@ -85,6 +85,133 @@ def generatecontentHtml(dataScope, vcompAlias, pageSectionGuid,section_position=
     # htmlContent = base64.b64encode(htmlContent.encode('utf-8')).decode('utf-8')
  
     return htmlContent
+
+
+
+def load_records(file_path):
+    """MOCK: Loads records from the JSON file."""
+    # In a real scenario, this would handle file reading.
+    # We mock a simple failure or success.
+    if not os.path.exists(file_path):
+        return [], {}, True # Mock empty successful load
+    
+    # Mocking a load where `records` is the main list and other variables are secondary
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+        if isinstance(data, dict) and "records" in data:
+             return data["records"], data, False # records_data is the dict wrapper, original_wrapper_is_dict is False
+        elif isinstance(data, list):
+             return data, data, True # records_data is the list, original_wrapper_is_dict is True
+        else:
+             return [], data, False
+def migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level):
+    """
+    Generalized function to migrate components at any level (N > 0).
+    It processes records that have a 'parent_new_record_id' and are not 'isMigrated'.
+    Tags the next level of children (N+1) with the new parent ID only.
+    (Section GUID tagging logic has been removed.)
+    """
+    records_file_path = os.path.join(save_folder, "ComponentRecordsTree.json")
+    level_name = f"Level {level}"
+    print(f"\n[INFO] Starting {level_name} Component migration process...")
+    
+    try:
+        records, records_data, original_wrapper_is_dict = load_records(records_file_path)
+    except Exception as e:
+        print(f"    [ERROR] File processing failed: {e}. Skipping.")
+        return 0
+
+    migrated_count = 0
+    
+    # PHASE 1: IDENTIFY RECORDS FOR MIGRATION
+    records_to_migrate = [
+        r for r in records 
+        if isinstance(r, dict) and 
+           r.get("parent_new_record_id") is not None and 
+           not r.get("isMigrated")
+    ]
+    
+    if not records_to_migrate:
+        print(f"    [INFO] No {level_name} components found ready for migration.")
+        return 0
+
+    print(f"    [INFO] Found {len(records_to_migrate)} {level_name} component(s) to process.")
+    
+    
+    # PHASE 2: MIGRATE AND TAG CHILDREN (NEXT LEVEL)
+    for index, record in enumerate(records_to_migrate): 
+        
+        old_component_id = record.get("ComponentId") 
+        current_record_old_id = record.get("Id") # Unique old record ID
+        new_parent_id = record.get("parent_new_record_id") 
+            
+        print(f"    [START] Migrating {level_name} Record ID: {current_record_old_id} (Parent New ID: {new_parent_id})")
+        
+        # --- API Payload Construction ---
+        migrated_record_data = record.get("RecordJsonString")
+        try:
+            recordDataJson_str = migrated_record_data if isinstance(migrated_record_data, str) else json.dumps(migrated_record_data)
+        except TypeError:
+            print(f"    [ERROR] RecordJsonString for ID {current_record_old_id} is invalid for JSON serialization. Skipping record.")
+            continue
+
+        tags_value = record.get("tags", [])
+        if not isinstance(tags_value, list): tags_value = []
+
+        single_record = {
+            "componentId": old_component_id, 
+            "recordId": 0, 
+            "parentRecordId": new_parent_id, 
+            "recordDataJson": recordDataJson_str, 
+            "status": record.get("Status", True), 
+            "tags": tags_value,
+            "displayOrder": record.get("DisplayOrder", 0), 
+            "updatedBy": record.get("UpdatedBy", 0),
+            "pageSectionGuid": pageSectionGuid # GUID is still required here for the API call
+        }
+        api_payload = {"main_record_set": [single_record]}
+
+        # Call the API to create the record
+        resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload, level)
+        
+        # --- Extract New Record ID ---
+        new_record_id = None
+        if resp_success and isinstance(resp_data, dict) and (0 in resp_data or "0" in resp_data):
+            new_record_id = (resp_data.get(0) or resp_data.get("0")) + index + 1
+        
+        if new_record_id:
+            migrated_count += 1
+            print(f"    [SUCCESS] CMS Record Created. Old Record ID: {current_record_old_id} -> New RecordId: {new_record_id}")
+            
+            # A. Update the current record with its own new ID and mark as migrated
+            record["isMigrated"] = True
+            record["new_record_id"] = new_record_id
+            # REMOVED: record["sectionGuid"] = pageSectionGuid
+            
+            # B. Tag next-level children (N+1)
+            updated_children_count = 0
+            for child in records:
+                # Use the child's 'ParentId' (which links to the current record's 'Id')
+                if isinstance(child, dict) and child.get("ParentId") == current_record_old_id:
+                    child["parent_new_record_id"] = new_record_id
+                    # REMOVED: child["sectionGuid"] = pageSectionGuid 
+                    updated_children_count += 1
+            
+            if updated_children_count > 0:
+                print(f"    [TAGGED] Linked {updated_children_count} Level {level+1} record(s) to new parent ID {new_record_id}.")
+            
+        else:
+            print(f"    [WARNING] Failed to update CMS record for {level_name} ID {current_record_old_id}. Response: {resp_data}")
+
+    # PHASE 3: WRITE UPDATES BACK TO FILE (Persistence)
+    if migrated_count > 0:
+        save_records(records_file_path, records, records_data, original_wrapper_is_dict)
+        print(f"    [INFO] Total {migrated_count} {level_name} record(s) migrated and metadata saved.")
+    
+    return migrated_count
+
+
+
 
 
 
@@ -277,11 +404,12 @@ def process_sitemap(filename):
                                 # print("go inside main records=====================")
                                 mainComp(save_folder,component_id,pageSectionGuid,base_url,headers)
 
-                                # level1Comp(save_folder,component_id,pageSectionGuid,base_url,headers)
+                                migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=1)
+                                migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=2)
+                                migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=3)
+
                                
-
-
-                                
+                            
 
                                 
                                 # 2. Use the component_alias (string) for HTML generation
@@ -316,27 +444,10 @@ def process_sitemap(filename):
                     # If there's no content, we skip the page creation API call
                     return 
 
-                # Prepare payload for page creation
-                page_content_bytes = final_html.encode("utf-8")
-                base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
-                page_name = page_name + "-Demo"
-                payload = {
-                    "pageId": 0,
-                    "pageName": page_name,
-                    "pageAlias": page_name.lower().replace(' ', '-'),
-                    "pageContent": base64_encoded_content,
-                    "isPageStudioPage": True,
-                    "pageUpdatedBy": 0,
-                    "isUniqueMetaContent": True,
-                    "pageMetaTitle": page_name,
-                    "pageMetaDescription": page_name,
-                    "pageStopSEO": 1,
-                    "pageCategoryId": 0,
-                    "pageProfileId": 0,
-                    "tags": ""
-                    }
-                print(f"New page payload ready for '{page_name}'.")
 
+                pageAction(base_url, headers, payload,final_html,page_name)
+                
+                
     except json.JSONDecodeError:
         print(f"❌ CRITICAL ERROR: Could not decode JSON from '{filename}'. Please ensure the file is valid JSON.")
     except Exception as e:
@@ -346,7 +457,31 @@ def process_sitemap(filename):
 
 
 
-
+def pageAction(base_url, headers, payload,final_html,page_name):
+    # Prepare payload for page creation
+    page_content_bytes = final_html.encode("utf-8")
+    base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
+    page_name = page_name + "-Demo"
+    payload = {
+        "pageId": 0,
+        "pageName": page_name,
+        "pageAlias": page_name.lower().replace(' ', '-'),
+        "pageContent": base64_encoded_content,
+        "isPageStudioPage": True,
+        "pageUpdatedBy": 0,
+        "isUniqueMetaContent": True,
+        "pageMetaTitle": page_name,
+        "pageMetaDescription": page_name,
+        "pageStopSEO": 1,
+        "pageCategoryId": 0,
+        "pageProfileId": 0,
+        "tags": ""
+        }
+    print(f"New page payload ready for '{page_name}'.")
+    data = CreatePage(base_url, headers, payload,"418618")
+            updatePageMapping()
+            publishPage()
+    return data
 
 def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers):
     """
@@ -612,6 +747,9 @@ def level1Comp(save_folder, pageSectionGuid, base_url, headers):
     except Exception as e:
         print(f"  [FATAL ERROR] Unexpected error while processing Level 1 component records: {e}")
 
-        
+
+
+
+
 if __name__ == "__main__":
     process_sitemap(FILE_NAME)
