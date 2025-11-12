@@ -274,10 +274,10 @@ def process_sitemap(filename):
 
                                 createPayloadJson(destination_site_id,component_id)
                                 createRecordsPayload(destination_site_id,component_id)
-
+                                # print("go inside main records=====================")
                                 mainComp(save_folder,component_id,pageSectionGuid,base_url,headers)
 
-                                level1Comp(save_folder,component_id,pageSectionGuid,base_url,headers)
+                                # level1Comp(save_folder,component_id,pageSectionGuid,base_url,headers)
                                
 
 
@@ -345,148 +345,273 @@ def process_sitemap(filename):
 
 
 
-def mainComp(save_folder,component_id,pageSectionGuid,base_url,headers):
-    #call the ComponentRecordsTree.json here and get the records with "recordType": "MainComponent" only and print its id
-    # --- NEW LOGIC START ---
+
+
+
+def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers):
+    """
+    Finds and migrates the 'MainComponent' record, updates its child records 
+    in memory, and persists all changes back to the JSON file.
+    """
     records_file_path = os.path.join(save_folder, "ComponentRecordsTree.json")
-    print(f"  [INFO] Searching for MainComponent records in {records_file_path}...")
+    print(f"  [INFO] Searching for MainComponent records in {records_file_path}...")
+    
+    main_component_old_id = None
+    main_component_new_id = None
+    records = []
+    
     try:
+        # --- File Reading ---
         with open(records_file_path, 'r', encoding='utf-8') as rf:
             records_data = json.load(rf)
+        
+        # Determine if the root is a list or a dictionary wrapper
+        original_wrapper_is_dict = False
+        if isinstance(records_data, dict) and "componentRecordsTree" in records_data:
+            records = records_data["componentRecordsTree"]
+            original_wrapper_is_dict = True
+        elif isinstance(records_data, list):
+            records = records_data
+        
+        if not isinstance(records, list):
+            print("  [ERROR] Extracted component records content is not a list. Skipping.")
+            return
 
-        records = records_data
+        # --- PHASE 1: FIND AND MIGRATE MAIN COMPONENT ---
         found_main_components = False
         
-        if isinstance(records, list):
-            for record in records:
-                if isinstance(record, dict) and record.get("recordType") == "MainComponent":
-                    main_component_id = record.get("id")
-                    print(f"  [FOUND] MainComponent ID: {main_component_id}")
-                    found_main_components = True
-                    #this is for main
+        for record in records:
+            if isinstance(record, dict) and record.get("recordType") == "MainComponent":
+                
+                main_component_old_id = record.get("ComponentId") 
+                print(f"  [FOUND] MainComponent ID: {main_component_old_id}")
+                found_main_components = True
+                
+                # --- API Payload Construction ---
+                migrated_record_data = record.get("RecordJsonString")
+                try:
+                    recordDataJson_str = migrated_record_data if isinstance(migrated_record_data, str) else json.dumps(migrated_record_data)
+                except TypeError:
+                    print(f"  [ERROR] RecordJsonString for ID {main_component_old_id} is invalid for JSON serialization.")
+                    continue
 
-                    migrated_record_data = record.get("RecordJsonString")
+                tags_value = record.get("tags", [])
+                if not isinstance(tags_value, list): tags_value = []
+
+                single_record = {
+                    "componentId": component_id, "recordId": 0, "parentRecordId": 0, 
+                    "recordDataJson": recordDataJson_str, 
+                    "status": record.get("Status", True), "tags": tags_value,
+                    "displayOrder": record.get("DisplayOrder", 0), 
+                    "updatedBy": record.get("UpdatedBy", 0),
+                    "pageSectionGuid": pageSectionGuid 
+                }
+
+                api_payload = {"main_record_set": [single_record]}
+
+                # Call the API to create the record
+                # NOTE: The implementation above will return True, {0: 2981622}
+                resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
+                
+                # --- Extract New Record ID ---
+                main_component_new_id = None
+                if resp_success and isinstance(resp_data, dict):
+                    if 0 in resp_data: main_component_new_id = resp_data[0] # Checks for integer key 0
+                    elif "0" in resp_data: main_component_new_id = resp_data["0"] # Checks for string key "0"
+
+                if main_component_new_id:
+                    print(f"  [SUCCESS] CMS Record Created. Old ComponentId: {main_component_old_id} -> New RecordId: {main_component_new_id}")
                     
-                    # Convert the content dictionary to a JSON string, as required by the API
-                    recordDataJson_str = json.dumps(migrated_record_data)
-
-
-                    payload = {
-                        "componentId": component_id,
-                        "recordId": 0,  # Using the source ID for upsert/migration
-                        "parentRecordId": 0,
-                        "recordDataJson": recordDataJson_str,
-                        "status": record.get("status", True),
-                        "tags": record.get("tags", []),
-                        "displayOrder": record.get("displayOrder", 0),
-                        "updatedBy": 0,
-                        "pageSectionGuid": pageSectionGuid 
-                    }
-
-                    resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, payload)
+                    # *** CRITICAL FIX: Update properties in the in-memory record ***
+                    record["isMigrated"] = True
+                    record["sectionGuid"] = pageSectionGuid
                     
-                    # Update logic based on API response
-                    # Assuming resp_data is {str(old_id): new_id}
-                    if resp_success and isinstance(resp_data, dict) and str(main_component_id) in resp_data:
-                        # Extract the new ID
-                        new_record_id = resp_data[str(main_component_id)] 
-                        print(f"  [SUCCESS] CMS Record Updated. Old ID: {main_component_id} -> New ID: {new_record_id}")
-                        
-                        # Update the record object in the list for persistence
-                        record["new_record_id"] = new_record_id 
-                        record["isMigrated"] = True
-                        record["sectionGuid"] = pageSectionGuid
-                        
-                        # Since there should only be one MainComponent, we can break
-                        break 
-                    else:
-                        print(f"  [WARNING] Failed to update CMS record for MainComponent ID {main_component_id}. Response: {resp_data}")
-                        
+                    break 
+                else:
+                    print(f"  [WARNING] Failed to update CMS record for MainComponent ID {main_component_old_id}. Response: {resp_data}")
                     
         if not found_main_components:
-            print("  [INFO] No MainComponent records found in the component tree file.")
+            print("  [INFO] No MainComponent records found in the component tree file.")
+            return
+
+        # --- PHASE 2: UPDATE CHILD RECORDS WITH NEW PARENT ID (In Memory) ---
+        if main_component_new_id:
+            updated_children_count = 0
+            
+            for record in records:
+                # Check if the record is a child of the migrated MainComponent
+                if isinstance(record, dict) and record.get("ParentComponentId") == main_component_old_id:
+                    # *** CRITICAL FIX: Link the child record to the new parent ID ***
+                    record["parent_new_record_id"] = main_component_new_id
+                    updated_children_count += 1
+
+            if updated_children_count > 0:
+                print(f"  [INFO] Successfully linked {updated_children_count} child records to new parent ID {main_component_new_id} in memory.")
+            else:
+                print("  [INFO] No child records found for the migrated MainComponent.")
+        else:
+            print("  [WARNING] MainComponent migration failed, skipping child record updates.")
+
+        # --- PHASE 3: WRITE UPDATES BACK TO FILE (Persistence Fix) ---
+        with open(records_file_path, 'w', encoding='utf-8') as wf:
+            if original_wrapper_is_dict:
+                 # Write back into the original dictionary structure
+                 records_data["componentRecordsTree"] = records
+                 json.dump(records_data, wf, indent=4)
+            else:
+                 # Write back as a list
+                 json.dump(records, wf, indent=4)
+        print(f"  [SUCCESS] All migration metadata and child links persisted to {records_file_path}.")
 
     except FileNotFoundError:
-        print(f"  [WARNING] ComponentRecordsTree.json not found at {records_file_path}. Skipping main component record processing.")
+        print(f"  [WARNING] ComponentRecordsTree.json not found at {records_file_path}. Skipping processing.")
     except json.JSONDecodeError:
-        print(f"  [ERROR] Failed to decode JSON from {records_file_path}. Skipping main component record processing.")
+        print(f"  [ERROR] Failed to decode JSON from {records_file_path}. Skipping processing.")
     except Exception as e:
-        print(f"  [FATAL ERROR] Unexpected error while reading component records: {e}")
-    # --- NEW LOGIC END ---
+        print(f"  [FATAL ERROR] Unexpected error while processing component records: {e}")
+        
+
+        
 
 
 
 
-def level1Comp(save_folder,component_id,pageSectionGuid,base_url,headers):
-    #call the ComponentRecordsTree.json here and get the records with "recordType": "MainComponent" only and print its id
-    # --- NEW LOGIC START ---
+
+def level1Comp(save_folder, pageSectionGuid, base_url, headers):
+    """
+    Finds and migrates Level 1 components that have a new parent ID set 
+    (from the MainComponent migration step) but are not yet migrated themselves.
+    It then tags their children (Level 2) with the new Level 1 ID.
+    """
     records_file_path = os.path.join(save_folder, "ComponentRecordsTree.json")
-    print(f"  [INFO] Searching for MainComponent records in {records_file_path}...")
+    print(f"\n[INFO] Starting Level 1 Component migration process for {records_file_path}...")
+    
+    records = []
+    migrated_count = 0
+    
     try:
+        # --- File Reading ---
         with open(records_file_path, 'r', encoding='utf-8') as rf:
             records_data = json.load(rf)
-
-        records = records_data
-        found_main_components = False
         
-        if isinstance(records, list):
-            for record in records:
-                if isinstance(record, dict) and record.get("recordType") == "Level1Child":
-                    main_component_id = record.get("id")
-                    print(f"  [FOUND] MainComponent ID: {main_component_id}")
-                    found_main_components = True
-                    #this is for main
+        # Determine if the root is a list or a dictionary wrapper
+        original_wrapper_is_dict = False
+        if isinstance(records_data, dict) and "componentRecordsTree" in records_data:
+            records = records_data["componentRecordsTree"]
+            original_wrapper_is_dict = True
+        elif isinstance(records_data, list):
+            records = records_data
+        
+        if not isinstance(records, list):
+            print("  [ERROR] Extracted component records content is not a list. Skipping.")
+            return
 
-                    migrated_record_data = record.get("RecordJsonString")
-                    
-                    # Convert the content dictionary to a JSON string, as required by the API
-                    recordDataJson_str = json.dumps(migrated_record_data)
+        # --- PHASE 1: IDENTIFY, MIGRATE, AND TAG GRANDCHILDREN ---
+        
+        # We use a temporary list to store records ready for migration 
+        # to avoid modifying the list while iterating over it.
+        records_to_migrate = [
+            r for r in records 
+            if isinstance(r, dict) and 
+               r.get("parent_new_record_id") is not None and 
+               not r.get("isMigrated")
+        ]
+        
+        if not records_to_migrate:
+            print("  [INFO] No Level 1 components found ready for migration (missing 'parent_new_record_id' or already 'isMigrated').")
+            return
 
+        print(f"  [INFO] Found {len(records_to_migrate)} Level 1 component(s) to migrate.")
+        
+        for record in records_to_migrate:
+            
+            old_id = record.get("ComponentId") 
+            new_parent_id = record.get("parent_new_record_id") # This is the new ID of the MainComponent
+            
+            print(f"  [START] Migrating Level 1 Component ID: {old_id} (Parent New ID: {new_parent_id})")
+            
+            # --- API Payload Construction ---
+            migrated_record_data = record.get("RecordJsonString")
+            try:
+                recordDataJson_str = migrated_record_data if isinstance(migrated_record_data, str) else json.dumps(migrated_record_data)
+            except TypeError:
+                print(f"  [ERROR] RecordJsonString for ID {old_id} is invalid for JSON serialization. Skipping.")
+                continue
 
-                    payload = {
-                        "componentId": component_id,
-                        "recordId": 0,  # Using the source ID for upsert/migration
-                        "parentRecordId": 0,
-                        "recordDataJson": recordDataJson_str,
-                        "status": record.get("status", True),
-                        "tags": record.get("tags", []),
-                        "displayOrder": record.get("displayOrder", 0),
-                        "updatedBy": 0,
-                        "pageSectionGuid": pageSectionGuid 
-                    }
+            tags_value = record.get("tags", [])
+            if not isinstance(tags_value, list): tags_value = []
 
-                    resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, payload)
-                    
-                    # Update logic based on API response
-                    # Assuming resp_data is {str(old_id): new_id}
-                    if resp_success and isinstance(resp_data, dict) and str(main_component_id) in resp_data:
-                        # Extract the new ID
-                        new_record_id = resp_data[str(main_component_id)] 
-                        print(f"  [SUCCESS] CMS Record Updated. Old ID: {main_component_id} -> New ID: {new_record_id}")
-                        
-                        # Update the record object in the list for persistence
-                        record["new_record_id"] = new_record_id 
-                        record["isMigrated"] = True
-                        record["sectionGuid"] = pageSectionGuid
-                        
-                        # Since there should only be one MainComponent, we can break
-                        break 
-                    else:
-                        print(f"  [WARNING] Failed to update CMS record for MainComponent ID {main_component_id}. Response: {resp_data}")
-                        
-                    
-        if not found_main_components:
-            print("  [INFO] No MainComponent records found in the component tree file.")
+            single_record = {
+                # CRITICAL: Use the component ID from the record itself
+                "componentId": record.get("ComponentId"), 
+                "recordId": 0, 
+                # CRITICAL: Set the ParentRecordId to the new MainComponent ID
+                "parentRecordId": new_parent_id, 
+                "recordDataJson": recordDataJson_str, 
+                "status": record.get("Status", True), 
+                "tags": tags_value,
+                "displayOrder": record.get("DisplayOrder", 0), 
+                "updatedBy": record.get("UpdatedBy", 0),
+                "pageSectionGuid": pageSectionGuid 
+            }
+
+            api_payload = {"main_record_set": [single_record]}
+
+            # Call the API to create the record
+            resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
+            
+            # --- Extract New Record ID ---
+            new_record_id = None
+            if resp_success and isinstance(resp_data, dict):
+                # We expect the new ID under key 0 from the API response
+                if 0 in resp_data: new_record_id = resp_data[0] 
+                elif "0" in resp_data: new_record_id = resp_data["0"]
+            
+            if new_record_id:
+                migrated_count += 1
+                print(f"  [SUCCESS] CMS Record Created. Old ComponentId: {old_id} -> New RecordId: {new_record_id}")
+                
+                # 1. Update the Level 1 record with its own new ID and mark as migrated
+                # Note: We are updating the record object which is a reference to the list item
+                record["isMigrated"] = True
+                record["new_record_id"] = new_record_id
+                record["sectionGuid"] = pageSectionGuid
+                
+                # 2. Tag Grandchildren (Level 2 components)
+                updated_grandchildren_count = 0
+                for grandchild in records:
+                    # Check if the grandchild's old parent ID matches the current Level 1 old ID
+                    if isinstance(grandchild, dict) and grandchild.get("ParentComponentId") == old_id:
+                        # Link the grandchild to the new Level 1 component's ID
+                        grandchild["parent_new_record_id"] = new_record_id
+                        updated_grandchildren_count += 1
+                
+                if updated_grandchildren_count > 0:
+                    print(f"  [TAGGED] Linked {updated_grandchildren_count} Level 2 record(s) to new Level 1 ID {new_record_id}.")
+                
+            else:
+                print(f"  [WARNING] Failed to update CMS record for Level 1 Component ID {old_id}. Response: {resp_data}")
+
+        # --- PHASE 2: WRITE UPDATES BACK TO FILE (Persistence) ---
+        if migrated_count > 0:
+            with open(records_file_path, 'w', encoding='utf-8') as wf:
+                if original_wrapper_is_dict:
+                    records_data["componentRecordsTree"] = records
+                    json.dump(records_data, wf, indent=4)
+                else:
+                    json.dump(records, wf, indent=4)
+            print(f"  [SUCCESS] Total {migrated_count} Level 1 record(s) migrated and all metadata persisted to {records_file_path}.")
+        else:
+             print("  [INFO] No records were migrated in this run. File not updated.")
+
 
     except FileNotFoundError:
-        print(f"  [WARNING] ComponentRecordsTree.json not found at {records_file_path}. Skipping main component record processing.")
+        print(f"  [WARNING] ComponentRecordsTree.json not found at {records_file_path}. Skipping processing.")
     except json.JSONDecodeError:
-        print(f"  [ERROR] Failed to decode JSON from {records_file_path}. Skipping main component record processing.")
+        print(f"  [ERROR] Failed to decode JSON from {records_file_path}. Skipping processing.")
     except Exception as e:
-        print(f"  [FATAL ERROR] Unexpected error while reading component records: {e}")
-    # --- NEW LOGIC END ---
+        print(f"  [FATAL ERROR] Unexpected error while processing Level 1 component records: {e}")
 
         
-
 if __name__ == "__main__":
     process_sitemap(FILE_NAME)

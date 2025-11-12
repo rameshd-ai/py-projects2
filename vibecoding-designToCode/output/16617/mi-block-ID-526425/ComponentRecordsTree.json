@@ -41,7 +41,9 @@
             "IsPageStudioRecord": false,
             "PageIds": null,
             "ProfileIds": null,
-            "recordType": "MainComponent"
+            "recordType": "MainComponent",
+            "isMigrated": true,
+            "sectionGuid": "af8c84af-de53-4a1f-90ce-801991bd2e1e"
         },
         {
             "Id": 2980111,
@@ -84,7 +86,8 @@
             "IsPageStudioRecord": false,
             "PageIds": null,
             "ProfileIds": null,
-            "recordType": "Level1Child"
+            "recordType": "Level1Child",
+            "parent_new_record_id": 2981702
         }
     ]
 }

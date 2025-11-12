@@ -214,13 +214,13 @@ def addUpdateRecordsToCMS(base_url, headers, payload):
     try:
         for record_set_id, records in payload.items():
             for record in records:
-                print(api_url)
-                print(record)
+                # print(api_url)
+                # print(record)
                 
                 response = requests.post(api_url, headers=headers, json=record, timeout=30)
                 response.raise_for_status()
-                print(response)
-                print("============================================================")
+                # print(response)
+                # print("============================================================")
                 result = response.json()
                 record_id = record.get('recordId')
                 if result.get("result"):

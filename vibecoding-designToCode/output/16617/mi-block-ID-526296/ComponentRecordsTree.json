@@ -41,7 +41,9 @@
             "IsPageStudioRecord": false,
             "PageIds": null,
             "ProfileIds": null,
-            "recordType": "MainComponent"
+            "recordType": "MainComponent",
+            "isMigrated": true,
+            "sectionGuid": "97d86cc9-ca22-4618-9938-91409a4b25eb"
         }
     ]
 }
