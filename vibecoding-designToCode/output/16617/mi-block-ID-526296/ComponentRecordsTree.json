@@ -43,7 +43,9 @@
             "ProfileIds": null,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "51e4b1bd-d49e-4009-a6c0-befb8c3e0575"
+            "sectionGuid": "4ad0d6a2-6fa5-4f80-8812-29d9da2757e4",
+            "component_alias": "fc128a20-69c5-4bd3-888e-e673472a0bfe",
+            "vComponentId": 20995082
         }
     ]
 }

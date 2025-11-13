@@ -3,10 +3,12 @@ import os
 import uuid
 import base64
 from apis2 import login_token_generator,generateComponentSectionPayloadForPage,createPayloadJson,createRecordsPayload
-from apis import addUpdateRecordsToCMS,export_mi_block_component,CreatePage
+from apis import addUpdateRecordsToCMS,export_mi_block_component,CreatePage,psMappingApi,psPublishApi
 import time
 import logging
 import zipfile
+import glob
+from typing import Dict, Any, List 
 # Define the filename to read
 FILE_NAME = 'sitemap_page_names_components_only.json'
 
@@ -303,7 +305,7 @@ def process_sitemap(filename):
 
                             if isinstance(alias_result, tuple):
                                 # Success: Unpack the alias (index 0) and ID (index 1)
-                                component_alias, component_id = alias_result
+                                vComponentId, component_alias, component_id = alias_result
                                 print(f"  [INFO] Component ID: {component_id}")
                                 print(f"  [INFO] Component component_alias: {component_alias}")
                                 pageSectionGuid = str(uuid.uuid4()) 
@@ -402,7 +404,7 @@ def process_sitemap(filename):
                                 createPayloadJson(destination_site_id,component_id)
                                 createRecordsPayload(destination_site_id,component_id)
                                 # print("go inside main records=====================")
-                                mainComp(save_folder,component_id,pageSectionGuid,base_url,headers)
+                                mainComp(save_folder,component_id,pageSectionGuid,base_url,headers,component_alias,vComponentId)
 
                                 migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=1)
                                 migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=2)
@@ -445,7 +447,7 @@ def process_sitemap(filename):
                     return 
 
 
-                pageAction(base_url, headers, payload,final_html,page_name)
+                pageAction(base_url, headers,final_html,page_name)
                 
                 
     except json.JSONDecodeError:
@@ -457,7 +459,7 @@ def process_sitemap(filename):
 
 
 
-def pageAction(base_url, headers, payload,final_html,page_name):
+def pageAction(base_url, headers,final_html,page_name):
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
@@ -479,11 +481,251 @@ def pageAction(base_url, headers, payload,final_html,page_name):
         }
     print(f"New page payload ready for '{page_name}'.")
     data = CreatePage(base_url, headers, payload,"418618")
-            updatePageMapping()
-            publishPage()
+    print(data)
+
+    # Access the 'pageId' key and print its value
+    page_id = data.get("PageId")
+
+    if page_id is not None:
+        print(f"The Page ID is: {page_id}")
+    else:
+        print("Error: 'pageId' key not found in the returned data.")
+
+
+    updatePageMapping(page_id)
+    publishPage(page_id)
+
+    
     return data
 
-def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers):
+
+def updatePageMapping(page_id: int):
+    """
+    Creates and sends the page mapping payload using data from all
+    ComponentRecordsTree.json files found in the migration output folders.
+    """
+    settings = load_settings()
+            
+    # Robustness check
+    if not isinstance(settings, dict):
+        print(f"❌ FATAL Error: 'settings' is not a dictionary ({type(settings)}). Aborting.")
+        return 
+
+    base_url = settings.get("destination_site_url")
+    destination_site_id = settings.get("destination_site_id")
+    destination_token = settings.get("destination_token", {}).get("token")
+
+    if not destination_site_id:
+        print("❌ FATAL Error: 'destination_site_id' is missing from settings. Aborting.")
+        return
+    
+    # Ensure the base URL is correct for the mapping endpoint
+    if not base_url or not base_url.endswith("/cms"):
+        print("❌ WARNING: destination_site_url should likely end with '/cms'. Assuming correct endpoint.")
+
+    headers = {
+        'Content-Type': 'application/json',
+        'ms_cms_clientapp': 'ProgrammingApp',
+        'Authorization': f'Bearer {destination_token}',
+    }
+    
+    # --- PHASE 1: COLLECT MAPPING DATA ---
+    all_mappings: List[Dict[str, Any]] = []
+    
+    # Construct the base path to search: output/destination_site_id/mi-block-ID-*
+    search_path = os.path.join("output", destination_site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
+    
+    print(f"🔍 Searching for migration files in: {os.path.join('output', destination_site_id, 'mi-block-ID-*')}")
+    
+    # Use glob to find all matching ComponentRecordsTree.json files
+    for file_path in glob.glob(search_path):
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                records = data.get("componentRecordsTree", [])
+
+            # Find the main component record where ParentId is 0
+            main_component_record = next(
+                (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+                None
+            )
+
+            if main_component_record:
+                # Extract the required fields from the main component record
+                mapping_data = {
+                    "pageId": page_id,
+                    "vComponentAlias": main_component_record.get("component_alias"),
+                    "vComponentId": main_component_record.get("vComponentId", ""), 
+                    "contentEntityType": 2, # Fixed value
+                    "pageSectionGuid": main_component_record.get("sectionGuid")
+                }
+                
+                # Simple validation before adding
+                if mapping_data["vComponentAlias"] and mapping_data["pageSectionGuid"]:
+                    all_mappings.append(mapping_data)
+                    print(f"  ✅ Extracted mapping for alias: {mapping_data['vComponentAlias']}")
+                else:
+                    print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
+
+        except Exception as e:
+            print(f"  ❌ Error processing file {file_path}: {e}")
+
+    if not all_mappings:
+        print("\n[INFO] No valid component mappings were found. Aborting mapping update.")
+        return 0
+        
+    print(f"\n[INFO] Successfully collected {len(all_mappings)} mappings.")
+
+    # --- PHASE 2: CONSTRUCT API PAYLOAD ---
+    new_api_payload = all_mappings
+    
+    # --- PHASE 3: PRINT PAYLOAD AND CALL API ---
+    
+    print("\n--- 📑 FINAL API PAYLOAD ---")
+    print(json.dumps(new_api_payload, indent=2))
+    print("-----------------------------")
+
+    try:
+        # Call the API to update the page mapping
+        api_response_data = psMappingApi(base_url, headers, new_api_payload)
+        
+        # Check for the specific success string (Your original success logic)
+        if api_response_data == "Page Content Mappings updated successfully.":
+            print(f"\n🚀 **SUCCESS:** Page mapping updated successfully for Page ID {page_id}.")
+            print(f"API Response: {api_response_data}")
+            
+        else:
+            # Handle non-success responses that didn't raise an exception
+            print(f"\n🛑 **FAILURE:** Failed to update page mapping for Page ID {page_id}.")
+            print(f"API Response: {api_response_data}")
+
+    except Exception as e:
+        # This block now uses the correct variable name 'e' for the exception
+        # and prints the error message directly.
+        print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+        # Note: We don't set 'resp_success = False' here, as that variable is unused in this fixed block.
+
+    return len(new_api_payload)
+
+
+
+def publishPage(page_id: int):
+    """
+    Constructs the necessary payload to publish all migrated components and the page itself,
+    then calls the publishing API.
+    """
+    settings = load_settings()
+            
+    # Robustness check
+    if not isinstance(settings, dict):
+        print(f"❌ FATAL Error: 'settings' is not a dictionary ({type(settings)}). Aborting.")
+        return 
+
+    base_url = settings.get("destination_site_url")
+    destination_site_id = settings.get("destination_site_id")
+    destination_token = settings.get("destination_token", {}).get("token")
+
+    if not destination_site_id:
+        print("❌ FATAL Error: 'destination_site_id' is missing from settings. Aborting.")
+        return
+    
+    # Ensure the base URL is correct for the mapping endpoint
+    if not base_url or not base_url.endswith("/cms"):
+        print("❌ WARNING: destination_site_url should likely end with '/cms'. Assuming correct endpoint.")
+
+    headers = {
+        'Content-Type': 'application/json',
+        'ms_cms_clientapp': 'ProgrammingApp',
+        'Authorization': f'Bearer {destination_token}',
+    }
+    
+    # --- PHASE 1: COLLECT MIBLOCK PUBLISHING DATA ---
+    publish_payload: List[Dict[str, Any]] = []
+    
+    # Construct the base path to search: output/destination_site_id/mi-block-ID-*
+    search_path = os.path.join("output", destination_site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
+    
+    print(f"🔍 Searching for migrated component data in: {os.path.join('output', destination_site_id, 'mi-block-ID-*')}")
+    
+    # Use glob to find all matching ComponentRecordsTree.json files
+    for file_path in glob.glob(search_path):
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                records = data.get("componentRecordsTree", [])
+
+            # Find the main component record where ParentId is 0
+            main_component_record = next(
+                (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+                None
+            )
+
+            if main_component_record:
+                # Extract the required fields (ComponentId and sectionGuid)
+                # NOTE: Using ComponentId as "id" and assuming it is the correct ID to publish.
+                component_id = str(main_component_record.get("ComponentId"))
+                section_guid = main_component_record.get("sectionGuid")
+                
+                # Simple validation before adding
+                if component_id and section_guid:
+                    miblock_entry = {
+                        "id": component_id,
+                        "type": "MIBLOCK",
+                        "pageSectionGuid": section_guid
+                    }
+                    publish_payload.append(miblock_entry)
+                    print(f"  ✅ Added MiBlock {component_id} for publishing.")
+                else:
+                    print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
+
+        except Exception as e:
+            print(f"  ❌ Error processing file {file_path}: {e}")
+
+    # --- PHASE 2: ADD PAGE PUBLISHING DATA ---
+    # Add the mandatory entry for the page itself
+    page_entry = {
+        "id": str(page_id),
+        "type": "PAGE"
+    }
+    publish_payload.append(page_entry)
+    print(f"\n  ✅ Added Page ID {page_id} for publishing.")
+    
+    if not publish_payload:
+        print("\n[INFO] No content was collected for publishing.")
+        return 0
+        
+    print(f"\n[INFO] Collected total of {len(publish_payload)} items for publishing.")
+
+    # --- PHASE 3: CONSTRUCT FINAL DICTIONARY PAYLOAD AND EXECUTE API CALL ---
+    
+    # Construct the final dictionary payload as per the API's requirement
+    final_api_payload = {
+        "publishData": publish_payload,
+        "syncPageForTranslationRequest": None
+    }
+    
+    print("\n--- 📑 FINAL PUBLISH PAYLOAD ---")
+    print(json.dumps(final_api_payload, indent=2))
+    print("---------------------------------")
+    
+    # Pass the final DICTIONARY payload to your publishing API function
+    try:
+        resp_success, resp_data = psPublishApi(base_url, headers, destination_site_id, final_api_payload)
+        
+        if resp_success:
+            print(f"\n🚀 **SUCCESS:** Page publishing request sent for Page ID {page_id}.")
+            print(f"API Response: {resp_data}")
+        else:
+            print(f"\n🛑 **FAILURE:** Publishing request failed for Page ID {page_id}.")
+            print(f"API Response: {resp_data}")
+
+    except Exception as e:
+        print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+
+    return len(publish_payload)
+
+    
+def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,component_alias,vComponentId):
     """
     Finds and migrates the 'MainComponent' record, updates its child records 
     in memory, and persists all changes back to the JSON file.
@@ -560,6 +802,8 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers):
                     # *** CRITICAL FIX: Update properties in the in-memory record ***
                     record["isMigrated"] = True
                     record["sectionGuid"] = pageSectionGuid
+                    record["component_alias"] = component_alias
+                    record["vComponentId"] = vComponentId
                     
                     break 
                 else:

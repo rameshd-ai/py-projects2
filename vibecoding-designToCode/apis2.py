@@ -200,6 +200,7 @@ def GetComponentAliasByName(base_url, headers, component_name):
         for component in v_components:
             if component.get("name") == component_name:
                 component_alias = component.get("alias")
+                vComponentId = component.get("vComponentId")
                 
                 # --- START OF CORRECTION ---
                 # The componentId is nested inside the 'component' key.
@@ -208,7 +209,7 @@ def GetComponentAliasByName(base_url, headers, component_name):
                 # --- END OF CORRECTION ---
                 
                 # print(f"✅ Found V-Component Alias and ID for '{component_name}': ({component_alias}, {component_id})")
-                return (component_alias, component_id) # <-- Return both values as a tuple
+                return (vComponentId,component_alias, component_id) # <-- Return both values as a tuple
 
         # 5. Fallback if search returned data, but no exact name match was found
         # print(f"⚠️ Search returned data, but no exact match found for '{component_name}' in the 'vComponents' list.")

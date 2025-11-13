@@ -43,7 +43,9 @@
             "ProfileIds": null,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "ac93c139-e25a-49de-8325-f1f065de1db6"
+            "sectionGuid": "b9966f8f-1ac2-42d3-869a-2a776e19ac31",
+            "component_alias": "f74de1e9-714d-41b6-893a-1e064971fab4",
+            "vComponentId": 20995073
         },
         {
             "Id": 2980291,
@@ -87,7 +89,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 2982023
+            "parent_new_record_id": 2982238
         },
         {
             "Id": 2980535,
@@ -131,7 +133,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 2982023
+            "parent_new_record_id": 2982238
         },
         {
             "Id": 2980292,
@@ -175,7 +177,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 2982023
+            "parent_new_record_id": 2982238
         },
         {
             "Id": 2980541,
@@ -219,7 +221,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 2982023
+            "parent_new_record_id": 2982238
         },
         {
             "Id": 2980293,
@@ -263,7 +265,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 2982023
+            "parent_new_record_id": 2982238
         }
     ]
 }
