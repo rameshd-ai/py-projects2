@@ -319,7 +319,7 @@
             "text": "Guest Rooms",
             "level": "1",
             "description": "renamed\nto\nguest\nrooms",
-            "content_blocks": "Meta\nTitle\nMeta\nDescription\n<strong>Hero\nbanner\n1</strong>\n<strong></strong>\n<strong>Guest\nRooms\nModule\nNavigation</strong>\n<strong></strong>\n<strong>l1-l8\nFeature\nLeft\nImage\n-\n2</strong>\nH1\n<strong>L24\nAmenities\nsection\n3</strong>\n<strong></strong>\n<strong>L4\nZig\nzag\nfeature\nbox\nwith\ngallery</strong>\n<strong></strong>\n<strong>Faqs-with-right-accordion</strong>",
+            "content_blocks": "<strong>Hero\nbanner\n1</strong>\n<strong></strong>\n<strong>Guest\nRooms\nModule\nNavigation</strong>\n<strong>TemplateName:\n</strong>\n<strong></strong>\n<strong>l1-l8\nFeature\nLeft\nImage\n-\n2</strong>\nH1\n<strong>L24\nAmenities\nsection\n3</strong>\n<strong></strong>\n<strong>L4\nZig\nzag\nfeature\nbox\nwith\ngallery</strong>\n<strong></strong>\n<strong>Faqs-with-right-accordion</strong>\n<strong></strong>\n<strong>PageSEO:</strong>\n<strong>Mete\nTILE:</strong>\n<strong>DES:</strong>\n<strong></strong>\n---\n<strong>Hero\nbanner\n1</strong><strong></strong>\n<strong>Guest\nRooms\nModule\nNavigation</strong><strong></strong>\n<strong>l1-l8\nFeature\nLeft\nImage\n-\n2</strong>\nH1\n<strong>L24\nAmenities\nsection\n3</strong><strong></strong>\n<strong>L4\nZig\nzag\nfeature\nbox\nwith\ngallery</strong><strong></strong>\n<strong>Faqs-with-right-accordion</strong><strong></strong>\n<strong></strong>\nPageInfoBlock\nPageTemplateName:\nBase\nLayout\nPage\nDefault\nTitle:\nTHis\nis\nSEO\npage\nTitle\nDefault\nDescription:\nThis\nis\nSeo\npage\ndescription\n<strong></strong>",
             "children": [
                 {
                     "id": "svgkcyacwnkh28kr8hw",

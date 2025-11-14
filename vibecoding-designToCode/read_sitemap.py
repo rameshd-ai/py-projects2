@@ -710,14 +710,14 @@ def publishPage(page_id: int):
     
     # Pass the final DICTIONARY payload to your publishing API function
     try:
-        resp_success, resp_data = psPublishApi(base_url, headers, destination_site_id, final_api_payload)
+        psPublishApi(base_url, headers, destination_site_id, final_api_payload)
         
-        if resp_success:
-            print(f"\n🚀 **SUCCESS:** Page publishing request sent for Page ID {page_id}.")
-            print(f"API Response: {resp_data}")
-        else:
-            print(f"\n🛑 **FAILURE:** Publishing request failed for Page ID {page_id}.")
-            print(f"API Response: {resp_data}")
+        # if resp_success:
+        #     print(f"\n🚀 **SUCCESS:** Page publishing request sent for Page ID {page_id}.")
+        #     print(f"API Response: {resp_data}")
+        # else:
+        #     print(f"\n🛑 **FAILURE:** Publishing request failed for Page ID {page_id}.")
+        #     print(f"API Response: {resp_data}")
 
     except Exception as e:
         print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
