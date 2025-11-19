@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live XML Processor with SSE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the spinner */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6; /* Blue-500 */
+            border-radius: 50%;
+            width: 1em;
+            height: 1em;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-xl bg-white shadow-xl rounded-lg p-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Live XML Processor</h1>
+        
+        <form id="uploadForm" class="space-y-4 mb-8 p-4 border rounded-lg bg-gray-50">
+            <label for="xmlFile" class="block text-sm font-medium text-gray-700">Upload XML File</label>
+            <input 
+                type="file" 
+                id="xmlFile" 
+                name="file" 
+                accept=".xml" 
+                required
+                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            >
+            <button 
+                type="submit" 
+                id="submitButton"
+                class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+                Start Processing
+            </button>
+        </form>
+
+        <div id="statusMessage" data-status="initial" class="mb-6 p-3 rounded-lg text-sm font-medium text-gray-700 bg-gray-100">
+            Awaiting file upload...
+        </div>
+
+        <h2 class="text-xl font-semibold text-gray-700 mb-4">Processing Steps</h2>
+        <ul id="progressList" class="space-y-3">
+            {# Steps populated by Jinja2 from app.py using PROCESSING_STEPS #}
+            {% for step in steps %}
+            <li id="step-{{ step.id }}" data-status="pending" class="flex items-center space-x-3 p-3 rounded-lg bg-gray-100 text-gray-500 transition-colors duration-300">
+                <div class="w-5 h-5 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10 10 4.477 10 10z"></path></svg>
+                </div>
+                <span class="font-medium">{{ step.name }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        
+        <div id="downloadLinks" class="hidden mt-6 pt-4 border-t border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Download Results 📥</h3>
+            <div id="downloadLinkContainer" class="space-y-2">
+                {# Download links will be dynamically inserted here by JavaScript #}
+            </div>
+            <p class="mt-4 text-xs text-gray-500">The original XML file has been deleted from the server.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadForm = document.getElementById('uploadForm');
+            const fileInput = document.getElementById('xmlFile');
+            const submitButton = document.getElementById('submitButton');
+            const statusMessage = document.getElementById('statusMessage');
+            const downloadLinks = document.getElementById('downloadLinks');
+            const downloadLinkContainer = document.getElementById('downloadLinkContainer');
+            
+            let eventSource = null;
+
+            /** Cleans up the UI by resetting all step statuses. */
+            function resetUI() {
+                const stepItems = document.querySelectorAll('#progressList li');
+                stepItems.forEach(li => {
+                    // Reset classes to default pending state (gray)
+                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-gray-100 text-gray-500 transition-colors duration-300';
+                    li.dataset.status = 'pending';
+                    // Reset icon to default clock
+                    li.querySelector('div').innerHTML = `
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10 10 4.477 10 10z"></path></svg>
+                    `;
+                });
+                statusMessage.textContent = 'Awaiting file upload...';
+                statusMessage.classList.remove('bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+                statusMessage.classList.add('bg-gray-100', 'text-gray-700');
+                statusMessage.dataset.status = 'initial';
+                downloadLinks.classList.add('hidden');
+                downloadLinkContainer.innerHTML = '';
+                submitButton.disabled = false;
+            }
+
+            /** Updates the main status message display. */
+            function updateStatusMessage(message, type = 'info') {
+                statusMessage.innerHTML = message;
+                statusMessage.classList.remove('bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-gray-100', 'text-gray-700');
+                
+                if (type === 'error') {
+                    statusMessage.classList.add('bg-red-100', 'text-red-700');
+                    statusMessage.dataset.status = 'error';
+                } else if (type === 'complete') {
+                    statusMessage.classList.add('bg-green-100', 'text-green-700');
+                    statusMessage.dataset.status = 'complete';
+                } else { // info/start/running
+                    statusMessage.classList.add('bg-gray-100', 'text-gray-700');
+                    statusMessage.dataset.status = 'running';
+                }
+            }
+
+            /** Updates the progress list item based on the SSE data. */
+            function updateStep(stepId, status) {
+                const li = document.getElementById(`step-${stepId}`);
+                if (!li) return;
+
+                li.dataset.status = status;
+                const iconContainer = li.querySelector('div');
+
+                if (status === 'in_progress') {
+                    // Blue + Spinner
+                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-blue-50 text-blue-600 font-bold transition-colors duration-300';
+                    iconContainer.innerHTML = '<div class="spinner"></div>';
+                } else if (status === 'done') {
+                    // Green + Checkmark
+                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-green-100 text-green-700 transition-colors duration-300';
+                    iconContainer.innerHTML = `
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    `;
+                } else if (status === 'error') {
+                    // Red + X Mark (for the step that failed)
+                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-red-100 text-red-700 font-bold transition-colors duration-300';
+                    iconContainer.innerHTML = `
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    `;
+                }
+            }
+
+            /** Generates the download links dynamically on completion. */
+            function showDownloadLinks(files) {
+                downloadLinkContainer.innerHTML = ''; // Clear previous links
+                files.forEach(file => {
+                    const link = document.createElement('a');
+                    link.href = `/download/${file}`; 
+                    link.download = file;
+                    link.textContent = file;
+                    link.classList.add('block', 'p-2', 'bg-blue-500', 'text-white', 'text-center', 'rounded-md', 'hover:bg-blue-600', 'transition-colors');
+                    downloadLinkContainer.appendChild(link);
+                });
+                downloadLinks.classList.remove('hidden');
+            }
+
+
+            /** Establishes and handles the Server-Sent Events connection. */
+            function connectSSE(streamUrl) {
+                if (eventSource) {
+                    eventSource.close();
+                }
+                
+                eventSource = new EventSource(streamUrl);
+
+                // Listener for the custom 'update' event
+                eventSource.addEventListener('update', (event) => {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.status === 'start') {
+                        updateStatusMessage(`**Processing Started:** ${data.message}`, 'info');
+                    } else if (data.status === 'in_progress') {
+                        updateStep(data.step_id, 'in_progress');
+                        updateStatusMessage(`**Running:** ${data.message}`, 'info');
+                    } else if (data.status === 'done') {
+                        updateStep(data.step_id, 'done');
+                        updateStatusMessage(`**Completed:** ${data.message}`, 'info');
+                    } else if (data.status === 'complete') {
+                        updateStatusMessage(`**SUCCESS!** ${data.message}`, 'complete');
+                        if (data.output_files) {
+                            showDownloadLinks(data.output_files);
+                        }
+                        // Close stream cleanly on completion
+                        eventSource.close();
+                    } else if (data.status === 'error') {
+                        // Mark the failing step and display the error
+                        updateStep(data.step_id, 'error');
+                        updateStatusMessage(`**ERROR:** ${data.message}`, 'error');
+                        // Close stream on error
+                        eventSource.close();
+                    } else if (data.status === 'close') {
+                        // Final close signal from the server
+                        console.log("Stream closed by server.");
+                        eventSource.close();
+                        submitButton.disabled = false; // Re-enable for a new upload
+                    }
+                });
+
+                // Standard error listener
+                eventSource.onerror = (err) => {
+                    console.error("EventSource failed:", err);
+                    // Check if it's an actual failure, not a clean close
+                    if (statusMessage.dataset.status !== 'complete' && statusMessage.dataset.status !== 'error') {
+                        updateStatusMessage('Connection lost or stream failed unexpectedly.', 'error');
+                    }
+                    eventSource.close();
+                    submitButton.disabled = false;
+                };
+            }
+
+            /** Handles the upload and initiates the SSE connection. */
+            uploadForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                resetUI(); // Start fresh
+                
+                if (fileInput.files.length === 0) {
+                    updateStatusMessage('Please select a file.', 'error');
+                    return;
+                }
+
+                const formData = new FormData();
+                // Ensure the form data key matches the Flask request.files['file'] expected key
+                formData.append('file', fileInput.files[0]); 
+                
+                submitButton.disabled = true;
+                updateStatusMessage('Uploading file... Please wait.', 'info');
+
+                try {
+                    // 1. POST the file to the /upload endpoint
+                    const uploadResponse = await fetch('/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    // Check if the response is JSON (200 OK) or something else (like 400/500 JSON error)
+                    const result = await uploadResponse.json();
+
+                    if (!uploadResponse.ok || result.success === false) {
+                        submitButton.disabled = false;
+                        updateStatusMessage(`Upload Failed: ${result.message || 'Server error'}`, 'error');
+                        return;
+                    }
+
+                    // 2. File uploaded successfully, now connect to the SSE stream using the URL from the response
+                    updateStatusMessage(result.message, 'info');
+                    connectSSE(result.stream_url);
+
+                } catch (error) {
+                    submitButton.disabled = false;
+                    // This catches network errors or failure to parse the JSON response
+                    updateStatusMessage(`Network Error during upload or invalid server response.`, 'error');
+                    console.error("Upload/AJAX error:", error);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
