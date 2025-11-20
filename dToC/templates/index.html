@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live XML Processor with SSE</title>
+    <title>Live XML Processor Wizard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom styles for the spinner */
@@ -20,55 +20,115 @@
             100% { transform: rotate(360deg); }
         }
         .hidden { display: none; }
+        /* Style for required fields */
+        .required-label:after { content: " *"; color: #ef4444; }
+
+        /* Ensure the body and main container fill the viewport height */
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent body scroll */
+        }
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 100%;
+        }
     </style>
 </head>
-<body class="bg-gray-50 flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-50">
 
-    <div class="w-full max-w-xl bg-white shadow-xl rounded-lg p-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Live XML Processor</h1>
-        
-        <form id="uploadForm" class="space-y-4 mb-8 p-4 border rounded-lg bg-gray-50">
-            <label for="xmlFile" class="block text-sm font-medium text-gray-700">Upload XML File</label>
-            <input 
-                type="file" 
-                id="xmlFile" 
-                name="file" 
-                accept=".xml" 
-                required
-                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            >
-            <button 
-                type="submit" 
-                id="submitButton"
-                class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-                Start Processing
-            </button>
-        </form>
-
-        <div id="statusMessage" data-status="initial" class="mb-6 p-3 rounded-lg text-sm font-medium text-gray-700 bg-gray-100">
-            Awaiting file upload...
-        </div>
-
-        <h2 class="text-xl font-semibold text-gray-700 mb-4">Processing Steps</h2>
-        <ul id="progressList" class="space-y-3">
-            {# Steps populated by Jinja2 from app.py using PROCESSING_STEPS #}
-            {% for step in steps %}
-            <li id="step-{{ step.id }}" data-status="pending" class="flex items-center space-x-3 p-3 rounded-lg bg-gray-100 text-gray-500 transition-colors duration-300">
-                <div class="w-5 h-5 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10 10 4.477 10 10z"></path></svg>
-                </div>
-                <span class="font-medium">{{ step.name }}</span>
-            </li>
-            {% endfor %}
-        </ul>
-        
-        <div id="downloadLinks" class="hidden mt-6 pt-4 border-t border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-700 mb-3">Download Results 📥</h3>
-            <div id="downloadLinkContainer" class="space-y-2">
-                {# Download links will be dynamically inserted here by JavaScript #}
+    <div class="main-container items-center justify-start p-4 md:p-8">
+        <div class="w-full max-w-4xl bg-white shadow-2xl rounded-xl overflow-hidden">
+            
+            <!-- Header and Status Bar -->
+            <div class="p-6 md:p-8 border-b bg-white">
+                <h1 class="text-3xl font-extrabold text-gray-800">Live XML Processor Wizard</h1>
+                <p class="text-sm text-gray-500 mt-1">Configure your job and monitor real-time pipeline status.</p>
             </div>
-            <p class="mt-4 text-xs text-gray-500">The original XML file has been deleted from the server.</p>
+
+            <!-- Main Content Grid -->
+            <div class="flex flex-col md:flex-row h-[calc(100vh-100px)]"> 
+                
+                <!-- Left Column: Configuration and Upload -->
+                <div class="w-full md:w-2/5 p-6 md:p-8 border-r overflow-y-auto">
+                    <h2 class="text-xl font-bold text-gray-700 mb-5">1. Job Setup</h2>
+                    <form id="uploadForm" class="space-y-6">
+                        
+                        <!-- Configuration Inputs -->
+                        <div class="space-y-4 p-4 border rounded-lg bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-700 border-b pb-2">Configuration Details</h3>
+                            
+                            <div>
+                                <label for="targetSiteUrl" class="required-label block text-sm font-medium text-gray-700">Target Site URL</label>
+                                <input type="url" id="targetSiteUrl" name="targetSiteUrl" required
+                                       placeholder="https://example.com"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                            </div>
+                            
+                            <div>
+                                <label for="siteId" class="required-label block text-sm font-medium text-gray-700">Site ID</label>
+                                <input type="text" id="siteId" name="siteId" required
+                                       placeholder="e.g., 12345"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                            </div>
+
+                            <div>
+                                <label for="profileAlias" class="required-label block text-sm font-medium text-gray-700">Profile Alias</label>
+                                <input type="text" id="profileAlias" name="profileAlias" required
+                                       placeholder="e.g., prod-live"
+                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border">
+                            </div>
+                        </div>
+
+                        <!-- XML File Input -->
+                        <div class="p-4 border rounded-lg bg-gray-50">
+                            <h3 class="text-lg font-semibold text-gray-700 border-b pb-2">Source File</h3>
+                            <label for="xmlFile" class="required-label block text-sm font-medium text-gray-700 mb-2">Upload XML File</label>
+                            <input 
+                                type="file" 
+                                id="xmlFile" 
+                                name="file" 
+                                accept=".xml" 
+                                required
+                                class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                            >
+                        </div>
+                        
+                        <button 
+                            type="submit" 
+                            id="submitButton"
+                            class="w-full py-3 px-4 border border-transparent rounded-md shadow-lg text-base font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition duration-150 ease-in-out"
+                        >
+                            Start Processing
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Right Column: Status and Progress -->
+                <div class="w-full md:w-3/5 p-6 md:p-8 bg-gray-50 overflow-y-auto">
+                    <h2 class="text-xl font-bold text-gray-700 mb-5">2. Real-Time Status</h2>
+
+                    <div id="statusMessage" data-status="initial" class="mb-6 p-4 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 shadow-inner transition duration-300">
+                        Awaiting configuration and file upload...
+                    </div>
+
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Pipeline Steps</h3>
+                    <div id="progressList" class="space-y-3">
+                        {# Steps populated by Jinja2 from app.py using PROCESSING_STEPS #}
+                        {% for step in steps %}
+                        <div id="step-{{ step.id }}" data-status="pending" class="flex items-center justify-between p-4 rounded-xl bg-white shadow-sm transition-all duration-300 border border-gray-200">
+                            <span class="font-medium text-gray-700">{{ step.name }}</span>
+                            <div class="w-6 h-6 flex items-center justify-center text-gray-400">
+                                <!-- Default Icon: Clock/Time -->
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"></path></svg>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -78,29 +138,28 @@
             const fileInput = document.getElementById('xmlFile');
             const submitButton = document.getElementById('submitButton');
             const statusMessage = document.getElementById('statusMessage');
-            const downloadLinks = document.getElementById('downloadLinks');
-            const downloadLinkContainer = document.getElementById('downloadLinkContainer');
             
+            // New Config Inputs
+            const targetSiteUrlInput = document.getElementById('targetSiteUrl');
+            const siteIdInput = document.getElementById('siteId');
+            const profileAliasInput = document.getElementById('profileAlias');
+
             let eventSource = null;
 
             /** Cleans up the UI by resetting all step statuses. */
             function resetUI() {
-                const stepItems = document.querySelectorAll('#progressList li');
-                stepItems.forEach(li => {
-                    // Reset classes to default pending state (gray)
-                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-gray-100 text-gray-500 transition-colors duration-300';
-                    li.dataset.status = 'pending';
-                    // Reset icon to default clock
-                    li.querySelector('div').innerHTML = `
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10 10 4.477 10 10z"></path></svg>
+                const stepItems = document.querySelectorAll('#progressList > div');
+                stepItems.forEach(div => {
+                    div.className = 'flex items-center justify-between p-4 rounded-xl bg-white shadow-sm transition-all duration-300 border border-gray-200';
+                    div.dataset.status = 'pending';
+                    div.querySelector('div').innerHTML = `
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"></path></svg>
                     `;
                 });
-                statusMessage.textContent = 'Awaiting file upload...';
+                statusMessage.textContent = 'Awaiting configuration and file upload...';
                 statusMessage.classList.remove('bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
                 statusMessage.classList.add('bg-gray-100', 'text-gray-700');
                 statusMessage.dataset.status = 'initial';
-                downloadLinks.classList.add('hidden');
-                downloadLinkContainer.innerHTML = '';
                 submitButton.disabled = false;
             }
 
@@ -110,56 +169,35 @@
                 statusMessage.classList.remove('bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-gray-100', 'text-gray-700');
                 
                 if (type === 'error') {
-                    statusMessage.classList.add('bg-red-100', 'text-red-700');
+                    statusMessage.classList.add('bg-red-100', 'text-red-700', 'shadow-md');
                     statusMessage.dataset.status = 'error';
                 } else if (type === 'complete') {
-                    statusMessage.classList.add('bg-green-100', 'text-green-700');
+                    statusMessage.classList.add('bg-green-100', 'text-green-700', 'shadow-md');
                     statusMessage.dataset.status = 'complete';
                 } else { // info/start/running
-                    statusMessage.classList.add('bg-gray-100', 'text-gray-700');
+                    statusMessage.classList.add('bg-gray-100', 'text-gray-700', 'shadow-inner');
                     statusMessage.dataset.status = 'running';
                 }
             }
 
             /** Updates the progress list item based on the SSE data. */
             function updateStep(stepId, status) {
-                const li = document.getElementById(`step-${stepId}`);
-                if (!li) return;
+                const div = document.getElementById(`step-${stepId}`);
+                if (!div) return;
 
-                li.dataset.status = status;
-                const iconContainer = li.querySelector('div');
+                div.dataset.status = status;
+                const iconContainer = div.querySelector('div');
 
                 if (status === 'in_progress') {
-                    // Blue + Spinner
-                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-blue-50 text-blue-600 font-bold transition-colors duration-300';
-                    iconContainer.innerHTML = '<div class="spinner"></div>';
+                    div.className = 'flex items-center justify-between p-4 rounded-xl bg-blue-50 text-blue-600 font-bold shadow-lg transition-all duration-300 border border-blue-300';
+                    iconContainer.innerHTML = '<div class="spinner text-blue-600 border-t-blue-600"></div>';
                 } else if (status === 'done') {
-                    // Green + Checkmark
-                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-green-100 text-green-700 transition-colors duration-300';
-                    iconContainer.innerHTML = `
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    `;
+                    div.className = 'flex items-center justify-between p-4 rounded-xl bg-green-100 text-green-700 shadow-md transition-all duration-300 border border-green-300';
+                    iconContainer.innerHTML = `<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
                 } else if (status === 'error') {
-                    // Red + X Mark (for the step that failed)
-                    li.className = 'flex items-center space-x-3 p-3 rounded-lg bg-red-100 text-red-700 font-bold transition-colors duration-300';
-                    iconContainer.innerHTML = `
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    `;
+                    div.className = 'flex items-center justify-between p-4 rounded-xl bg-red-100 text-red-700 font-bold shadow-lg transition-all duration-300 border border-red-300';
+                    iconContainer.innerHTML = `<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
                 }
-            }
-
-            /** Generates the download links dynamically on completion. */
-            function showDownloadLinks(files) {
-                downloadLinkContainer.innerHTML = ''; // Clear previous links
-                files.forEach(file => {
-                    const link = document.createElement('a');
-                    link.href = `/download/${file}`; 
-                    link.download = file;
-                    link.textContent = file;
-                    link.classList.add('block', 'p-2', 'bg-blue-500', 'text-white', 'text-center', 'rounded-md', 'hover:bg-blue-600', 'transition-colors');
-                    downloadLinkContainer.appendChild(link);
-                });
-                downloadLinks.classList.remove('hidden');
             }
 
 
@@ -171,7 +209,6 @@
                 
                 eventSource = new EventSource(streamUrl);
 
-                // Listener for the custom 'update' event
                 eventSource.addEventListener('update', (event) => {
                     const data = JSON.parse(event.data);
                     
@@ -179,84 +216,99 @@
                         updateStatusMessage(`**Processing Started:** ${data.message}`, 'info');
                     } else if (data.status === 'in_progress') {
                         updateStep(data.step_id, 'in_progress');
-                        updateStatusMessage(`**Running:** ${data.message}`, 'info');
+                        updateStatusMessage(`**Running Step:** ${data.message}`, 'info');
                     } else if (data.status === 'done') {
                         updateStep(data.step_id, 'done');
-                        updateStatusMessage(`**Completed:** ${data.message}`, 'info');
+                        updateStatusMessage(`**Step Complete:** ${data.message}`, 'info');
                     } else if (data.status === 'complete') {
                         updateStatusMessage(`**SUCCESS!** ${data.message}`, 'complete');
-                        if (data.output_files) {
-                            showDownloadLinks(data.output_files);
-                        }
-                        // Close stream cleanly on completion
                         eventSource.close();
                     } else if (data.status === 'error') {
-                        // Mark the failing step and display the error
                         updateStep(data.step_id, 'error');
-                        updateStatusMessage(`**ERROR:** ${data.message}`, 'error');
-                        // Close stream on error
+                        updateStatusMessage(`**ERROR:** Processing Failed at **${data.step_id}**. ${data.message}`, 'error');
                         eventSource.close();
                     } else if (data.status === 'close') {
-                        // Final close signal from the server
                         console.log("Stream closed by server.");
                         eventSource.close();
-                        submitButton.disabled = false; // Re-enable for a new upload
+                        submitButton.disabled = false;
                     }
                 });
 
-                // Standard error listener
                 eventSource.onerror = (err) => {
                     console.error("EventSource failed:", err);
-                    // Check if it's an actual failure, not a clean close
                     if (statusMessage.dataset.status !== 'complete' && statusMessage.dataset.status !== 'error') {
-                        updateStatusMessage('Connection lost or stream failed unexpectedly.', 'error');
+                        updateStatusMessage('Connection lost or stream failed unexpectedly. Check server logs.', 'error');
                     }
                     eventSource.close();
                     submitButton.disabled = false;
                 };
             }
 
-            /** Handles the upload and initiates the SSE connection. */
+            /** Handles the config save, file upload, and initiates the SSE connection. */
             uploadForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                resetUI(); // Start fresh
+                resetUI(); 
                 
-                if (fileInput.files.length === 0) {
-                    updateStatusMessage('Please select a file.', 'error');
+                if (fileInput.files.length === 0 || !targetSiteUrlInput.value || !siteIdInput.value || !profileAliasInput.value) {
+                    updateStatusMessage('Please fill out all required fields and select a file.', 'error');
                     return;
                 }
-
-                const formData = new FormData();
-                // Ensure the form data key matches the Flask request.files['file'] expected key
-                formData.append('file', fileInput.files[0]); 
                 
                 submitButton.disabled = true;
-                updateStatusMessage('Uploading file... Please wait.', 'info');
+                updateStatusMessage('Saving configuration and uploading file... Please wait.', 'info');
 
                 try {
-                    // 1. POST the file to the /upload endpoint
+                    // 1. Upload File (to get the unique file prefix)
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('file', fileInput.files[0]); 
+                    
                     const uploadResponse = await fetch('/upload', {
                         method: 'POST',
-                        body: formData
+                        body: uploadFormData
                     });
 
-                    // Check if the response is JSON (200 OK) or something else (like 400/500 JSON error)
-                    const result = await uploadResponse.json();
+                    const uploadResult = await uploadResponse.json();
 
-                    if (!uploadResponse.ok || result.success === false) {
+                    if (!uploadResponse.ok || uploadResult.success === false) {
                         submitButton.disabled = false;
-                        updateStatusMessage(`Upload Failed: ${result.message || 'Server error'}`, 'error');
+                        updateStatusMessage(`Upload Failed: ${uploadResult.message || 'Server error'}`, 'error');
                         return;
                     }
 
-                    // 2. File uploaded successfully, now connect to the SSE stream using the URL from the response
-                    updateStatusMessage(result.message, 'info');
-                    connectSSE(result.stream_url);
+                    // 2. Save Configuration File using the unique file prefix
+                    const configData = {
+                        targetSiteUrl: targetSiteUrlInput.value,
+                        siteId: siteIdInput.value,
+                        profileAlias: profileAliasInput.value,
+                        filePrefix: uploadResult.file_prefix, // Use the prefix from upload result
+                    };
+                    
+                    updateStatusMessage('File uploaded. Saving configuration...', 'info');
+                    
+                    const configResponse = await fetch('/save_config', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(configData)
+                    });
+
+                    const configResult = await configResponse.json();
+                    
+                    if (!configResponse.ok || configResult.success === false) {
+                        // If config save fails, we stop stream initiation
+                        submitButton.disabled = false;
+                        updateStatusMessage(`Configuration Save Failed: ${configResult.message || 'Server error'}. The uploaded file will be cleaned up automatically.`, 'error');
+                        return;
+                    }
+
+                    // 3. File uploaded and Config saved, now connect to the SSE stream
+                    updateStatusMessage(`Configuration Saved. ${uploadResult.message}`, 'info');
+                    connectSSE(uploadResult.stream_url);
 
                 } catch (error) {
                     submitButton.disabled = false;
-                    // This catches network errors or failure to parse the JSON response
-                    updateStatusMessage(`Network Error during upload or invalid server response.`, 'error');
+                    updateStatusMessage(`Network Error during transaction or invalid server response.`, 'error');
                     console.error("Upload/AJAX error:", error);
                 }
             });
