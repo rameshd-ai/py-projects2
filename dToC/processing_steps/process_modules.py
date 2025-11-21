@@ -1,5 +1,6 @@
 import json
 import os
+import re 
 from typing import Dict, Any, List, Union
 
 # Import the API function
@@ -8,6 +9,24 @@ from config import UPLOAD_FOLDER
 
 # --- Define the static part of the processed filename as a constant ---
 PROCESSED_FILENAME_SUFFIX = "_394279_nationwide_hotel_conference_center_3.0_4_simplified.json"
+
+# --- NEW UTILITY FUNCTION FOR FUZZY MATCHING ---
+def normalize_page_name(name: str) -> str:
+    """
+    Normalizes a page or category name for robust comparison.
+    Converts to lowercase, strips whitespace, and removes all non-alphanumeric characters.
+    This handles differences like ' & ' vs ' and ' vs ' - '
+    """
+    if not name:
+        return ""
+    # 1. Lowercase and strip whitespace
+    normalized = name.strip().lower()
+    # 2. Remove all characters that are not letters or digits (0-9, a-z)
+    # This turns "Meetings & Events" and "Meetings and Events" into "meetingsandevents"
+    normalized = re.sub(r'[^a-z0-9]', '', normalized)
+    return normalized
+# --- END NEW UTILITY FUNCTION ---
+
 
 def get_config_filepath(file_prefix: str) -> str:
     """Constructs the unique config.json filepath based on the prefix."""
@@ -26,6 +45,21 @@ def load_settings(file_prefix: str) -> Dict[str, Any] | None:
     except Exception as e:
         print(f"Module Processor: Error loading config file: {e}")
         return None
+
+# --- NEW UTILITY FUNCTION TO SAVE PROCESSED JSON ---
+def save_processed_json(file_prefix: str, data: Dict[str, Any]) -> bool:
+    """Saves the processed JSON data back to its file."""
+    processed_filename = f"{file_prefix}{PROCESSED_FILENAME_SUFFIX}"
+    filepath = os.path.join(UPLOAD_FOLDER, processed_filename)
+    try:
+        with open(filepath, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"✅ Successfully saved updated processed JSON to {filepath}")
+        return True
+    except Exception as e:
+        print(f"Module Processor: Error saving processed JSON file: {e}")
+        return False
+# --- END NEW UTILITY FUNCTION ---
 
 # --- NEW FUNCTION: Placeholder for creating a category ---
 def createCategory(page_name: str, site_id: str):
@@ -65,7 +99,7 @@ def load_processed_json(file_prefix: str) -> Dict[str, Any] | None:
                     "sub_pages": []
                 },
                 {
-                    "page_name": "Guest Rooms",  # EXPECTED TO NOT MATCH -> call createCategory
+                    "page_name": "Meetings and Events", # Source uses 'and'
                     "components": [],
                     "meta_info": {},
                     "sub_pages": []
@@ -100,7 +134,8 @@ def run_module_processing_step(
     """
     The main execution function for the module processing step.
     Loads user config (including the generated token) and calls the API to fetch modules.
-    Then, it compares ALL main page names from the processed JSON against the fetched categories.
+    Then, it compares ALL main page names from the processed JSON against the fetched categories,
+    and saves the CategoryId for matched pages back into the JSON structure.
     """
     # 1. Get the unique file prefix from the previous step's data
     file_prefix = previous_step_data.get('file_prefix')
@@ -121,7 +156,7 @@ def run_module_processing_step(
     
     # --- Logic: Load and extract ALL target page names ---
     processed_json = load_processed_json(file_prefix)
-    level1_page_names: List[str] = []
+    level1_page_names: List[str] = [] # Used only for initial logging
     
     if processed_json and 'pages' in processed_json and isinstance(processed_json['pages'], list):
         for page in processed_json['pages']:
@@ -131,9 +166,10 @@ def run_module_processing_step(
         print(f"\n✅ Extracted {len(level1_page_names)} Level 1 Page Name(s) from processed JSON: {level1_page_names}")
     else:
         print("⚠️ Could not extract Level 1 Page Names. Check processed JSON structure.")
+        processed_json = {'pages': []} # Ensure processed_json['pages'] is iterable
             
-    if not level1_page_names:
-        print("Skipping category check as no Level 1 Page Name was successfully extracted.")
+    if not processed_json['pages']:
+        print("Skipping category check as no Level 1 Page was found to process.")
         return {
             "modules_fetched_count": 0,
             "file_prefix": file_prefix
@@ -175,30 +211,61 @@ def run_module_processing_step(
 
     print(f"Module Processor: Successfully retrieved {len(module_list)} modules.")
     
-    # 6. Logic: Search for ALL page names in the retrieved modules
-    print("\n--- Category Matching Process ---")
+    # 6. Logic: Search for ALL page names in the retrieved modules and map the results
+    print("\n--- Category Matching and ID Retrieval Process ---")
     
-    # Create a set of normalized CategoryNames for efficient lookup
-    normalized_category_set = set()
+    # Create a dictionary for efficient fuzzy lookup: normalized_name -> category_object (with ID)
+    normalized_category_map: Dict[str, Dict[str, Any]] = {}
     for module in module_list:
         category_name = module.get('CategoryName')
-        if category_name:
-            normalized_category_set.add(category_name.strip().lower())
+        category_id = module.get('CategoryId')
+        if category_name and category_id is not None:
+            normalized_name = normalize_page_name(category_name)
+            normalized_category_map[normalized_name] = {
+                'CategoryId': category_id,
+                'CategoryName': category_name
+            }
 
-    for page_name in level1_page_names:
-        normalized_page_name = page_name.strip().lower()
+    pages_updated = 0
+    
+    # Iterate directly over the page objects in the processed_json so we can modify them
+    for page in processed_json['pages']:
+        page_name = page.get('page_name')
+        if not page_name:
+            continue
+
+        normalized_page_name = normalize_page_name(page_name)
         
-        print(f"\n🔍 Checking Page Name: '{page_name}'...")
+        print(f"\n🔍 Checking Page Name: '{page_name}' (Normalized: '{normalized_page_name}')")
 
-        if normalized_page_name in normalized_category_set:
+        # Look up category info using the normalized name
+        category_info = normalized_category_map.get(normalized_page_name)
+
+        if category_info:
+            # MATCH FOUND: Extract ID and update the page object
+            category_id = category_info['CategoryId']
+            category_name_api = category_info['CategoryName']
+
+            page['category_info'] = {
+                'CategoryId': category_id,
+                'CategoryName': category_name_api,
+                'match_type': 'fuzzy_name_match'
+            }
+            pages_updated += 1
+            
             print("✅ match found") 
-            print(f"✅ FOUND: Page '{page_name}' matches an existing Category.")
+            print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}').")
         else:
             print(f"❌ NOT FOUND: Page '{page_name}' does not match an existing Category.")
             # Call the creation function if no match is found
             createCategory(page_name, site_id)
         
-    # 7. Final step logs and returns
+    # 7. Final step: Save the updated JSON data back to disk
+    if pages_updated > 0 and processed_json:
+        save_processed_json(file_prefix, processed_json)
+    elif processed_json:
+        print("No new category information was added to the processed JSON, skipping save.")
+
     print(f"\n--- API Fetch Results ---")
     print(f"Total items fetched: {len(module_list)}")
     print("--------------------------\n")
@@ -206,5 +273,6 @@ def run_module_processing_step(
     return {
         "modules_fetched_count": len(module_list),
         "pages_checked_count": len(level1_page_names),
+        "pages_updated_with_category_id": pages_updated,
         "file_prefix": file_prefix # Continue propagating the prefix
     }
