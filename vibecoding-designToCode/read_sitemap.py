@@ -332,6 +332,7 @@ def process_sitemap(filename):
                                             file.write(response_content)
 
                                         if zipfile.is_zipfile(file_path):
+                            
                                             with zipfile.ZipFile(file_path, 'r') as zip_ref:
                                                 zip_ref.extractall(save_folder)
                                             os.remove(file_path)

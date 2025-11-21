@@ -1,5 +1,3 @@
-# config.py
-
 import os
 from typing import List, Dict, Any
 
@@ -41,6 +39,13 @@ PROCESSING_STEPS: List[Dict[str, Any]] = [
         "name": "Fetching and Processing Site Modules", 
         "module": "run_module_processing_step", 
         "delay": 1.5, 
+        "error_chance": 0.00
+    },
+    {
+        "id": "process_assembly",
+        "name": "Assembling CMS Pages and Publishing",
+        "module": "run_assembly_processing_step",
+        "delay": 3.0,
         "error_chance": 0.00
     },
     {
