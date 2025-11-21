@@ -121,12 +121,7 @@
                     },
                     "sub_pages": []
                 }
-            ],
-            "category_info": {
-                "CategoryId": 150111,
-                "CategoryName": "Our Property",
-                "match_type": "fuzzy_name_match"
-            }
+            ]
         },
         {
             "page_name": "Weddings",
@@ -288,12 +283,7 @@
                         }
                     ]
                 }
-            ],
-            "category_info": {
-                "CategoryId": 150108,
-                "CategoryName": "Weddings",
-                "match_type": "fuzzy_name_match"
-            }
+            ]
         },
         {
             "page_name": "Meetings and Events",
@@ -550,12 +540,7 @@
                         }
                     ]
                 }
-            ],
-            "category_info": {
-                "CategoryId": 150102,
-                "CategoryName": "Guest Rooms",
-                "match_type": "fuzzy_name_match"
-            }
+            ]
         },
         {
             "page_name": "Amenities",
@@ -574,12 +559,7 @@
                 "DefaultTitle": "Amenities",
                 "DefaultDescription": "Amenities"
             },
-            "sub_pages": [],
-            "category_info": {
-                "CategoryId": 150112,
-                "CategoryName": "Amenities",
-                "match_type": "fuzzy_name_match"
-            }
+            "sub_pages": []
         },
         {
             "page_name": "Dining",
@@ -613,12 +593,7 @@
                     "meta_info": {},
                     "sub_pages": []
                 }
-            ],
-            "category_info": {
-                "CategoryId": 150103,
-                "CategoryName": "Dining",
-                "match_type": "fuzzy_name_match"
-            }
+            ]
         },
         {
             "page_name": "Explore Ohio",
@@ -631,12 +606,7 @@
                 "DefaultTitle": "Explore Ohio",
                 "DefaultDescription": "Explore Ohio"
             },
-            "sub_pages": [],
-            "category_info": {
-                "CategoryId": 150113,
-                "CategoryName": "Explore Ohio",
-                "match_type": "fuzzy_name_match"
-            }
+            "sub_pages": []
         }
     ]
 }

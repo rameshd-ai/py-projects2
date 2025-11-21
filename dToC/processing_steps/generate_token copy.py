@@ -4,17 +4,13 @@ import re
 import sys
 from typing import Dict, Any, Optional
 
-# --- PROJECT DEPENDENCIES ---
-# Import the actual token generation function from the dedicated API file
-try:
-    from apis import generate_cms_token
-except ImportError:
-    # Define a fallback mock function for testing/error handling if apis.py is missing
-    # NOTE: This mock function is designed to return a dictionary, mimicking the API response structure.
-    def generate_cms_token(url: str, alias: str) -> dict | None:
-        print(f"FATAL: apis.py not found. Using MOCK token for url={url}, alias={alias}", file=sys.stderr)
-        # Mocking the dictionary structure { "token": "..." }
-        return {"token": f"MOCK_ERROR_TOKEN_FALLBACK_{os.urandom(4).hex()}"}
+# --- MOCK DEPENDENCIES ---
+# Mock the CMS token generation API call
+def generate_cms_token(url: str, alias: str) -> str:
+    """Simulates CMS login token generation API call."""
+    print(f"DEBUG: Calling generate_cms_token(url={url}, alias={alias})")
+    # Creates a unique, deterministic token based on inputs
+    return f"CMS_LOGIN_TOKEN_FOR_{alias.upper()}_{url.split('//')[-1].split('/')[0].replace('.', '_')}_{os.urandom(4).hex()}"
 
 # Mock configuration settings (Fallback if config.py is not available)
 try:
@@ -116,13 +112,13 @@ def run_token_generation_step(
 ) -> Dict[str, Any]:
     """
     The main execution function for the token generation step.
-    Loads the converted JSON file, extracts config, calls the CMS API to 
-    generate a login token, and saves the token and config.
+    Loads the converted JSON file, extracts config, generates a CMS login token, 
+    and saves the token and config back to the persistent settings file.
     """
     
     target_suffix = "_util_pages.json" 
     
-    # 1. Get file_prefix from previous step.
+    # 1. Get file_prefix from previous step. We rely on the preceding step to provide this key.
     file_prefix = previous_step_data.get('file_prefix')
     
     if not file_prefix:
@@ -166,40 +162,23 @@ def run_token_generation_step(
     destination_url = extracted_config["target_site_url"]
     destination_profile_alias = extracted_config["profile_alias"]
     
-    # 5. Generate the CMS LOGIN token using the function imported from apis.py
-    print(f"INFO: Attempting to generate token for URL: {destination_url} and Alias: {destination_profile_alias}")
-    cms_response_data = generate_cms_token(destination_url, destination_profile_alias)
+    # 5. Generate the CMS LOGIN token
+    cms_login_token_data = generate_cms_token(destination_url, destination_profile_alias)
     
-    # --- Response Handling and Token Extraction ---
-    if not cms_response_data:
-        # The API call itself failed (handled by apis.py logging)
-        raise RuntimeError("Token generation failed: API call returned None. Check API logs for connectivity issues or errors.")
-
-    # Extract the actual token string from the dictionary response
-    # The API is expected to return a dictionary like {"token": "..."}
-    cms_login_token = cms_response_data.get('token')
-    
-    if not cms_login_token:
-        # API call succeeded but the expected token field is missing
-        print(f"ERROR: API call successful, but 'token' key was missing from response: {cms_response_data}", file=sys.stderr)
-        raise RuntimeError("Token generation failed: 'token' field missing or empty in the API response.")
-    
-    print(f"DEBUG: Successfully extracted CMS Login Token.")
-    
-    # 6. Load persistence settings (will be {} if file doesn't exist yet)
+    # 6. Load/Update persistence settings (using the single, correct config file)
     settings = load_settings(file_prefix)
     if settings is None:
         raise RuntimeError("Failed to initialize or load config storage.")
 
-    # 7. Update settings with the final token string and the extracted config details
-    settings["cms_login_token"] = cms_login_token 
+    # 7. Update settings with the new token AND the extracted config details
+    settings["cms_login_token"] = cms_login_token_data # <--- Renamed key to 'cms_login_token'
     settings.update(extracted_config) 
     
     # 8. Save the updated settings
     if not save_settings(file_prefix, settings):
         raise IOError("Failed to save the generated token and config back to the configuration file.")
         
-    print(f"INFO: Generated CMS Login Token successfully saved to config for file_prefix: {file_prefix}")
+    print(f"INFO: Generated CMS Login Token and saved to config: {cms_login_token_data}")
 
     # 9. Return data for the next step
     return {

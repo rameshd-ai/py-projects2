@@ -1,5 +1,3 @@
-# processing_steps/process_xml.py
-
 import time
 import os
 import json
@@ -7,10 +5,54 @@ import xml.etree.ElementTree as ET
 import re
 import html
 import copy
-from typing import List, Dict, Any, Tuple, Set
+import sys
+from typing import List, Dict, Any, Tuple, Set, Optional
 
 # Import UPLOAD_FOLDER from the top-level config
 from config import UPLOAD_FOLDER
+
+# ------------------------------------------------------------------
+# 🛠️ CONFIG UTILITY FUNCTIONS (Added for file persistence)
+# ------------------------------------------------------------------
+
+def get_config_filepath(file_prefix: str) -> str:
+    """
+    Constructs the unique config file path using the file_prefix (unique token) 
+    to ensure non-collision with other processed files.
+    
+    This function strictly uses the provided file_prefix (the UUID token) and 
+    the mandatory suffix '_config.json'.
+    """
+    # Combines the unique file_prefix/token with the required suffix.
+    return os.path.join(UPLOAD_FOLDER, f"{file_prefix}_config.json")
+
+def load_settings(file_prefix: str) -> Dict[str, Any] | None:
+    """Loads the settings/config file based on the unique prefix (token) for persistence."""
+    filepath = get_config_filepath(file_prefix)
+    
+    # If the file doesn't exist yet, return an empty dict to start fresh
+    if not os.path.exists(filepath):
+        return {} 
+    try:
+        with open(filepath, "r", encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"XML Processor: Error loading persistence config file ({filepath}): {e}", file=sys.stderr)
+        return None
+
+def save_settings(file_prefix: str, settings: Dict[str, Any]) -> bool:
+    """Saves the updated settings/config file using the unique prefix (token)."""
+    filepath = get_config_filepath(file_prefix)
+    try:
+        # Ensure the upload directory exists
+        os.makedirs(os.path.dirname(filepath), exist_ok=True) 
+        with open(filepath, "w", encoding='utf-8') as f:
+            json.dump(settings, f, indent=4)
+        return True
+    except IOError as e:
+        print(f"XML Processor: Error saving settings file ({filepath}): {e}", file=sys.stderr)
+        return False
+
 
 # ------------------------------------------------------------------
 # 🛠️ XML/HTML Utility Functions (MOVED from original config_and_logic.py)
@@ -352,16 +394,33 @@ def create_simplified_page_name_json(home_data, foot_unknown_data, nav_data):
 
 def run_xml_processing_step(filepath: str, step_config: dict, previous_step_data: dict = None) -> dict:
     """
-    Executes the XML parsing, data structuring, and JSON file generation.
+    Executes the XML parsing, data structuring, JSON file generation, and saves the file_prefix 
+    and output filenames to the persistent config for subsequent steps.
     """
     time.sleep(step_config["delay"] / 2)
 
     # --- Setup File Paths ---
-    base_name = os.path.basename(filepath).rsplit('.', 1)[0]
-    home_json_file = os.path.join(UPLOAD_FOLDER, f"{base_name}_home_pages.json")
-    foot_unk_json_file = os.path.join(UPLOAD_FOLDER, f"{base_name}_footer_unknown_pages.json")
-    util_json_file = os.path.join(UPLOAD_FOLDER, f"{base_name}_util_pages.json")
-    simplified_json_file = os.path.join(UPLOAD_FOLDER, f"{base_name}_simplified.json")
+    
+    # 1. Get the full basename (e.g., 'UUID_OriginalFilename.xml')
+    full_basename_with_ext = os.path.basename(filepath)
+    
+    # 2. Remove the extension (e.g., 'UUID_OriginalFilename')
+    full_basename = full_basename_with_ext.rsplit('.', 1)[0]
+
+    # 3. Extract only the UUID part (the unique token) before the first underscore.
+    # This ensures that the generated config and JSON files only use the short UUID 
+    # as the prefix, as requested.
+    file_prefix = full_basename.split('_', 1)[0]
+    
+    # Fallback in case of unexpected format (e.g., no underscore)
+    if not file_prefix:
+        file_prefix = full_basename
+    
+    # All output files now use the simplified, UUID-only file_prefix
+    home_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_home_pages.json")
+    foot_unk_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_footer_unknown_pages.json")
+    util_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_util_pages.json")
+    simplified_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_simplified.json")
     
     # --- Execute Core Logic ---
     try:
@@ -386,6 +445,26 @@ def run_xml_processing_step(filepath: str, step_config: dict, previous_step_data
         )
         with open(simplified_json_file, 'w', encoding='utf-8') as f:
             json.dump(simplified_data, f, ensure_ascii=False, indent=4)
+            
+        # --- Prepare output file list ---
+        output_filenames_list = [
+            os.path.basename(home_json_file),
+            os.path.basename(foot_unk_json_file),
+            os.path.basename(util_json_file),
+            os.path.basename(simplified_json_file),
+        ]
+            
+        # --- Save file_prefix (the unique token) and all output filenames to Config for future steps ---
+        settings = load_settings(file_prefix)
+        if settings is None:
+            raise RuntimeError("Failed to initialize or load config storage during XML processing.")
+
+        settings["file_prefix"] = file_prefix 
+        settings["output_json_filenames"] = output_filenames_list # <-- Added all output filenames
+        
+        if not save_settings(file_prefix, settings):
+            raise IOError("Failed to save the file_prefix and output filenames to the configuration file.")
+
 
     except ET.ParseError as e:
         # Catch XML-specific errors
@@ -396,13 +475,9 @@ def run_xml_processing_step(filepath: str, step_config: dict, previous_step_data
 
     time.sleep(step_config["delay"] / 2) 
 
-    # Return the file names for the final download list
+    # Return the file names for the final download list AND the file_prefix for the next step
     return {
-        "output_files": [
-            os.path.basename(home_json_file),
-            os.path.basename(foot_unk_json_file),
-            os.path.basename(util_json_file),
-            os.path.basename(simplified_json_file),
-        ],
-        "message": "Successfully generated 4 JSON output files."
+        "output_files": output_filenames_list, # Return the same list of basenames
+        "message": "Successfully generated 4 JSON output files and updated the configuration.",
+        "file_prefix": file_prefix # MANDATORY return for next step's previous_step_data
     }
