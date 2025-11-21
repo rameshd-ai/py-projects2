@@ -4,6 +4,7 @@ import re
 from typing import Dict, Any, List, Union
 
 # IMPORTANT: These must be correctly defined in 'apis' and 'config'
+# Assuming these imports are available in your environment
 from apis import GetPageCategoryList 
 from config import UPLOAD_FOLDER 
 
@@ -137,24 +138,26 @@ def run_module_processing_step(
 
     target_url = settings.get("target_site_url")
     site_id = settings.get("site_id")
-    auth_token_payload = settings.get("destination_token") 
     
-    if not target_url or not auth_token_payload or not site_id:
-        raise ValueError("Error: Target URL, Site ID, or Login Token missing in configuration. Cannot fetch modules.")
+    # --- FIX START: Correctly retrieve the raw token string ---
+    # The user-provided config uses 'cms_login_token' for the raw string.
+    raw_token = settings.get("cms_login_token") 
     
-    # 3. Extract the raw token value.
-    if not isinstance(auth_token_payload, dict):
-        raise TypeError(f"Expected 'destination_token' to be a dictionary, but received {type(auth_token_payload)}.")
+    if not target_url or not raw_token or not site_id:
+        # Updated error message to reflect the correct key
+        raise ValueError("Error: Target URL, Site ID, or **CMS Login Token** missing in configuration. Cannot fetch modules.")
+    
+    # Validation: Ensure the token is a non-empty string as expected from the config file.
+    if not isinstance(raw_token, str) or not raw_token.strip():
+        raise TypeError(f"Expected 'cms_login_token' to be a non-empty string, but received {type(raw_token)}.")
 
-    raw_token = auth_token_payload.get('token')
-
-    if not raw_token:
-         raise ValueError("Token value 'token' not found in authentication payload.")
-
+    # --- FIX END ---
+    
     # 4. Construct the required headers
     headers = {
         'Content-Type': 'application/json',
         'ms_cms_clientapp': 'ProgrammingApp',
+        # Use the raw_token string directly
         'Authorization': f'Bearer {raw_token}',
     }
     
@@ -204,8 +207,8 @@ def run_module_processing_step(
             
             raise RuntimeError(f"API Call to GetPageCategoryList Failed (Status: {status_code}). Error: {error_type}. Details: {details}")
         else:
-             # Handle the case where the data is not a list OR an expected error dictionary
-             raise RuntimeError(f"API returned an unexpected data type ({type(api_result)}). Expected List or Error Dict.")
+            # Handle the case where the data is not a list OR an expected error dictionary
+            raise RuntimeError(f"API returned an unexpected data type ({type(api_result)}). Expected List or Error Dict.")
 
     module_list = api_result
     # print(f"Module Processor: Successfully retrieved {len(module_list)} modules.")
@@ -253,10 +256,10 @@ def run_module_processing_step(
             }
             pages_updated += 1
             
-            # print("✅ match found") 
-            # print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}'). Category ID attached to page object.")
+            print("✅ match found") 
+            print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}'). Category ID attached to page object.")
         else:
-            # print(f"❌ NOT FOUND: Page '{page_name}' does not match an existing Category.")
+            print(f"❌ NOT FOUND: Page '{page_name}' does not match an existing Category.")
             # Call the creation function if no match is found
             createCategory(page_name, site_id)
         
