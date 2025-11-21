@@ -3,39 +3,36 @@ import os
 import re 
 from typing import Dict, Any, List, Union
 
-# Import the API function
-from apis import GetPageCategoryList
-from config import UPLOAD_FOLDER
+# IMPORTANT: These must be correctly defined in 'apis' and 'config'
+from apis import GetPageCategoryList 
+from config import UPLOAD_FOLDER 
 
-# --- Define the static part of the processed filename as a constant ---
-PROCESSED_FILENAME_SUFFIX = "_394279_nationwide_hotel_conference_center_3.0_4_simplified.json"
-
-# --- NEW UTILITY FUNCTION FOR FUZZY MATCHING ---
+# --- UTILITY FUNCTION FOR FUZZY MATCHING ---
 def normalize_page_name(name: str) -> str:
     """
     Normalizes a page or category name for robust comparison.
     Converts to lowercase, strips whitespace, and removes all non-alphanumeric characters.
-    This handles differences like ' & ' vs ' and ' vs ' - '
     """
     if not name:
         return ""
-    # 1. Lowercase and strip whitespace
     normalized = name.strip().lower()
-    # 2. Remove all characters that are not letters or digits (0-9, a-z)
-    # This turns "Meetings & Events" and "Meetings and Events" into "meetingsandevents"
     normalized = re.sub(r'[^a-z0-9]', '', normalized)
     return normalized
-# --- END NEW UTILITY FUNCTION ---
-
 
 def get_config_filepath(file_prefix: str) -> str:
-    """Constructs the unique config.json filepath based on the prefix."""
-    config_filename = f"{file_prefix}_config.json"
+    """
+    Constructs the unique config.json filepath based on the prefix.
+    It relies on the 'file_prefix' being the unique ID + the original filename slug.
+    We ensure the unique ID is extracted if a full path is mistakenly passed.
+    """
+    base_prefix = os.path.basename(file_prefix)
+    config_filename = f"{base_prefix}_config.json"
     return os.path.join(UPLOAD_FOLDER, config_filename)
 
 def load_settings(file_prefix: str) -> Dict[str, Any] | None:
     """Loads the settings/config file based on the unique prefix."""
-    filepath = get_config_filepath(file_prefix)
+    # Note: get_config_filepath handles the path/basename extraction for us
+    filepath = get_config_filepath(file_prefix) 
     if not os.path.exists(filepath):
         print(f"Module Processor: Config file not found at {filepath}")
         return None
@@ -46,11 +43,41 @@ def load_settings(file_prefix: str) -> Dict[str, Any] | None:
         print(f"Module Processor: Error loading config file: {e}")
         return None
 
-# --- NEW UTILITY FUNCTION TO SAVE PROCESSED JSON ---
+# --- UTILITY FUNCTION TO DYNAMICALLY FIND THE PROCESSED JSON FILE (KEY FIX HERE) ---
+def find_processed_json_filepath(file_prefix: str) -> str | None:
+    """
+    Dynamically finds the processed JSON file based on the unique prefix, 
+    even if the prefix argument contains path information.
+    """
+    # FIX: Use os.path.basename to reliably isolate the unique ID component
+    base_prefix = os.path.basename(file_prefix)
+
+    print(f"Module Processor: Searching UPLOAD_FOLDER ('{UPLOAD_FOLDER}') for file starting with '{base_prefix}' and ending with '_simplified.json'.")
+    
+    if not os.path.isdir(UPLOAD_FOLDER):
+        print(f"FATAL ERROR: UPLOAD_FOLDER path does not exist or is not a directory: {UPLOAD_FOLDER}")
+        return None
+        
+    for filename in os.listdir(UPLOAD_FOLDER):
+        # Use the isolated base_prefix for matching
+        if filename.startswith(base_prefix) and filename.endswith("_simplified.json"):
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            print(f"Module Processor: ✅ Match found: {filename}")
+            return filepath
+            
+    print(f"Module Processor: ❌ No processed JSON file found matching the criteria for prefix '{base_prefix}'.")
+    return None
+
+# --- UTILITY FUNCTION TO SAVE PROCESSED JSON (Uses dynamic path) ---
 def save_processed_json(file_prefix: str, data: Dict[str, Any]) -> bool:
-    """Saves the processed JSON data back to its file."""
-    processed_filename = f"{file_prefix}{PROCESSED_FILENAME_SUFFIX}"
-    filepath = os.path.join(UPLOAD_FOLDER, processed_filename)
+    """Saves the processed JSON data back to its dynamically located file."""
+    # find_processed_json_filepath now handles the robust prefix extraction
+    filepath = find_processed_json_filepath(file_prefix)
+    
+    if not filepath:
+        print(f"Module Processor: Error saving. Could not find target processed JSON file starting with '{os.path.basename(file_prefix)}'. Cannot save.")
+        return False
+
     try:
         with open(filepath, "w") as f:
             json.dump(data, f, indent=4)
@@ -59,70 +86,34 @@ def save_processed_json(file_prefix: str, data: Dict[str, Any]) -> bool:
     except Exception as e:
         print(f"Module Processor: Error saving processed JSON file: {e}")
         return False
-# --- END NEW UTILITY FUNCTION ---
 
-# --- NEW FUNCTION: Placeholder for creating a category ---
+# --- PLACEHOLDER FUNCTION FOR CATEGORY CREATION ---
 def createCategory(page_name: str, site_id: str):
     """Placeholder function to simulate calling the API to create a new category."""
     print(f"\n⚙️ Calling createCategory for Page Name: '{page_name}' (Site ID: {site_id})...")
-    # Placeholder print statement as requested
     print("TODO: Implement API call to /api/PageApi/CreateCategory in the next step.")
 
 
 # --- MODIFIED FUNCTION: Load the JSON result from the XML processing step ---
 def load_processed_json(file_prefix: str) -> Dict[str, Any] | None:
     """
-    Loads the JSON file generated by the process_xml step, using the new 
-    specific filename format: {file_prefix}{SUFFIX}.
-    
-    If the file is not found, it creates a mock file for testing the comparison logic,
-    which now includes multiple pages for testing iteration.
+    Loads the JSON file generated by the process_xml step.
+    If the file is not found, it returns None.
     """
-    # 1. Construct the full, expected filepath
-    processed_filename = f"{file_prefix}{PROCESSED_FILENAME_SUFFIX}"
-    filepath = os.path.join(UPLOAD_FOLDER, processed_filename)
+    # 1. Dynamically find the file
+    filepath = find_processed_json_filepath(file_prefix)
     
-    # 2. Check if the file exists
-    if not os.path.exists(filepath):
-        print(f"Module Processor: Processed JSON file not found at {filepath}")
-        print("⚠️ CREATING MOCK DATA for testing category search logic (using the required file name structure).")
-        
-        # --- MOCK DATA CREATION (Temporary for testing) ---
-        # Mock data now contains two Level 1 pages: one that will match, one that won't
-        mock_data = {
-            "title": "394279 Nationwide Hotel & Conference Center",
-            "pages": [
-                {
-                    "page_name": "Our Property",  # EXPECTED TO MATCH
-                    "components": [],
-                    "meta_info": {},
-                    "sub_pages": []
-                },
-                {
-                    "page_name": "Meetings and Events", # Source uses 'and'
-                    "components": [],
-                    "meta_info": {},
-                    "sub_pages": []
-                }
-            ]
-        }
-        
-        try:
-            with open(filepath, "w") as f:
-                json.dump(mock_data, f, indent=4)
-            print(f"✅ Mock processed JSON created successfully at {filepath}. Continuing with mock data.")
-            return mock_data 
-        except Exception as e:
-            print(f"Module Processor: Error creating mock JSON file: {e}")
-            return None
-        # --- END MOCK DATA CREATION ---
+    # 2. Check if the file exists. If not, return None immediately.
+    if not filepath or not os.path.exists(filepath):
+        return None
 
     # 3. Load the actual file
     try:
+        print(f"Module Processor: Loading actual processed JSON from: {filepath}")
         with open(filepath, "r") as f:
             return json.load(f)
     except Exception as e:
-        print(f"Module Processor: Error loading processed JSON file: {e}")
+        print(f"Module Processor: Error loading processed JSON file at {filepath}: {e}")
         return None
 
     
@@ -133,9 +124,6 @@ def run_module_processing_step(
 ) -> Dict[str, Any]:
     """
     The main execution function for the module processing step.
-    Loads user config (including the generated token) and calls the API to fetch modules.
-    Then, it compares ALL main page names from the processed JSON against the fetched categories,
-    and saves the CategoryId for matched pages back into the JSON structure.
     """
     # 1. Get the unique file prefix from the previous step's data
     file_prefix = previous_step_data.get('file_prefix')
@@ -154,27 +142,6 @@ def run_module_processing_step(
     if not target_url or not auth_token_payload or not site_id:
         raise ValueError("Error: Target URL, Site ID, or Login Token missing in configuration. Cannot fetch modules.")
     
-    # --- Logic: Load and extract ALL target page names ---
-    processed_json = load_processed_json(file_prefix)
-    level1_page_names: List[str] = [] # Used only for initial logging
-    
-    if processed_json and 'pages' in processed_json and isinstance(processed_json['pages'], list):
-        for page in processed_json['pages']:
-            if 'page_name' in page:
-                level1_page_names.append(page['page_name'])
-        
-        print(f"\n✅ Extracted {len(level1_page_names)} Level 1 Page Name(s) from processed JSON: {level1_page_names}")
-    else:
-        print("⚠️ Could not extract Level 1 Page Names. Check processed JSON structure.")
-        processed_json = {'pages': []} # Ensure processed_json['pages'] is iterable
-            
-    if not processed_json['pages']:
-        print("Skipping category check as no Level 1 Page was found to process.")
-        return {
-            "modules_fetched_count": 0,
-            "file_prefix": file_prefix
-        }
-
     # 3. Extract the raw token value.
     if not isinstance(auth_token_payload, dict):
         raise TypeError(f"Expected 'destination_token' to be a dictionary, but received {type(auth_token_payload)}.")
@@ -190,25 +157,57 @@ def run_module_processing_step(
         'ms_cms_clientapp': 'ProgrammingApp',
         'Authorization': f'Bearer {raw_token}',
     }
+    
+    # --- Logic: Load and extract ALL target page names ---
+    processed_json = load_processed_json(file_prefix)
+    
+    # If the JSON file is missing after XML processing (an upstream error)
+    if processed_json is None:
+        # NOTE: The load_processed_json function is now using os.path.basename, so this error should only
+        # trigger if the file simply doesn't exist, meaning the previous step failed to save it.
+        raise RuntimeError(f"Processing failed: Could not load the required '_simplified.json' file for prefix '{os.path.basename(file_prefix)}'. Check the previous XML processing step.")
+
+    level1_page_names: List[str] = [] 
+    
+    if 'pages' in processed_json and isinstance(processed_json['pages'], list):
+        for page in processed_json['pages']:
+            if 'page_name' in page:
+                level1_page_names.append(page['page_name'])
+        
+        print(f"\n✅ Extracted {len(level1_page_names)} Level 1 Page Name(s) from processed JSON: {level1_page_names}")
+    else:
+        print("⚠️ Processed JSON structure is missing the 'pages' list. Aborting category check.")
+        return {
+            "modules_fetched_count": 0,
+            "file_prefix": file_prefix
+        }
+            
+    if not processed_json['pages']:
+        print("Skipping category check as no Level 1 Page was found to process.")
+        return {
+            "modules_fetched_count": 0,
+            "file_prefix": file_prefix
+        }
 
     print(f"Module Processor: Attempting to fetch modules from {target_url}...")
     
     # 5. Call the API to get the category list
     api_result: Union[List[Dict[str, Any]], Dict[str, Any]] = GetPageCategoryList(target_url, headers)
     
-    # --- Error Handling ---
-    if isinstance(api_result, dict) and 'error' in api_result:
-        error_type = api_result.get('error', 'Unknown Error')
-        details = api_result.get('details', 'No details provided.')
-        status_code = api_result.get('status_code', 'N/A')
-        
-        raise RuntimeError(f"API Call Failed ({error_type}, Status: {status_code}). Details: {details}")
-    
-    module_list = api_result
-        
-    if not isinstance(module_list, list):
-         raise RuntimeError(f"API returned data, but it was not the expected list structure. Type received: {type(module_list)}")
+    # --- CRITICAL: Robust Error Handling for API Result ---
+    if not isinstance(api_result, list):
+        # If it's not a list, we assume it's the error dictionary (or corrupted data)
+        if isinstance(api_result, dict) and 'error' in api_result:
+            error_type = api_result.get('error', 'Unknown Error')
+            details = api_result.get('details', 'No details provided.')
+            status_code = api_result.get('status_code', 'N/A')
+            
+            raise RuntimeError(f"API Call to GetPageCategoryList Failed (Status: {status_code}). Error: {error_type}. Details: {details}")
+        else:
+             # Handle the case where the data is not a list OR an expected error dictionary
+             raise RuntimeError(f"API returned an unexpected data type ({type(api_result)}). Expected List or Error Dict.")
 
+    module_list = api_result
     print(f"Module Processor: Successfully retrieved {len(module_list)} modules.")
     
     # 6. Logic: Search for ALL page names in the retrieved modules and map the results
@@ -246,6 +245,7 @@ def run_module_processing_step(
             category_id = category_info['CategoryId']
             category_name_api = category_info['CategoryName']
 
+            # CRITICAL: This updates the page object in the main processed_json dict
             page['category_info'] = {
                 'CategoryId': category_id,
                 'CategoryName': category_name_api,
@@ -254,7 +254,7 @@ def run_module_processing_step(
             pages_updated += 1
             
             print("✅ match found") 
-            print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}').")
+            print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}'). Category ID attached to page object.")
         else:
             print(f"❌ NOT FOUND: Page '{page_name}' does not match an existing Category.")
             # Call the creation function if no match is found
@@ -262,6 +262,7 @@ def run_module_processing_step(
         
     # 7. Final step: Save the updated JSON data back to disk
     if pages_updated > 0 and processed_json:
+        print("\nSaving updated JSON structure...")
         save_processed_json(file_prefix, processed_json)
     elif processed_json:
         print("No new category information was added to the processed JSON, skipping save.")
