@@ -1,12 +1,11 @@
-# app.py
-
-from flask import Flask, request, url_for, render_template, jsonify, Response
+from flask import Flask, request, url_for, render_template, jsonify, Response, send_from_directory
 from werkzeug.utils import secure_filename
 import os
 import json
 import uuid
 
 # Import config and utils files
+# Note: You must ensure 'config.py' defines UPLOAD_FOLDER, MAX_CONTENT_LENGTH, and allowed_file
 from config import UPLOAD_FOLDER, MAX_CONTENT_LENGTH, PROCESSING_STEPS, allowed_file
 from utils import generate_progress_stream 
 
@@ -112,6 +111,26 @@ def stream(filename):
         generate_progress_stream(filepath), 
         mimetype='text/event-stream'
     )
+
+
+# --- NEW: Download Route ---
+@app.route('/download_status/<filename>', methods=['GET'])
+def download_status_report(filename):
+    """
+    Serves the status report file (e.g., CSV) from the UPLOAD_FOLDER using the 
+    secure send_from_directory helper function.
+    """
+    try:
+        return send_from_directory(
+            app.config['UPLOAD_FOLDER'],
+            filename,
+            as_attachment=True # Forces the browser to download instead of displaying
+        )
+    except FileNotFoundError:
+        app.logger.error(f"Download request failed: File not found in {app.config['UPLOAD_FOLDER']}: {filename}")
+        # Return a 404 error with a custom message that matches the browser error
+        return "File wasn't available on site", 404
+
 
 # --- Run Application ---
 
