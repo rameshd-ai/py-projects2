@@ -1,10 +1,10 @@
 import requests
 import json
-import logging
 import time
 from datetime import datetime
-
-
+import logging
+from typing import Dict, Any, List, Union
+logger = logging.getLogger(__name__)
 #API list:
 #generate_cms_token(url, profile_alias)
 #export_mi_block_component(base_url,componentId,siteId, headers)
@@ -676,3 +676,196 @@ def GetPageCategoryList(base_url, headers):
     except json.JSONDecodeError:
         print(f"❌ Failed to decode JSON. Response text: {response.text if 'response' in locals() else 'No response'}")
         return {"error": "JSON Decode Error", "details": "Invalid JSON response"}
+
+
+
+
+
+def CustomGetComponentAliasByName(base_url, headers, component_name):
+    """
+    Calls the GetSiteVComponents API, searches the 'vComponents' array in the response, 
+    and returns the 'alias' and 'componentId' for a specific V-Component name.
+
+    Endpoint: /api/VisualComponentsApi/GetSiteVComponents
+
+    Args:
+        base_url (str): The root URL for the API.
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+        component_name (str): The exact 'name' of the V-Component to search for (e.g., "Stridecare-VCOMP").
+
+    Returns:
+        tuple: A tuple (alias: str, componentId: int) if an exact name match is found.
+        dict: An error dictionary if the API call fails or the component is not found.
+    """
+    DEFAULT_VCOMPONENT_LIST_PAYLOAD = {
+        "PageNumber": 1,
+        "PageSize": 50, # Increased page size for a better chance of finding the item
+        "ShowInActiveRecords": True,
+        "HidePageStudioDerivedMiBlocks": True,
+        "ShowOnlyLibraryFormVComponents": True,
+        "searchBy": "name",
+        "searchByValue": "",  # Placeholder for the component name
+        "showOnlyContentLibraryVComponents": False,
+        "categoryIds": [],
+        "createdByIds": [],
+        "vComponentIds": [],
+        "contentScope": [1, 3, 5],
+        "sortKey": "tv.createddate",
+        "sortOrder": "desc"
+    }
+    
+    # Create a mutable copy of the default payload and set the search value
+    payload = DEFAULT_VCOMPONENT_LIST_PAYLOAD.copy() 
+    payload["searchByValue"] = component_name
+    
+    # Explicitly serialize the Python dictionary into a JSON string
+    json_payload_string = json.dumps(payload)
+    
+    api_url = f"{base_url}/api/VisualComponentsApi/GetSiteVComponents"
+
+    # print(f"\n📡 Attempting POST to: {api_url} to find V-Component '{component_name}'")
+    
+    response = None 
+    
+    try:
+        # 1. Send the POST request
+        response = requests.post(
+            api_url, 
+            headers=headers, 
+            data=json_payload_string, 
+            timeout=10
+        )
+        response.raise_for_status()
+        
+        # 2. Get the response data
+        response_data = response.json()
+        
+        # 3. Check the 'vComponents' array in the response
+        v_components = response_data.get("vComponents", [])
+
+        if not v_components:
+            print(f"⚠️ V-Component '{component_name}' not found. 'vComponents' array was empty or search failed.")
+            return {"error": "Component Not Found", "details": f"No component matching '{component_name}' was returned by the API."}
+        
+        # 4. Iterate through the results to find an exact name match and extract the alias and ID
+        for component in v_components:
+            if component.get("name") == component_name:
+                component_alias = component.get("alias")
+                vComponentId = component.get("vComponentId")
+                
+                # --- START OF CORRECTION ---
+                # The componentId is nested inside the 'component' key.
+                nested_component_details = component.get("component", {}) 
+                component_id = nested_component_details.get("componentId")
+                # --- END OF CORRECTION ---
+                
+                # print(f"✅ Found V-Component Alias and ID for '{component_name}': ({component_alias}, {component_id})")
+                return (vComponentId,component_alias, component_id) # <-- Return both values as a tuple
+
+        # 5. Fallback if search returned data, but no exact name match was found
+        # print(f"⚠️ Search returned data, but no exact match found for '{component_name}' in the 'vComponents' list.")
+        return {"error": "Component Not Found", "details": f"No exact component name match for '{component_name}' in returned list."}
+
+    except requests.exceptions.RequestException as err:
+        status_code = response.status_code if response is not None else 'N/A'
+        print(f"❌ API Error in GetComponentAliasByName: {err} (Status Code: {status_code})")
+        return {"error": "Request Error", "details": str(err), "status_code": status_code}
+    except json.JSONDecodeError:
+        response_text = response.text if response is not None else 'No response object.'
+        print(f"❌ JSON Decode Error. Response text: {response_text}")
+        return {"error": "JSON Decode Error", "details": "Response was not valid JSON"}
+
+
+def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 100) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Retrieves ALL V-Components from the CMS by iterating through paginated API results.
+
+    Endpoint: /api/VisualComponentsApi/GetSiteVComponents
+
+    Args:
+        base_url (str): The root URL for the API.
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+        page_size (int): The number of records to request per page (default is 50).
+
+    Returns:
+        list: A list of all V-Component dictionaries if successful.
+        dict: An error dictionary if the API call fails at any point.
+    """
+    
+    # --- 1. Base Payload Definition ---
+    BASE_PAYLOAD = {
+        "PageNumber": 1,
+        "PageSize": page_size,
+        "ShowInActiveRecords": True,
+        "HidePageStudioDerivedMiBlocks": True,
+        "ShowOnlyLibraryFormVComponents": True,
+        "searchBy": "name",
+        "searchByValue": "",
+        "showOnlyContentLibraryVComponents": False,
+        "categoryIds": [],
+        "createdByIds": [],
+        "vComponentIds": [],
+        "contentScope": [1, 3, 5],
+        "sortKey": "tv.createddate",
+        "sortOrder": "desc"
+    }
+    
+    api_url = f"{base_url}/api/VisualComponentsApi/GetSiteVComponents"
+    all_components: List[Dict[str, Any]] = []
+    current_page = 1
+    total_records = float('inf')  # Start high to ensure the loop runs
+    records_fetched = 0
+    
+    logger.info(f"Starting V-Component fetch with page size: {page_size}")
+
+    while records_fetched < total_records:
+        try:
+            # --- 2. Update Payload for Current Page ---
+            payload = BASE_PAYLOAD.copy()
+            payload["PageNumber"] = current_page
+            
+            json_payload_string = json.dumps(payload)
+            
+            # --- 3. Send API Request ---
+            response = requests.post(
+                api_url, 
+                headers=headers, 
+                data=json_payload_string, 
+                timeout=30 # Increased timeout for potentially long requests
+            )
+            response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+            
+            response_data = response.json()
+            
+            # --- 4. Process Response Data ---
+            v_components = response_data.get("vComponents", [])
+            total_records = response_data.get("TotalRecords", 0)
+            
+            if not v_components:
+                logger.info(f"Page {current_page} returned no components. Fetch complete.")
+                break # Exit loop if no components are returned
+
+            # Add components from this page to the main list
+            all_components.extend(v_components)
+            records_fetched += len(v_components)
+            
+            logger.info(f"Fetched Page {current_page}. Records this page: {len(v_components)}. Total fetched: {records_fetched} / {total_records}.")
+            
+            # --- 5. Prepare for Next Iteration ---
+            current_page += 1
+
+            if records_fetched >= total_records:
+                 logger.info("Total records retrieved. Fetch complete.")
+                 break
+
+        except requests.exceptions.RequestException as err:
+            status_code = response.status_code if response is not None else 'N/A'
+            logger.error(f"❌ API Request Error on Page {current_page}: {err} (Status Code: {status_code})")
+            return {"error": "Request Error", "details": str(err), "status_code": status_code, "page": current_page}
+            
+        except json.JSONDecodeError:
+            response_text = response.text if response is not None else 'No response object.'
+            logger.error(f"❌ JSON Decode Error on Page {current_page}. Response text: {response_text[:100]}...")
+            return {"error": "JSON Decode Error", "details": "Response was not valid JSON", "page": current_page}
+        
+    return all_components
