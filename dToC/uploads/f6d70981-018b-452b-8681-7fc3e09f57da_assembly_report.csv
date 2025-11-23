@@ -1,0 +1,10 @@
+page,component,cms_component_name,level,hierarchy,available,status
+Weddings,M1-Inside Hero,M1-Inside Hero,1,Weddings,True,SUCCESS: Assembled and marked for publishing.
+Weddings,A2-Modular Navigation,N/A,1,Weddings,False,SKIPPED: Component not available.
+Weddings,L3-Intro with awards,L3-Intro with awards,1,Weddings,True,SUCCESS: Assembled and marked for publishing.
+Weddings,L24-Amenities Icon,L24-Amenities Icon,1,Weddings,True,SUCCESS: Assembled and marked for publishing.
+Weddings,L10-2 Column Snippet,N/A,1,Weddings,False,SKIPPED: Component not available.
+Weddings,L13-Full Width Image CTA,L13-Full Width Image CTA,1,Weddings,True,SUCCESS: Assembled and marked for publishing.
+Weddings,L31-Video + Quotes,L31-Video Quotes,1,Weddings,True,SUCCESS: Assembled and marked for publishing.
+Weddings,L30-inside Page Gallery,L30-inside Page Gallery,1,Weddings,True,SUCCESS: Assembled and marked for publishing.
+Weddings,L15-Inside Page FAQs,L15-Inside Page FAQs,1,Weddings,True,SUCCESS: Assembled and marked for publishing.

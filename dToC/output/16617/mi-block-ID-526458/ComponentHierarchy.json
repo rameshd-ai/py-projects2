@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 526458,
+        "type": "MainComponent",
+        "componentName": "Testimonial"
+    },
+    {
+        "componentId": 526459,
+        "type": "Level1Child",
+        "componentName": "Testimonial Data"
+    }
+]

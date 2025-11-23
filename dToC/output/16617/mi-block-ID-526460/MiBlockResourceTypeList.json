@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 306524,
+            "ResourceTypeName": "multi-image-slider-with-content",
+            "ResourceTypeFolderName": "multi-image-slider-with-content",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 1,
+            "ResourceWidth": 1000,
+            "ResourceHeight": 600,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 1,
+            "TabletResourceWidth": 1000,
+            "TabletResourceHeight": 600,
+            "MobileResourceWidth": 600,
+            "MobileResourceHeight": 360,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 90,
+            "MobileImageQuality": 90,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

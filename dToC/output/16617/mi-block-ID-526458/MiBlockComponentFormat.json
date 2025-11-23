@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 867603,
+            "FormatName": "Testimonial",
+            "FormatKey": "testimonial",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each ComponentRecordJson.testimonial}}\n<section class=\"testimonial\">\n  <div class=\"testimonial__bg\">\n    <img  class=\"testimonial__bg-img\" src=\"{{data.bg-image.0.OriginalImagePath}}\" alt=\"{{data.bg-image-alt-text}}\" width=\"{{data.bg-image.0.ResourceWidth}}\" height=\"{{data.bg-image.0.ResourceHeight}}\" tabindex=\"0\">\n  </div>\n  <div class=\"uk-container\">\n    <div class=\"uk-slider\" data-uk-slider>\n      <div class=\"uk-position-relative\">\n        <ul class=\"uk-slider-items uk-child-width-1-1\">      \n          {{#each childRecords}}\n          <li>\n            <div class=\"testimonial__item uk-grid uk-child-width-1-2@m\" uk-grid>\n              <div class=\"testimonial__media\">\n                <iframe class=\"testimonial__video\" src=\"{{data.video-src}}\" autoplay muted loop playsinline>  </iframe>\n              </div>\n              <div class=\"testimonial__content\">\n                <h3 class=\"testimonial__title dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">{{data.main-title}}</h3>\n                <div class=\"testimonial__text\" tabindex=\"0\">\n                  {{{data.description}}}\n                </div>\n                <div class=\"testimonial__container\">\n                  <div class=\"testimonial__author\">\n                    <span class=\"testimonial__name\">{{data.author-name}}</span>\n                    <span class=\"testimonial__position\">{{data.author-position}}</span>                  \t\t\t\t </div>\n                  {{IfCond data.award-image 'notempty' '' 'and' data.award-image-alt-text 'notempty' ''}}\n                  <div class=\"testimonial__imgcontainer\">\n                    <img class=\"testimonial__award\" src=\"{{data.award-image.0.OriginalImagePath}}\" alt=\"{{data.award-image-alt-text}}\" width=\"114\" height=\"30\" tabindex=\"0\">\n                  </div>\n                  {{/IfCond}}\n                </div>\n\n              </div>\n            </div>\n          </li>\n          {{/each}}\n        </ul>\n        {{IfCondObj Child.testimonial-data '>' '1'  }}\n        <ul class=\"uk-slider-nav uk-dotnav lt212slider-widget__dotnav\">\n          {{#each Child.testimonial-data}}\n          {{IfCond this.ParentId  '='  ../this.Id}}\n          <li data-uk-slider-item=\"{{@index}}\" role=\"presentation\" class=\"\">\n            <a href=\"javascript:;\"><span class=\"sr-only\">Go to slide {{Incremented @index}}</span></a>\n          </li>\n          {{/IfCond}}\n          {{/each}}\n        </ul>\n        {{/IfCondObj}}\n      </div>\n    </div>\n  </div>\n</section>\n{{/each}}\n\n\n",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}
