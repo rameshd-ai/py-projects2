@@ -776,7 +776,7 @@ def CustomGetComponentAliasByName(base_url, headers, component_name):
         return {"error": "JSON Decode Error", "details": "Response was not valid JSON"}
 
 
-def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 100) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1000) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Retrieves ALL V-Components from the CMS by iterating through paginated API results.
 

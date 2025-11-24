@@ -43,7 +43,7 @@
             "ProfileIds": null,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "1f42c7f7-6494-42e6-873a-f10a5abe3873",
+            "sectionGuid": "e5b7314e-2027-4c66-81d3-bb3e4c3ae013",
             "component_alias": "f0d4ef79-4806-48d4-8c4f-0249cdae743b",
             "vComponentId": 20995079
         },
@@ -89,7 +89,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3000201
+            "parent_new_record_id": 3000291
         },
         {
             "Id": 2980447,

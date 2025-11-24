@@ -57,34 +57,82 @@ ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = []
 # ================= Helper Functions =================
 
 # --- MODIFIED: check_component_availability now returns 4 values ---
+# def check_component_availability(component_name: str, component_cache: List[Dict[str, Any]]) -> Optional[Tuple[int, str, int, str]]:
+#     """
+#     Checks component availability by performing a LOCAL prefix search.
+#     Returns the tuple (vComponentId, alias, componentId, cms_component_name) on success, or None on failure.
+#     """
+#     hyphen_index = component_name.find('-')
+#     if hyphen_index != -1:
+#         search_key = component_name[:hyphen_index + 1].strip()
+#     else:
+#         search_key = component_name.strip()
+        
+#     logging.info(f"    Searching cache for prefix: **{search_key}** (Original: {component_name})")
+    
+#     for component in component_cache:
+#         cms_component_name = component.get("name", "")
+#         if cms_component_name.startswith(search_key):
+#             vComponentId = component.get("vComponentId")
+#             component_alias = component.get("alias")
+#             nested_component_details = component.get("component", {}) 
+#             component_id = nested_component_details.get("componentId")
+            
+#             if vComponentId is not None and component_alias is not None and component_id is not None:
+#                  logging.info(f"    ✅ Component '{component_name}' found in cache as '{cms_component_name}'.")
+#                  # Return the CMS name as the 4th element
+#                  return (vComponentId, component_alias, component_id, cms_component_name)
+    
+#     logging.warning(f"    ❌ Component prefix '{search_key}' not found in the component cache.")
+#     return None
+
+
+
+
 def check_component_availability(component_name: str, component_cache: List[Dict[str, Any]]) -> Optional[Tuple[int, str, int, str]]:
     """
-    Checks component availability by performing a LOCAL prefix search.
+    Checks component availability by performing a LOCAL prefix search up to the first hyphen.
     Returns the tuple (vComponentId, alias, componentId, cms_component_name) on success, or None on failure.
     """
     hyphen_index = component_name.find('-')
+    
+    # 1. Determine the search key: The component code up to AND including the first hyphen.
     if hyphen_index != -1:
+        # Example: 'L10-2 Column Snippet' -> 'L10-'
         search_key = component_name[:hyphen_index + 1].strip()
     else:
+        # If no hyphen (e.g., 'Gallery'), use the whole name.
         search_key = component_name.strip()
         
     logging.info(f"    Searching cache for prefix: **{search_key}** (Original: {component_name})")
     
     for component in component_cache:
         cms_component_name = component.get("name", "")
+        
+        # 2. Perform the prefix match against the CMS component name.
+        # This will match 'L10-2 Column Snippet' (cache) against 'L10-' (search_key).
         if cms_component_name.startswith(search_key):
+            
+            # Additional check: If the search key is only the prefix (ends in '-'), 
+            # we must ensure the cache name isn't identical to the search key 
+            # (unless that's a valid component name).
+            # We assume if it matches the prefix, it is the correct component family.
+            
             vComponentId = component.get("vComponentId")
             component_alias = component.get("alias")
             nested_component_details = component.get("component", {}) 
             component_id = nested_component_details.get("componentId")
             
             if vComponentId is not None and component_alias is not None and component_id is not None:
-                 logging.info(f"    ✅ Component '{component_name}' found in cache as '{cms_component_name}'.")
-                 # Return the CMS name as the 4th element
-                 return (vComponentId, component_alias, component_id, cms_component_name)
+                logging.info(f"    ✅ Component '{component_name}' found in cache as '{cms_component_name}'.")
+                # Return the CMS name as the 4th element
+                return (vComponentId, component_alias, component_id, cms_component_name)
     
     logging.warning(f"    ❌ Component prefix '{search_key}' not found in the component cache.")
     return None
+
+
+    
 
 # --- MODIFIED: add_records_for_page now contains the complex file processing logic ---
 def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str):
