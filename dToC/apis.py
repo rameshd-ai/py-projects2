@@ -1004,3 +1004,54 @@ def GetTemplatePageByName(base_url, headers, template_page_name):
         response_text = response.text if response is not None else "No response object"
         print(f"❌ JSON Decode Error in GetTemplatePageByName. Response body: {response_text}")
         return {"error": "JSON Decode Error", "details": "Invalid JSON response received from API"}
+
+
+
+
+def GetPageCategoryList(base_url, headers):
+    """
+    Calls the GetPageCategoryList API and returns the list of page categories.
+
+    Endpoint:
+        /api/PageApi/GetPageCategoryList?ms_cms_clientapp=ProgrammingApp
+
+    Args:
+        base_url (str): The root URL for the API (e.g., "https://example.com").
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+
+    Returns:
+        list: Array of category objects (each containing CategoryId, CategoryName, etc.)
+        dict: Error dictionary if API call fails.
+    """
+
+    api_url = f"{base_url}/api/PageApi/GetPageCategoryList?ms_cms_clientapp=ProgrammingApp"
+
+    # print(f"\n📡 Attempting GET to: {api_url}")
+
+    response = None
+    try:
+        # 1. Call the GET API
+        response = requests.get(api_url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        # 2. Parse JSON response
+        data = response.json()
+
+        categories = data.get("pageCategories", []) or data.get("PageCategories", [])
+        
+        if not categories:
+            print("⚠ No categories found in the response body.")
+            return {"error": "No Categories", "details": "Empty category list returned from server."}
+
+        # print(f"✅ Retrieved {len(categories)} page categories successfully.")
+        return categories
+
+    except requests.exceptions.RequestException as err:
+        status_code = response.status_code if response is not None else 'N/A'
+        print(f"❌ HTTP Error in GetPageCategoryList: {err} (Status Code: {status_code})")
+        return {"error": "HTTP Error", "details": str(err), "status_code": status_code}
+
+    except json.JSONDecodeError:
+        response_text = response.text if response is not None else 'No response text available'
+        print(f"❌ JSON Parse Error. Response text: {response_text}")
+        return {"error": "JSON Decode Error"}

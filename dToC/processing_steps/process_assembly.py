@@ -12,8 +12,7 @@ import uuid # <-- Required for generating pageSectionGuid
 import zipfile # <-- Required for handling exported component files
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
-from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi
-
+from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList
 # ================= CONFIG/UTILITY DEFINITIONS (BASED ON USER PATTERN) =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
@@ -1083,7 +1082,7 @@ def createRecordsPayload(site_id, component_id):
 
 
 # ================= Core Processing Logic and Traversal =================
-def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
+def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str],category_id: int):
     page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     components = page_data.get('components', [])
     meta_info = page_data.get('meta_info', {}) # Extract meta_info
@@ -1215,11 +1214,11 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
 
 def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers)
+    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
 
 def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers)
+    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
@@ -1228,7 +1227,7 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
 
 def assemble_page_templates_level2(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers)
+    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
@@ -1249,11 +1248,13 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
         if current_page_name == "Weddings":
             logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
-            _process_page_components(top_level_page, initial_level, initial_hierarchy, component_cache, api_base_url, site_id, api_headers)
+            alldata = GetPageCategoryList(api_base_url, api_headers)
+            category_id = 0
+            _process_page_components(top_level_page, initial_level, initial_hierarchy, component_cache, api_base_url, site_id, api_headers,category_id)
             next_level = initial_level + 1
             new_hierarchy = initial_hierarchy + [current_page_name]
             for sub_page_data in top_level_page.get("sub_pages", []):
-                # assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers) 
+                assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers) 
                 pass
     logging.info("\n========================================================")
     logging.info("END: Component-Based Template Assembly Traversal Complete")
