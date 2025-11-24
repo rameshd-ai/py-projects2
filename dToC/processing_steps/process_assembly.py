@@ -3,13 +3,16 @@ import time
 import logging
 import json
 import os
+import base64
 import csv 
 import re 
+import glob
+import requests
 import uuid # <-- Required for generating pageSectionGuid
 import zipfile # <-- Required for handling exported component files
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
-from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS
+from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi
 
 # ================= CONFIG/UTILITY DEFINITIONS (BASED ON USER PATTERN) =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -211,8 +214,14 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
         migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=2)
         migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=3)
 
+        # 2. Use the component_alias (string) for HTML generation
+        section_payload = generatecontentHtml(1, component_alias, pageSectionGuid)
+        
+    else:
+        # Failure: alias_result is an error dictionary
+        print(f"  [FAILURE] Component '{component}' Error: {alias_result.get('details')}")
 
-
+    return section_payload
 
 
 def add_component_to_page(page_name: str, component_name: str, alias: str):
@@ -229,6 +238,400 @@ def publish_page_immediately(page_name: str):
 
 
 
+
+
+
+def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id):
+    # Prepare payload for page creation
+    page_content_bytes = final_html.encode("utf-8")
+    base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
+    page_name = page_name + "-Demo"
+    payload = {
+        "pageId": 0,
+        "pageName": page_name,
+        "pageAlias": page_name.lower().replace(' ', '-'),
+        "pageContent": base64_encoded_content,
+        "isPageStudioPage": True,
+        "pageUpdatedBy": 0,
+        "isUniqueMetaContent": True,
+        "pageMetaTitle": DefaultTitle,
+        "pageMetaDescription": DefaultDescription,
+        "pageStopSEO": 1,
+        "pageCategoryId": 0,
+        "pageProfileId": 0,
+        "tags": ""
+        }
+    print(f"New page payload ready for '{page_name}'.")
+    data = CreatePage(base_url, headers, payload,page_template_id)
+    print(data)
+
+    # Access the 'pageId' key and print its value
+    page_id = data.get("PageId")
+
+    if page_id is not None:
+        print(f"The Page ID is: {page_id}")
+    else:
+        print("Error: 'pageId' key not found in the returned data.")
+
+
+    updatePageMapping(base_url, headers,page_id,site_id)
+    publishPage(base_url, headers,page_id,site_id)
+
+    
+    return data
+
+
+
+def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int,site_id: int):
+    """
+    Creates and sends the page mapping payload using data from all
+    ComponentRecordsTree.json files found in the migration output folders.
+    """
+
+    
+    # --- PHASE 1: COLLECT MAPPING DATA ---
+    all_mappings: List[Dict[str, Any]] = []
+    
+    # Construct the base path to search: output/site_id/mi-block-ID-*
+    search_path = os.path.join("output", site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
+    
+    print(f"🔍 Searching for migration files in: {os.path.join('output', site_id, 'mi-block-ID-*')}")
+    
+    # Use glob to find all matching ComponentRecordsTree.json files
+    for file_path in glob.glob(search_path):
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                records = data.get("componentRecordsTree", [])
+
+            # Find the main component record where ParentId is 0
+            main_component_record = next(
+                (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+                None
+            )
+
+            if main_component_record:
+                # Extract the required fields from the main component record
+                mapping_data = {
+                    "pageId": page_id,
+                    "vComponentAlias": main_component_record.get("component_alias"),
+                    "vComponentId": main_component_record.get("vComponentId", ""), 
+                    "contentEntityType": 2, # Fixed value
+                    "pageSectionGuid": main_component_record.get("sectionGuid")
+                }
+                
+                # Simple validation before adding
+                if mapping_data["vComponentAlias"] and mapping_data["pageSectionGuid"]:
+                    all_mappings.append(mapping_data)
+                    print(f"  ✅ Extracted mapping for alias: {mapping_data['vComponentAlias']}")
+                else:
+                    print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
+
+        except Exception as e:
+            print(f"  ❌ Error processing file {file_path}: {e}")
+
+    if not all_mappings:
+        print("\n[INFO] No valid component mappings were found. Aborting mapping update.")
+        return 0
+        
+    print(f"\n[INFO] Successfully collected {len(all_mappings)} mappings.")
+
+    # --- PHASE 2: CONSTRUCT API PAYLOAD ---
+    new_api_payload = all_mappings
+    
+    # --- PHASE 3: PRINT PAYLOAD AND CALL API ---
+    
+    print("\n--- 📑 FINAL API PAYLOAD ---")
+    print(json.dumps(new_api_payload, indent=2))
+    print("-----------------------------")
+
+    try:
+        # Call the API to update the page mapping
+        api_response_data = psMappingApi(base_url, headers, new_api_payload)
+        
+        # Check for the specific success string (Your original success logic)
+        if api_response_data == "Page Content Mappings updated successfully.":
+            print(f"\n🚀 **SUCCESS:** Page mapping updated successfully for Page ID {page_id}.")
+            print(f"API Response: {api_response_data}")
+            
+        else:
+            # Handle non-success responses that didn't raise an exception
+            print(f"\n🛑 **FAILURE:** Failed to update page mapping for Page ID {page_id}.")
+            print(f"API Response: {api_response_data}")
+
+    except Exception as e:
+        # This block now uses the correct variable name 'e' for the exception
+        # and prints the error message directly.
+        print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+        # Note: We don't set 'resp_success = False' here, as that variable is unused in this fixed block.
+
+    return len(new_api_payload)
+
+
+
+def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: int):
+    """
+    Constructs the necessary payload to publish all migrated components and the page itself,
+    then calls the publishing API.
+    """
+    
+    
+    # --- PHASE 1: COLLECT MIBLOCK PUBLISHING DATA ---
+    publish_payload: List[Dict[str, Any]] = []
+    
+    # Construct the base path to search: output/site_id/mi-block-ID-*
+    search_path = os.path.join("output", site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
+    
+    print(f"🔍 Searching for migrated component data in: {os.path.join('output', site_id, 'mi-block-ID-*')}")
+    
+    # Use glob to find all matching ComponentRecordsTree.json files
+    for file_path in glob.glob(search_path):
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                records = data.get("componentRecordsTree", [])
+
+            # Find the main component record where ParentId is 0
+            main_component_record = next(
+                (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+                None
+            )
+
+            if main_component_record:
+                # Extract the required fields (ComponentId and sectionGuid)
+                # NOTE: Using ComponentId as "id" and assuming it is the correct ID to publish.
+                component_id = str(main_component_record.get("ComponentId"))
+                section_guid = main_component_record.get("sectionGuid")
+                
+                # Simple validation before adding
+                if component_id and section_guid:
+                    miblock_entry = {
+                        "id": component_id,
+                        "type": "MIBLOCK",
+                        "pageSectionGuid": section_guid
+                    }
+                    publish_payload.append(miblock_entry)
+                    print(f"  ✅ Added MiBlock {component_id} for publishing.")
+                else:
+                    print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
+
+        except Exception as e:
+            print(f"  ❌ Error processing file {file_path}: {e}")
+
+    # --- PHASE 2: ADD PAGE PUBLISHING DATA ---
+    # Add the mandatory entry for the page itself
+    page_entry = {
+        "id": str(page_id),
+        "type": "PAGE"
+    }
+    publish_payload.append(page_entry)
+    print(f"\n  ✅ Added Page ID {page_id} for publishing.")
+    
+    if not publish_payload:
+        print("\n[INFO] No content was collected for publishing.")
+        return 0
+        
+    print(f"\n[INFO] Collected total of {len(publish_payload)} items for publishing.")
+
+    # --- PHASE 3: CONSTRUCT FINAL DICTIONARY PAYLOAD AND EXECUTE API CALL ---
+    
+    # Construct the final dictionary payload as per the API's requirement
+    final_api_payload = {
+        "publishData": publish_payload,
+        "syncPageForTranslationRequest": None
+    }
+    
+    print("\n--- 📑 FINAL PUBLISH PAYLOAD ---")
+    print(json.dumps(final_api_payload, indent=2))
+    print("---------------------------------")
+    
+    # Pass the final DICTIONARY payload to your publishing API function
+    try:
+        psPublishApi(base_url, headers, site_id, final_api_payload)
+    except Exception as e:
+        print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+
+    return len(publish_payload)
+
+
+
+def CreatePage(base_url, headers, payload,template_id):
+    """
+    Sends a POST request to create (save) a page using the MiBlock API.
+    Endpoint: /api/PageApi/SavePage?templateId={id}&directPublish={bool}
+
+    Args:
+        base_url (str): The root URL for the API (e.g., "https://example.com").
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+        payload (dict): The data payload for the page record to be created/saved.
+        template_id (int): The ID of the template to use for the new page.
+        direct_publish (bool): Whether to publish the page immediately after saving.
+
+    Returns:
+        dict: The JSON response body from the API call, or an error dictionary.
+    """
+    # Convert bool to lowercase string for URL parameter, as is common in Web APIs
+    direct_publish = True
+    direct_publish_str = str(direct_publish).lower()
+    
+    # 1. Construct the final API endpoint URL with query parameters
+    api_url = f"{base_url}/api/PageApi/SavePage?templateId={template_id}&directPublish={direct_publish_str}"
+
+    print(f"\n📡 Attempting POST to: {api_url}")
+    
+    try:
+        # 2. Send the POST request with the JSON payload
+        response = requests.post(
+            api_url,
+            headers=headers,
+            json=payload,  # 'json=payload' automatically sets Content-Type to application/json
+            timeout=10     # Set a timeout for the request
+        )
+        
+        # 3. Raise an exception for bad status codes (4xx or 5xx)
+        response.raise_for_status()
+
+        # 4. Return the successful JSON response content
+        return response.json()
+
+    except requests.exceptions.HTTPError as http_err:
+        # Check if response object exists and has status code
+        status_code = response.status_code if 'response' in locals() else 'N/A'
+        print(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
+        return {"error": "HTTP Error", "details": str(http_err), "status_code": status_code}
+    except requests.exceptions.ConnectionError as conn_err:
+        print(f"❌ Connection error occurred: {conn_err}")
+        return {"error": "Connection Error", "details": str(conn_err)}
+    except requests.exceptions.Timeout as timeout_err:
+        print(f"❌ Timeout error occurred: {timeout_err}")
+        return {"error": "Timeout Error", "details": str(timeout_err)}
+    except requests.exceptions.RequestException as req_err:
+        print(f"❌ An unexpected request error occurred: {req_err}")
+        return {"error": "Request Error", "details": str(req_err)}
+    except json.JSONDecodeError:
+        print(f"❌ Failed to decode JSON response. Response text: {response.text if 'response' in locals() else 'No response object.'}")
+        return {"error": "JSON Decode Error", "details": "Response was not valid JSON"}
+
+
+
+
+def load_records(file_path):
+    """MOCK: Loads records from the JSON file."""
+    # In a real scenario, this would handle file reading.
+    # We mock a simple failure or success.
+    if not os.path.exists(file_path):
+        return [], {}, True # Mock empty successful load
+    
+    # Mocking a load where `records` is the main list and other variables are secondary
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+        if isinstance(data, dict) and "records" in data:
+             return data["records"], data, False # records_data is the dict wrapper, original_wrapper_is_dict is False
+        elif isinstance(data, list):
+             return data, data, True # records_data is the list, original_wrapper_is_dict is True
+        else:
+             return [], data, False
+
+def migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level):
+    """
+    Generalized function to migrate components at any level (N > 0).
+    It processes records that have a 'parent_new_record_id' and are not 'isMigrated'.
+    Tags the next level of children (N+1) with the new parent ID only.
+    (Section GUID tagging logic has been removed.)
+    """
+    records_file_path = os.path.join(save_folder, "ComponentRecordsTree.json")
+    level_name = f"Level {level}"
+    print(f"\n[INFO] Starting {level_name} Component migration process...")
+    
+    try:
+        records, records_data, original_wrapper_is_dict = load_records(records_file_path)
+    except Exception as e:
+        print(f"    [ERROR] File processing failed: {e}. Skipping.")
+        return 0
+
+    migrated_count = 0
+    
+    # PHASE 1: IDENTIFY RECORDS FOR MIGRATION
+    records_to_migrate = [
+        r for r in records 
+        if isinstance(r, dict) and 
+           r.get("parent_new_record_id") is not None and 
+           not r.get("isMigrated")
+    ]
+    
+    if not records_to_migrate:
+        print(f"    [INFO] No {level_name} components found ready for migration.")
+        return 0
+
+    print(f"    [INFO] Found {len(records_to_migrate)} {level_name} component(s) to process.")
+    
+    
+    # PHASE 2: MIGRATE AND TAG CHILDREN (NEXT LEVEL)
+    for index, record in enumerate(records_to_migrate): 
+        
+        old_component_id = record.get("ComponentId") 
+        current_record_old_id = record.get("Id") # Unique old record ID
+        new_parent_id = record.get("parent_new_record_id") 
+            
+        print(f"    [START] Migrating {level_name} Record ID: {current_record_old_id} (Parent New ID: {new_parent_id})")
+        
+        # --- API Payload Construction ---
+        migrated_record_data = record.get("RecordJsonString")
+        try:
+            recordDataJson_str = migrated_record_data if isinstance(migrated_record_data, str) else json.dumps(migrated_record_data)
+        except TypeError:
+            print(f"    [ERROR] RecordJsonString for ID {current_record_old_id} is invalid for JSON serialization. Skipping record.")
+            continue
+
+        tags_value = record.get("tags", [])
+        if not isinstance(tags_value, list): tags_value = []
+
+        single_record = {
+            "componentId": old_component_id, 
+            "recordId": 0, 
+            "parentRecordId": new_parent_id, 
+            "recordDataJson": recordDataJson_str, 
+            "status": record.get("Status", True), 
+            "tags": tags_value,
+            "displayOrder": record.get("DisplayOrder", 0), 
+            "updatedBy": record.get("UpdatedBy", 0),
+            "pageSectionGuid": pageSectionGuid # GUID is still required here for the API call
+        }
+        api_payload = {"main_record_set": [single_record]}
+
+        # Call the API to create the record
+        resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload, level)
+        
+        # --- Extract New Record ID ---
+        new_record_id = None
+        if resp_success and isinstance(resp_data, dict) and (0 in resp_data or "0" in resp_data):
+            new_record_id = (resp_data.get(0) or resp_data.get("0")) + index + 1
+        
+        if new_record_id:
+            migrated_count += 1
+            print(f"    [SUCCESS] CMS Record Created. Old Record ID: {current_record_old_id} -> New RecordId: {new_record_id}")
+            
+            # A. Update the current record with its own new ID and mark as migrated
+            record["isMigrated"] = True
+            record["new_record_id"] = new_record_id
+            # REMOVED: record["sectionGuid"] = pageSectionGuid
+            
+            # B. Tag next-level children (N+1)
+            updated_children_count = 0
+            for child in records:
+                # Use the child's 'ParentId' (which links to the current record's 'Id')
+                if isinstance(child, dict) and child.get("ParentId") == current_record_old_id:
+                    child["parent_new_record_id"] = new_record_id
+                    # REMOVED: child["sectionGuid"] = pageSectionGuid 
+                    updated_children_count += 1
+            
+            if updated_children_count > 0:
+                print(f"    [TAGGED] Linked {updated_children_count} Level {level+1} record(s) to new parent ID {new_record_id}.")
+            
+        else:
+            print(f"    [WARNING] Failed to update CMS record for {level_name} ID {current_record_old_id}. Response: {resp_data}")
+
+    return migrated_count
 
 
 def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,component_alias,vComponentId):
@@ -632,68 +1035,133 @@ def createRecordsPayload(site_id, component_id):
 
 
 # ================= Core Processing Logic and Traversal =================
-
-# --- MODIFIED: _process_page_components now passes required API/context parameters ---
 def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     components = page_data.get('components', [])
+    meta_info = page_data.get('meta_info', {}) # Extract meta_info
+    
+    # 🌟 STEP 1: Get Template Name and Fetch Template ID
+    page_template_name = meta_info.get("PageTemplateName")
+    DefaultTitle = meta_info.get("DefaultTitle")
+    DefaultDescription = meta_info.get("DefaultDescription")
+    page_template_id = None
+    
+    if page_template_name:
+        try:
+            # 🌟 STEP 2: Call API to get the Template ID (Need to define get_page_template_id)
+            # Assuming get_page_template_id is available in the current scope
+            # Placeholder call:
+            template_info = GetTemplatePageByName(api_base_url, api_headers, page_template_name)
+            if template_info and isinstance(template_info, list) and 'PageId' in template_info[0]:
+                page_template_id = template_info[0]['PageId'] # Should be 418607
+            else:
+                # Handle error: log or raise exception
+                page_template_id = None
+
+                
+            logging.info(f"Retrieved Page Template ID {page_template_id} for template: {page_template_name}")
+        except Exception as e:
+            logging.error(f"Failed to retrieve page template ID for '{page_template_name}': {e}")
+            # Decide if you want to fail the page here or proceed with a default/None ID
+            pass
+    
+    if page_template_id is None:
+        logging.warning(f"Could not determine Page Template ID for page: {page_name}. Proceeding without it (or defaulting).")
+
+
+    # Initialize a list to hold the HTML sections for this page
+    page_sections_html = []
 
     if not components:
         status_entry = {
             "page": page_name, "component": "N/A", "level": page_level,
             "hierarchy": " > ".join(hierarchy + [page_name]), "available": False, 
             "status": "SKIPPED: Page had no components defined.",
-            "cms_component_name": "N/A" # Added for consistency
+            "cms_component_name": "N/A"
         }
-        ASSEMBLY_STATUS_LOG.append(status_entry)
+        ASSEMBLY_STATUS_LOG.append(status_entry) 
         logging.warning(f"Page **{page_name}** (Level {page_level}) has no components to process. Logged as skipped.")
         return
 
+    # --- ACCUMULATION PHASE: Component Loop ---
     for component_name in components:
         status_entry = {
             "page": page_name, "component": component_name, "level": page_level,
             "hierarchy": " > ".join(hierarchy + [page_name]), "available": False, 
             "status": "SKIPPED: Component not available.",
-            "cms_component_name": "N/A" # Initialize CMS name
+            "cms_component_name": "N/A"
         }
         
-        # Check availability using the cache - expects 4 return values now
         api_result = check_component_availability(component_name, component_cache)
         
         if api_result:
-            # Unpack the 4 values
             vComponentId, alias, componentId, cms_component_name = api_result 
             
-            logging.info(f"✅ Component '{component_name}' is available. Starting assembly for **{page_name}**.")
+            logging.info(f"✅ Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
             
             status_entry["available"] = True
-            status_entry["status"] = "SUCCESS: Assembled and marked for publishing."
-            status_entry["cms_component_name"] = cms_component_name # Store the CMS name
+            status_entry["cms_component_name"] = cms_component_name
+            section_payload = None  # Initialize payload
             
-            # The requested file/API/polling logic is only executed for "Weddings" page
+            # CONDITION: Only call add_records_for_page for the 'Weddings' page
             if page_name == "Weddings":
-                # --- PASSED NEW PARAMETERS HERE including the alias ---
                 try:
-                    add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
-                    add_component_to_page(page_name, component_name, alias)
-                    do_mapping(page_name, component_name)
-                    publish_page_immediately(page_name)
+                    # Call function to get section payload (HTML snippet)
+                    section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+                    status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
                 except Exception as e:
-                    logging.error(f"Assembly failed for {page_name}/{component_name} due to component processing error: {e}")
-                    status_entry["status"] = f"FAILED: Component processing error: {type(e).__name__}"
+                    logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
+                    status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
                     status_entry["available"] = False
-                    # Note: If an error occurs here, the loop continues to the next component/page.
             else:
-                 # Normal flow for pages other than "Weddings" (or if you wanted to replicate the normal flow here)
-                 add_component_to_page(page_name, component_name, alias)
-                 do_mapping(page_name, component_name)
-                 publish_page_immediately(page_name)
-
+                # Data retrieval/record adding is skipped for non-Weddings pages
+                logging.info(f"Skipping record addition for non-Weddings page: {page_name}/{component_name}.")
+                status_entry["status"] = "SUCCESS: Component available, data retrieval skipped (non-Weddings page)."
+                section_payload = "" # Append empty string
+            
+            # Append the payload (either retrieved content or an empty string)
+            if section_payload is not None:
+                page_sections_html.append(section_payload)
+            
         else:
-            logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping assembly.")
-            # Status entry remains with "SKIPPED" and "N/A" for cms_component_name
+            logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
         
         ASSEMBLY_STATUS_LOG.append(status_entry)
+
+    # --- FINALIZATION PHASE (Executed once per page) ---
+    
+    # Check if any sections were successfully retrieved
+    if page_sections_html and any(page_sections_html): 
+        
+        # Concatenate all component HTML sections in order
+        all_sections_concatenated = "".join(page_sections_html)
+        
+        # Define HTML wrappers
+        htmlPrefix = '<div class="box2" id="data_page_content"><div id="pagestudio">'
+        htmlPostfix = "</div></div>"
+        
+        # Add the prefix and postfix wrappers
+        final_html = htmlPrefix + all_sections_concatenated + htmlPostfix
+        
+        # 📢 ADDED PRINT STATEMENT HERE 📢
+        print("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
+        print(final_html)
+        print("--------------------------------------\n")
+        
+        # Apply the conditional execution for the "Weddings" page
+        if page_name == "Weddings":
+            logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
+            # 🌟 STEP 3: Pass the page_template_id to pageAction
+            pageAction(api_base_url, api_headers, final_html, page_name, page_template_id,DefaultTitle,DefaultDescription,site_id)
+        else:
+             logging.info(f"Final assembly complete for **{page_name}** but skipping pageAction (non-Weddings page).")
+    else:
+        if page_name == "Weddings":
+             logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page.")
+        else:
+             logging.info(f"Page **{page_name}** (non-Weddings) completed component checks but assembled an empty page, as expected.")
+        return
+
 
 # --- TRAVERSAL FUNCTIONS TO PASS CACHE AND NEW PARAMS ---
 

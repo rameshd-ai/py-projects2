@@ -869,3 +869,138 @@ def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1
             return {"error": "JSON Decode Error", "details": "Response was not valid JSON", "page": current_page}
         
     return all_components
+
+
+
+
+    
+def generatecontentHtml(dataScope, vcompAlias, pageSectionGuid,section_position=0):
+    if dataScope == 1:
+        # print("independent")
+        htmlContent = f"""
+        <div class="VComponent" data-created_by="page-studio"
+            data-scope="{dataScope}" data-section_guid="{pageSectionGuid}"
+            data-section_position="{section_position}"
+            data-vcomponent_alias="{vcompAlias}"
+            data-version="3.0" isdeleted="false">
+                <div class="inlineme" contenteditable="false">
+                    %%vcomponent-{vcompAlias}[sectionguid:{pageSectionGuid}]%%
+                </div>
+        </div>
+        """
+       
+    elif dataScope == 3:
+        # print("profile level")
+        htmlContent = f"""
+        <div class="VComponent" data-created_by="page-studio"
+            data-scope="{dataScope}" data-section_guid="{pageSectionGuid}"
+            data-section_position="{section_position}"
+            data-vcomponent_alias="{vcompAlias}"
+            data-version="3.0" isdeleted="false">
+            <div class="profile-content" contenteditable="false">
+                %%vcomponent-{vcompAlias}%%
+            </div>
+        </div>
+        """
+ 
+    elif dataScope == 13:
+        # print("Forms")
+        htmlContent = f"""
+        <div class="VComponent" data-created_by="page-studio"
+            data-scope="{dataScope}" data-section_guid="{pageSectionGuid}"
+            data-section_position="{section_position}"
+            data-vcomponent_alias="{vcompAlias}"
+            data-version="3.0" isdeleted="false">
+            <div class="profile-content" contenteditable="false">
+                %%vcomponent-{vcompAlias}%%
+            </div>
+        </div>
+        """
+ 
+    else:
+        # print("site level")
+        htmlContent = f"""
+        <div class="VComponent" data-created_by="page-studio"
+            data-scope="{dataScope}" data-section_guid="{pageSectionGuid}"
+            data-section_position="{section_position}"
+            data-vcomponent_alias="{vcompAlias}"
+            data-version="3.0" isdeleted="false">
+            <div class="site-content" contenteditable="false">
+                %%vcomponent-{vcompAlias}%%
+            </div>
+        </div>
+        """
+    # Convert HTML content to Base64
+    # htmlContent = base64.b64encode(htmlContent.encode('utf-8')).decode('utf-8')
+ 
+    return htmlContent
+
+
+
+
+
+
+def GetTemplatePageByName(base_url, headers, template_page_name):
+    """
+    Calls the GetTemplatePageList API, searches the 'TemplatePages' array in the response,
+    and returns matching template page details based on the template page name.
+
+    Endpoint:
+        /api/PageApi/GetTemplatePageList?ms_cms_clientapp=ProgrammingApp
+
+    Args:
+        base_url (str): The base Site URL (e.g., https://example.com).
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+        template_page_name (str): The 'PageName' or partial match of it (e.g. "Base Layout Page").
+
+    Returns:
+        list: A list of matching template page dictionaries.
+        dict: Error dictionary if request fails or no matching pages found.
+    """
+
+    api_url = f"{base_url}/api/PageApi/GetTemplatePageList?ms_cms_clientapp=ProgrammingApp"
+    response = None
+
+    try:
+        # print(f"\n📡 Attempting GET request to retrieve template pages from: {api_url}")
+
+        # 1. Send GET request
+        response = requests.get(api_url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        # 2. Parse response JSON
+        response_data = response.json()
+
+        # 3. Extract TemplatePages array
+        template_pages = response_data.get("TemplatePages", [])
+
+        if not template_pages:
+            return {
+                "error": "No Templates Returned",
+                "details": "TemplatePages array was empty or missing in API response."
+            }
+
+        # 4. Perform case-insensitive partial match filter
+        matched_pages = [
+            page for page in template_pages
+            if template_page_name.lower() in page.get("PageName", "").lower()
+        ]
+
+        if not matched_pages:
+            return {
+                "error": "Template Not Found",
+                "details": f"No page name contains '{template_page_name}'."
+            }
+
+        # print(f"✅ Found {len(matched_pages)} match(es) for '{template_page_name}'.")
+        return matched_pages
+
+    except requests.exceptions.RequestException as err:
+        status_code = response.status_code if response is not None else "N/A"
+        print(f"❌ API Request Error in GetTemplatePageByName: {err} (Status Code: {status_code})")
+        return {"error": "Request Error", "details": str(err), "status_code": status_code}
+
+    except json.JSONDecodeError:
+        response_text = response.text if response is not None else "No response object"
+        print(f"❌ JSON Decode Error in GetTemplatePageByName. Response body: {response_text}")
+        return {"error": "JSON Decode Error", "details": "Invalid JSON response received from API"}
