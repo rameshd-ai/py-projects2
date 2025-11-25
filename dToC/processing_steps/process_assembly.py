@@ -288,7 +288,7 @@ def publish_page_immediately(page_name: str):
 
 
 
-def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id):
+def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id):
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
@@ -304,7 +304,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         "pageMetaTitle": DefaultTitle,
         "pageMetaDescription": DefaultDescription,
         "pageStopSEO": 1,
-        "pageCategoryId": 0,
+        "pageCategoryId": category_id,
         "pageProfileId": 0,
         "tags": ""
         }
@@ -1199,7 +1199,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         if page_name == "Weddings":
             logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
             # 🌟 STEP 3: Pass the page_template_id to pageAction
-            pageAction(api_base_url, api_headers, final_html, page_name, page_template_id,DefaultTitle,DefaultDescription,site_id)
+            pageAction(api_base_url, api_headers, final_html, page_name, page_template_id,DefaultTitle,DefaultDescription,site_id,category_id
         else:
              logging.info(f"Final assembly complete for **{page_name}** but skipping pageAction (non-Weddings page).")
     else:
@@ -1227,6 +1227,23 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
 
 def assemble_page_templates_level2(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
+    
+    # Fetch categories once at the beginning
+    categories = GetPageCategoryList(api_base_url, api_headers)
+
+    if isinstance(categories, dict) and categories.get("error"):
+        logging.error("❌ Unable to load page categories. Aborting level1 assembly.")
+        return
+
+    # Search category ID by name
+    for cat in categories:
+        if cat.get("CategoryName") == current_page_name:
+            category_id = cat.get("CategoryId", 0)
+            logging.info(f"✅ MATCHED Category '{current_page_name}' → CategoryId = {category_id}")
+            break
+    else:
+        logging.warning(f"⚠ No matching category found for page '{current_page_name}', using CategoryId = 0")
+    
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     new_hierarchy = hierarchy + [current_page_name]
@@ -1234,31 +1251,80 @@ def assemble_page_templates_level2(page_data: Dict[str, Any], page_level: int, h
     for sub_page_data in page_data.get("sub_pages", []):
         assemble_page_templates_level3(sub_page_data, new_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers)
 
+# def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
+#     logging.info("\n========================================================")
+#     logging.info("START: Component-Based Template Assembly (Level 1 Traversal)")
+#     logging.info("========================================================")
+#     pages = processed_json.get('pages', [])
+#     if not pages:
+#         logging.warning("No 'pages' list found in the processed JSON. Aborting assembly.")
+#         return
+#     initial_level = 1
+#     initial_hierarchy: List[str] = []
+#     for top_level_page in pages:
+#         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
+#         if current_page_name == "Weddings":
+#             logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
+#             alldata = GetPageCategoryList(api_base_url, api_headers)
+#             category_id = 0
+#             _process_page_components(top_level_page, initial_level, initial_hierarchy, component_cache, api_base_url, site_id, api_headers,category_id)
+#             next_level = initial_level + 1
+#             new_hierarchy = initial_hierarchy + [current_page_name]
+#             for sub_page_data in top_level_page.get("sub_pages", []):
+#                 assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers) 
+#                 pass
+#     logging.info("\n========================================================")
+#     logging.info("END: Component-Based Template Assembly Traversal Complete")
+#     logging.info("========================================================")
+
+
 def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     logging.info("\n========================================================")
     logging.info("START: Component-Based Template Assembly (Level 1 Traversal)")
     logging.info("========================================================")
+    
     pages = processed_json.get('pages', [])
     if not pages:
         logging.warning("No 'pages' list found in the processed JSON. Aborting assembly.")
         return
+
+    
+
     initial_level = 1
     initial_hierarchy: List[str] = []
+
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
-        if current_page_name == "Weddings":
-            logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
-            alldata = GetPageCategoryList(api_base_url, api_headers)
-            category_id = 0
-            _process_page_components(top_level_page, initial_level, initial_hierarchy, component_cache, api_base_url, site_id, api_headers,category_id)
-            next_level = initial_level + 1
-            new_hierarchy = initial_hierarchy + [current_page_name]
-            for sub_page_data in top_level_page.get("sub_pages", []):
-                assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers) 
-                pass
+
+        logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
+
+        # Default category ID
+        category_id = 0
+
+        # Call processor for page
+        _process_page_components(
+            top_level_page,
+            initial_level,
+            initial_hierarchy,
+            component_cache,
+            api_base_url,
+            site_id,
+            api_headers,
+            category_id  # passing resolved category id
+        )
+
+        next_level = initial_level + 1
+        new_hierarchy = initial_hierarchy + [current_page_name]
+
+        # Go to sub-pages (level2)
+        for sub_page_data in top_level_page.get("sub_pages", []):
+            # assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers)
+            pass
+
     logging.info("\n========================================================")
     logging.info("END: Component-Based Template Assembly Traversal Complete")
     logging.info("========================================================")
+
 
 
 # ================= Main Entry Function (Uses Dynamic Config) =================
