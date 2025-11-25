@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 867378,
+            "FormatName": "Venue-chart-multi-color",
+            "FormatKey": "venue-chart-multi-color",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each ComponentRecordJson.venue-chart-multi-color}}\n<!-- Table 5 Starts - not used in any page -->\n<div class=\"table5-widget \n        {{IfCond data.set-top-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-top {{/IfCond}} \n        {{IfCond data.set-bottom-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-bottom {{/IfCond}} {{IfCond data.set-alternate-table-row-color[].0 '=' 'Yes'}} alternate-table-row-color {{/IfCond}} \n    \">\n    <div class=\"uk-container\">\n        <div class=\"table5-widget__container dynamiccomponenteditenable\" %%componentRecordEditable%%>\n            <div class=\"table5-widget__col\">\n                <!-- bg transparent Condition apply -->\n                <div class=\"table5-col__content\">\n                    <h5 class=\"title title--m table5-widget__maintitle\" tabindex=\"0\">{{data.title}}</h5>\n                    {{IfCond data.description 'notempty' ''}}\n                    <div class=\"text-editor uk-margin-remove-bottom table5-widget__desc\" tabindex=\"0\">\n                        {{{data.description}}}\n                    </div>\n                    {{/IfCond}}\n                </div>\n                {{IfMultipleOrCond data.primary-button-link 'notempty' '' data.secondary-button-link 'notempty' ''}}\n                <div class=\"table5-col__button\">\n                    <div class=\"button-combo\">\n                        {{IfCond data.primary-button-link 'notempty' '' 'and' data.primary-button-text 'notempty' ''}}\n                            <a href=\"{{data.primary-button-link}}\" class=\"uk-button uk-button-primary\">{{data.primary-button-text}} <span class=\"sr-only\">for {{data.title}}</span></a>\n                        {{/IfCond}}\n\n                        {{IfCond data.secondary-button-link 'notempty' '' 'and' data.secondary-button-text 'notempty' ''}}\n                            <a href=\"{{data.secondary-button-link}}\" class=\"uk-button uk-button-default\">{{data.secondary-button-text}} <span class=\"sr-only\">for {{data.title}}</span></a>\n                        {{/IfCond}}\n                    </div>\n                </div>\n                {{/IfMultipleOrCond}}\n            </div>\n            {{IfCond data.table 'notempty' ''}}\n            <div class=\"uk-overflow-auto table5-col__data\" tabindex=\"0\">\n                {{{data.table}}}\n            </div>\n            {{/IfCond}}\n        </div>\n    </div>\n</div>\n<!-- Table 5 Ends -->\n{{/each}}",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

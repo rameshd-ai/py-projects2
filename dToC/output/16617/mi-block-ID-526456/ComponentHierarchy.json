@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 526456,
+        "type": "MainComponent",
+        "componentName": "Snippet-with-Small-Image"
+    },
+    {
+        "componentId": 526457,
+        "type": "Level1Child",
+        "componentName": "Snippet with Small Image Items"
+    }
+]

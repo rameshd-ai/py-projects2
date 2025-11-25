@@ -309,6 +309,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         "tags": ""
         }
     print(f"New page payload ready for '{page_name}'.")
+    print(f"New page payload ready for '{payload}'.")
     data = CreatePage(base_url, headers, payload,page_template_id)
     print(data)
 
@@ -1082,10 +1083,139 @@ def createRecordsPayload(site_id, component_id):
 
 
 # ================= Core Processing Logic and Traversal =================
-def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str],category_id: int):
+# def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str],category_id: int):
+#     page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+#     components = page_data.get('components', [])
+#     meta_info = page_data.get('meta_info', {}) # Extract meta_info
+    
+#     # 🌟 STEP 1: Get Template Name and Fetch Template ID
+#     page_template_name = meta_info.get("PageTemplateName")
+#     DefaultTitle = meta_info.get("DefaultTitle")
+#     DefaultDescription = meta_info.get("DefaultDescription")
+#     page_template_id = None
+    
+#     if page_template_name:
+#         try:
+#             # 🌟 STEP 2: Call API to get the Template ID (Need to define get_page_template_id)
+#             # Assuming get_page_template_id is available in the current scope
+#             # Placeholder call:
+#             template_info = GetTemplatePageByName(api_base_url, api_headers, page_template_name)
+#             if template_info and isinstance(template_info, list) and 'PageId' in template_info[0]:
+#                 page_template_id = template_info[0]['PageId'] # Should be 418607
+#             else:
+#                 # Handle error: log or raise exception
+#                 page_template_id = None
+
+                
+#             logging.info(f"Retrieved Page Template ID {page_template_id} for template: {page_template_name}")
+#         except Exception as e:
+#             logging.error(f"Failed to retrieve page template ID for '{page_template_name}': {e}")
+#             # Decide if you want to fail the page here or proceed with a default/None ID
+#             pass
+    
+#     if page_template_id is None:
+#         logging.warning(f"Could not determine Page Template ID for page: {page_name}. Proceeding without it (or defaulting).")
+
+
+#     # Initialize a list to hold the HTML sections for this page
+#     page_sections_html = []
+
+#     if not components:
+#         status_entry = {
+#             "page": page_name, "component": "N/A", "level": page_level,
+#             "hierarchy": " > ".join(hierarchy + [page_name]), "available": False, 
+#             "status": "SKIPPED: Page had no components defined.",
+#             "cms_component_name": "N/A"
+#         }
+#         ASSEMBLY_STATUS_LOG.append(status_entry) 
+#         logging.warning(f"Page **{page_name}** (Level {page_level}) has no components to process. Logged as skipped.")
+#         return
+
+#     # --- ACCUMULATION PHASE: Component Loop ---
+#     for component_name in components:
+#         status_entry = {
+#             "page": page_name, "component": component_name, "level": page_level,
+#             "hierarchy": " > ".join(hierarchy + [page_name]), "available": False, 
+#             "status": "SKIPPED: Component not available.",
+#             "cms_component_name": "N/A"
+#         }
+        
+#         api_result = check_component_availability(component_name, component_cache)
+        
+#         if api_result:
+#             vComponentId, alias, componentId, cms_component_name = api_result 
+            
+#             logging.info(f"✅ Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
+            
+#             status_entry["available"] = True
+#             status_entry["cms_component_name"] = cms_component_name
+#             section_payload = None  # Initialize payload
+            
+#             # CONDITION: Only call add_records_for_page for the 'Weddings' page
+#             if page_name == "Weddings":
+#                 try:
+#                     # Call function to get section payload (HTML snippet)
+#                     section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+#                     status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
+#                 except Exception as e:
+#                     logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
+#                     status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
+#                     status_entry["available"] = False
+#             else:
+#                 # Data retrieval/record adding is skipped for non-Weddings pages
+#                 logging.info(f"Skipping record addition for non-Weddings page: {page_name}/{component_name}.")
+#                 status_entry["status"] = "SUCCESS: Component available, data retrieval skipped (non-Weddings page)."
+#                 section_payload = "" # Append empty string
+            
+#             # Append the payload (either retrieved content or an empty string)
+#             if section_payload is not None:
+#                 page_sections_html.append(section_payload)
+            
+#         else:
+#             logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
+        
+#         ASSEMBLY_STATUS_LOG.append(status_entry)
+
+#     # --- FINALIZATION PHASE (Executed once per page) ---
+    
+#     # Check if any sections were successfully retrieved
+#     if page_sections_html and any(page_sections_html): 
+        
+#         # Concatenate all component HTML sections in order
+#         all_sections_concatenated = "".join(page_sections_html)
+        
+#         # Define HTML wrappers
+#         htmlPrefix = '<div class="box2" id="data_page_content"><div id="pagestudio">'
+#         htmlPostfix = "</div></div>"
+        
+#         # Add the prefix and postfix wrappers
+#         final_html = htmlPrefix + all_sections_concatenated + htmlPostfix
+        
+#         # 📢 ADDED PRINT STATEMENT HERE 📢
+#         print("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
+#         print(final_html)
+#         print("--------------------------------------\n")
+        
+#         # Apply the conditional execution for the "Weddings" page
+#         if page_name == "Weddings":
+#             logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
+#             # 🌟 STEP 3: Pass the page_template_id to pageAction
+#             pageAction(api_base_url, api_headers, final_html, page_name, page_template_id,DefaultTitle,DefaultDescription,site_id,category_id)
+#         else:
+#              logging.info(f"Final assembly complete for **{page_name}** but skipping pageAction (non-Weddings page).")
+#     else:
+#         if page_name == "Weddings":
+#              logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page.")
+#         else:
+#              logging.info(f"Page **{page_name}** (non-Weddings) completed component checks but assembled an empty page, as expected.")
+#         return
+
+
+def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], category_id: int):
+    
     page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     components = page_data.get('components', [])
-    meta_info = page_data.get('meta_info', {}) # Extract meta_info
+    meta_info = page_data.get('meta_info', {}) 
     
     # 🌟 STEP 1: Get Template Name and Fetch Template ID
     page_template_name = meta_info.get("PageTemplateName")
@@ -1095,21 +1225,14 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
     
     if page_template_name:
         try:
-            # 🌟 STEP 2: Call API to get the Template ID (Need to define get_page_template_id)
-            # Assuming get_page_template_id is available in the current scope
-            # Placeholder call:
+            # 🌟 STEP 2: Call API to get the Template ID
             template_info = GetTemplatePageByName(api_base_url, api_headers, page_template_name)
             if template_info and isinstance(template_info, list) and 'PageId' in template_info[0]:
-                page_template_id = template_info[0]['PageId'] # Should be 418607
-            else:
-                # Handle error: log or raise exception
-                page_template_id = None
-
-                
+                page_template_id = template_info[0]['PageId'] 
+            
             logging.info(f"Retrieved Page Template ID {page_template_id} for template: {page_template_name}")
         except Exception as e:
             logging.error(f"Failed to retrieve page template ID for '{page_template_name}': {e}")
-            # Decide if you want to fail the page here or proceed with a default/None ID
             pass
     
     if page_template_id is None:
@@ -1130,7 +1253,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         logging.warning(f"Page **{page_name}** (Level {page_level}) has no components to process. Logged as skipped.")
         return
 
-    # --- ACCUMULATION PHASE: Component Loop ---
+    # --- ACCUMULATION PHASE: Component Loop (Removed 'Weddings' Condition) ---
     for component_name in components:
         status_entry = {
             "page": page_name, "component": component_name, "level": page_level,
@@ -1140,6 +1263,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         }
         
         api_result = check_component_availability(component_name, component_cache)
+        section_payload = None
         
         if api_result:
             vComponentId, alias, componentId, cms_component_name = api_result 
@@ -1148,24 +1272,17 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             
             status_entry["available"] = True
             status_entry["cms_component_name"] = cms_component_name
-            section_payload = None  # Initialize payload
             
-            # CONDITION: Only call add_records_for_page for the 'Weddings' page
-            if page_name == "Weddings":
-                try:
-                    # Call function to get section payload (HTML snippet)
-                    section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
-                    status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
-                except Exception as e:
-                    logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
-                    status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
-                    status_entry["available"] = False
-            else:
-                # Data retrieval/record adding is skipped for non-Weddings pages
-                logging.info(f"Skipping record addition for non-Weddings page: {page_name}/{component_name}.")
-                status_entry["status"] = "SUCCESS: Component available, data retrieval skipped (non-Weddings page)."
-                section_payload = "" # Append empty string
-            
+            # CONDITION REMOVED: Now executes content retrieval for ALL pages
+            try:
+                # Call function to get section payload (HTML snippet)
+                section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+                status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
+            except Exception as e:
+                logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
+                status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
+                status_entry["available"] = False
+
             # Append the payload (either retrieved content or an empty string)
             if section_payload is not None:
                 page_sections_html.append(section_payload)
@@ -1175,9 +1292,9 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         
         ASSEMBLY_STATUS_LOG.append(status_entry)
 
-    # --- FINALIZATION PHASE (Executed once per page) ---
+    # --- FINALIZATION PHASE (Executed once per page - Removed 'Weddings' Condition) ---
     
-    # Check if any sections were successfully retrieved
+    # Check if any sections were successfully retrieved and contain data
     if page_sections_html and any(page_sections_html): 
         
         # Concatenate all component HTML sections in order
@@ -1190,25 +1307,20 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         # Add the prefix and postfix wrappers
         final_html = htmlPrefix + all_sections_concatenated + htmlPostfix
         
-        # 📢 ADDED PRINT STATEMENT HERE 📢
-        print("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
-        print(final_html)
-        print("--------------------------------------\n")
+        # 📢 DEBUG PRINT STATEMENT REMAINS (use logging.info for production) 📢
+        logging.info("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
+        logging.info(final_html)
+        logging.info("--------------------------------------\n")
         
-        # Apply the conditional execution for the "Weddings" page
-        if page_name == "Weddings":
-            logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
-            # 🌟 STEP 3: Pass the page_template_id to pageAction
-            pageAction(api_base_url, api_headers, final_html, page_name, page_template_id,DefaultTitle,DefaultDescription,site_id,category_id
-        else:
-             logging.info(f"Final assembly complete for **{page_name}** but skipping pageAction (non-Weddings page).")
+        # CONDITION REMOVED: Now calls pageAction for ALL pages with content
+        logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
+        # 🌟 STEP 3: Pass the page_template_id to pageAction
+        pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id)
+        
     else:
-        if page_name == "Weddings":
-             logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page.")
-        else:
-             logging.info(f"Page **{page_name}** (non-Weddings) completed component checks but assembled an empty page, as expected.")
+        # CONDITION REMOVED: Now logs uniformly
+        logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page. Skipping pageAction.")
         return
-
 
 # --- TRAVERSAL FUNCTIONS TO PASS CACHE AND NEW PARAMS ---
 
@@ -1216,41 +1328,145 @@ def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, h
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
 
-def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
+def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str],parent_page_name: str):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
+    matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+
+    logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
+    
+    # Fetch categories list (already implemented in the provided GetPageCategoryList)
+    categories = GetPageCategoryList(api_base_url, api_headers)
+    logging.info(f"API categories loaded: {categories}")
+    
+    # Check for API errors
+    if isinstance(categories, dict) and categories.get("error"):
+        logging.error(f"❌ Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
+        return
+
+    # Category Matching Logic
+    normalized_page_name = normalize_page_name(parent_page_name)
+    
+    # Search category ID by normalized name for robust matching
+    for cat in categories:
+        cat_name = cat.get("CategoryName")
+        
+        # NOTE: normalize_page_name must be available/imported
+        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+            matched_category_id = cat.get("CategoryId", 0)
+            logging.info(f"✅ MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
+            # Exit loop immediately after finding a match
+            break 
+    else:
+        # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
+        logging.warning(f"⚠ No matching category found for page '{current_page_name}', using CategoryId = 0")
+        # matched_category_id remains 0, as initialized above.
+    
+    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,matched_category_id)
+    
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
     for sub_page_data in page_data.get("sub_pages", []):
         assemble_page_templates_level4(sub_page_data, new_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers)
 
-def assemble_page_templates_level2(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
-    logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
-    
-    # Fetch categories once at the beginning
-    categories = GetPageCategoryList(api_base_url, api_headers)
 
+def assemble_page_templates_level2(
+    page_data: Dict[str, Any], 
+    page_level: int, 
+    hierarchy: List[str], 
+    component_cache: List[Dict[str, Any]], 
+    api_base_url: str, 
+    site_id: int, 
+    api_headers: Dict[str, str],
+    parent_page_name: str
+):
+    # Initialize the ID variable at the start. Default to 0 if no match is found.
+    matched_category_id = 0
+    current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+
+    logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
+    
+    # Fetch categories list (already implemented in the provided GetPageCategoryList)
+    categories = GetPageCategoryList(api_base_url, api_headers)
+    logging.info(f"API categories loaded: {categories}")
+    
+    # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
-        logging.error("❌ Unable to load page categories. Aborting level1 assembly.")
+        logging.error(f"❌ Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
 
-    # Search category ID by name
-    for cat in categories:
-        if cat.get("CategoryName") == current_page_name:
-            category_id = cat.get("CategoryId", 0)
-            logging.info(f"✅ MATCHED Category '{current_page_name}' → CategoryId = {category_id}")
-            break
-    else:
-        logging.warning(f"⚠ No matching category found for page '{current_page_name}', using CategoryId = 0")
+    # Category Matching Logic
+    normalized_page_name = normalize_page_name(parent_page_name)
     
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
-    current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+    # Search category ID by normalized name for robust matching
+    for cat in categories:
+        cat_name = cat.get("CategoryName")
+        
+        # NOTE: normalize_page_name must be available/imported
+        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+            matched_category_id = cat.get("CategoryId", 0)
+            logging.info(f"✅ MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
+            # Exit loop immediately after finding a match
+            break 
+    else:
+        # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
+        logging.warning(f"⚠ No matching category found for page '{current_page_name}', using CategoryId = 0")
+        # matched_category_id remains 0, as initialized above.
+
+    # The variable 'matched_category_id' now holds the correct ID (or 0 if none was found).
+    _process_page_components(
+        page_data, 
+        page_level, 
+        hierarchy, 
+        component_cache, 
+        api_base_url, 
+        site_id, 
+        api_headers,
+        category_id=matched_category_id # <-- CORRECTED
+    )
+    
+    # --- Recursive Call Setup ---
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
+    
     for sub_page_data in page_data.get("sub_pages", []):
-        assemble_page_templates_level3(sub_page_data, new_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers)
+        assemble_page_templates_level3(
+            sub_page_data, 
+            new_level, 
+            new_hierarchy, 
+            component_cache, 
+            api_base_url, 
+            site_id, 
+            api_headers
+        )
 
+def normalize_page_name(name: str) -> str:
+    """
+    Normalizes a page or category name for robust, case-insensitive, and 
+    symbol-agnostic fuzzy matching.
+
+    Steps:
+    1. Converts to lowercase.
+    2. Strips leading/trailing whitespace.
+    3. Removes all non-alphanumeric characters (keeps letters and numbers only).
+
+    Args:
+        name (str): The original page or category name string.
+
+    Returns:
+        str: The normalized string, suitable for dictionary keys or comparison.
+    """
+    if not name:
+        return ""
+    
+    # 1. Strip whitespace and convert to lowercase
+    normalized = name.strip().lower()
+    
+    # 2. Remove all characters that are NOT alphanumeric (a-z, 0-9)
+    # This turns "Meetings & Events" into "meetingsandevents"
+    normalized = re.sub(r'[^a-z0-9]', '', normalized)
+    
+    return normalized
 # def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
 #     logging.info("\n========================================================")
 #     logging.info("START: Component-Based Template Assembly (Level 1 Traversal)")
@@ -1315,11 +1531,11 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 
         next_level = initial_level + 1
         new_hierarchy = initial_hierarchy + [current_page_name]
-
+        parent_page_name = current_page_name
         # Go to sub-pages (level2)
         for sub_page_data in top_level_page.get("sub_pages", []):
-            # assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers)
-            pass
+            assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers,parent_page_name)
+
 
     logging.info("\n========================================================")
     logging.info("END: Component-Based Template Assembly Traversal Complete")
@@ -1330,7 +1546,8 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 # ================= Main Entry Function (Uses Dynamic Config) =================
 
 def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *args, **kwargs) -> Dict[str, Any]:
-    
+    logging.info("========================================================")
+    logging.info("Started Assembly")
     # --- 1. Setup/File Extraction ---
     data_to_process = processed_json
     if len(args) > 1 and isinstance(args[1], dict):

@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 306404,
+            "ResourceTypeName": "Layout-212-Zigzag",
+            "ResourceTypeFolderName": "layout-212-zigzag",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 1,
+            "ResourceWidth": 650,
+            "ResourceHeight": 500,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 1,
+            "TabletResourceWidth": 650,
+            "TabletResourceHeight": 500,
+            "MobileResourceWidth": 500,
+            "MobileResourceHeight": 385,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 100,
+            "MobileImageQuality": 85,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

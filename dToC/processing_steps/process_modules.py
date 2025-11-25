@@ -63,10 +63,10 @@ def find_processed_json_filepath(file_prefix: str) -> str | None:
         # Use the isolated base_prefix for matching
         if filename.startswith(base_prefix) and filename.endswith("_simplified.json"):
             filepath = os.path.join(UPLOAD_FOLDER, filename)
-            # print(f"Module Processor: ✅ Match found: {filename}")
+            print(f"Module Processor: ✅ Match found: {filename}")
             return filepath
             
-    # print(f"Module Processor: ❌ No processed JSON file found matching the criteria for prefix '{base_prefix}'.")
+    print(f"Module Processor: ❌ No processed JSON file found matching the criteria for prefix '{base_prefix}'.")
     return None
 
 # --- UTILITY FUNCTION TO SAVE PROCESSED JSON (Uses dynamic path) ---
@@ -82,7 +82,7 @@ def save_processed_json(file_prefix: str, data: Dict[str, Any]) -> bool:
     try:
         with open(filepath, "w") as f:
             json.dump(data, f, indent=4)
-        # print(f"✅ Successfully saved updated processed JSON to {filepath}")
+        print(f"✅ Successfully saved updated processed JSON to {filepath}")
         return True
     except Exception as e:
         print(f"Module Processor: Error saving processed JSON file: {e}")
@@ -270,9 +270,9 @@ def run_module_processing_step(
     elif processed_json:
         print("No new category information was added to the processed JSON, skipping save.")
 
-    # print(f"\n--- API Fetch Results ---")
-    # print(f"Total items fetched: {len(module_list)}")
-    # print("--------------------------\n")
+    print(f"\n--- API Fetch Results ---")
+    print(f"Total items fetched: {len(module_list)}")
+    print("--------------------------\n")
     
     return {
         "modules_fetched_count": len(module_list),

@@ -63,6 +63,7 @@ def generate_cms_token(url, profile_alias):
         return None
 
 def export_mi_block_component(base_url,componentId,siteId, headers):
+    time.sleep(2)
     """
     Makes an API call to export a Mi-block component.
 
@@ -193,7 +194,7 @@ def getComponentDetailsUsingVcompAlias(vcompalias, base_url, headers):
 
 
 def addUpdateRecordsToCMS(base_url, headers, payload):
-
+    time.sleep(5)
     # print("Updated")
     # return True
     """
@@ -585,8 +586,9 @@ def CreatePage(base_url, headers, payload,template_id):
     # 1. Construct the final API endpoint URL with query parameters
     api_url = f"{base_url}/api/PageApi/SavePage?templateId={template_id}&directPublish={direct_publish_str}"
 
-    print(f"\n📡 Attempting POST to: {api_url}")
-    
+    print(f"\n📡 Attempting CreatePage: {api_url} ============================================?>>>>>>>>>>>>>>>>>>>")
+    print(payload)
+    print(f"\n📡 Attempting ) ============================================?>>>>>>>>>>>>>>>>>>>")
     try:
         # 2. Send the POST request with the JSON payload
         response = requests.post(
@@ -652,7 +654,7 @@ def GetPageCategoryList(base_url, headers):
 
         # 3. Trigger exception for HTTP error codes (4xx, 5xx)
         response.raise_for_status()
-
+        time.sleep(2)
         # 4. Return JSON body (expected to be a list of categories)
         return response.json()
 
@@ -791,7 +793,7 @@ def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1
         list: A list of all V-Component dictionaries if successful.
         dict: An error dictionary if the API call fails at any point.
     """
-    
+    time.sleep(2)
     # --- 1. Base Payload Definition ---
     BASE_PAYLOAD = {
         "PageNumber": 1,
@@ -836,7 +838,7 @@ def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1
             response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
             
             response_data = response.json()
-            
+            time.sleep(2)
             # --- 4. Process Response Data ---
             v_components = response_data.get("vComponents", [])
             total_records = response_data.get("TotalRecords", 0)

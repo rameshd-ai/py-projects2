@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 526050,
+        "type": "MainComponent",
+        "componentName": "Feature-with-grid"
+    },
+    {
+        "componentId": 526051,
+        "type": "Level1Child",
+        "componentName": "Feature-with-grid-Blocks"
+    }
+]

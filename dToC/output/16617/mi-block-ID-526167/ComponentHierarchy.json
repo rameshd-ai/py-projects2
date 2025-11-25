@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 526167,
+        "type": "MainComponent",
+        "componentName": "Spa-Module-Navigation"
+    },
+    {
+        "componentId": 526168,
+        "type": "Level1Child",
+        "componentName": "Spa-Module-Navigation-Pages"
+    }
+]
