@@ -701,7 +701,7 @@ def CustomGetComponentAliasByName(base_url, headers, component_name):
     """
     DEFAULT_VCOMPONENT_LIST_PAYLOAD = {
         "PageNumber": 1,
-        "PageSize": 50, # Increased page size for a better chance of finding the item
+        "PageSize": 100, # Increased page size for a better chance of finding the item
         "ShowInActiveRecords": True,
         "HidePageStudioDerivedMiBlocks": True,
         "ShowOnlyLibraryFormVComponents": True,

@@ -53,7 +53,7 @@ def find_processed_json_filepath(file_prefix: str) -> str | None:
     # FIX: Use os.path.basename to reliably isolate the unique ID component
     base_prefix = os.path.basename(file_prefix)
 
-    print(f"Module Processor: Searching UPLOAD_FOLDER ('{UPLOAD_FOLDER}') for file starting with '{base_prefix}' and ending with '_simplified.json'.")
+    # print(f"Module Processor: Searching UPLOAD_FOLDER ('{UPLOAD_FOLDER}') for file starting with '{base_prefix}' and ending with '_simplified.json'.")
     
     if not os.path.isdir(UPLOAD_FOLDER):
         print(f"FATAL ERROR: UPLOAD_FOLDER path does not exist or is not a directory: {UPLOAD_FOLDER}")
@@ -63,10 +63,10 @@ def find_processed_json_filepath(file_prefix: str) -> str | None:
         # Use the isolated base_prefix for matching
         if filename.startswith(base_prefix) and filename.endswith("_simplified.json"):
             filepath = os.path.join(UPLOAD_FOLDER, filename)
-            print(f"Module Processor: ✅ Match found: {filename}")
+            # print(f"Module Processor: ✅ Match found: {filename}")
             return filepath
             
-    print(f"Module Processor: ❌ No processed JSON file found matching the criteria for prefix '{base_prefix}'.")
+    # print(f"Module Processor: ❌ No processed JSON file found matching the criteria for prefix '{base_prefix}'.")
     return None
 
 # --- UTILITY FUNCTION TO SAVE PROCESSED JSON (Uses dynamic path) ---
@@ -82,7 +82,7 @@ def save_processed_json(file_prefix: str, data: Dict[str, Any]) -> bool:
     try:
         with open(filepath, "w") as f:
             json.dump(data, f, indent=4)
-        print(f"✅ Successfully saved updated processed JSON to {filepath}")
+        # print(f"✅ Successfully saved updated processed JSON to {filepath}")
         return True
     except Exception as e:
         print(f"Module Processor: Error saving processed JSON file: {e}")
@@ -192,7 +192,7 @@ def run_module_processing_step(
             "file_prefix": file_prefix
         }
 
-    print(f"Module Processor: Attempting to fetch modules from {target_url}...")
+    # print(f"Module Processor: Attempting to fetch modules from {target_url}...")
     
     # 5. Call the API to get the category list
     api_result: Union[List[Dict[str, Any]], Dict[str, Any]] = GetPageCategoryList(target_url, headers)
@@ -256,10 +256,10 @@ def run_module_processing_step(
             }
             pages_updated += 1
             
-            print("✅ match found") 
-            print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}'). Category ID attached to page object.")
+            # print("✅ match found") 
+            # print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}'). Category ID attached to page object.")
         else:
-            print(f"❌ NOT FOUND: Page '{page_name}' does not match an existing Category.")
+            # print(f"❌ NOT FOUND: Page '{page_name}' does not match an existing Category.")
             # Call the creation function if no match is found
             createCategory(page_name, site_id)
         

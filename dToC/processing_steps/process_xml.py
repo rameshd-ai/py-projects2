@@ -102,10 +102,62 @@ def extract_component_names(clean_html_content):
     return ordered_components
 
 
+# def extract_meta_info(raw_html_content: str) -> Dict[str, Any]:
+#     """
+#     Extracts PageTemplateName, DefaultTitle, and DefaultDescription using targeted regex 
+#     on the triple-unescaped block following 'PageInfoBlock'.
+#     """
+#     meta_info: Dict[str, Any] = {}
+#     if not raw_html_content:
+#         return meta_info
+
+#     # Triple-unescape for highly escaped content
+#     unescaped_content = html.unescape(raw_html_content)
+#     unescaped_content = html.unescape(unescaped_content)
+#     unescaped_content = html.unescape(unescaped_content)
+    
+#     # Split the content at the marker
+#     parts = unescaped_content.split('PageInfoBlock', 1)
+#     if len(parts) < 2:
+#         return meta_info
+
+#     meta_block = parts[1]
+    
+#     target_keys = {
+#         "PageTemplateName": "PageTemplateName",
+#         "Default Title": "DefaultTitle",
+#         "Default Description": "DefaultDescription",
+#         "Header1":"Header1",
+#         "Header2":"Header2",
+#         "Footer1":"Footer1",
+#         "Footer2":"Footer2"
+#     }
+
+#     for xml_key, dict_key in target_keys.items():
+#         # Regex to find text following the key until the next key or end of block
+#         pattern = re.compile(r'(?<=' + re.escape(xml_key) + r':)\s*(.*?)(?=<|$)', re.IGNORECASE | re.DOTALL)
+        
+#         match = pattern.search(meta_block)
+        
+#         if match:
+#             value = match.group(1).strip()
+#             # Normalize whitespace
+#             value = re.sub(r'[\r\n\s]+', ' ', value).strip() 
+            
+#             if value:
+#                 meta_info[dict_key] = value
+                
+#     return meta_info
+
+
+
 def extract_meta_info(raw_html_content: str) -> Dict[str, Any]:
     """
     Extracts PageTemplateName, DefaultTitle, and DefaultDescription using targeted regex 
     on the triple-unescaped block following 'PageInfoBlock'.
+    
+    If a key is found, it is added to the dictionary. If the value is blank, 
+    the dictionary value will be an empty string ("").
     """
     meta_info: Dict[str, Any] = {}
     if not raw_html_content:
@@ -126,22 +178,31 @@ def extract_meta_info(raw_html_content: str) -> Dict[str, Any]:
     target_keys = {
         "PageTemplateName": "PageTemplateName",
         "Default Title": "DefaultTitle",
-        "Default Description": "DefaultDescription"
+        "Default Description": "DefaultDescription",
+        "Header1":"Header1",
+        "Header2":"Header2",
+        "Footer1":"Footer1",
+        "Footer2":"Footer2"
     }
 
     for xml_key, dict_key in target_keys.items():
         # Regex to find text following the key until the next key or end of block
+        # This looks for the key followed by a colon, optional whitespace, 
+        # then captures anything until the next < (start of next key) or end of block
         pattern = re.compile(r'(?<=' + re.escape(xml_key) + r':)\s*(.*?)(?=<|$)', re.IGNORECASE | re.DOTALL)
         
         match = pattern.search(meta_block)
         
         if match:
+            # Get the captured value and strip leading/trailing whitespace
             value = match.group(1).strip()
-            # Normalize whitespace
-            value = re.sub(r'[\r\n\s]+', ' ', value).strip() 
             
-            if value:
-                meta_info[dict_key] = value
+            # Normalize internal whitespace (replace newlines/tabs/spaces with a single space)
+            value = re.sub(r'[\r\n\s]+', ' ', value).strip()
+            
+            # 🔄 CHANGE: Now we add the key to the dictionary if the marker was found.
+            # The value will be "" if it was blank in the source.
+            meta_info[dict_key] = value
                 
     return meta_info
 

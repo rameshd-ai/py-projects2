@@ -12,7 +12,7 @@ import uuid # <-- Required for generating pageSectionGuid
 import zipfile # <-- Required for handling exported component files
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
-from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList
+from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName
 # ================= CONFIG/UTILITY DEFINITIONS (BASED ON USER PATTERN) =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
@@ -154,8 +154,8 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
         # Success: Unpack the alias (index 0) and ID (index 1)
         vComponentId_unpacked, component_alias_unpacked, component_id_unpacked = alias_result
         
-        print(f"  [INFO] Component ID: {component_id_unpacked}")
-        print(f"  [INFO] Component component_alias: {component_alias_unpacked}")
+        # print(f"  [INFO] Component ID: {component_id_unpacked}")
+        # print(f"  [INFO] Component component_alias: {component_alias_unpacked}")
         pageSectionGuid = str(uuid.uuid4()) 
 
         # Call the API function from apis.py
@@ -228,7 +228,7 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
             start_time = time.time()
             file_ready = False
 
-            print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
+            # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
 
             while time.time() - start_time < MAX_WAIT_SECONDS:
                 if os.path.exists(config_file_path):
@@ -288,7 +288,7 @@ def publish_page_immediately(page_name: str):
 
 
 
-def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id):
+def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id,header_footer_details):
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
@@ -311,7 +311,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     print(f"New page payload ready for '{page_name}'.")
     print(f"New page payload ready for '{payload}'.")
     data = CreatePage(base_url, headers, payload,page_template_id)
-    print(data)
+    # print(data)
 
     # Access the 'pageId' key and print its value
     page_id = data.get("PageId")
@@ -322,28 +322,121 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         print("Error: 'pageId' key not found in the returned data.")
 
 
-    updatePageMapping(base_url, headers,page_id,site_id)
-    publishPage(base_url, headers,page_id,site_id)
+    updatePageMapping(base_url, headers,page_id,site_id,header_footer_details)
+    publishPage(base_url, headers,page_id,site_id,header_footer_details)
 
     
     return data
 
 
 
-def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int,site_id: int):
+# def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int,site_id: int,header_footer_details: Dict[str, Any]):
+#     """
+#     Creates and sends the page mapping payload using data from all
+#     ComponentRecordsTree.json files found in the migration output folders.
+#     """
+
+    
+#     # --- PHASE 1: COLLECT MAPPING DATA ---
+#     all_mappings: List[Dict[str, Any]] = []
+    
+#     # Construct the base path to search: output/site_id/mi-block-ID-*
+#     search_path = os.path.join("output", site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
+    
+#     # print(f"🔍 Searching for migration files in: {os.path.join('output', site_id, 'mi-block-ID-*')}")
+    
+#     # Use glob to find all matching ComponentRecordsTree.json files
+#     for file_path in glob.glob(search_path):
+#         try:
+#             with open(file_path, 'r') as f:
+#                 data = json.load(f)
+#                 records = data.get("componentRecordsTree", [])
+
+#             # Find the main component record where ParentId is 0
+#             main_component_record = next(
+#                 (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+#                 None
+#             )
+
+#             if main_component_record:
+#                 # Extract the required fields from the main component record
+#                 mapping_data = {
+#                     "pageId": page_id,
+#                     "vComponentAlias": main_component_record.get("component_alias"),
+#                     "vComponentId": main_component_record.get("vComponentId", ""), 
+#                     "contentEntityType": 2, # Fixed value
+#                     "pageSectionGuid": main_component_record.get("sectionGuid")
+#                 }
+                
+#                 # Simple validation before adding
+#                 if mapping_data["vComponentAlias"] and mapping_data["pageSectionGuid"]:
+#                     all_mappings.append(mapping_data)
+#                     # print(f"  ✅ Extracted mapping for alias: {mapping_data['vComponentAlias']}")
+#                 else:
+#                     print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
+
+#         except Exception as e:
+#             print(f"  ❌ Error processing file {file_path}: {e}")
+
+#     if not all_mappings:
+#         print("\n[INFO] No valid component mappings were found. Aborting mapping update.")
+#         return 0
+        
+#     # print(f"\n[INFO] Successfully collected {len(all_mappings)} mappings.")
+
+#     # --- PHASE 2: CONSTRUCT API PAYLOAD ---
+#     new_api_payload = all_mappings
+    
+#     # --- PHASE 3: PRINT PAYLOAD AND CALL API ---
+    
+#     # print("\n--- 📑 FINAL API PAYLOAD ---")
+#     # print(json.dumps(new_api_payload, indent=2))
+#     # print("-----------------------------")
+
+#     try:
+#         # Call the API to update the page mapping
+#         api_response_data = psMappingApi(base_url, headers, new_api_payload)
+        
+#         # Check for the specific success string (Your original success logic)
+#         if api_response_data == "Page Content Mappings updated successfully.":
+#             print(f"\n🚀 **SUCCESS:** Page mapping updated successfully for Page ID {page_id}.")
+#             print(f"API Response: {api_response_data}")
+            
+#         else:
+#             # Handle non-success responses that didn't raise an exception
+#             print(f"\n🛑 **FAILURE:** Failed to update page mapping for Page ID {page_id}.")
+#             print(f"API Response: {api_response_data}")
+
+#     except Exception as e:
+#         # This block now uses the correct variable name 'e' for the exception
+#         # and prints the error message directly.
+#         print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+#         # Note: We don't set 'resp_success = False' here, as that variable is unused in this fixed block.
+
+#     return len(new_api_payload)
+
+import os
+import glob
+import json
+from typing import Dict, Any, List, Union, Tuple, Optional
+
+# NOTE: psMappingApi, CustomGetComponentAliasByName, generatecontentHtml, ASSEMBLY_STATUS_LOG are assumed to be defined/imported elsewhere.
+
+def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any]):
     """
     Creates and sends the page mapping payload using data from all
-    ComponentRecordsTree.json files found in the migration output folders.
+    ComponentRecordsTree.json files found in the migration output folders, 
+    AND the explicit header/footer components.
     """
 
     
-    # --- PHASE 1: COLLECT MAPPING DATA ---
+    # --- PHASE 1: COLLECT BODY COMPONENT MAPPING DATA ---
     all_mappings: List[Dict[str, Any]] = []
     
     # Construct the base path to search: output/site_id/mi-block-ID-*
-    search_path = os.path.join("output", site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
+    search_path = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
     
-    print(f"🔍 Searching for migration files in: {os.path.join('output', site_id, 'mi-block-ID-*')}")
+    # print(f"🔍 Searching for migration files in: {os.path.join('output', str(site_id), 'mi-block-ID-*')}")
     
     # Use glob to find all matching ComponentRecordsTree.json files
     for file_path in glob.glob(search_path):
@@ -364,14 +457,14 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int,site_
                     "pageId": page_id,
                     "vComponentAlias": main_component_record.get("component_alias"),
                     "vComponentId": main_component_record.get("vComponentId", ""), 
-                    "contentEntityType": 2, # Fixed value
+                    "contentEntityType": 2, # Fixed value (for body components)
                     "pageSectionGuid": main_component_record.get("sectionGuid")
                 }
                 
                 # Simple validation before adding
                 if mapping_data["vComponentAlias"] and mapping_data["pageSectionGuid"]:
                     all_mappings.append(mapping_data)
-                    print(f"  ✅ Extracted mapping for alias: {mapping_data['vComponentAlias']}")
+                    # print(f"  ✅ Extracted mapping for alias: {mapping_data['vComponentAlias']}")
                 else:
                     print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
 
@@ -379,19 +472,54 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int,site_
             print(f"  ❌ Error processing file {file_path}: {e}")
 
     if not all_mappings:
-        print("\n[INFO] No valid component mappings were found. Aborting mapping update.")
-        return 0
-        
-    print(f"\n[INFO] Successfully collected {len(all_mappings)} mappings.")
+        print("\n[INFO] No valid BODY component mappings were found. Proceeding with headers/footers only if available.")
+    else:
+        print(f"\n[INFO] Successfully collected {len(all_mappings)} body component mappings.")
 
-    # --- PHASE 2: CONSTRUCT API PAYLOAD ---
+    # --- PHASE 2: ADD HEADER/FOOTER MAPPING DATA ---
+    
+    # Helper to append header/footer data if it exists
+    def add_hf_mapping(hf_key: str, content_type: int):
+        hf_data = header_footer_details.get(hf_key)
+        
+        # Check if the component name was present in the page metadata AND
+        # we successfully fetched a GUID for it (meaning the API call was made and succeeded)
+        if hf_data and hf_data.get("name") and hf_data.get("guid"):
+            mapping_data = {
+                "pageId": page_id,
+                "vComponentAlias": hf_data.get("alias"),
+                "vComponentId": hf_data.get("vId", ""), 
+                "contentEntityType": content_type,
+                "pageSectionGuid": hf_data.get("guid")
+            }
+            all_mappings.append(mapping_data)
+            print(f"  ✅ Added {hf_key} mapping for alias: {hf_data.get('alias')}")
+        elif hf_data.get("name"):
+            print(f"  ⚠️ Skipping {hf_key}: Component name '{hf_data.get('name')}' found, but GUID was missing/API failed during fetch.")
+
+
+    # Content Entity Types: 1=Header/Prefix, 3=Footer/Suffix
+    
+    add_hf_mapping("Header1", 2) 
+    
+    add_hf_mapping("Header2", 2) 
+    
+    add_hf_mapping("Footer1", 2) 
+    
+    add_hf_mapping("Footer2", 2) 
+    
+    
+    # --- PHASE 3: CONSTRUCT API PAYLOAD AND CALL API ---
+
+    if not all_mappings:
+        print("\n[INFO] No valid component mappings (body, header, or footer) were found. Aborting mapping update.")
+        return 0
+
     new_api_payload = all_mappings
     
-    # --- PHASE 3: PRINT PAYLOAD AND CALL API ---
-    
-    print("\n--- 📑 FINAL API PAYLOAD ---")
-    print(json.dumps(new_api_payload, indent=2))
-    print("-----------------------------")
+    # print("\n--- 📑 FINAL API PAYLOAD ---")
+    # print(json.dumps(new_api_payload, indent=2))
+    # print("-----------------------------")
 
     try:
         # Call the API to update the page mapping
@@ -411,16 +539,101 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int,site_
         # This block now uses the correct variable name 'e' for the exception
         # and prints the error message directly.
         print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
-        # Note: We don't set 'resp_success = False' here, as that variable is unused in this fixed block.
 
     return len(new_api_payload)
 
 
 
-def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: int):
+# def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: int,header_footer_details: Dict[str, Any]):
+#     """
+#     Constructs the necessary payload to publish all migrated components and the page itself,
+#     then calls the publishing API.
+#     """
+    
+    
+#     # --- PHASE 1: COLLECT MIBLOCK PUBLISHING DATA ---
+#     publish_payload: List[Dict[str, Any]] = []
+    
+#     # Construct the base path to search: output/site_id/mi-block-ID-*
+#     search_path = os.path.join("output", site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
+    
+#     # print(f"🔍 Searching for migrated component data in: {os.path.join('output', site_id, 'mi-block-ID-*')}")
+    
+#     # Use glob to find all matching ComponentRecordsTree.json files
+#     for file_path in glob.glob(search_path):
+#         try:
+#             with open(file_path, 'r') as f:
+#                 data = json.load(f)
+#                 records = data.get("componentRecordsTree", [])
+
+#             # Find the main component record where ParentId is 0
+#             main_component_record = next(
+#                 (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+#                 None
+#             )
+
+#             if main_component_record:
+#                 # Extract the required fields (ComponentId and sectionGuid)
+#                 # NOTE: Using ComponentId as "id" and assuming it is the correct ID to publish.
+#                 component_id = str(main_component_record.get("ComponentId"))
+#                 section_guid = main_component_record.get("sectionGuid")
+                
+#                 # Simple validation before adding
+#                 if component_id and section_guid:
+#                     miblock_entry = {
+#                         "id": component_id,
+#                         "type": "MIBLOCK",
+#                         "pageSectionGuid": section_guid
+#                     }
+#                     publish_payload.append(miblock_entry)
+#                     # print(f"  ✅ Added MiBlock {component_id} for publishing.")
+#                 else:
+#                     print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
+
+#         except Exception as e:
+#             print(f"  ❌ Error processing file {file_path}: {e}")
+
+#     # --- PHASE 2: ADD PAGE PUBLISHING DATA ---
+#     # Add the mandatory entry for the page itself
+#     page_entry = {
+#         "id": str(page_id),
+#         "type": "PAGE"
+#     }
+#     publish_payload.append(page_entry)
+#     print(f"\n  ✅ Added Page ID {page_id} for publishing.")
+    
+#     if not publish_payload:
+#         print("\n[INFO] No content was collected for publishing.")
+#         return 0
+        
+#     print(f"\n[INFO] Collected total of {len(publish_payload)} items for publishing.")
+
+#     # --- PHASE 3: CONSTRUCT FINAL DICTIONARY PAYLOAD AND EXECUTE API CALL ---
+    
+#     # Construct the final dictionary payload as per the API's requirement
+#     final_api_payload = {
+#         "publishData": publish_payload,
+#         "syncPageForTranslationRequest": None
+#     }
+    
+#     # print("\n--- 📑 FINAL PUBLISH PAYLOAD ---")
+#     # print(json.dumps(final_api_payload, indent=2))
+#     # print("---------------------------------")
+    
+#     # Pass the final DICTIONARY payload to your publishing API function
+#     try:
+#         psPublishApi(base_url, headers, site_id, final_api_payload)
+#     except Exception as e:
+#         print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+
+#     return len(publish_payload)
+
+
+
+def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any]):
     """
-    Constructs the necessary payload to publish all migrated components and the page itself,
-    then calls the publishing API.
+    Constructs the necessary payload to publish all migrated components (MiBlocks, 
+    Headers, Footers) and the page itself, then calls the publishing API.
     """
     
     
@@ -428,9 +641,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: in
     publish_payload: List[Dict[str, Any]] = []
     
     # Construct the base path to search: output/site_id/mi-block-ID-*
-    search_path = os.path.join("output", site_id, "mi-block-ID-*", "ComponentRecordsTree.json")
-    
-    print(f"🔍 Searching for migrated component data in: {os.path.join('output', site_id, 'mi-block-ID-*')}")
+    search_path = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
     
     # Use glob to find all matching ComponentRecordsTree.json files
     for file_path in glob.glob(search_path):
@@ -447,7 +658,6 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: in
 
             if main_component_record:
                 # Extract the required fields (ComponentId and sectionGuid)
-                # NOTE: Using ComponentId as "id" and assuming it is the correct ID to publish.
                 component_id = str(main_component_record.get("ComponentId"))
                 section_guid = main_component_record.get("sectionGuid")
                 
@@ -459,14 +669,46 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: in
                         "pageSectionGuid": section_guid
                     }
                     publish_payload.append(miblock_entry)
-                    print(f"  ✅ Added MiBlock {component_id} for publishing.")
+                    # print(f"  ✅ Added MiBlock {component_id} for publishing.")
                 else:
                     print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
 
         except Exception as e:
             print(f"  ❌ Error processing file {file_path}: {e}")
 
-    # --- PHASE 2: ADD PAGE PUBLISHING DATA ---
+    # --- PHASE 2: ADD HEADER/FOOTER PUBLISHING DATA ---
+    
+    def add_hf_publish_entry(hf_key: str):
+        """Adds a component to the publish payload if data is valid."""
+        hf_data = header_footer_details.get(hf_key)
+        
+        # We need the Component ID (id) and the unique Page Section GUID (guid)
+        component_id = hf_data.get("id") if hf_data else None
+        section_guid = hf_data.get("guid") if hf_data else None
+        component_name = hf_data.get("name") if hf_data else "N/A"
+
+        # Check if we successfully retrieved both ID and GUID when processing the page metadata
+        if component_id and section_guid:
+            component_entry = {
+                "id": str(component_id),
+                "type": "COMPONENT", # Headers/Footers are treated as standard components
+                "pageSectionGuid": section_guid
+            }
+            publish_payload.append(component_entry)
+            print(f"  ✅ Added {hf_key} Component ID {component_id} for publishing.")
+        elif component_name and component_name != "N/A":
+             # This means the component name was in the metadata but fetching its ID/GUID failed earlier
+             print(f"  ⚠️ Skipping {hf_key} ('{component_name}'): Component ID or GUID was missing for publishing.")
+
+
+    print("\n--- Collecting Header/Footer Publish Data ---")
+    add_hf_publish_entry("Header1")
+    add_hf_publish_entry("Header2")
+    add_hf_publish_entry("Footer1")
+    add_hf_publish_entry("Footer2")
+
+
+    # --- PHASE 3: ADD PAGE PUBLISHING DATA ---
     # Add the mandatory entry for the page itself
     page_entry = {
         "id": str(page_id),
@@ -481,7 +723,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: in
         
     print(f"\n[INFO] Collected total of {len(publish_payload)} items for publishing.")
 
-    # --- PHASE 3: CONSTRUCT FINAL DICTIONARY PAYLOAD AND EXECUTE API CALL ---
+    # --- PHASE 4: CONSTRUCT FINAL DICTIONARY PAYLOAD AND EXECUTE API CALL ---
     
     # Construct the final dictionary payload as per the API's requirement
     final_api_payload = {
@@ -489,9 +731,9 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: in
         "syncPageForTranslationRequest": None
     }
     
-    print("\n--- 📑 FINAL PUBLISH PAYLOAD ---")
-    print(json.dumps(final_api_payload, indent=2))
-    print("---------------------------------")
+    # print("\n--- 📑 FINAL PUBLISH PAYLOAD ---")
+    # print(json.dumps(final_api_payload, indent=2))
+    # print("---------------------------------")
     
     # Pass the final DICTIONARY payload to your publishing API function
     try:
@@ -500,8 +742,6 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int,site_id: in
         print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
 
     return len(publish_payload)
-
-
 
 def CreatePage(base_url, headers, payload,template_id):
     """
@@ -621,7 +861,7 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
         current_record_old_id = record.get("Id") # Unique old record ID
         new_parent_id = record.get("parent_new_record_id") 
             
-        print(f"    [START] Migrating {level_name} Record ID: {current_record_old_id} (Parent New ID: {new_parent_id})")
+        # print(f"    [START] Migrating {level_name} Record ID: {current_record_old_id} (Parent New ID: {new_parent_id})")
         
         # --- API Payload Construction ---
         migrated_record_data = record.get("RecordJsonString")
@@ -657,7 +897,7 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
         
         if new_record_id:
             migrated_count += 1
-            print(f"    [SUCCESS] CMS Record Created. Old Record ID: {current_record_old_id} -> New RecordId: {new_record_id}")
+            # print(f"    [SUCCESS] CMS Record Created. Old Record ID: {current_record_old_id} -> New RecordId: {new_record_id}")
             
             # A. Update the current record with its own new ID and mark as migrated
             record["isMigrated"] = True
@@ -688,7 +928,7 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
     in memory, and persists all changes back to the JSON file.
     """
     records_file_path = os.path.join(save_folder, "ComponentRecordsTree.json")
-    print(f"  [INFO] Searching for MainComponent records in {records_file_path}...")
+    # print(f"  [INFO] Searching for MainComponent records in {records_file_path}...")
     
     main_component_old_id = None
     main_component_new_id = None
@@ -718,7 +958,7 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
             if isinstance(record, dict) and record.get("recordType") == "MainComponent":
                 
                 main_component_old_id = record.get("ComponentId") 
-                print(f"  [FOUND] MainComponent ID: {main_component_old_id}")
+                # print(f"  [FOUND] MainComponent ID: {main_component_old_id}")
                 found_main_components = True
                 
                 # --- API Payload Construction ---
@@ -834,7 +1074,7 @@ def createPayloadJson(site_id, component_id):
 
     try:
         # 1. Read and parse MiBlockComponentConfig.json
-        print(f"Reading configuration from: {input_file_path}")
+        # print(f"Reading configuration from: {input_file_path}")
         with open(input_file_path, 'r') as f:
             config_data = json.load(f)
 
@@ -911,7 +1151,7 @@ def createPayloadJson(site_id, component_id):
             })
 
         # 5. Write the output payload to a new JSON file
-        print(f"Writing component hierarchy to: {output_file_path}")
+        # print(f"Writing component hierarchy to: {output_file_path}")
         
         # Ensure the output directory exists
         os.makedirs(folder_path, exist_ok=True)
@@ -919,7 +1159,7 @@ def createPayloadJson(site_id, component_id):
         with open(output_file_path, 'w') as f:
             json.dump(output_payload, f, indent=4)
         
-        print("Successfully determined component hierarchy and saved.")
+        # print("Successfully determined component hierarchy and saved.")
         return True
 
     except FileNotFoundError:
@@ -1047,7 +1287,7 @@ def createRecordsPayload(site_id, component_id):
     collect_descendants(root_record["Id"])
 
     # 6. Write the output payload
-    print(f"Found {len(records_tree)} records in the hierarchy. Writing to: {output_file_path}")
+    # print(f"Found {len(records_tree)} records in the hierarchy. Writing to: {output_file_path}")
     
     os.makedirs(folder_path, exist_ok=True)
     with open(output_file_path, 'w') as f:
@@ -1083,10 +1323,12 @@ def createRecordsPayload(site_id, component_id):
 
 
 # ================= Core Processing Logic and Traversal =================
-# def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str],category_id: int):
+
+# def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], category_id: int):
+    
 #     page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
 #     components = page_data.get('components', [])
-#     meta_info = page_data.get('meta_info', {}) # Extract meta_info
+#     meta_info = page_data.get('meta_info', {}) 
     
 #     # 🌟 STEP 1: Get Template Name and Fetch Template ID
 #     page_template_name = meta_info.get("PageTemplateName")
@@ -1096,21 +1338,14 @@ def createRecordsPayload(site_id, component_id):
     
 #     if page_template_name:
 #         try:
-#             # 🌟 STEP 2: Call API to get the Template ID (Need to define get_page_template_id)
-#             # Assuming get_page_template_id is available in the current scope
-#             # Placeholder call:
+#             # 🌟 STEP 2: Call API to get the Template ID
 #             template_info = GetTemplatePageByName(api_base_url, api_headers, page_template_name)
 #             if template_info and isinstance(template_info, list) and 'PageId' in template_info[0]:
-#                 page_template_id = template_info[0]['PageId'] # Should be 418607
-#             else:
-#                 # Handle error: log or raise exception
-#                 page_template_id = None
-
-                
+#                 page_template_id = template_info[0]['PageId'] 
+            
 #             logging.info(f"Retrieved Page Template ID {page_template_id} for template: {page_template_name}")
 #         except Exception as e:
 #             logging.error(f"Failed to retrieve page template ID for '{page_template_name}': {e}")
-#             # Decide if you want to fail the page here or proceed with a default/None ID
 #             pass
     
 #     if page_template_id is None:
@@ -1131,7 +1366,7 @@ def createRecordsPayload(site_id, component_id):
 #         logging.warning(f"Page **{page_name}** (Level {page_level}) has no components to process. Logged as skipped.")
 #         return
 
-#     # --- ACCUMULATION PHASE: Component Loop ---
+#     # --- ACCUMULATION PHASE: Component Loop (Removed 'Weddings' Condition) ---
 #     for component_name in components:
 #         status_entry = {
 #             "page": page_name, "component": component_name, "level": page_level,
@@ -1141,6 +1376,7 @@ def createRecordsPayload(site_id, component_id):
 #         }
         
 #         api_result = check_component_availability(component_name, component_cache)
+#         section_payload = None
         
 #         if api_result:
 #             vComponentId, alias, componentId, cms_component_name = api_result 
@@ -1149,24 +1385,17 @@ def createRecordsPayload(site_id, component_id):
             
 #             status_entry["available"] = True
 #             status_entry["cms_component_name"] = cms_component_name
-#             section_payload = None  # Initialize payload
             
-#             # CONDITION: Only call add_records_for_page for the 'Weddings' page
-#             if page_name == "Weddings":
-#                 try:
-#                     # Call function to get section payload (HTML snippet)
-#                     section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
-#                     status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
-#                 except Exception as e:
-#                     logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
-#                     status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
-#                     status_entry["available"] = False
-#             else:
-#                 # Data retrieval/record adding is skipped for non-Weddings pages
-#                 logging.info(f"Skipping record addition for non-Weddings page: {page_name}/{component_name}.")
-#                 status_entry["status"] = "SUCCESS: Component available, data retrieval skipped (non-Weddings page)."
-#                 section_payload = "" # Append empty string
-            
+#             # CONDITION REMOVED: Now executes content retrieval for ALL pages
+#             try:
+#                 # Call function to get section payload (HTML snippet)
+#                 section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+#                 status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
+#             except Exception as e:
+#                 logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
+#                 status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
+#                 status_entry["available"] = False
+
 #             # Append the payload (either retrieved content or an empty string)
 #             if section_payload is not None:
 #                 page_sections_html.append(section_payload)
@@ -1176,9 +1405,9 @@ def createRecordsPayload(site_id, component_id):
         
 #         ASSEMBLY_STATUS_LOG.append(status_entry)
 
-#     # --- FINALIZATION PHASE (Executed once per page) ---
+#     # --- FINALIZATION PHASE (Executed once per page - Removed 'Weddings' Condition) ---
     
-#     # Check if any sections were successfully retrieved
+#     # Check if any sections were successfully retrieved and contain data
 #     if page_sections_html and any(page_sections_html): 
         
 #         # Concatenate all component HTML sections in order
@@ -1191,25 +1420,202 @@ def createRecordsPayload(site_id, component_id):
 #         # Add the prefix and postfix wrappers
 #         final_html = htmlPrefix + all_sections_concatenated + htmlPostfix
         
-#         # 📢 ADDED PRINT STATEMENT HERE 📢
-#         print("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
-#         print(final_html)
-#         print("--------------------------------------\n")
+#         # 📢 DEBUG PRINT STATEMENT REMAINS (use logging.info for production) 📢
+#         logging.info("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
+#         logging.info(final_html)
+#         logging.info("--------------------------------------\n")
         
-#         # Apply the conditional execution for the "Weddings" page
-#         if page_name == "Weddings":
-#             logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
-#             # 🌟 STEP 3: Pass the page_template_id to pageAction
-#             pageAction(api_base_url, api_headers, final_html, page_name, page_template_id,DefaultTitle,DefaultDescription,site_id,category_id)
-#         else:
-#              logging.info(f"Final assembly complete for **{page_name}** but skipping pageAction (non-Weddings page).")
+#         # CONDITION REMOVED: Now calls pageAction for ALL pages with content
+#         logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
+#         # 🌟 STEP 3: Pass the page_template_id to pageAction
+#         pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id)
+        
 #     else:
-#         if page_name == "Weddings":
-#              logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page.")
-#         else:
-#              logging.info(f"Page **{page_name}** (non-Weddings) completed component checks but assembled an empty page, as expected.")
+#         # CONDITION REMOVED: Now logs uniformly
+#         logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page. Skipping pageAction.")
 #         return
 
+
+
+# def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], category_id: int):
+    
+#     page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+#     components = page_data.get('components', [])
+#     meta_info = page_data.get('meta_info', {}) 
+    
+#     # 🌟 STEP 1: Get Template Name and Fetch Template ID
+#     page_template_name = meta_info.get("PageTemplateName")
+#     DefaultTitle = meta_info.get("DefaultTitle")
+#     DefaultDescription = meta_info.get("DefaultDescription")
+#     Header1 = meta_info.get("Header1")
+#     Header2 = meta_info.get("Header2")
+#     Footer1 = meta_info.get("Footer1")
+#     Footer2 = meta_info.get("Footer2")
+    
+#     page_template_id = None
+    
+#     if page_template_name:
+#         try:
+#             # 🌟 STEP 2: Call API to get the Template ID
+#             template_info = GetTemplatePageByName(api_base_url, api_headers, page_template_name)
+#             if template_info and isinstance(template_info, list) and 'PageId' in template_info[0]:
+#                 page_template_id = template_info[0]['PageId'] 
+            
+#             logging.info(f"Retrieved Page Template ID {page_template_id} for template: {page_template_name}")
+#         except Exception as e:
+#             logging.error(f"Failed to retrieve page template ID for '{page_template_name}': {e}")
+#             pass
+    
+#     if page_template_id is None:
+#         logging.warning(f"Could not determine Page Template ID for page: {page_name}. Proceeding without it (or defaulting).")
+
+
+#     # Initialize a list to hold the HTML sections for this page
+#     page_sections_html = []
+
+#     if not components:
+#         status_entry = {
+#             "page": page_name, "component": "N/A", "level": page_level,
+#             "hierarchy": " > ".join(hierarchy + [page_name]), "available": False, 
+#             "status": "SKIPPED: Page had no components defined.",
+#             "cms_component_name": "N/A"
+#         }
+#         ASSEMBLY_STATUS_LOG.append(status_entry) 
+#         logging.warning(f"Page **{page_name}** (Level {page_level}) has no components to process. Logged as skipped.")
+#         return
+
+#     # --- ACCUMULATION PHASE: Component Loop (WEDDINGS CONDITION RESTORED) ---
+#     for component_name in components:
+#         status_entry = {
+#             "page": page_name, "component": component_name, "level": page_level,
+#             "hierarchy": " > ".join(hierarchy + [page_name]), "available": False, 
+#             "status": "SKIPPED: Component not available.",
+#             "cms_component_name": "N/A"
+#         }
+        
+#         api_result = check_component_availability(component_name, component_cache)
+#         section_payload = None
+        
+#         if api_result:
+#             vComponentId, alias, componentId, cms_component_name = api_result 
+            
+#             logging.info(f"✅ Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
+            
+#             status_entry["available"] = True
+#             status_entry["cms_component_name"] = cms_component_name
+            
+#             # 🛑 RESTORED WEDDINGS CONDITION 🛑
+#             if page_name == "Meetings and Events":
+#                 try:
+#                     print("inside meetni")
+#                     # Call function to get section payload (HTML snippet) - ONLY FOR WEDDINGS
+#                     section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+#                     status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
+#                 except Exception as e:
+#                     logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
+#                     status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
+#                     status_entry["available"] = False
+#             else:
+#                 # Data retrieval/record adding is skipped for non-Weddings pages
+#                 logging.info(f"Skipping record addition for non-Weddings page: {page_name}/{component_name}.")
+#                 status_entry["status"] = "SUCCESS: Component available, data retrieval skipped (non-Weddings page)."
+#                 section_payload = "" # Append empty string to page sections list
+            
+#             # Append the payload (either retrieved content or an empty string)
+#             if section_payload is not None:
+#                 page_sections_html.append(section_payload)
+            
+#         else:
+#             logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
+        
+#         ASSEMBLY_STATUS_LOG.append(status_entry)
+
+#     # --- FINALIZATION PHASE (WEDDINGS CONDITION RESTORED) ---
+    
+#     # Check if any sections were successfully retrieved and contain data
+#     if page_sections_html and any(page_sections_html): 
+        
+#         # Concatenate all component HTML sections in order
+#         all_sections_concatenated = "".join(page_sections_html)
+        
+#         # Define HTML wrappers
+#         htmlPrefix = '<div class="box2" id="data_page_content"><div id="pagestudio">'
+#         htmlPostfix = "</div></div>"
+        
+#         Header1_vComponentId,Header1_component_alias, Header1_component_id,Header1_section_html = getHeaderFooter_html(api_base_url, api_headers,Header1)
+#         Header2_vComponentId,Header2_component_alias, Header2_component_id,Header2_section_html = getHeaderFooter_html(api_base_url, api_headers,Header2)
+#         Footer1_vComponentId,Footer1_component_alias, Footer1_component_id,Footer1_section_html = getHeaderFooter_html(api_base_url, api_headers,Footer1)
+#         Footer2_vComponentId,Footer2_component_alias, Footer2_component_id,Footer2_section_html = getHeaderFooter_html(api_base_url, api_headers,Footer2)
+
+
+
+
+#         # Add the prefix and postfix wrappers
+#         final_html = htmlPrefix + Header1_section_html+ Header2_section_html+ all_sections_concatenated +Footer1_section_html+ Footer2_section_html+ htmlPostfix
+        
+#         logging.info("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
+#         logging.info(final_html)
+#         logging.info("--------------------------------------\n")
+        
+#         # 🛑 RESTORED WEDDINGS CONDITION for pageAction 🛑
+#         if page_name == "Meetings and Events":
+#             logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
+#             # 🌟 STEP 3: Pass the page_template_id to pageAction
+#             pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,Header1,Header2,Footer1,Footer2)
+#         else:
+#             logging.info(f"Final assembly complete for **{page_name}** but skipping pageAction (non-Weddings page).")
+            
+#     else:
+#         # Conditional logging for pages that fail to retrieve content
+#         if page_name == "Meetings and Events":
+#             logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page. Skipping pageAction.")
+#         else:
+#             logging.info(f"Page **{page_name}** (non-Weddings) completed component checks but assembled an empty page, as expected.")
+#         return
+
+
+# def getHeaderFooter_html(base_url, headers,headerFooterCompName):
+#     vComponentId,component_alias, component_id = CustomGetComponentAliasByName(base_url, headers, headerFooterCompName)
+#     pageSectionGuid = str(uuid.uuid4()) 
+#     section_html  = generatecontentHtml(1, component_alias, pageSectionGuid)
+#     return vComponentId,component_alias, component_id,section_html
+
+
+
+
+
+# --- ASSUMED EXTERNAL DEPENDENCIES ---
+# Ensure these functions/variables are imported/defined in your environment:
+# from your_apis import GetTemplatePageByName, check_component_availability, pageAction, CustomGetComponentAliasByName
+# from your_utils import generatecontentHtml 
+# from your_globals import ASSEMBLY_STATUS_LOG 
+
+# --- Helper Function for Headers/Footers ---
+def getHeaderFooter_html(base_url: str, headers: Dict[str, str], headerFooterCompName: str) -> Tuple[Optional[str], Optional[str], Optional[int], str, Optional[str]]:
+    """
+    Fetches the necessary IDs and generates the HTML structure for a given 
+    Header or Footer component name.
+    
+    Returns:
+        vComponentId, component_alias, component_id, section_html, pageSectionGuid
+    """
+    try:
+        # Assuming CustomGetComponentAliasByName returns vComponentId, alias, component_id
+        vComponentId, component_alias, component_id = CustomGetComponentAliasByName(base_url, headers, headerFooterCompName)
+        
+        pageSectionGuid = str(uuid.uuid4()) 
+        # Assuming generatecontentHtml generates the structural HTML snippet
+        section_html  = generatecontentHtml(1, component_alias, pageSectionGuid)
+        
+        logging.info(f"Successfully fetched details for Header/Footer: {headerFooterCompName}")
+        return vComponentId, component_alias, component_id, section_html, pageSectionGuid
+        
+    except Exception as e:
+        logging.error(f"Failed to process Header/Footer component '{headerFooterCompName}': {e}")
+        # 🛑 FIX: Ensure 5 values are returned on failure (the fifth is None for the GUID).
+        return None, None, None, "", None 
+
+# --- Corrected _process_page_components ---
 
 def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], category_id: int):
     
@@ -1217,10 +1623,15 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
     components = page_data.get('components', [])
     meta_info = page_data.get('meta_info', {}) 
     
-    # 🌟 STEP 1: Get Template Name and Fetch Template ID
+    # 🌟 STEP 1: Extract Metadata
     page_template_name = meta_info.get("PageTemplateName")
     DefaultTitle = meta_info.get("DefaultTitle")
     DefaultDescription = meta_info.get("DefaultDescription")
+    Header1 = meta_info.get("Header1")
+    Header2 = meta_info.get("Header2")
+    Footer1 = meta_info.get("Footer1")
+    Footer2 = meta_info.get("Footer2")
+    
     page_template_id = None
     
     if page_template_name:
@@ -1253,7 +1664,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         logging.warning(f"Page **{page_name}** (Level {page_level}) has no components to process. Logged as skipped.")
         return
 
-    # --- ACCUMULATION PHASE: Component Loop (Removed 'Weddings' Condition) ---
+    # --- ACCUMULATION PHASE: Component Loop ---
     for component_name in components:
         status_entry = {
             "page": page_name, "component": component_name, "level": page_level,
@@ -1273,16 +1684,23 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             status_entry["available"] = True
             status_entry["cms_component_name"] = cms_component_name
             
-            # CONDITION REMOVED: Now executes content retrieval for ALL pages
-            try:
-                # Call function to get section payload (HTML snippet)
-                section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
-                status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
-            except Exception as e:
-                logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
-                status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
-                status_entry["available"] = False
-
+            # 🛑 CONDITION CHECK: Only process content retrieval for "Meetings and Events" 🛑
+            if page_name == "Meetings and Events":
+                try:
+                    logging.info("inside Meetings and Events content retrieval")
+                    # Call function to get section payload (HTML snippet)
+                    section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+                    status_entry["status"] = "SUCCESS: Content retrieved and added to assembly queue."
+                except Exception as e:
+                    logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
+                    status_entry["status"] = f"FAILED: Content retrieval error: {type(e).__name__}"
+                    status_entry["available"] = False
+            else:
+                # Data retrieval/record adding is skipped for non-targeted pages
+                logging.info(f"Skipping record addition for non-targeted page: {page_name}/{component_name}.")
+                status_entry["status"] = "SUCCESS: Component available, data retrieval skipped (non-targeted page)."
+                section_payload = "" # Append empty string
+            
             # Append the payload (either retrieved content or an empty string)
             if section_payload is not None:
                 page_sections_html.append(section_payload)
@@ -1292,7 +1710,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         
         ASSEMBLY_STATUS_LOG.append(status_entry)
 
-    # --- FINALIZATION PHASE (Executed once per page - Removed 'Weddings' Condition) ---
+    # --- FINALIZATION PHASE (with conditional Headers/Footers) ---
     
     # Check if any sections were successfully retrieved and contain data
     if page_sections_html and any(page_sections_html): 
@@ -1304,24 +1722,70 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         htmlPrefix = '<div class="box2" id="data_page_content"><div id="pagestudio">'
         htmlPostfix = "</div></div>"
         
-        # Add the prefix and postfix wrappers
-        final_html = htmlPrefix + all_sections_concatenated + htmlPostfix
+        # --- Helper to conditionally fetch H/F ---
+        def _fetch_optional_component(name: Optional[str]) -> Tuple[Optional[str], Optional[str], Optional[int], str, Optional[str]]:
+            # Returns empty values if name is None or empty string
+            if not name:
+                # 🛑 FIX APPLIED HERE: Now returns 5 values 🛑
+                return None, None, None, "", None 
+            # Otherwise, call the API function
+            return getHeaderFooter_html(api_base_url, api_headers, name)
+
+        # Conditionally fetch Header and Footer components
+        # If the meta_info value (e.g., Header2) is None or "", the API call is skipped.
+        Header1_vComponentId, Header1_component_alias, Header1_component_id, Header1_section_html,Header1_pageSectionGuid = _fetch_optional_component(Header1)
+        Header2_vComponentId, Header2_component_alias, Header2_component_id, Header2_section_html,Header2_pageSectionGuid = _fetch_optional_component(Header2)
+        Footer1_vComponentId, Footer1_component_alias, Footer1_component_id, Footer1_section_html,Footer1_pageSectionGuid = _fetch_optional_component(Footer1)
+        Footer2_vComponentId, Footer2_component_alias, Footer2_component_id, Footer2_section_html,Footer2_pageSectionGuid = _fetch_optional_component(Footer2)
         
-        # 📢 DEBUG PRINT STATEMENT REMAINS (use logging.info for production) 📢
+        header_footer_details = {
+            "Header1": {
+                "name": Header1, "vId": Header1_vComponentId, "alias": Header1_component_alias, 
+                "id": Header1_component_id, "html": Header1_section_html, "guid": Header1_pageSectionGuid
+            },
+            "Header2": {
+                "name": Header2, "vId": Header2_vComponentId, "alias": Header2_component_alias, 
+                "id": Header2_component_id, "html": Header2_section_html, "guid": Header2_pageSectionGuid
+            },
+            "Footer1": {
+                "name": Footer1, "vId": Footer1_vComponentId, "alias": Footer1_component_alias, 
+                "id": Footer1_component_id, "html": Footer1_section_html, "guid": Footer1_pageSectionGuid
+            },
+            "Footer2": {
+                "name": Footer2, "vId": Footer2_vComponentId, "alias": Footer2_component_alias, 
+                "id": Footer2_component_id, "html": Footer2_section_html, "guid": Footer2_pageSectionGuid
+            },
+        }
+
+        # Build the final HTML, concatenating potentially empty header/footer strings
+        final_html = htmlPrefix \
+                   + Header1_section_html \
+                   + Header2_section_html \
+                   + all_sections_concatenated \
+                   + Footer1_section_html \
+                   + Footer2_section_html \
+                   + htmlPostfix
+        
         logging.info("\n--- FINAL ASSEMBLED HTML PAYLOAD ---")
         logging.info(final_html)
         logging.info("--------------------------------------\n")
         
-        # CONDITION REMOVED: Now calls pageAction for ALL pages with content
-        logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
-        # 🌟 STEP 3: Pass the page_template_id to pageAction
-        pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id)
-        
+        # 🛑 CONDITION CHECK: Only publish "Meetings and Events" 🛑
+        if page_name == "Meetings and Events":
+            logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
+            # 🌟 STEP 3: Pass the page_template_id to pageAction
+            pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details)
+        else:
+            logging.info(f"Final assembly complete for **{page_name}** but skipping pageAction (non-targeted page).")
+            
     else:
-        # CONDITION REMOVED: Now logs uniformly
-        logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page. Skipping pageAction.")
+        # Conditional logging for pages that fail to retrieve content
+        if page_name == "Meetings and Events":
+            logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved to assemble the page. Skipping pageAction.")
+        else:
+            logging.info(f"Page **{page_name}** (non-targeted) completed component checks but assembled an empty page, as expected.")
         return
-
+        
 # --- TRAVERSAL FUNCTIONS TO PASS CACHE AND NEW PARAMS ---
 
 def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
@@ -1428,7 +1892,7 @@ def assemble_page_templates_level2(
     # --- Recursive Call Setup ---
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
-    
+    parent_page_name = current_page_name
     for sub_page_data in page_data.get("sub_pages", []):
         assemble_page_templates_level3(
             sub_page_data, 
@@ -1437,7 +1901,8 @@ def assemble_page_templates_level2(
             component_cache, 
             api_base_url, 
             site_id, 
-            api_headers
+            api_headers,
+            parent_page_name
         )
 
 def normalize_page_name(name: str) -> str:

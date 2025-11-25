@@ -43,7 +43,7 @@
             "ProfileIds": null,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "6c8b0625-8305-4ae8-b304-bf3fbae76d66",
+            "sectionGuid": "15d81091-99d2-4484-ba27-9ae49c010d6b",
             "component_alias": "ba8111a0-79c6-4fe5-873c-6196d7a52ef9",
             "vComponentId": 20994859
         },
@@ -89,7 +89,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001499
+            "parent_new_record_id": 3001945
         },
         {
             "Id": 2977129,
@@ -133,7 +133,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001499
+            "parent_new_record_id": 3001945
         }
     ]
 }
