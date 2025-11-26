@@ -1,8 +1,8 @@
 {
     "componentRecordsTree": [
         {
-            "Id": 2979710,
-            "RecordJsonString": "{\"Id\":\"##Id##\",\"ParentId\":\"##ParentId##\",\"title\":\"Discover Life\u2019s Quintessential Pleasures\",\"banner-image\":[{\"ResourceID\":2513540,\"AssetId\":\"00000000-0000-0000-0000-000000000000\",\"ResourceTitle\":\"coming soon\",\"ResourceFile\":\"coming-soon.jpg\",\"OriginalImagePath\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"isSpinCarImage\":false,\"isFromDAM\":false,\"OriginalImagePathLarge\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"OriginalImagePathSmall\":\"%%strpath%%resourcefiles/hero-banner-with-title/mobileimages/coming-soon.jpg\",\"OriginalImagePathMedium\":\"%%strpath%%resourcefiles/hero-banner-with-title/tabletimages/coming-soon.jpg\",\"ThumbNailImagePath\":null,\"OriginalParentSiteImagePath\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"OriginalParentSiteImagePathLarge\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"OriginalParentSiteImagePathSmall\":\"%%strpath%%resourcefiles/hero-banner-with-title/mobileimages/coming-soon.jpg\",\"OriginalParentSiteImagePathMedium\":\"%%strpath%%resourcefiles/hero-banner-with-title/tabletimages/coming-soon.jpg\",\"DamAsset\":null,\"ResourceWidth\":1440,\"ResourceHeight\":830,\"TabletResourceWidth\":1200,\"TabletResourceHeight\":692,\"MobileResourceWidth\":1000,\"MobileResourceHeight\":577}],\"banner-image-alt-text\":\"Alt Text will come here\",\"center-content-vertically[]\":[\"Yes\"],\"use-a-larger-container-for-content[]\":[\"Yes\"]}",
+            "Id": 2980039,
+            "RecordJsonString": "{\"Id\":\"##Id##\",\"ParentId\":\"##ParentId##\",\"title\":\"A sweet story of luxury living\",\"banner-image\":[{\"ResourceID\":2513540,\"AssetId\":\"00000000-0000-0000-0000-000000000000\",\"ResourceTitle\":\"coming soon\",\"ResourceFile\":\"coming-soon.jpg\",\"OriginalImagePath\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"isSpinCarImage\":false,\"isFromDAM\":false,\"OriginalImagePathLarge\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"OriginalImagePathSmall\":\"%%strpath%%resourcefiles/hero-banner-with-title/mobileimages/coming-soon.jpg\",\"OriginalImagePathMedium\":\"%%strpath%%resourcefiles/hero-banner-with-title/tabletimages/coming-soon.jpg\",\"ThumbNailImagePath\":null,\"OriginalParentSiteImagePath\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"OriginalParentSiteImagePathLarge\":\"%%strpath%%resourcefiles/hero-banner-with-title/coming-soon.jpg\",\"OriginalParentSiteImagePathSmall\":\"%%strpath%%resourcefiles/hero-banner-with-title/mobileimages/coming-soon.jpg\",\"OriginalParentSiteImagePathMedium\":\"%%strpath%%resourcefiles/hero-banner-with-title/tabletimages/coming-soon.jpg\",\"DamAsset\":null,\"ResourceWidth\":0,\"ResourceHeight\":0,\"TabletResourceWidth\":0,\"TabletResourceHeight\":0,\"MobileResourceWidth\":0,\"MobileResourceHeight\":0}],\"banner-image-alt-text\":\"Alt Text will come here\",\"center-content-vertically[]\":[\"\"],\"use-a-larger-container-for-content[]\":[\"\"],\"wrap-banner-in-container[]\":[\"Yes\"]}",
             "ComponentId": 526303,
             "ParentComponentId": null,
             "ParentId": 0,
@@ -14,9 +14,9 @@
             "StartDate": null,
             "EndDate": null,
             "CreatedBy": 17707,
-            "CreatedDate": "2025-03-19T11:21:56.27",
+            "CreatedDate": "2025-05-01T11:18:05.44",
             "UpdatedBy": 0,
-            "UpdatedDate": "2025-03-21T06:42:43.807",
+            "UpdatedDate": "2025-05-02T05:21:20.317",
             "RecordUrl": null,
             "RecordVersion": 0,
             "EnableClientEdit": true,
@@ -41,11 +41,7 @@
             "IsPageStudioRecord": true,
             "PageIds": null,
             "ProfileIds": null,
-            "recordType": "MainComponent",
-            "isMigrated": true,
-            "sectionGuid": "0fa52614-2997-409b-a920-31061e2509a2",
-            "component_alias": "aeb19207-884b-4210-baff-da59f7f8755e",
-            "vComponentId": 20994998
+            "recordType": "MainComponent"
         }
     ]
 }

@@ -4,7 +4,15 @@
         {
             "page_name": "Our Property",
             "components": [],
-            "meta_info": {},
+            "meta_info": {
+                "PageTemplateName": "Base Layout Page",
+                "DefaultTitle": "Our Property",
+                "DefaultDescription": "Our Property",
+                "Header1": "Custom Header",
+                "Header2": "",
+                "Footer1": "Custom Footer",
+                "Footer2": ""
+            },
             "sub_pages": [
                 {
                     "page_name": "Our Story",
@@ -15,7 +23,11 @@
                     ],
                     "meta_info": {
                         "DefaultTitle": "",
-                        "DefaultDescription": ""
+                        "DefaultDescription": "",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -27,7 +39,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Gallery",
-                        "DefaultDescription": "This is Seo page description"
+                        "DefaultDescription": "This is Seo page description",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -41,7 +57,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Location",
-                        "DefaultDescription": "Location"
+                        "DefaultDescription": "Location",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": [
                         {
@@ -62,7 +82,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Contact",
-                        "DefaultDescription": "Contact"
+                        "DefaultDescription": "Contact",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -75,7 +99,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Property Map",
-                        "DefaultDescription": "Property Map"
+                        "DefaultDescription": "Property Map",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -89,7 +117,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Reviews",
-                        "DefaultDescription": "Reviews"
+                        "DefaultDescription": "Reviews",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -101,7 +133,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Blogs",
-                        "DefaultDescription": "Blogs"
+                        "DefaultDescription": "Blogs",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -120,7 +156,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "FAQs",
-                        "DefaultDescription": "FAQs"
+                        "DefaultDescription": "FAQs",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 }
@@ -147,7 +187,11 @@
             "meta_info": {
                 "PageTemplateName": "Base Layout Page",
                 "DefaultTitle": "Weddings",
-                "DefaultDescription": "Weddings"
+                "DefaultDescription": "Weddings",
+                "Header1": "Custom Header",
+                "Header2": "",
+                "Footer1": "Custom Footer",
+                "Footer2": ""
             },
             "sub_pages": [
                 {
@@ -164,7 +208,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Our Spaces",
-                        "DefaultDescription": "Our Spaces"
+                        "DefaultDescription": "Our Spaces",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -179,7 +227,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Wedding Celebrations",
-                        "DefaultDescription": "Wedding Celebrations"
+                        "DefaultDescription": "Wedding Celebrations",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": [
                         {
@@ -238,7 +290,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Wedding Packages",
-                        "DefaultDescription": "Wedding Packages"
+                        "DefaultDescription": "Wedding Packages",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -252,7 +308,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Meet the Team",
-                        "DefaultDescription": "Meet the Team"
+                        "DefaultDescription": "Meet the Team",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -268,7 +328,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Plan your Wedding",
-                        "DefaultDescription": "Plan your Wedding"
+                        "DefaultDescription": "Plan your Wedding",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": [
                         {
@@ -335,7 +399,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Event & Expo Spaces",
-                        "DefaultDescription": "Event & Expo Spaces"
+                        "DefaultDescription": "Event & Expo Spaces",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -352,7 +420,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Meeting Services",
-                        "DefaultDescription": "Meeting Services"
+                        "DefaultDescription": "Meeting Services",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -367,7 +439,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Special Occasions",
-                        "DefaultDescription": "Special Occasions"
+                        "DefaultDescription": "Special Occasions",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": [
                         {
@@ -401,7 +477,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Meeting Packages",
-                        "DefaultDescription": "Meeting Packages"
+                        "DefaultDescription": "Meeting Packages",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": []
                 },
@@ -416,7 +496,11 @@
                     "meta_info": {
                         "PageTemplateName": "Base Layout Page",
                         "DefaultTitle": "Plan your Meeting",
-                        "DefaultDescription": "Plan your Meeting"
+                        "DefaultDescription": "Plan your Meeting",
+                        "Header1": "Custom Header",
+                        "Header2": "",
+                        "Footer1": "Custom Footer",
+                        "Footer2": ""
                     },
                     "sub_pages": [
                         {
@@ -437,12 +521,6 @@
         {
             "page_name": "Guest Rooms",
             "components": [
-                "Hero banner 1",
-                "Guest Rooms Module Navigation",
-                "l1-l8 Feature Left Image - 2",
-                "L24 Amenities section 3",
-                "L4 Zig zag feature box with gallery",
-                "Faqs-with-right-accordion",
                 "M1-Inside Hero",
                 "A2-Modular Navigation",
                 "L1-Image Intro",
@@ -453,7 +531,11 @@
             "meta_info": {
                 "PageTemplateName": "Base Layout Page",
                 "DefaultTitle": "Guest Rooms",
-                "DefaultDescription": "Guest Rooms"
+                "DefaultDescription": "Guest Rooms",
+                "Header1": "Custom Header",
+                "Header2": "",
+                "Footer1": "Custom Footer",
+                "Footer2": ""
             },
             "sub_pages": [
                 {
@@ -584,7 +666,11 @@
             "meta_info": {
                 "PageTemplateName": "Base Layout Page",
                 "DefaultTitle": "Amenities",
-                "DefaultDescription": "Amenities"
+                "DefaultDescription": "Amenities",
+                "Header1": "Custom Header",
+                "Header2": "",
+                "Footer1": "Custom Footer",
+                "Footer2": ""
             },
             "sub_pages": [],
             "category_info": {
@@ -604,7 +690,11 @@
             "meta_info": {
                 "PageTemplateName": "Base Layout Page",
                 "DefaultTitle": "Dining",
-                "DefaultDescription": "Dining"
+                "DefaultDescription": "Dining",
+                "Header1": "Custom Header",
+                "Header2": "",
+                "Footer1": "Custom Footer",
+                "Footer2": ""
             },
             "sub_pages": [
                 {
@@ -641,7 +731,11 @@
             "meta_info": {
                 "PageTemplateName": "Base Layout Page",
                 "DefaultTitle": "Explore Ohio",
-                "DefaultDescription": "Explore Ohio"
+                "DefaultDescription": "Explore Ohio",
+                "Header1": "Custom Header",
+                "Header2": "",
+                "Footer1": "Custom Footer",
+                "Footer2": ""
             },
             "sub_pages": [],
             "category_info": {

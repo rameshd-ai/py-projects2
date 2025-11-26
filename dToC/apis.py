@@ -228,7 +228,7 @@ def addUpdateRecordsToCMS(base_url, headers, payload):
                     responses[record_id] = result.get('result')
                 else:
                     return False, f"API response indicates failure for record: {record}"
-        
+        time.sleep(2)
         return True, responses
 
     except requests.RequestException as e:
@@ -538,7 +538,7 @@ def CreateComponentRecord(base_url, headers, payload):
         
         # 3. Raise an exception for bad status codes (4xx or 5xx)
         response.raise_for_status()
-
+        time.sleep(2)
         # 4. Return the successful JSON response content
         return response.json()
 

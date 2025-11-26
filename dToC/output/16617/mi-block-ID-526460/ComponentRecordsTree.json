@@ -43,7 +43,7 @@
             "ProfileIds": null,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "76e58dbc-fdfb-45bd-a2cd-f8d6e9f23207",
+            "sectionGuid": "e3f19e42-5cd7-4c5b-a97f-0d9c5d2d4ad4",
             "component_alias": "9d257d0b-c9ed-4de8-880a-172cf33db61f",
             "vComponentId": 20995078
         },
@@ -89,7 +89,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980522,
@@ -133,7 +133,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980523,
@@ -177,7 +177,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980524,
@@ -221,7 +221,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980525,
@@ -265,7 +265,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980526,
@@ -309,7 +309,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980527,
@@ -353,7 +353,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980528,
@@ -397,7 +397,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         },
         {
             "Id": 2980529,
@@ -441,7 +441,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3001950
+            "parent_new_record_id": 3002230
         }
     ]
 }

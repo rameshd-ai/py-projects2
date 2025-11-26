@@ -1,0 +1,148 @@
+page,component,cms_component_name,level,hierarchy,available,status
+Our Property,N/A,N/A,1,Our Property,False,SKIPPED: Page had no components defined.
+Our Story,M1-Inside Hero,M1-Inside Hero,2,Our Property > Our Story,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Story,L1-Image Intro,L1-Image Intro,2,Our Property > Our Story,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Story,L29-Timeline,L29-Timeline,2,Our Property > Our Story,True,SUCCESS: Content retrieved and records added to assembly queue.
+Gallery,M2-No image Hero,M2-No image Hero,2,Our Property > Gallery,True,SUCCESS: Content retrieved and records added to assembly queue.
+Location,M1-Inside Hero,M1-Inside Hero,2,Our Property > Location,True,SUCCESS: Content retrieved and records added to assembly queue.
+Location,L18-Contact Us Map,L18-Contact Us Map,2,Our Property > Location,True,SUCCESS: Content retrieved and records added to assembly queue.
+Location,L17-Bullet Points Snippet,L17-Bullet Points Snippet,2,Our Property > Location,True,SUCCESS: Content retrieved and records added to assembly queue.
+Transportation,N/A,N/A,3,Our Property > Location > Transportation,False,SKIPPED: Page had no components defined.
+Contact,M1-Inside Hero,M1-Inside Hero,2,Our Property > Contact,True,SUCCESS: Content retrieved and records added to assembly queue.
+Contact,L20-Form With Image,L20-Form With Image,2,Our Property > Contact,True,SUCCESS: Content retrieved and records added to assembly queue.
+Contact,L23-Contact Info,L23-Contact Info,2,Our Property > Contact,True,SUCCESS: Content retrieved and records added to assembly queue.
+Property Map,M1-Inside Hero,M1-Inside Hero,2,Our Property > Property Map,True,SUCCESS: Content retrieved and records added to assembly queue.
+Property Map,L2-Content Only Intro,L2-Content Only Intro,2,Our Property > Property Map,True,SUCCESS: Content retrieved and records added to assembly queue.
+Reviews,on,N/A,2,Our Property > Reviews,False,SKIPPED: Component not available.
+Reviews,M1-Inside Hero,M1-Inside Hero,2,Our Property > Reviews,True,SUCCESS: Content retrieved and records added to assembly queue.
+Reviews,L1-Image Intro,L1-Image Intro,2,Our Property > Reviews,True,SUCCESS: Content retrieved and records added to assembly queue.
+Blogs,M1-Inside Hero,M1-Inside Hero,2,Our Property > Blogs,True,SUCCESS: Content retrieved and records added to assembly queue.
+Press Releases,N/A,N/A,2,Our Property > Press Releases,False,SKIPPED: Page had no components defined.
+FAQs,M2-No image Hero,M2-No image Hero,2,Our Property > FAQs,True,SUCCESS: Content retrieved and records added to assembly queue.
+FAQs,L15-Inside Page FAQs,L15-Inside Page FAQs,2,Our Property > FAQs,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,M1-Inside Hero,M1-Inside Hero,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,A2-Modular Navigation,N/A,1,Weddings,False,SKIPPED: Component not available.
+Weddings,L3-Intro with awards,L3-Intro with awards,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,L24-Amenities Icon,L24-Amenities Icon,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,L10-2 Column Snippet,L10-2 Column Snippet,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,L13-Full Width Image CTA,L13-Full Width Image CTA,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,L31-Video + Quotes,L31-Video Quotes,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,L30-inside Page Gallery,L30-inside Page Gallery,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Weddings,L15-Inside Page FAQs,L15-Inside Page FAQs,1,Weddings,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Spaces,M1-Inside Hero,M1-Inside Hero,2,Weddings > Our Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Spaces,A2-Modular Navigation,N/A,2,Weddings > Our Spaces,False,SKIPPED: Component not available.
+Our Spaces,L1-Image Intro,L1-Image Intro,2,Weddings > Our Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Spaces,L4-Rooms/Venue Snippet,L4-Rooms Venue Snippet,2,Weddings > Our Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Spaces,L32-Chart Table,L32-Chart Table,2,Weddings > Our Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Spaces,L8-Feature Snippet,N/A,2,Weddings > Our Spaces,False,SKIPPED: Component not available.
+Our Spaces,L30-inside Page Gallery,L30-inside Page Gallery,2,Weddings > Our Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Wedding Celebrations,M1-Inside Hero,M1-Inside Hero,2,Weddings > Wedding Celebrations,True,SUCCESS: Content retrieved and records added to assembly queue.
+Wedding Celebrations,A2-Modular Navigation,N/A,2,Weddings > Wedding Celebrations,False,SKIPPED: Component not available.
+Wedding Celebrations,L1-Image Intro,L1-Image Intro,2,Weddings > Wedding Celebrations,True,SUCCESS: Content retrieved and records added to assembly queue.
+Wedding Celebrations,L5-Rooms/Venue Snippet,L5-Rooms Venue Snippet,2,Weddings > Wedding Celebrations,True,SUCCESS: Content retrieved and records added to assembly queue.
+Bridal Showers,N/A,N/A,3,Weddings > Wedding Celebrations > Bridal Showers,False,SKIPPED: Page had no components defined.
+Elopements,N/A,N/A,3,Weddings > Wedding Celebrations > Elopements,False,SKIPPED: Page had no components defined.
+Engagement Parties,N/A,N/A,3,Weddings > Wedding Celebrations > Engagement Parties,False,SKIPPED: Page had no components defined.
+Honeymoons & Anniversaries,N/A,N/A,3,Weddings > Wedding Celebrations > Honeymoons & Anniversaries,False,SKIPPED: Page had no components defined.
+Rehearsal Dinners,N/A,N/A,3,Weddings > Wedding Celebrations > Rehearsal Dinners,False,SKIPPED: Page had no components defined.
+Send-Off Brunches,N/A,N/A,3,Weddings > Wedding Celebrations > Send-Off Brunches,False,SKIPPED: Page had no components defined.
+Weddings & Receptions,N/A,N/A,3,Weddings > Wedding Celebrations > Weddings & Receptions,False,SKIPPED: Page had no components defined.
+Wedding Packages,M1-Inside Hero,M1-Inside Hero,2,Weddings > Wedding Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Wedding Packages,A2-Modular Navigation,N/A,2,Weddings > Wedding Packages,False,SKIPPED: Component not available.
+Wedding Packages,L1-Image Intro,L1-Image Intro,2,Weddings > Wedding Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Wedding Packages,L4-Rooms/Venue Snippet,L4-Rooms Venue Snippet,2,Weddings > Wedding Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Wedding Packages,L13-Full Width Image CTA,L13-Full Width Image CTA,2,Weddings > Wedding Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meet the Team,M1-Inside Hero,M1-Inside Hero,2,Weddings > Meet the Team,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meet the Team,A2-Modular Navigation,N/A,2,Weddings > Meet the Team,False,SKIPPED: Component not available.
+Meet the Team,L1-Image Intro,L1-Image Intro,2,Weddings > Meet the Team,True,SUCCESS: Content retrieved and records added to assembly queue.
+Plan your Wedding,M1-Inside Hero,M1-Inside Hero,2,Weddings > Plan your Wedding,True,SUCCESS: Content retrieved and records added to assembly queue.
+Plan your Wedding,A2-Modular Navigation,N/A,2,Weddings > Plan your Wedding,False,SKIPPED: Component not available.
+Plan your Wedding,L2-Content Only Intro,L2-Content Only Intro,2,Weddings > Plan your Wedding,True,SUCCESS: Content retrieved and records added to assembly queue.
+Plan your Wedding,L19-Form No Image,N/A,2,Weddings > Plan your Wedding,False,SKIPPED: Component not available.
+Plan your Wedding,L7-Image Accordion,L7-Image Accordians,2,Weddings > Plan your Wedding,True,SUCCESS: Content retrieved and records added to assembly queue.
+Wedding Services,N/A,N/A,3,Weddings > Plan your Wedding > Wedding Services,False,SKIPPED: Page had no components defined.
+Vendors,N/A,N/A,3,Weddings > Plan your Wedding > Vendors,False,SKIPPED: Page had no components defined.
+RFP Form,N/A,N/A,3,Weddings > Plan your Wedding > RFP Form,False,SKIPPED: Page had no components defined.
+Meetings and Events,M1-Inside Hero,M1-Inside Hero,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meetings and Events,A2-Modular Navigation,N/A,1,Meetings and Events,False,SKIPPED: Component not available.
+Meetings and Events,L3-Intro with awards,L3-Intro with awards,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meetings and Events,L24-Amenities Icon,L24-Amenities Icon,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meetings and Events,L10-2 Column Snippet,L10-2 Column Snippet,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meetings and Events,L13-Full Width Image CTA,L13-Full Width Image CTA,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meetings and Events,L31-Video + Quotes,L31-Video Quotes,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meetings and Events,L30-inside Page Gallery,L30-inside Page Gallery,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meetings and Events,L15-Inside Page FAQs,L15-Inside Page FAQs,1,Meetings and Events,True,SUCCESS: Content retrieved and records added to assembly queue.
+Event and Expo Spaces,M1-Inside Hero,M1-Inside Hero,2,Meetings and Events > Event and Expo Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Event and Expo Spaces,A2-Modular Navigation,N/A,2,Meetings and Events > Event and Expo Spaces,False,SKIPPED: Component not available.
+Event and Expo Spaces,L1-Image Intro,L1-Image Intro,2,Meetings and Events > Event and Expo Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Event and Expo Spaces,L4-Rooms/Venue Snippet,L4-Rooms Venue Snippet,2,Meetings and Events > Event and Expo Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Event and Expo Spaces,L32-Chart Table,L32-Chart Table,2,Meetings and Events > Event and Expo Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Event and Expo Spaces,L8-Feature Snippet,N/A,2,Meetings and Events > Event and Expo Spaces,False,SKIPPED: Component not available.
+Event and Expo Spaces,L30-inside Page Gallery,L30-inside Page Gallery,2,Meetings and Events > Event and Expo Spaces,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meeting Services,M1-Inside Hero,M1-Inside Hero,2,Meetings and Events > Meeting Services,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meeting Services,A2-Modular Navigation,N/A,2,Meetings and Events > Meeting Services,False,SKIPPED: Component not available.
+Meeting Services,L25-Amenities Callout,N/A,2,Meetings and Events > Meeting Services,False,SKIPPED: Component not available.
+Meeting Services,L5A-Rooms/Venue Snippet,L5A-Rooms Venue Snippet,2,Meetings and Events > Meeting Services,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meeting Services,L6-Image callout,L6-Image callout,2,Meetings and Events > Meeting Services,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meeting Services,L13-Full Width Image CTA,L13-Full Width Image CTA,2,Meetings and Events > Meeting Services,True,SUCCESS: Content retrieved and records added to assembly queue.
+Special Occasions,M1-Inside Hero,M1-Inside Hero,2,Meetings and Events > Special Occasions,True,SUCCESS: Content retrieved and records added to assembly queue.
+Special Occasions,A2-Modular Navigation,N/A,2,Meetings and Events > Special Occasions,False,SKIPPED: Component not available.
+Special Occasions,L1-Image Intro,L1-Image Intro,2,Meetings and Events > Special Occasions,True,SUCCESS: Content retrieved and records added to assembly queue.
+Special Occasions,L5-Rooms/Venue Snippet,L5-Rooms Venue Snippet,2,Meetings and Events > Special Occasions,True,SUCCESS: Content retrieved and records added to assembly queue.
+Reunions,N/A,N/A,3,Meetings and Events > Special Occasions > Reunions,False,SKIPPED: Page had no components defined.
+Retreats,N/A,N/A,3,Meetings and Events > Special Occasions > Retreats,False,SKIPPED: Page had no components defined.
+Social Events,N/A,N/A,3,Meetings and Events > Special Occasions > Social Events,False,SKIPPED: Page had no components defined.
+Meeting Packages,M1-Inside Hero,M1-Inside Hero,2,Meetings and Events > Meeting Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meeting Packages,A2-Modular Navigation,N/A,2,Meetings and Events > Meeting Packages,False,SKIPPED: Component not available.
+Meeting Packages,L1-Image Intro,L1-Image Intro,2,Meetings and Events > Meeting Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Meeting Packages,L4-Rooms/Venue Snippet,L4-Rooms Venue Snippet,2,Meetings and Events > Meeting Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Plan your Meeting,M1-Inside Hero,M1-Inside Hero,2,Meetings and Events > Plan your Meeting,True,SUCCESS: Content retrieved and records added to assembly queue.
+Plan your Meeting,A2-Modular Navigation,N/A,2,Meetings and Events > Plan your Meeting,False,SKIPPED: Component not available.
+Plan your Meeting,L2-Content Only Intro,L2-Content Only Intro,2,Meetings and Events > Plan your Meeting,True,SUCCESS: Content retrieved and records added to assembly queue.
+Plan your Meeting,L19-Form No Image,N/A,2,Meetings and Events > Plan your Meeting,False,SKIPPED: Component not available.
+RFP Form,N/A,N/A,3,Meetings and Events > Plan your Meeting > RFP Form,False,SKIPPED: Page had no components defined.
+Guest Rooms,M1-Inside Hero,M1-Inside Hero,1,Guest Rooms,True,SUCCESS: Content retrieved and records added to assembly queue.
+Guest Rooms,A2-Modular Navigation,N/A,1,Guest Rooms,False,SKIPPED: Component not available.
+Guest Rooms,L1-Image Intro,L1-Image Intro,1,Guest Rooms,True,SUCCESS: Content retrieved and records added to assembly queue.
+Guest Rooms,L24-Amenities Icon,L24-Amenities Icon,1,Guest Rooms,True,SUCCESS: Content retrieved and records added to assembly queue.
+Guest Rooms,L4-Rooms/Venue Snippet,L4-Rooms Venue Snippet,1,Guest Rooms,True,SUCCESS: Content retrieved and records added to assembly queue.
+Guest Rooms,L15-Inside Page FAQs,L15-Inside Page FAQs,1,Guest Rooms,True,SUCCESS: Content retrieved and records added to assembly queue.
+Parlor Rooms,N/A,N/A,2,Guest Rooms > Parlor Rooms,False,SKIPPED: Page had no components defined.
+Deluxe Rooms,N/A,N/A,2,Guest Rooms > Deluxe Rooms,False,SKIPPED: Page had no components defined.
+Standard Rooms,N/A,N/A,2,Guest Rooms > Standard Rooms,False,SKIPPED: Page had no components defined.
+Suites,N/A,N/A,2,Guest Rooms > Suites,False,SKIPPED: Page had no components defined.
+Balcony Rooms,N/A,N/A,2,Guest Rooms > Balcony Rooms,False,SKIPPED: Page had no components defined.
+Room Packages,M1-Inside Hero,M1-Inside Hero,2,Guest Rooms > Room Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Room Packages,A2-Modular Navigation,N/A,2,Guest Rooms > Room Packages,False,SKIPPED: Component not available.
+Room Packages,L1-Image Intro,L1-Image Intro,2,Guest Rooms > Room Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Room Packages,L5A-Rooms/Venue Snippet,L5A-Rooms Venue Snippet,2,Guest Rooms > Room Packages,True,SUCCESS: Content retrieved and records added to assembly queue.
+Delaware On Draft Package,N/A,N/A,3,Guest Rooms > Room Packages > Delaware On Draft Package,False,SKIPPED: Page had no components defined.
+Columbus Zoo Package,N/A,N/A,3,Guest Rooms > Room Packages > Columbus Zoo Package,False,SKIPPED: Page had no components defined.
+Advance Purchase Rate,N/A,N/A,3,Guest Rooms > Room Packages > Advance Purchase Rate,False,SKIPPED: Page had no components defined.
+Senior/AARP,N/A,N/A,3,Guest Rooms > Room Packages > Senior/AARP,False,SKIPPED: Page had no components defined.
+Government Rate,N/A,N/A,3,Guest Rooms > Room Packages > Government Rate,False,SKIPPED: Page had no components defined.
+AAA Rate,N/A,N/A,3,Guest Rooms > Room Packages > AAA Rate,False,SKIPPED: Page had no components defined.
+Group Block,M1-Inside Hero,M1-Inside Hero,2,Guest Rooms > Group Block,True,SUCCESS: Content retrieved and records added to assembly queue.
+Group Block,A2-Modular Navigation,N/A,2,Guest Rooms > Group Block,False,SKIPPED: Component not available.
+Group Block,L1-Image Intro,L1-Image Intro,2,Guest Rooms > Group Block,True,SUCCESS: Content retrieved and records added to assembly queue.
+Group Block,A1-In-page Tabs,N/A,2,Guest Rooms > Group Block,False,SKIPPED: Component not available.
+Group Block,L7-Image Accordion,L7-Image Accordians,2,Guest Rooms > Group Block,True,SUCCESS: Content retrieved and records added to assembly queue.
+Group Block,L33-Form Content,N/A,2,Guest Rooms > Group Block,False,SKIPPED: Component not available.
+RFP Form,N/A,N/A,3,Guest Rooms > Group Block > RFP Form,False,SKIPPED: Page had no components defined.
+Amenities,M1-Inside Hero,M1-Inside Hero,1,Amenities,True,SUCCESS: Content retrieved and records added to assembly queue.
+Amenities,L2-Content Only Intro,L2-Content Only Intro,1,Amenities,True,SUCCESS: Content retrieved and records added to assembly queue.
+Amenities,L24-Amenities Icon,L24-Amenities Icon,1,Amenities,True,SUCCESS: Content retrieved and records added to assembly queue.
+Amenities,L5-Rooms/Venue Snippet,L5-Rooms Venue Snippet,1,Amenities,True,SUCCESS: Content retrieved and records added to assembly queue.
+Amenities,L8-Feature Snippet,N/A,1,Amenities,False,SKIPPED: Component not available.
+Amenities,L24A-Amenities Icon,N/A,1,Amenities,False,SKIPPED: Component not available.
+Amenities,L11-3 Column Snippet,L11-3 Column Snippet,1,Amenities,True,SUCCESS: Content retrieved and records added to assembly queue.
+Amenities,L15-Inside Page FAQs,L15-Inside Page FAQs,1,Amenities,True,SUCCESS: Content retrieved and records added to assembly queue.
+Dining,M1-Inside Hero,M1-Inside Hero,1,Dining,True,SUCCESS: Content retrieved and records added to assembly queue.
+Dining,L1-Image Intro,L1-Image Intro,1,Dining,True,SUCCESS: Content retrieved and records added to assembly queue.
+Dining,L5-Rooms/Venue Snippet,L5-Rooms Venue Snippet,1,Dining,True,SUCCESS: Content retrieved and records added to assembly queue.
+Dining,L15-Inside Page FAQs,L15-Inside Page FAQs,1,Dining,True,SUCCESS: Content retrieved and records added to assembly queue.
+The Pub,N/A,N/A,2,Dining > The Pub,False,SKIPPED: Page had no components defined.
+Catering,N/A,N/A,2,Dining > Catering,False,SKIPPED: Page had no components defined.
+Lobby Grab & Go,N/A,N/A,2,Dining > Lobby Grab & Go,False,SKIPPED: Page had no components defined.
+Explore Ohio,M1-Inside Hero,M1-Inside Hero,1,Explore Ohio,True,SUCCESS: Content retrieved and records added to assembly queue.
+Explore Ohio,L1-Image Intro,L1-Image Intro,1,Explore Ohio,True,SUCCESS: Content retrieved and records added to assembly queue.

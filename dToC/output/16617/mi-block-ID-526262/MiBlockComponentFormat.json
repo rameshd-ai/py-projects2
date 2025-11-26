@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 867456,
+            "FormatName": "Intro Section Center",
+            "FormatKey": "intro-section-center",
+            "FormatPrefix": "",
+            "FormatContent": "<!-- Layout 138 [H2 headline] Starts -->\n{{#each ComponentRecordJson.intro-section-center}}\n<div class=\"h2-headline intro-section-center inner-padding {{IfCond data.enable-background-image[].0 '=' 'Yes'}} bg-img {{/IfCond}}\">\n  <div class=\"intro-sectionbg\">\n    <img src=\"{{data.bg-image.0.OriginalImagePath}}\" \n         alt=\"{{data.bg-image-alt}}\" \n         width=\"1440\" height=\"726\" tabindex=\"0\">\n  </div>\n  <div class=\"uk-container uk-container-small h2-headline__container\">\n    <div class=\"h2-headline__text js-texttoggle\">\n      {{IfCond data.tagline 'notempty' ''}}\n      <div class=\"small-title\" tabindex=\"0\">{{data.tagline}}</div>\n      {{/IfCond}}\n\n      {{IfCond data.consider-as-h1[].0 '=' 'Yes'}}\n      <h1 id=\"main-content-h1\" class=\"title title--xl h2-headline__title dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">\n        {{data.title}}\n      </h1>\n\n      {{else}}\n\n      <h2 class=\"title title--xl h2-headline__title dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">\n        {{data.title}}\n      </h2>\n      {{/IfCond}}\n\n      {{IfCond data.description 'notempty' ''}}\n      <div class=\"h2-headline__content text-editor\" tabindex=\"0\">\n        {{{data.description}}}\n        {{IfCond data.read-more-description 'notempty' ''}}\n        <div class=\"js-texttoggle-content\" style=\"display: none;\">\n          {{{data.read-more-description}}}\n        </div>\n        {{/IfCond}}\n      </div>\n      {{IfCond data.read-more-description 'notempty' ''}}\n      <button type=\"button\" class=\"uk-button button-link button-readmore js-texttoggle-action\">\n        <span class=\"button-readmore__text button-readmore__text--more\">Read More</span>\n        <span class=\"button-readmore__text button-readmore__text--less\">Less</span>\n      </button>\n      {{/IfCond}}\n      {{/IfCond}}\n      {{IfCond data.cta-1-text 'notempty' '' 'or' data.cta-2-text 'notempty' ''}}\n      <div class=\"h2-headline__actions\">\n        {{IfCond data.cta-1-text 'notempty' '' 'and' data.cta-1-link 'notempty' ''}}\n        <a href=\"{{data.cta-1-link}}\" class=\"uk-button uk-button-primary\">\n          {{data.cta-1-text}}\n          <span class=\"sr-only\">for {{data.title}}</span>\n        </a>\n        {{/IfCond}}\n        {{IfCond data.cta-2-text 'notempty' '' 'and' data.cta-2-link 'notempty' ''}}\n        <a href=\"{{data.cta-2-link}}\" class=\"uk-button uk-button-secondary\">\n          {{data.cta-2-text}}\n          <span class=\"sr-only\">for {{data.title}}</span>\n        </a>\n        {{/IfCond}}\n      </div>\n      {{/IfCond}}\n    </div>\n  </div>\n</div>\n{{/each}}\n<!-- Layout 138 [H1 headline] Ends -->",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}
