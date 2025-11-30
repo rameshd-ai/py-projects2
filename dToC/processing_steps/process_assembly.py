@@ -292,7 +292,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
-    # page_name = page_name + "-Demo"
+    page_name = page_name + "-Demo"
     payload = {
         "pageId": 0,
         "pageName": page_name,
@@ -1956,7 +1956,7 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
         print(current_page_name)
-        if current_page_name == "Meetings and Events":
+        if current_page_name == "Our Property":
             logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
 
             # Default category ID
