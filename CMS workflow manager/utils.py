@@ -9,11 +9,7 @@ import logging
 from typing import Dict, Any, Generator
 from config import PROCESSING_STEPS, UPLOAD_FOLDER, OUTPUT_FOLDER
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Dynamically load all processing step modules
@@ -84,12 +80,7 @@ def generate_workflow_stream(job_id: str) -> Generator[str, None, None]:
     }
     
     try:
-        # Send initial start message
-        yield format_sse({
-            "status": "start",
-            "message": "Workflow started - Processing your configuration...",
-            "timestamp": time.time()
-        })
+        yield format_sse({"status": "start", "message": "Workflow started"})
         
         # Execute each processing step
         for idx, step_config in enumerate(PROCESSING_STEPS, 1):
@@ -97,17 +88,11 @@ def generate_workflow_stream(job_id: str) -> Generator[str, None, None]:
             step_name = step_config["name"]
             step_function_name = step_config["module"]
             
-            logger.info(f"Executing step {idx}/{len(PROCESSING_STEPS)}: {step_name}")
-            
-            # Notify: Step starting
             yield format_sse({
                 "status": "in_progress",
                 "step_id": step_id,
                 "step_name": step_name,
-                "step_number": idx,
-                "total_steps": len(PROCESSING_STEPS),
-                "message": f"Processing: {step_config['description']}",
-                "timestamp": time.time()
+                "message": f"Processing: {step_name}"
             })
             
             # Get the step function
@@ -136,11 +121,7 @@ def generate_workflow_stream(job_id: str) -> Generator[str, None, None]:
                     "status": "done",
                     "step_id": step_id,
                     "step_name": step_name,
-                    "step_number": idx,
-                    "message": f"✓ Completed: {step_name}",
-                    "duration": round(step_duration, 2),
-                    "result": step_result.get("message", "Success"),
-                    "timestamp": time.time()
+                    "message": f"✓ Completed: {step_name}"
                 })
                 
                 logger.info(f"Step {step_name} completed in {step_duration:.2f}s")
@@ -156,14 +137,10 @@ def generate_workflow_stream(job_id: str) -> Generator[str, None, None]:
         # Generate final report
         report_path = generate_completion_report(job_id, workflow_context, total_duration)
         
-        # Send completion message
         yield format_sse({
             "status": "complete",
-            "message": "🎉 Workflow completed successfully!",
-            "total_duration": round(total_duration, 2),
-            "report_url": f"/download/{os.path.basename(report_path)}",
-            "completed_steps": workflow_context["completed_steps"],
-            "timestamp": time.time()
+            "message": "Workflow completed!",
+            "report_url": f"/download/{os.path.basename(report_path)}"
         })
         
         logger.info(f"Workflow {job_id} completed in {total_duration:.2f}s")
@@ -171,12 +148,7 @@ def generate_workflow_stream(job_id: str) -> Generator[str, None, None]:
     except Exception as e:
         # Workflow-level error handling
         logger.error(f"Workflow {job_id} failed: {e}")
-        yield format_sse({
-            "status": "error",
-            "message": f"❌ Workflow failed: {str(e)}",
-            "step_id": workflow_context.get("current_step"),
-            "timestamp": time.time()
-        })
+        yield format_sse({"status": "error", "message": f"Workflow failed: {str(e)}"})
     
     finally:
         # Cleanup: Send close event
