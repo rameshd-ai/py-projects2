@@ -1,50 +1,70 @@
+"""
+Configuration file for CMS Workflow Manager
+Defines the processing pipeline and application settings
+"""
 import os
 
-# --- Configuration for the Pipeline ---
+# Application Settings
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+OUTPUT_FOLDER = os.path.join(BASE_DIR, "output")
+MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
+ALLOWED_EXTENSIONS = {'csv', 'json', 'xlsx', 'xls'}
 
-# Directory where uploaded and intermediate files will be stored.
-# This folder must be created in the root directory.
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+# Ensure directories exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# List of all steps in the processing pipeline.
-# Each step must define 'id' (for UI matching), 'name' (human-readable), and 'module' (the function to execute).
+# Processing Pipeline Definition
+# Each step corresponds to a wizard step in the UI
 PROCESSING_STEPS = [
     {
-        "id": "upload_file",
-        "name": "1. File Upload Acknowledged",
-        # This step is simulated client-side, but kept here for UI consistency.
-    },
-    {
         "id": "site_setup",
-        "name": "2. Site Setup Readiness (Initial configuration)",
-        "module": "run_site_setup",
-        "config": {"config_profile": "OSB/Template", "delay_s": 2}, 
+        "name": "Site Setup Readiness",
+        "module": "run_site_setup_step",
+        "description": "Processing site configuration and validation",
+        "delay": 2.0,  # Simulated processing time
+        "error_chance": 0.0  # For testing: 0.0 = no errors, 1.0 = always fails
     },
     {
         "id": "brand_theme",
-        "name": "3. Brand/Theme Setup (Design configuration)",
-        "module": "run_brand_theme_setup",
-        "config": {"theme_id": "TPL-402", "delay_s": 3},
+        "name": "Brand/Theme Setup",
+        "module": "run_brand_theme_step",
+        "description": "Configuring brand and theme settings",
+        "delay": 3.0,
+        "error_chance": 0.0
     },
     {
         "id": "content_plugin",
-        "name": "4. Content Plug-in (Content migration)",
-        "module": "run_content_plugin",
-        "config": {"migration_mode": "full", "delay_s": 4},
+        "name": "Content Plug-in",
+        "module": "run_content_plugin_step",
+        "description": "Migrating content and inner pages",
+        "delay": 4.0,
+        "error_chance": 0.0
     },
     {
         "id": "modules_features",
-        "name": "5. Modules/Features (Select features)",
-        "module": "run_modules_features",
-        "config": {"feature_list": ["SEO", "Analytics"], "delay_s": 5},
+        "name": "Modules/Features",
+        "module": "run_modules_features_step",
+        "description": "Installing selected modules and features",
+        "delay": 3.5,
+        "error_chance": 0.0
     },
     {
-        "id": "review_complete",
-        "name": "6. Review & Complete (Final review and cleanup)",
-        "module": "run_review_complete_step",
-        "config": {"delay_s": 1},
+        "id": "finalize",
+        "name": "Finalize & Deploy",
+        "module": "run_finalize_step",
+        "description": "Finalizing setup and generating reports",
+        "delay": 2.5,
+        "error_chance": 0.0
     }
 ]
 
-# The final report filename
-FINAL_REPORT_FILENAME = "website_creation_report.csv"
+# API Configuration (placeholder for external CMS APIs)
+CMS_API_BASE_URL = "https://api.cms-system.com"  # Replace with actual CMS API
+CMS_API_TOKEN = os.getenv("CMS_API_TOKEN", "")  # Store in environment variables
+
+# Logging Configuration
+LOG_LEVEL = "INFO"
+LOG_FILE = os.path.join(BASE_DIR, "workflow.log")
+
