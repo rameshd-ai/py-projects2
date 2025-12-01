@@ -22,8 +22,9 @@
                         "L29-Timeline"
                     ],
                     "meta_info": {
-                        "DefaultTitle": "",
-                        "DefaultDescription": "",
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Our Story",
+                        "DefaultDescription": "Our Story",
                         "Header1": "Custom Header",
                         "Header2": "",
                         "Footer1": "Custom Footer",

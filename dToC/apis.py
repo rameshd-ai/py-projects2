@@ -565,6 +565,8 @@ def CreateComponentRecord(base_url, headers, payload):
 
 
 def CreatePage(base_url, headers, payload,template_id):
+    print("after")
+    print(template_id)
     """
     Sends a POST request to create (save) a page using the MiBlock API.
     Endpoint: /api/PageApi/SavePage?templateId={id}&directPublish={bool}

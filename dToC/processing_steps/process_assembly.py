@@ -310,6 +310,9 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         }
     print(f"New page payload ready for '{page_name}'.")
     print(f"New page payload ready for '{payload}'.")
+    print("before")
+    print(page_template_id)
+
     data = CreatePage(base_url, headers, payload,page_template_id)
     # print(data)
 

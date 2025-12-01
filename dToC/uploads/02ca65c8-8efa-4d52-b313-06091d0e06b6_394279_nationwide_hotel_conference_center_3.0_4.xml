@@ -3,7 +3,7 @@
   <title>394279 Nationwide Hotel &amp;amp; Conference Center</title>
   <version>3.0</version>
   <link>https://milestoneinc.slickplan.com/uh9lygwkz</link>
-  <pubDate>Tue, 25 Nov 2025 22:04:45 -0500</pubDate>
+  <pubDate>Sun, 30 Nov 2025 23:40:23 -0500</pubDate>
   <settings>
     <language>en_US</language>
   </settings>
@@ -22,6 +22,29 @@
       <id>svgmainsection</id>
     </options>
     <cells>
+      <cell id="oegeoiyom">
+        <text>Our Story</text>
+        <parent>up6iiyynxfa3hr</parent>
+        <order>1000</order>
+        <level>2</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>uesfu55xs</id>
+              <content>&amp;lt;p&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Meta Description&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1-Inside Hero&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;L1-Image Intro&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;H1&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
+&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;L29-Timeline&amp;lt;/strong&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;
+&amp;lt;div class=&amp;quot;OutlineElement Ltr SCXW137732011 BCX0&amp;quot;&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW137732011 BCX0&amp;quot; paraid=&amp;quot;1150607404&amp;quot; paraeid=&amp;quot;{a1777559-ffb9-485d-8cbd-8fd4c03cf6b6}{155}&amp;quot;&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW137732011 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SpellingErrorV2Themed SCXW137732011 BCX0&amp;quot;&amp;gt;&amp;lt;br&amp;gt;PageInfoBlock&amp;lt;br&amp;gt;PageTemplateName: Base Layout Page&amp;lt;br&amp;gt;Default Title: Our Story&amp;lt;br&amp;gt;Default Description: Our Story&amp;lt;br&amp;gt;Header1: Custom Header&amp;lt;br&amp;gt;Header2:&amp;lt;br&amp;gt;Footer1: Custom Footer&amp;lt;br&amp;gt;Footer2:&amp;lt;br&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;/div&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
       <cell id="svgnbkay45xbzd5a2g3">
         <desc>&amp;lt;p&amp;gt;This page will be similar to one available here https://www.frederickhotelnyc.com/explore-nyc&amp;lt;/p&amp;gt;</desc>
         <text>Explore Ohio</text>
@@ -670,37 +693,6 @@
 &amp;lt;p&amp;gt;PageInfoBlock&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;PageTemplateName: Base Layout Page&amp;lt;br&amp;gt;Default Title: Gallery&amp;lt;br&amp;gt;Default Description: This is Seo page description&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;Header1: Custom Header&amp;lt;br&amp;gt;Header2: &amp;lt;br&amp;gt;Footer1: Custom Footer&amp;lt;br&amp;gt;Footer2:&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="oegeoiyom">
-        <text>Our Story</text>
-        <parent>up6iiyynxfa3hr</parent>
-        <order>1000</order>
-        <level>2</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>uesfu55xs</id>
-              <content>&amp;lt;p&amp;gt;Meta Title&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Meta Description&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;M1-Inside Hero&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;L1-Image Intro&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;H1&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;Overview&amp;lt;/p&amp;gt;
-&amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;L29-Timeline&amp;lt;/strong&amp;gt;&amp;amp;nbsp;&amp;lt;/p&amp;gt;
-&amp;lt;div class=&amp;quot;OutlineElement Ltr SCXW137732011 BCX0&amp;quot;&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW137732011 BCX0&amp;quot; paraid=&amp;quot;1150607404&amp;quot; paraeid=&amp;quot;{a1777559-ffb9-485d-8cbd-8fd4c03cf6b6}{155}&amp;quot;&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW137732011 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SpellingErrorV2Themed SCXW137732011 BCX0&amp;quot;&amp;gt;&amp;lt;br&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW32286814 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SpellingErrorV2Themed SCXW32286814 BCX0&amp;quot;&amp;gt;PageInfoBlock&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW32286814 BCX0&amp;quot;&amp;gt; &amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW137732011 BCX0&amp;quot; paraid=&amp;quot;1150607404&amp;quot; paraeid=&amp;quot;{a1777559-ffb9-485d-8cbd-8fd4c03cf6b6}{155}&amp;quot;&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW137732011 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SpellingErrorV2Themed SCXW137732011 BCX0&amp;quot;&amp;gt;PageTemplateName&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW137732011 BCX0&amp;quot;&amp;gt;: Base Layout Page &amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW137732011 BCX0&amp;quot; data-ccp-props=&amp;quot;{&amp;quot;335559731&amp;quot;:720,&amp;quot;335559738&amp;quot;:240,&amp;quot;335559739&amp;quot;:240}&amp;quot;&amp;gt; &amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;/div&amp;gt;
-&amp;lt;div class=&amp;quot;OutlineElement Ltr SCXW137732011 BCX0&amp;quot;&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW137732011 BCX0&amp;quot; paraid=&amp;quot;169747766&amp;quot; paraeid=&amp;quot;{a1777559-ffb9-485d-8cbd-8fd4c03cf6b6}{163}&amp;quot;&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW137732011 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW137732011 BCX0&amp;quot;&amp;gt;Default Title:&amp;lt;span&amp;gt; Our Story&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;/div&amp;gt;
-&amp;lt;div class=&amp;quot;OutlineElement Ltr SCXW137732011 BCX0&amp;quot;&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW137732011 BCX0&amp;quot; paraid=&amp;quot;797171185&amp;quot; paraeid=&amp;quot;{a1777559-ffb9-485d-8cbd-8fd4c03cf6b6}{173}&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW137732011 BCX0&amp;quot;&amp;gt;Default Description: &amp;lt;span&amp;gt;Our Story&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW137732011 BCX0&amp;quot; paraid=&amp;quot;797171185&amp;quot; paraeid=&amp;quot;{a1777559-ffb9-485d-8cbd-8fd4c03cf6b6}{173}&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW137732011 BCX0&amp;quot;&amp;gt;&amp;lt;span&amp;gt;Header1: Custom Header&amp;lt;br&amp;gt;Header2: &amp;lt;br&amp;gt;Footer1: Custom Footer&amp;lt;br&amp;gt;Footer2:&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;/div&amp;gt;</content>
             </wysiwyg>
           </body>
         </contents>

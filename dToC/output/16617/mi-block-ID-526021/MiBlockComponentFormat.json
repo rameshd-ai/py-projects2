@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 867333,
+            "FormatName": "Dark-intro-text",
+            "FormatKey": "dark-intro-text",
+            "FormatPrefix": "",
+            "FormatContent": "<!-- Layout 181 Starts -->\n{{#each ComponentRecordJson.dark-intro-text}}\n<div class=\"lt181-widget\">\n  <div class=\"uk-container lt181-widget__container\">\n\n    {{IfCond data.section-tagline 'notempty' ''}}\n    <div class=\"title title--tagline lt181-widget__smalltitle\" tabindex=\"0\">{{data.section-tagline}}</div>\n    {{/IfCond}}\n\n    <h1 id=\"main-content-h1\" class=\"title title--xl title-with-cursive lt181-widget__title dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\"> <span class=\"title__cursive\">{{data.section-title}}\n      </span>\n    </h1>\n\n    {{IfCond data.section-description 'notempty' ''}}\n    <div class=\"text-editor lt181-widget__desc\" tabindex=\"0\">\n      {{{data.section-description}}}\n    </div>\n    {{/IfCond}}\n\n    {{IfCond data.button-link 'notempty' '' 'and' data.button-text 'notempty' ''}}\n    <div class=\"lt181-widget__action\">\n      <a href=\"{{data.button-link}}\" class=\"uk-button uk-button-default uk-button-default-inverse\">{{data.button-text}} <span class=\"sr-only\"> - {{data.section-title}}</span> </a>    \n    </div>\n    {{/IfCond}}\n\n  </div>\n</div>\n{{/each}}\n<!-- layout 181 Ends -->",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

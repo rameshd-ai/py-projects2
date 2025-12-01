@@ -1,0 +1,22 @@
+page,component,cms_component_name,level,hierarchy,available,status
+Our Property,N/A,N/A,1,Our Property,False,SKIPPED: Page had no components defined.
+Our Story,M1-Inside Hero,M1-Inside Hero,2,Our Property > Our Story,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Story,L1-Image Intro,L1-Image Intro,2,Our Property > Our Story,True,SUCCESS: Content retrieved and records added to assembly queue.
+Our Story,L29-Timeline,L29-Timeline,2,Our Property > Our Story,True,SUCCESS: Content retrieved and records added to assembly queue.
+Gallery,M2-No image Hero,M2-No image Hero,2,Our Property > Gallery,True,SUCCESS: Content retrieved and records added to assembly queue.
+Location,M1-Inside Hero,M1-Inside Hero,2,Our Property > Location,True,SUCCESS: Content retrieved and records added to assembly queue.
+Location,L18-Contact Us Map,L18-Contact Us Map,2,Our Property > Location,True,SUCCESS: Content retrieved and records added to assembly queue.
+Location,L17-Bullet Points Snippet,L17-Bullet Points Snippet,2,Our Property > Location,True,SUCCESS: Content retrieved and records added to assembly queue.
+Transportation,N/A,N/A,3,Our Property > Location > Transportation,False,SKIPPED: Page had no components defined.
+Contact,M1-Inside Hero,M1-Inside Hero,2,Our Property > Contact,True,SUCCESS: Content retrieved and records added to assembly queue.
+Contact,L20-Form With Image,L20-Form With Image,2,Our Property > Contact,True,SUCCESS: Content retrieved and records added to assembly queue.
+Contact,L23-Contact Info,L23-Contact Info,2,Our Property > Contact,True,SUCCESS: Content retrieved and records added to assembly queue.
+Property Map,M1-Inside Hero,M1-Inside Hero,2,Our Property > Property Map,True,SUCCESS: Content retrieved and records added to assembly queue.
+Property Map,L2-Content Only Intro,L2-Content Only Intro,2,Our Property > Property Map,True,SUCCESS: Content retrieved and records added to assembly queue.
+Reviews,on,N/A,2,Our Property > Reviews,False,SKIPPED: Component not available.
+Reviews,M1-Inside Hero,M1-Inside Hero,2,Our Property > Reviews,True,SUCCESS: Content retrieved and records added to assembly queue.
+Reviews,L1-Image Intro,L1-Image Intro,2,Our Property > Reviews,True,SUCCESS: Content retrieved and records added to assembly queue.
+Blogs,M1-Inside Hero,M1-Inside Hero,2,Our Property > Blogs,True,SUCCESS: Content retrieved and records added to assembly queue.
+Press Releases,N/A,N/A,2,Our Property > Press Releases,False,SKIPPED: Page had no components defined.
+FAQs,M2-No image Hero,M2-No image Hero,2,Our Property > FAQs,True,SUCCESS: Content retrieved and records added to assembly queue.
+FAQs,L15-Inside Page FAQs,L15-Inside Page FAQs,2,Our Property > FAQs,True,SUCCESS: Content retrieved and records added to assembly queue.

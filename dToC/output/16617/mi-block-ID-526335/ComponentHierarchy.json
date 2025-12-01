@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 526335,
+        "type": "MainComponent",
+        "componentName": "Redwood-Highlights"
+    },
+    {
+        "componentId": 526336,
+        "type": "Level1Child",
+        "componentName": "Redwood-Highlights-Data"
+    }
+]
