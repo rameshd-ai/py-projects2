@@ -30,9 +30,28 @@ def load_step_modules():
 load_step_modules()
 
 
+def get_job_folder(job_id: str) -> str:
+    """Get the job-specific folder path"""
+    return os.path.join(UPLOAD_FOLDER, job_id)
+
+
+def get_job_output_folder(job_id: str) -> str:
+    """Get the job-specific output folder path"""
+    return os.path.join(OUTPUT_FOLDER, job_id)
+
+
+def ensure_job_folders(job_id: str):
+    """Create job-specific folders if they don't exist"""
+    job_folder = get_job_folder(job_id)
+    output_folder = get_job_output_folder(job_id)
+    os.makedirs(job_folder, exist_ok=True)
+    os.makedirs(output_folder, exist_ok=True)
+
+
 def get_config_filepath(job_id: str) -> str:
     """Get the path to the job configuration file"""
-    return os.path.join(UPLOAD_FOLDER, f"{job_id}_config.json")
+    ensure_job_folders(job_id)
+    return os.path.join(get_job_folder(job_id), "config.json")
 
 
 def load_job_config(job_id: str) -> Dict[str, Any]:
@@ -54,6 +73,72 @@ def save_job_config(job_id: str, config: Dict[str, Any]) -> bool:
     except Exception as e:
         logger.error(f"Failed to save config for {job_id}: {e}")
         return False
+
+
+def execute_single_step(job_id: str, step_number: int) -> Dict[str, Any]:
+    """Execute a single processing step"""
+    if step_number < 1 or step_number > len(PROCESSING_STEPS):
+        raise ValueError(f"Invalid step number: {step_number}")
+    
+    step_config = PROCESSING_STEPS[step_number - 1]
+    step_id = step_config["id"]
+    step_function_name = step_config["module"]
+    
+    # Load job configuration and previous results
+    job_config = load_job_config(job_id)
+    workflow_context = {
+        "job_id": job_id,
+        "job_config": job_config
+    }
+    
+    # Ensure job folders exist
+    ensure_job_folders(job_id)
+    
+    # Load previous step results
+    results_file = os.path.join(get_job_folder(job_id), "results.json")
+    if os.path.exists(results_file):
+        with open(results_file, 'r', encoding='utf-8') as f:
+            previous_results = json.load(f)
+            workflow_context.update(previous_results)
+    
+    # Get step function
+    step_function = STEP_MODULES.get(step_function_name)
+    if not step_function:
+        raise Exception(f"Step function {step_function_name} not found")
+    
+    # Execute step
+    step_result = step_function(
+        job_id=job_id,
+        step_config=step_config,
+        workflow_context=workflow_context
+    )
+    
+    # Save results
+    if not os.path.exists(results_file):
+        all_results = {}
+    else:
+        with open(results_file, 'r', encoding='utf-8') as f:
+            all_results = json.load(f)
+    
+    all_results[step_id] = step_result
+    all_results["completed_steps"] = all_results.get("completed_steps", [])
+    if step_id not in all_results["completed_steps"]:
+        all_results["completed_steps"].append(step_id)
+    
+    with open(results_file, 'w', encoding='utf-8') as f:
+        json.dump(all_results, f, indent=4, ensure_ascii=False)
+    
+    # Check if step was skipped based on result message
+    step_message = step_result.get("message", "").lower()
+    is_skipped = any(keyword in step_message for keyword in ["skipped", "not enabled", "not selected", "no modules"])
+    
+    return {
+        "success": True,
+        "step_id": step_id,
+        "step_name": step_config["name"],
+        "result": step_result,
+        "status": "skipped" if is_skipped else "success"
+    }
 
 
 def format_sse(data: Dict[str, Any]) -> str:
@@ -140,7 +225,7 @@ def generate_workflow_stream(job_id: str) -> Generator[str, None, None]:
         yield format_sse({
             "status": "complete",
             "message": "Workflow completed!",
-            "report_url": f"/download/{os.path.basename(report_path)}"
+            "report_url": f"/download/{job_id}/report.json"
         })
         
         logger.info(f"Workflow {job_id} completed in {total_duration:.2f}s")
@@ -157,7 +242,8 @@ def generate_workflow_stream(job_id: str) -> Generator[str, None, None]:
 
 def generate_completion_report(job_id: str, workflow_context: Dict, total_duration: float) -> str:
     """Generate a completion report for the workflow"""
-    report_path = os.path.join(OUTPUT_FOLDER, f"{job_id}_report.json")
+    ensure_job_folders(job_id)
+    report_path = os.path.join(get_job_output_folder(job_id), "report.json")
     
     report = {
         "job_id": job_id,

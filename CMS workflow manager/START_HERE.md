@@ -73,17 +73,19 @@ http://127.0.0.1:5000
 ### Step 1: Open in Browser
 Navigate to: **http://127.0.0.1:5000**
 
-### Step 2: Fill the Wizard
-1. **Site Setup** - Configure source/destination sites
-2. **Brand/Theme** - Set up branding
-3. **Content** - Configure migration
-4. **Modules** - Select features
-5. **Review** - Start the workflow!
+### Step 2: Fill the Wizard (Step-by-Step Processing)
+1. **Site Setup** - Fill form → Click **"Process"** → ✓ Green checkmark
+2. **Brand/Theme** - Fill form → Click **"Process"** → ✓ Green checkmark
+3. **Content** - Fill form → Click **"Process"** → ✓ Green or ⊘ Orange (if skipped)
+4. **Modules** - Select features → Click **"Process"** → ✓ Green or ⊘ Orange (if none)
+5. **Review** - Review summary → Click **"Process"** → Final report generated
 
-### Step 3: Watch Real-Time Progress
-- Processing modal appears automatically
-- See each step execute in real-time
-- Download report when complete
+### Step 3: Visual Status Feedback
+- **✓ Green Checkmark**: Step completed successfully
+- **✗ Red Cross**: Step failed (error occurred)
+- **⊘ Orange Symbol**: Step skipped (not enabled/selected)
+- **⟳ Blue Spinner**: Step is currently processing
+- Each step processes immediately when you click "Process"
 
 ---
 
@@ -132,27 +134,35 @@ Navigate to: **http://127.0.0.1:5000**
 
 ## 🎨 Key Features
 
-### ✨ Real-Time Progress Tracking
-- Server-Sent Events (SSE)
-- Live step-by-step updates
-- Processing logs in real-time
-- No page refresh needed
+### ✨ Step-by-Step Processing
+- Each step executes immediately when "Process" is clicked
+- No waiting until the end - instant feedback
+- Results saved after each step
+- Previous step results available to next steps
+
+### ✨ Visual Status Indicators
+- **✓ Green Checkmark**: Step completed successfully
+- **✗ Red Cross**: Step failed (error occurred)
+- **⊘ Orange Symbol**: Step skipped (not enabled/selected)
+- **⟳ Blue Spinner**: Step is currently processing
+- Status persists when navigating between steps
 
 ### ✨ Modular Architecture
 - 5 independent processing steps
 - Easy to add new steps
 - Configuration-driven pipeline
 - Dynamic module loading
+- Dependency validation between steps
 
 ### ✨ Beautiful UI
 - Multi-step wizard
-- Progress indicators
+- Real-time status updates
 - Auto-save configuration
 - Responsive design
 
 ### ✨ Enterprise Ready
 - Comprehensive logging
-- Error handling
+- Error handling at step level
 - File upload validation
 - Report generation
 
@@ -207,38 +217,46 @@ Check console output where server is running
 
 Try running a test workflow with:
 
-**Site Setup:**
+**Step 1 - Site Setup:**
 - Source URL: `https://source-cms.com`
 - Source Site ID: `12345`
 - Destination URL: `https://destination-cms.com`
 - Destination Site ID: `67890`
 - Site Name: `Test Migration Site`
+- Click **"Process"** → ✓ Green checkmark appears
 
-**Brand/Theme:**
+**Step 2 - Brand/Theme:**
 - ✓ Pull from Current Site
+- Click **"Process"** → ✓ Green checkmark
 
-**Content:**
-- ✓ MiBlock Records Migration
+**Step 3 - Content:**
+- ✓ MiBlock Records Migration (enabled)
+- Click **"Process"** → ✓ Green checkmark
+- OR leave unchecked → Click **"Process"** → ⊘ Orange (skipped)
 
-**Modules:**
+**Step 4 - Modules:**
 - ✓ Social Feed
 - ✓ HTML Menu
+- Click **"Process"** → ✓ Green checkmark
 
-Then click **"Start Workflow"** and watch it process!
+**Step 5 - Review:**
+- Review summary
+- Click **"Process"** → Final report generated
 
 ---
 
 ## 🎓 What You Can Learn
 
 This project demonstrates:
-- ✅ Server-Sent Events (SSE) implementation
+- ✅ Step-by-step processing architecture
+- ✅ Immediate feedback per step
+- ✅ Visual status indicators (✓/✗/⊘)
 - ✅ Modular pipeline architecture
-- ✅ Real-time progress tracking
 - ✅ Dynamic module loading
 - ✅ Flask application structure
 - ✅ Wizard UI pattern
-- ✅ File upload handling
-- ✅ Error handling strategies
+- ✅ Status tracking and persistence
+- ✅ Error handling at step level
 
 ---
 
@@ -257,8 +275,9 @@ This project demonstrates:
 
 - ✅ Server running on port 5000
 - ✅ All 5 processing steps loaded
+- ✅ Step-by-step processing implemented
+- ✅ Visual status indicators (✓/✗/⊘) working
 - ✅ Frontend integrated with backend
-- ✅ SSE streaming functional
 - ✅ Documentation complete
 - ✅ No errors or warnings
 

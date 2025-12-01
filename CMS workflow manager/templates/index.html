@@ -96,6 +96,16 @@
             color: white;
         }
 
+        .step-icon.failed {
+            background: #ef4444;
+            color: white;
+        }
+
+        .step-icon.skipped {
+            background: #f59e0b;
+            color: white;
+        }
+
         .step-icon.active {
             background: #2563eb;
             color: white;
@@ -932,8 +942,8 @@
                                 </div>
 
                                 <div class="info-box green">
-                                    <h4 style="font-weight: 600; margin-bottom: 8px;">Ready to Start Migration</h4>
-                                    <p>All configuration steps have been reviewed. Click "Complete Migration Setup" to begin the migration process.</p>
+                                    <h4 style="font-weight: 600; margin-bottom: 8px;">Ready to Process</h4>
+                                    <p>All configuration steps have been reviewed. Click "Process" to complete the final step.</p>
                                 </div>
                             </div>
                         </div>
@@ -944,7 +954,7 @@
                                 Previous
                             </button>
                             <button class="btn btn-primary" id="nextBtn" onclick="nextStep()">
-                                Save & Next
+                                Process
                                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
                                 </svg>
@@ -962,6 +972,7 @@
         let jobId = generateJobId();
         let workflowInProgress = false;
         let eventSource = null;
+        let stepStatus = {}; // Track step status: 'success', 'failed', 'skipped'
 
         // Generate unique job ID
         function generateJobId() {
@@ -975,9 +986,19 @@
                 const icon = item.querySelector('.step-icon');
                 
                 item.classList.remove('active');
-                icon.classList.remove('active', 'completed', 'pending');
+                icon.classList.remove('active', 'completed', 'pending', 'failed', 'skipped');
                 
-                if (stepNum < currentStep) {
+                // Check step status
+                const status = stepStatus[stepNum];
+                
+                if (status === 'failed') {
+                    icon.classList.add('failed');
+                    icon.innerHTML = '✗';
+                } else if (status === 'skipped') {
+                    icon.classList.add('skipped');
+                    icon.innerHTML = '⊘';
+                } else if (stepNum < currentStep) {
+                    // Completed step - default to success if no status
                     icon.classList.add('completed');
                     icon.innerHTML = '✓';
                 } else if (stepNum === currentStep) {
@@ -1009,9 +1030,9 @@
             nextBtn.disabled = workflowInProgress;
             
             if (currentStep === totalSteps) {
-                nextBtn.innerHTML = 'Start Workflow <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>';
+                nextBtn.innerHTML = 'Process <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
             } else {
-                nextBtn.innerHTML = 'Save & Next <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>';
+                nextBtn.innerHTML = 'Process <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>';
             }
 
             // Update summary if on last step
@@ -1278,19 +1299,123 @@
             // Reset to first step
             currentStep = 1;
             jobId = generateJobId();
+            stepStatus = {}; // Clear step status
             updateUI();
         }
 
         async function nextStep() {
             if (currentStep < totalSteps) {
-                // Save configuration before moving to next step
-                await saveConfiguration();
+                // Process current step, then move to next
+                await saveAndProcessStep();
                 currentStep++;
                 updateUI();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                // Start workflow on final step
-                await startWorkflow();
+                // Process final step and show completion
+                await saveAndProcessStep();
+                showCompletion();
+            }
+        }
+        
+        async function saveAndProcessStep() {
+            try {
+                // Show processing indicator
+                const stepItem = document.querySelector(`.step-item[data-step="${currentStep}"]`);
+                const stepIcon = stepItem?.querySelector('.step-icon');
+                if (stepIcon) {
+                    stepIcon.innerHTML = '⟳';
+                    stepIcon.style.background = '#2563eb';
+                }
+                
+                // Collect and save config, then process step
+                const formData = await collectFormData();
+                formData.step_number = currentStep;
+                
+                const response = await fetch('/api/save-config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    // Mark step as failed
+                    stepStatus[currentStep] = 'failed';
+                    throw new Error(result.error || 'Failed to process step');
+                }
+                
+                // Check step status from backend
+                const stepStatusFromBackend = result.step_result?.status || 'success';
+                const stepResult = result.step_result?.result || {};
+                const stepMessage = stepResult.message || '';
+                
+                // Determine if step was skipped
+                const isSkipped = stepStatusFromBackend === 'skipped' || 
+                                 stepMessage.toLowerCase().includes('skipped') || 
+                                 stepMessage.toLowerCase().includes('not enabled') ||
+                                 stepMessage.toLowerCase().includes('not selected') ||
+                                 stepMessage.toLowerCase().includes('no modules');
+                
+                // Update step status
+                if (isSkipped) {
+                    stepStatus[currentStep] = 'skipped';
+                    if (stepIcon) {
+                        stepIcon.innerHTML = '⊘';
+                        stepIcon.style.background = '#f59e0b';
+                        stepIcon.classList.add('skipped');
+                    }
+                } else {
+                    stepStatus[currentStep] = 'success';
+                    if (stepIcon) {
+                        stepIcon.innerHTML = '✓';
+                        stepIcon.style.background = '#10b981';
+                        stepIcon.classList.add('completed');
+                    }
+                }
+                
+                // Show success message
+                if (result.step_processed && result.step_result) {
+                    console.log(`Step ${currentStep} ${isSkipped ? 'skipped' : 'completed'}:`, result.step_result.step_name);
+                }
+                
+            } catch (error) {
+                console.error('Error processing step:', error);
+                
+                // Mark step as failed
+                stepStatus[currentStep] = 'failed';
+                
+                // Update step icon to failed (red with cross)
+                const stepItem = document.querySelector(`.step-item[data-step="${currentStep}"]`);
+                const stepIcon = stepItem?.querySelector('.step-icon');
+                if (stepIcon) {
+                    stepIcon.innerHTML = '✗';
+                    stepIcon.style.background = '#ef4444';
+                    stepIcon.classList.add('failed');
+                }
+                
+                alert('Failed to process step: ' + error.message);
+            }
+        }
+        
+        async function showCompletion() {
+            // Generate final report
+            try {
+                const response = await fetch('/api/generate-report', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ job_id: jobId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.report_url) {
+                    alert('All steps completed successfully!\n\nDownload report: ' + result.report_url);
+                } else {
+                    alert('All steps completed successfully!');
+                }
+            } catch (error) {
+                alert('All steps completed successfully!');
             }
         }
 

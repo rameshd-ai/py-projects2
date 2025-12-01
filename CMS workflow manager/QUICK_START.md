@@ -52,8 +52,9 @@ Navigate to: **http://localhost:5000**
 ## 🎯 What You'll See
 
 1. **Beautiful Wizard Interface** with 5 steps
-2. **Real-time Progress Tracking** when you start a workflow
-3. **Downloadable Reports** after completion
+2. **Step-by-Step Processing** - Each step processes immediately when you click "Process"
+3. **Visual Status Indicators** - Green ✓ (success), Red ✗ (failed), Orange ⊘ (skipped)
+4. **Downloadable Reports** after all steps complete
 
 ---
 
@@ -79,23 +80,30 @@ Fill in the form with sample data:
 - Select any modules you want to test
 
 ### Step 5 - Review & Complete:
-- Click "Start Workflow"
-- Watch the real-time progress!
+- Review the summary
+- Click **"Process"** to complete the final step
+- Final report will be generated automatically
 
 ---
 
 ## 🎉 Success!
 
-Your workflow will process in real-time and generate a completion report that you can download.
+Each step processes immediately when you click "Process":
+- **✓ Green Checkmark** = Step completed successfully
+- **✗ Red Cross** = Step failed (check error message)
+- **⊘ Orange Symbol** = Step skipped (not enabled/selected)
+
+After all 5 steps, a completion report is generated automatically.
 
 ---
 
 ## 📝 Notes
 
-- Configuration is saved automatically as you navigate between steps
-- Each workflow gets a unique Job ID
-- Reports are saved in the `output/` folder
-- Logs are available in the console and `workflow.log`
+- **Step-by-Step Processing**: Each step executes immediately when "Process" is clicked
+- **Status Persistence**: Step status (✓/✗/⊘) persists when navigating between steps
+- **Results Saved**: Each step's results are saved to `uploads/{job_id}_results.json`
+- **Configuration Saved**: Form data saved to `uploads/{job_id}_config.json`
+- **Final Report**: Generated in `output/` folder after Step 5 completes
 
 ---
 

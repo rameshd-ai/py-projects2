@@ -58,6 +58,11 @@
 ✓ run_finalize_step
 ```
 
+**Processing Mode:**
+- ✅ Step-by-step processing (each step processes immediately)
+- ✅ Visual status indicators (✓/✗/⊘)
+- ✅ Results saved after each step
+
 ---
 
 ## 🎯 Next Steps
@@ -101,8 +106,9 @@ You should see:
 - Select "HTML Menu: Inner Pages"
 
 **Step 5 - Review:**
-- Click "Start Workflow"
-- Watch the real-time progress!
+- Review the summary
+- Click **"Process"** → Final step executes
+- Report generated automatically
 
 ### 3. Verify Functionality
 
@@ -110,11 +116,13 @@ You should see:
 - [ ] Wizard navigation works (Previous/Next buttons)
 - [ ] Form data persists between steps
 - [ ] Summary page shows correct values
-- [ ] "Start Workflow" button triggers processing
-- [ ] Processing modal appears
-- [ ] Real-time progress updates display
+- [ ] "Process" button on each step triggers processing
+- [ ] Step icons update correctly: ✓ (green), ✗ (red), ⊘ (orange)
+- [ ] Each step processes immediately when "Process" is clicked
+- [ ] Failed steps show red cross (✗)
+- [ ] Skipped steps show orange symbol (⊘)
 - [ ] All 5 steps complete successfully
-- [ ] Download button appears on completion
+- [ ] Final report is generated after Step 5
 - [ ] Report file is generated in `output/` folder
 
 ---

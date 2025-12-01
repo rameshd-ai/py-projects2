@@ -3,19 +3,18 @@
 ## 📋 Table of Contents
 1. [Application Startup](#1-application-startup)
 2. [User Interaction Phase](#2-user-interaction-phase)
-3. [Configuration Management](#3-configuration-management)
-4. [Workflow Execution](#4-workflow-execution)
-5. [Real-Time Progress (SSE)](#5-real-time-progress-sse)
-6. [Processing Pipeline](#6-processing-pipeline)
-7. [Completion & Reporting](#7-completion--reporting)
+3. [Step-by-Step Processing](#3-step-by-step-processing)
+4. [Configuration Management](#4-configuration-management)
+5. [Status Tracking](#5-status-tracking)
+6. [Completion & Reporting](#6-completion--reporting)
 
 ---
 
 ## 1. Application Startup
 
-### 📍 **File: `app.py` (Lines 19-30)**
+### 📍 **File: `app.py`**
 
-When you run `python app.py`, here's what happens:
+When you run `python app.py`:
 
 ```
 ┌─────────────────────────────────────────┐
@@ -38,7 +37,6 @@ When you run `python app.py`, here's what happens:
 │     • Loop through PROCESSING_STEPS      │
 │     • Import each step module           │
 │     • Store functions in STEP_MODULES  │
-│     • Log: "Loaded module: ..."         │
 └──────────────┬──────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
@@ -47,15 +45,6 @@ When you run `python app.py`, here's what happens:
 │     • Debug mode: ON                    │
 │     • Ready to accept requests          │
 └──────────────────────────────────────────┘
-```
-
-**Key Code:**
-```python
-# utils.py (Lines 22-34)
-def load_step_modules():
-    for step in PROCESSING_STEPS:
-        module = importlib.import_module(f"processing_steps.{step['id']}")
-        STEP_MODULES[step["module"]] = getattr(module, step["module"])
 ```
 
 **Result:** All 5 processing steps are loaded and ready:
@@ -69,7 +58,7 @@ def load_step_modules():
 
 ## 2. User Interaction Phase
 
-### 📍 **File: `templates/index.html` (JavaScript: Lines 959-1361)**
+### 📍 **File: `templates/index.html` (JavaScript)**
 
 ### **Step 1: User Opens Browser**
 
@@ -79,7 +68,6 @@ User → http://127.0.0.1:5000
          ▼
 ┌─────────────────────────────────────┐
 │  Flask Route: GET /                 │
-│  (app.py: Line 33)                  │
 │  → render_template('index.html')    │
 └──────────────┬──────────────────────┘
                │
@@ -93,438 +81,250 @@ User → http://127.0.0.1:5000
 ### **Step 2: JavaScript Initialization**
 
 ```javascript
-// Line 960-964
 let currentStep = 1;
 const totalSteps = 5;
-let jobId = generateJobId();  // Creates unique ID: "job_1234567890_abc123"
-let workflowInProgress = false;
-let eventSource = null;
+let jobId = generateJobId();  // "job_1701355200000_abc123"
+let stepStatus = {};  // Track: 'success', 'failed', 'skipped'
 ```
 
-**Job ID Generation:**
-```javascript
-function generateJobId() {
-    return 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-// Example: "job_1701355200000_k3j9x2m"
-```
+---
 
-### **Step 3: User Fills Form & Navigates**
+## 3. Step-by-Step Processing
+
+### 📍 **NEW FLOW: Each Step Processes Immediately**
+
+### **When User Clicks "Process" Button:**
 
 ```
-User clicks "Save & Next"
+User clicks "Process" on Step 1
          │
          ▼
 ┌─────────────────────────────────────┐
-│  nextStep() function               │
-│  (Line 1097)                       │
-│  1. collectFormData()              │
-│  2. saveConfiguration()            │
-│  3. currentStep++                  │
-│  4. updateUI()                      │
-└─────────────────────────────────────┘
+│  JavaScript: saveAndProcessStep()     │
+│  1. Show processing indicator (⟳)  │
+│  2. Collect form data               │
+│  3. POST to /api/save-config        │
+│     with step_number: 1             │
+└──────────────┬──────────────────────┘
+               │
+         ┌─────▼─────┐
+         │  Flask    │
+         │  Route    │
+         └─────┬─────┘
+               │
+┌──────────────▼──────────────────────────┐
+│  app.py: save_config()                   │
+│  1. Save configuration                   │
+│  2. Call execute_single_step(1)         │
+└──────────────┬───────────────────────────┘
+               │
+┌──────────────▼──────────────────────────┐
+│  utils.py: execute_single_step()        │
+│  1. Load job config                     │
+│  2. Load previous step results          │
+│  3. Execute step function               │
+│  4. Save results to uploads/{job_id}_results.json│
+│  5. Return status: 'success' or 'skipped'│
+└──────────────┬───────────────────────────┘
+               │
+         ┌─────▼─────┐
+         │  Browser  │
+         │  Updates │
+         │  Icon     │
+         └─────┬─────┘
+               │
+    ┌──────────┼──────────┐
+    │          │          │
+┌───▼───┐  ┌───▼───┐  ┌───▼───┐
+│  ✓    │  │  ✗    │  │  ⊘    │
+│ Green │  │ Red   │  │Orange │
+│Success│  │Failed │  │Skipped│
+└───────┘  └───────┘  └───────┘
 ```
 
-**Form Data Collection (Lines 1023-1068):**
+### **Step Execution Flow:**
+
 ```javascript
-async function collectFormData() {
-    const formData = {
-        job_id: jobId,
-        sourceUrl: document.getElementById('sourceUrl')?.value || '',
-        sourceSiteId: document.getElementById('sourceSiteId')?.value || '',
-        // ... collects ALL form fields from all 5 steps
-    };
-    return formData;
+// 1. User clicks "Process"
+async function saveAndProcessStep() {
+    // 2. Show spinner
+    stepIcon.innerHTML = '⟳';
+    stepIcon.style.background = '#2563eb';
+    
+    // 3. Send request
+    const response = await fetch('/api/save-config', {
+        method: 'POST',
+        body: JSON.stringify({
+            job_id: jobId,
+            step_number: currentStep,
+            // ... all form data
+        })
+    });
+    
+    // 4. Get result
+    const result = await response.json();
+    
+    // 5. Update icon based on status
+    if (result.step_result?.status === 'skipped') {
+        stepStatus[currentStep] = 'skipped';
+        stepIcon.innerHTML = '⊘';  // Orange
+        stepIcon.style.background = '#f59e0b';
+    } else if (result.success) {
+        stepStatus[currentStep] = 'success';
+        stepIcon.innerHTML = '✓';  // Green
+        stepIcon.style.background = '#10b981';
+    } else {
+        stepStatus[currentStep] = 'failed';
+        stepIcon.innerHTML = '✗';  // Red
+        stepIcon.style.background = '#ef4444';
+    }
 }
 ```
 
 ---
 
-## 3. Configuration Management
+## 4. Configuration Management
 
 ### 📍 **File: `app.py` (Route: `/api/save-config`)**
 
 ### **Flow Diagram:**
 
 ```
-User clicks "Save & Next"
+User clicks "Process"
          │
          ▼
 ┌─────────────────────────────────────┐
-│  JavaScript: saveConfiguration()   │
-│  (Line 1070)                        │
-│  • Collects all form data          │
-│  • POST to /api/save-config        │
+│  JavaScript: saveAndProcessStep()     │
+│  • Collects all form data            │
+│  • Adds step_number                  │
+│  • POST to /api/save-config          │
 └──────────────┬──────────────────────┘
-               │
-         ┌─────▼─────┐
-         │  Flask    │
-         │  Route    │
-         │  Handler  │
-         └─────┬─────┘
                │
 ┌──────────────▼──────────────────────────┐
 │  app.py: save_config()                   │
-│  (Line 49-87)                             │
-│  1. Extract job_id from request          │
-│  2. Call save_job_config()                │
+│  1. Extract job_id and step_number       │
+│  2. Save configuration to JSON           │
+│  3. If step_number > 0:                  │
+│     → Call execute_single_step()         │
 └──────────────┬───────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
-│  utils.py: save_job_config()             │
-│  (Line 51-60)                             │
-│  • Create file: uploads/{job_id}_config.json│
-│  • Write JSON data                        │
-│  • Return success/failure                  │
+│  utils.py: execute_single_step()        │
+│  1. Load job_config from JSON           │
+│  2. Load previous results from           │
+│     uploads/{job_id}_results.json       │
+│  3. Build workflow_context              │
+│  4. Execute step function               │
+│  5. Save results to results.json        │
+│  6. Return status                       │
 └───────────────────────────────────────────┘
 ```
 
-**Configuration File Structure:**
-```json
-{
-    "job_id": "job_1701355200000_k3j9x2m",
-    "sourceUrl": "https://source-cms.com",
-    "sourceSiteId": "12345",
-    "destinationUrl": "https://dest-cms.com",
-    "siteName": "My Migration Site",
-    // ... all form fields
+**Files Created:**
+- `uploads/{job_id}_config.json` - Configuration
+- `uploads/{job_id}_results.json` - Step results
+
+---
+
+## 5. Status Tracking
+
+### 📍 **Visual Status Indicators**
+
+### **Status Types:**
+
+| Status | Icon | Color | CSS Class | When Shown |
+|--------|------|-------|-----------|------------|
+| **Success** | ✓ | Green (#10b981) | `.completed` | Step completed successfully |
+| **Failed** | ✗ | Red (#ef4444) | `.failed` | Step processing failed |
+| **Skipped** | ⊘ | Orange (#f59e0b) | `.skipped` | Step was skipped/not enabled |
+| **Processing** | ⟳ | Blue (#2563eb) | `.active` | Step is currently executing |
+| **Pending** | (empty) | Gray border | `.pending` | Step not started yet |
+
+### **Status Detection Logic:**
+
+```javascript
+// In saveAndProcessStep()
+const stepStatusFromBackend = result.step_result?.status || 'success';
+const stepMessage = result.step_result?.result?.message || '';
+
+// Check if skipped
+const isSkipped = stepStatusFromBackend === 'skipped' || 
+                 stepMessage.toLowerCase().includes('skipped') || 
+                 stepMessage.toLowerCase().includes('not enabled');
+
+// Update status
+if (!result.success) {
+    stepStatus[currentStep] = 'failed';  // Red ✗
+} else if (isSkipped) {
+    stepStatus[currentStep] = 'skipped';  // Orange ⊘
+} else {
+    stepStatus[currentStep] = 'success';  // Green ✓
 }
 ```
 
-**File Location:** `uploads/job_1701355200000_k3j9x2m_config.json`
+### **Status Persistence:**
 
----
-
-## 4. Workflow Execution
-
-### 📍 **File: `app.py` (Route: `/api/start-workflow`)**
-
-### **When User Clicks "Start Workflow" (Step 5):**
-
-```
-User clicks "Start Workflow"
-         │
-         ▼
-┌─────────────────────────────────────┐
-│  JavaScript: startWorkflow()         │
-│  (Line 1097)                          │
-│  1. Save final configuration          │
-│  2. Set workflowInProgress = true    │
-│  3. Show processing modal            │
-│  4. POST to /api/start-workflow      │
-└──────────────┬───────────────────────┘
-               │
-         ┌─────▼─────┐
-         │  Flask    │
-         │  Returns  │
-         │  stream_url│
-         └─────┬─────┘
-               │
-┌──────────────▼──────────────────────────┐
-│  JavaScript: connectToWorkflowStream()    │
-│  (Line 1134)                              │
-│  • Create EventSource                    │
-│  • Connect to /api/stream/{job_id}      │
-└───────────────────────────────────────────┘
-```
-
-**Code Flow:**
 ```javascript
-// 1. Save config
-await saveConfiguration();
+// Status is stored in stepStatus object
+let stepStatus = {
+    1: 'success',   // Step 1 completed
+    2: 'skipped',   // Step 2 skipped
+    3: 'success',   // Step 3 completed
+    4: 'failed',   // Step 4 failed
+    5: 'pending'    // Step 5 not started
+};
 
-// 2. Show modal
-showProcessingModal();
-
-// 3. Start workflow
-const response = await fetch('/api/start-workflow', {
-    method: 'POST',
-    body: JSON.stringify({ job_id: jobId })
-});
-
-// 4. Get stream URL
-const streamUrl = result.stream_url;  // "/api/stream/job_123..."
-
-// 5. Connect to SSE
-eventSource = new EventSource(streamUrl);
+// Status persists when navigating between steps
+// Only clears when starting new workflow
 ```
 
 ---
 
-## 5. Real-Time Progress (SSE)
+## 6. Completion & Reporting
 
-### 📍 **File: `app.py` (Route: `/api/stream/<job_id>`)**
+### 📍 **File: `app.py` (Route: `/api/generate-report`)**
 
-### **Server-Sent Events (SSE) Connection:**
+### **Final Step Flow:**
 
 ```
-Browser creates EventSource
+User on Step 5 → Clicks "Process"
          │
          ▼
 ┌─────────────────────────────────────┐
-│  GET /api/stream/{job_id}            │
-│  (app.py: Line 182)                  │
-│  → Response with mimetype:           │
-│    'text/event-stream'               │
-└──────────────┬───────────────────────┘
+│  Step 5 executes (finalize)          │
+│  → Generates deployment summary      │
+└──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
-│  utils.py: generate_workflow_stream()     │
-│  (Line 68)                                 │
-│  • Generator function                     │
-│  • Yields SSE events                     │
-│  • Executes processing pipeline           │
-└───────────────────────────────────────────┘
-```
-
-### **SSE Event Format:**
-
-```python
-# utils.py: format_sse() (Line 63-65)
-def format_sse(data: Dict[str, Any]) -> str:
-    return f"data: {json.dumps(data)}\n\n"
-```
-
-**Example SSE Event:**
-```
-data: {"status":"in_progress","step_id":"site_setup","message":"Processing..."}
-
-```
-
-### **Event Types:**
-
-| Status | When Sent | Purpose |
-|--------|-----------|---------|
-| `start` | Workflow begins | Initial message |
-| `in_progress` | Step starts | Show step is running |
-| `done` | Step completes | Mark step as done |
-| `complete` | All steps done | Show completion |
-| `error` | Error occurs | Show error message |
-| `close` | Stream ends | Close connection |
-
----
-
-## 6. Processing Pipeline
-
-### 📍 **File: `utils.py` (Function: `generate_workflow_stream`)**
-
-### **Pipeline Execution Flow:**
-
-```
-┌─────────────────────────────────────────┐
-│  generate_workflow_stream(job_id)       │
-│  (Line 68-183)                          │
-└──────────────┬──────────────────────────┘
-               │
-         ┌─────▼─────┐
-         │  Load     │
-         │  Config   │
-         └─────┬─────┘
-               │
-┌──────────────▼──────────────────────────┐
-│  1. Initialize workflow_context          │
-│     {                                    │
-│       "job_id": "...",                  │
-│       "start_time": 1701355200.0,       │
-│       "job_config": {...},              │
-│       "completed_steps": []             │
-│     }                                    │
-└──────────────┬───────────────────────────┘
-               │
-         ┌─────▼─────┐
-         │  Yield    │
-         │  "start"  │
-         └─────┬─────┘
-               │
-┌──────────────▼──────────────────────────┐
-│  2. Loop through PROCESSING_STEPS        │
-│     (config.py: Lines 20-61)             │
-│     • site_setup                         │
-│     • brand_theme                        │
-│     • content_plugin                     │
-│     • modules_features                   │
-│     • finalize                           │
-└──────────────┬───────────────────────────┘
-               │
-    ┌──────────┼──────────┐
-    │          │          │
-┌───▼───┐  ┌───▼───┐  ┌───▼───┐
-│ Step  │  │ Step  │  │ Step  │
-│ Loop  │  │ Loop  │  │ Loop  │
-└───┬───┘  └───┬───┘  └───┬───┘
-    │          │          │
-    └──────────┼──────────┘
-               │
-    ┌──────────▼──────────┐
-    │  For Each Step:      │
-    │  1. Yield "in_progress"│
-    │  2. Execute step      │
-    │  3. Yield "done"      │
-    └───────────────────────┘
-```
-
-### **Step Execution Detail:**
-
-```python
-# utils.py (Lines 94-151)
-for idx, step_config in enumerate(PROCESSING_STEPS, 1):
-    # 1. Notify: Step starting
-    yield format_sse({
-        "status": "in_progress",
-        "step_id": step_config["id"],
-        "message": f"Processing: {step_config['description']}"
-    })
-    
-    # 2. Get step function
-    step_function = STEP_MODULES[step_config["module"]]
-    
-    # 3. Execute step
-    step_result = step_function(
-        job_id=job_id,
-        step_config=step_config,
-        workflow_context=workflow_context
-    )
-    
-    # 4. Store results
-    workflow_context[step_config["id"]] = step_result
-    
-    # 5. Notify: Step completed
-    yield format_sse({
-        "status": "done",
-        "step_id": step_config["id"],
-        "message": f"✓ Completed: {step_config['name']}"
-    })
-```
-
-### **Example: Step 1 Execution**
-
-```
-┌─────────────────────────────────────────┐
-│  Step 1: Site Setup                     │
-│  File: processing_steps/site_setup.py   │
-└──────────────┬──────────────────────────┘
-               │
-         ┌─────▼─────┐
-         │  Function:│
-         │  run_site_│
-         │  setup_   │
-         │  step()   │
-         └─────┬─────┘
-               │
-┌──────────────▼──────────────────────────┐
-│  1. Get job_config from context         │
-│  2. Extract form data                   │
-│     • sourceUrl, sourceSiteId          │
-│     • destinationUrl, etc.              │
-│  3. Validate required fields            │
-│  4. Simulate processing (time.sleep)     │
-│  5. Return results dict                 │
-└──────────────┬───────────────────────────┘
-               │
-         ┌─────▼─────┐
-         │  Results: │
-         │  {        │
-         │    "site_ │
-         │    created":│
-         │    true,   │
-         │    "site_ │
-         │    name": │
-         │    "...", │
-         │    "message":│
-         │    "..."  │
-         │  }        │
-         └───────────┘
-```
-
-**Step Function Signature:**
-```python
-def run_site_setup_step(
-    job_id: str,              # Unique job identifier
-    step_config: Dict,        # Step config from config.py
-    workflow_context: Dict    # Shared context (includes job_config)
-) -> Dict[str, Any]:          # Returns results
-```
-
----
-
-## 7. Completion & Reporting
-
-### 📍 **File: `utils.py` (Function: `generate_completion_report`)**
-
-### **Completion Flow:**
-
-```
-All 5 steps complete
-         │
-         ▼
-┌─────────────────────────────────────┐
-│  Calculate total duration            │
-│  total_duration = time.time() -      │
-│                   start_time         │
-└──────────────┬───────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│  generate_completion_report()            │
-│  (Line 186-210)                           │
-│  1. Create report structure              │
-│  2. Add all step results                 │
-│  3. Save to output/{job_id}_report.json │
+│  JavaScript: showCompletion()            │
+│  → POST /api/generate-report            │
 └──────────────┬───────────────────────────┘
                │
 ┌──────────────▼──────────────────────────┐
-│  Yield "complete" event                 │
-│  {                                      │
-│    "status": "complete",                │
-│    "message": "🎉 Workflow completed!", │
-│    "total_duration": 15.7,              │
-│    "report_url": "/download/..."       │
-│  }                                      │
-└──────────────┬───────────────────────────┘
-               │
-         ┌─────▼─────┐
-         │  Browser  │
-         │  Receives │
-         │  Event    │
-         └─────┬─────┘
-               │
-┌──────────────▼──────────────────────────┐
-│  JavaScript: handleWorkflowUpdate()      │
-│  (Line 1156)                              │
-│  • Show completion message               │
-│  • Display download button               │
-│  • Close SSE connection                  │
-└───────────────────────────────────────────┘
+│  app.py: generate_report()               │
+│  1. Load all results from results.json  │
+│  2. Load job configuration              │
+│  3. Create comprehensive report         │
+│  4. Save to output/{job_id}_report.json│
+│  5. Return download URL                  │
+└──────────────────────────────────────────┘
 ```
 
-### **Report Structure:**
-
+**Report Structure:**
 ```json
 {
-    "job_id": "job_1701355200000_k3j9x2m",
+    "job_id": "job_123...",
     "status": "completed",
-    "total_duration_seconds": 15.7,
-    "completed_steps": [
-        "site_setup",
-        "brand_theme",
-        "content_plugin",
-        "modules_features",
-        "finalize"
-    ],
     "timestamp": "2025-11-30 19:30:00",
-    "configuration": {
-        "sourceUrl": "...",
-        "siteName": "..."
-    },
+    "configuration": {...},
     "results": {
-        "site_setup": {
-            "site_created": true,
-            "site_name": "..."
-        },
+        "site_setup": {...},
         "brand_theme": {...},
         "content_plugin": {...},
         "modules_features": {...},
         "finalize": {...}
-    }
+    },
+    "completed_steps": ["site_setup", "brand_theme", ...]
 }
 ```
 
@@ -538,7 +338,7 @@ All 5 steps complete
 │  1. Flask app initializes                                    │
 │  2. Load config.py → PROCESSING_STEPS                       │
 │  3. utils.py loads all step modules dynamically             │
-│  4. Server starts on port 5000                              │
+│  4. Server starts on port 5000                               │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
@@ -546,72 +346,48 @@ All 5 steps complete
 │                    USER INTERACTION                          │
 │  User opens http://127.0.0.1:5000                           │
 │  → GET / → Renders index.html                               │
-│  → JavaScript initializes (jobId generated)                │
+│  → JavaScript initializes (jobId generated)                  │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    WIZARD NAVIGATION                         │
-│  User fills Step 1 → Clicks "Save & Next"                   │
-│  → collectFormData() → All form fields collected            │
-│  → POST /api/save-config → Saves to uploads/{job_id}_config.json│
-│  → currentStep++ → updateUI() → Shows Step 2                │
-│  (Repeats for Steps 2, 3, 4)                                 │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    WORKFLOW INITIATION                      │
-│  User on Step 5 → Clicks "Start Workflow"                   │
-│  → startWorkflow() → Final config save                       │
-│  → POST /api/start-workflow → Returns stream_url            │
-│  → showProcessingModal() → Modal appears                     │
-│  → connectToWorkflowStream() → EventSource created          │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    SSE CONNECTION                           │
-│  GET /api/stream/{job_id}                                    │
-│  → Response with mimetype: 'text/event-stream'               │
-│  → generate_workflow_stream() starts                        │
-│  → Browser receives events in real-time                     │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    PROCESSING PIPELINE                      │
-│  Loop through PROCESSING_STEPS:                              │
+│                    STEP-BY-STEP PROCESSING                  │
 │                                                               │
-│  Step 1: site_setup                                          │
-│    → Yield "in_progress" → Browser shows "Processing..."     │
-│    → Execute run_site_setup_step()                          │
-│    → Yield "done" → Browser shows "✓ Completed"             │
+│  Step 1: Fill form → Click "Process"                          │
+│    → POST /api/save-config (step_number: 1)                 │
+│    → execute_single_step(1)                                 │
+│    → Step icon: ⟳ → ✓ (green) or ✗ (red) or ⊘ (orange)     │
+│    → Moves to Step 2                                         │
 │                                                               │
-│  Step 2: brand_theme                                         │
-│    → Yield "in_progress" → Browser updates                   │
-│    → Execute run_brand_theme_step()                          │
-│    → Yield "done" → Browser updates                          │
+│  Step 2: Fill form → Click "Process"                         │
+│    → POST /api/save-config (step_number: 2)                 │
+│    → execute_single_step(2)                                 │
+│    → Loads Step 1 results from results.json                  │
+│    → Step icon: ⟳ → ✓/✗/⊘                                   │
+│    → Moves to Step 3                                         │
 │                                                               │
-│  Step 3: content_plugin                                      │
-│    → Same pattern...                                         │
+│  Step 3: Fill form → Click "Process"                         │
+│    → POST /api/save-config (step_number: 3)                 │
+│    → execute_single_step(3)                                 │
+│    → Loads Steps 1 & 2 results                               │
+│    → Step icon: ⟳ → ✓/✗/⊘                                   │
+│    → Moves to Step 4                                         │
 │                                                               │
-│  Step 4: modules_features                                    │
-│    → Same pattern...                                         │
+│  Step 4: Fill form → Click "Process"                         │
+│    → POST /api/save-config (step_number: 4)                 │
+│    → execute_single_step(4)                                 │
+│    → Loads Steps 1, 2, 3 results                            │
+│    → Step icon: ⟳ → ✓/✗/⊘                                   │
+│    → Moves to Step 5                                         │
 │                                                               │
-│  Step 5: finalize                                            │
-│    → Same pattern...                                         │
-│    → Generate completion report                              │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    COMPLETION                               │
-│  Yield "complete" event                                     │
-│  → Browser receives completion message                      │
-│  → Shows download button                                     │
-│  → User can download report from /download/{filename}       │
-│  → Yield "close" → SSE connection closes                     │
+│  Step 5: Review → Click "Process"                            │
+│    → POST /api/save-config (step_number: 5)                 │
+│    → execute_single_step(5)                                 │
+│    → Loads all previous results                             │
+│    → Generates deployment summary                            │
+│    → POST /api/generate-report                               │
+│    → Final report generated                                  │
+│    → Download link provided                                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -627,85 +403,90 @@ Form Fields → JavaScript collectFormData()
            → uploads/{job_id}_config.json
 ```
 
-### **Workflow Context Flow:**
+### **Step Results Flow:**
 ```
-workflow_context = {
-    "job_id": "...",
-    "start_time": 1701355200.0,
-    "job_config": {...},           # Loaded from JSON file
-    "site_setup": {...},           # Results from Step 1
-    "brand_theme": {...},          # Results from Step 2
-    "content_plugin": {...},       # Results from Step 3
-    "modules_features": {...},     # Results from Step 4
-    "finalize": {...}              # Results from Step 5
-}
+Step Execution → execute_single_step()
+              → Step function returns results
+              → Save to uploads/{job_id}_results.json
+              → Next step loads previous results
 ```
 
-### **SSE Event Flow:**
+### **Status Tracking:**
 ```
-Server (utils.py) → format_sse() → "data: {...}\n\n"
-                 → HTTP Response (text/event-stream)
-                 → Browser EventSource
-                 → event.onmessage
-                 → handleWorkflowUpdate()
-                 → UI Updates
+Backend Response → JavaScript checks status
+                → Updates stepStatus object
+                → updateUI() shows correct icon
+                → Status persists across navigation
 ```
 
 ---
 
 ## 🎯 Key Concepts
 
-### **1. Dynamic Module Loading**
-- Steps are loaded at startup using `importlib`
-- No hardcoding - add new steps by updating `config.py`
-- Functions stored in `STEP_MODULES` dictionary
+### **1. Immediate Step Processing**
+- Each step executes **immediately** when "Process" is clicked
+- No waiting until the end
+- Results saved after each step
 
-### **2. Generator Pattern (SSE)**
-- `generate_workflow_stream()` is a Python generator
-- Uses `yield` to send events incrementally
-- Allows real-time streaming without blocking
+### **2. Sequential Dependency**
+- Each step can access previous step results
+- Steps validate dependencies
+- Example: Step 2 checks if Step 1 completed
 
-### **3. Shared Context**
-- `workflow_context` passed to each step
-- Contains job config and previous step results
-- Steps can access data from earlier steps
+### **3. Status Tracking**
+- Three states: success (✓), failed (✗), skipped (⊘)
+- Status persists in `stepStatus` object
+- Visual feedback in real-time
 
-### **4. Event-Driven UI**
-- Browser uses EventSource API (native JavaScript)
-- No polling - server pushes updates
-- Automatic reconnection on network issues
+### **4. Results Persistence**
+- Results saved to `uploads/{job_id}_results.json`
+- Each step adds its results
+- Next steps can read previous results
 
-### **5. Persistent Configuration**
-- All form data saved to JSON file
-- Survives page refresh
-- Can resume workflow if needed
+### **5. Error Handling**
+- Failed steps show red cross (✗)
+- Workflow can continue (user decides)
+- Clear error messages displayed
 
 ---
 
-## 🔍 Debugging Tips
+## 🔍 Step Execution Details
 
-### **Check Configuration:**
-```bash
-# View saved config
-cat uploads/job_*_config.json
-```
+### **Example: Step 1 Execution**
 
-### **Check Reports:**
-```bash
-# View completion report
-cat output/job_*_report.json
-```
-
-### **Monitor Logs:**
-- Console output shows all step executions
-- Logs include timing and error messages
-- Check for "Loaded module" messages at startup
-
-### **Test SSE Connection:**
-```javascript
-// In browser console
-const es = new EventSource('/api/stream/job_123');
-es.onmessage = (e) => console.log(JSON.parse(e.data));
+```python
+# utils.py: execute_single_step(job_id, 1)
+def execute_single_step(job_id: str, step_number: int):
+    # 1. Load configuration
+    job_config = load_job_config(job_id)
+    
+    # 2. Build workflow context
+    workflow_context = {
+        "job_id": job_id,
+        "job_config": job_config
+    }
+    
+    # 3. Load previous results (if any)
+    results_file = f"uploads/{job_id}_results.json"
+    if os.path.exists(results_file):
+        previous_results = json.load(results_file)
+        workflow_context.update(previous_results)
+    
+    # 4. Execute step
+    step_function = STEP_MODULES["run_site_setup_step"]
+    step_result = step_function(job_id, step_config, workflow_context)
+    
+    # 5. Save results
+    all_results[step_id] = step_result
+    save_to_file(all_results)
+    
+    # 6. Return status
+    return {
+        "success": True,
+        "step_id": "site_setup",
+        "result": step_result,
+        "status": "success" or "skipped"
+    }
 ```
 
 ---
@@ -714,11 +495,11 @@ es.onmessage = (e) => console.log(JSON.parse(e.data));
 
 | File | Responsibility |
 |------|---------------|
-| `app.py` | HTTP routes, request handling, file uploads |
-| `config.py` | Pipeline definition, settings, constants |
-| `utils.py` | Orchestration, SSE streaming, config management |
+| `app.py` | HTTP routes, step processing trigger |
+| `config.py` | Pipeline definition, settings |
+| `utils.py` | Single step execution, config management |
 | `processing_steps/*.py` | Individual step logic |
-| `templates/index.html` | UI, JavaScript, form handling |
+| `templates/index.html` | UI, status tracking, visual feedback |
 
 ---
 
@@ -727,26 +508,26 @@ es.onmessage = (e) => console.log(JSON.parse(e.data));
 **The program flow follows this pattern:**
 
 1. **Startup** → Load modules → Start server
-2. **User Input** → Fill wizard → Save config
-3. **Initiate** → Start workflow → Connect SSE
-4. **Process** → Execute steps → Stream updates
-5. **Complete** → Generate report → Download
+2. **User Input** → Fill step form → Click "Process"
+3. **Immediate Processing** → Execute step → Save results
+4. **Status Update** → Show ✓/✗/⊘ → Move to next step
+5. **Repeat** → Steps 2, 3, 4, 5
+6. **Complete** → Generate report → Download
 
 **Key Technologies:**
 - ✅ Flask for web framework
-- ✅ Server-Sent Events for real-time updates
-- ✅ Dynamic module loading for extensibility
+- ✅ Step-by-step execution (not batch)
 - ✅ JSON for configuration persistence
-- ✅ Generator pattern for streaming
+- ✅ Status tracking for visual feedback
+- ✅ Dependency validation between steps
 
 **This architecture provides:**
-- ✨ Real-time user feedback
-- ✨ Modular, extensible design
-- ✨ Persistent configuration
-- ✨ Error handling at multiple levels
-- ✨ Production-ready structure
+- ✨ Immediate feedback per step
+- ✨ Clear success/failure/skip indicators
+- ✨ Sequential dependency validation
+- ✨ Results persistence
+- ✨ Error handling at step level
 
 ---
 
-**🎉 You now understand the complete program flow!**
-
+**🎉 You now understand the complete step-by-step program flow!**

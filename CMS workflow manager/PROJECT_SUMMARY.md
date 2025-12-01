@@ -56,9 +56,9 @@ This project implements a **process-based workflow management system** for CMS w
 
 **Key Routes:**
 - `GET /` → Wizard UI
-- `POST /api/save-config` → Save configuration
-- `POST /api/start-workflow` → Start processing
-- `GET /api/stream/<job_id>` → SSE stream
+- `POST /api/save-config` → Save config & process current step
+- `POST /api/generate-report` → Generate final report
+- `GET /download/<filename>` → Download reports
 
 #### `config.py` - Configuration & Pipeline
 - **Pipeline definition**: All 5 processing steps
@@ -68,10 +68,11 @@ This project implements a **process-based workflow management system** for CMS w
 
 #### `utils.py` - Orchestration & Utilities
 - **Dynamic module loading**: Import all steps
-- **SSE streaming**: `generate_workflow_stream()`
+- **Single step execution**: `execute_single_step()` - NEW
 - **Config management**: Load/save job configs
+- **Results management**: Load/save step results
+- **Status detection**: Detect skipped steps
 - **Report generation**: Create completion reports
-- **Error handling**: Workflow-level exceptions
 
 ---
 
@@ -109,41 +110,69 @@ def run_STEP_NAME_step(job_id: str, step_config: dict, workflow_context: dict) -
 **JavaScript Features:**
 - Job ID generation
 - Form data collection
-- SSE connection management
-- Progress visualization
-- Modal-based status display
+- Step-by-step processing
+- Status tracking (success/failed/skipped)
+- Visual status indicators (✓/✗/⊘)
+- Real-time icon updates
 
 ---
 
 ## 🔄 Workflow Execution Flow
 
-### 1. **User Interaction Phase**
+### 1. **Step-by-Step Processing** (NEW)
 ```
-User fills form → Click "Save & Next" → Auto-save config → Move to next step
-```
-
-### 2. **Workflow Start** (Step 5)
-```
-User clicks "Start Workflow" → POST /api/start-workflow → Returns stream URL
-```
-
-### 3. **SSE Connection**
-```
-Browser connects to /api/stream/<job_id> → EventSource established
+Step 1: Fill form → Click "Process" → Executes immediately → ✓/✗/⊘ → Moves to Step 2
+Step 2: Fill form → Click "Process" → Executes immediately → ✓/✗/⊘ → Moves to Step 3
+Step 3: Fill form → Click "Process" → Executes immediately → ✓/✗/⊘ → Moves to Step 4
+Step 4: Fill form → Click "Process" → Executes immediately → ✓/✗/⊘ → Moves to Step 5
+Step 5: Review → Click "Process" → Executes → Generates report → Download
 ```
 
-### 4. **Processing Pipeline**
-```python
-for step in PROCESSING_STEPS:
-    yield SSE: "in_progress"
-    result = execute_step(step)
-    yield SSE: "done"
-yield SSE: "complete" with report URL
+### 2. **Processing Flow**
+```
+User clicks "Process"
+         ↓
+POST /api/save-config (with step_number)
+         ↓
+app.py: save_config() → execute_single_step()
+         ↓
+utils.py: execute_single_step()
+  • Loads job config
+  • Loads previous step results
+  • Executes current step
+  • Saves results to results.json
+  • Returns status (success/skipped)
+         ↓
+JavaScript: Updates step icon
+  • ✓ Green (success)
+  • ✗ Red (failed)
+  • ⊘ Orange (skipped)
+         ↓
+Moves to next step automatically
 ```
 
-### 5. **Completion**
+### 3. **Status Tracking**
 ```
-Download report → Close modal → Reset wizard
+stepStatus = {
+    1: 'success',   // Step 1 completed
+    2: 'skipped',   // Step 2 skipped
+    3: 'success',   // Step 3 completed
+    4: 'failed',    // Step 4 failed
+    5: 'pending'    // Step 5 not started
+}
+```
+
+### 4. **Final Report Generation**
+```
+Step 5 completes → POST /api/generate-report
+         ↓
+Loads all results from results.json
+         ↓
+Generates comprehensive report
+         ↓
+Saves to output/{job_id}_report.json
+         ↓
+Returns download URL
 ```
 
 ---
@@ -178,11 +207,11 @@ Download report → Close modal → Reset wizard
 - Shared context via `workflow_context`
 - JSON-based configuration persistence
 
-### 2. **Server-Sent Events (SSE)**
-- One-way server → client communication
-- JSON-formatted events
-- Automatic reconnection
-- No polling required
+### 2. **Step-by-Step Processing** (NEW)
+- Each step processes immediately when "Process" is clicked
+- Results saved after each step
+- Previous step results available to next steps
+- Visual status feedback (✓/✗/⊘)
 
 ### 3. **Dynamic Module Loading**
 ```python
@@ -195,17 +224,24 @@ for step in PROCESSING_STEPS:
 ### 4. **Job-Based Processing**
 - Unique UUID for each job
 - Configuration file: `{job_id}_config.json`
+- Results file: `{job_id}_results.json` (NEW)
 - Report file: `{job_id}_report.json`
 - Isolated execution
 
-### 5. **Fail-Safe Error Handling**
+### 5. **Status Tracking & Visual Feedback**
+- Three states: success (✓), failed (✗), skipped (⊘)
+- Status persisted in JavaScript `stepStatus` object
+- Visual indicators update in real-time
+- Status persists when navigating between steps
+
+### 6. **Fail-Safe Error Handling**
 ```python
 try:
-    execute_all_steps()
+    step_result = execute_single_step(job_id, step_number)
+    return {"success": True, "status": "success"}
 except Exception as e:
-    yield SSE: error message
-finally:
-    yield SSE: close connection
+    return {"success": False, "error": str(e)}
+    # Frontend shows red ✗ icon
 ```
 
 ---
@@ -219,16 +255,22 @@ POST /api/save-config →
 Save to uploads/{job_id}_config.json
 ```
 
-### Workflow Context
+### Step Results Flow
+```
+Step 1 executes → Results saved to uploads/{job_id}_results.json
+Step 2 executes → Loads Step 1 results → Adds Step 2 results → Saves
+Step 3 executes → Loads Steps 1 & 2 results → Adds Step 3 results → Saves
+... and so on
+```
+
+### Workflow Context (Built Dynamically)
 ```python
+# When executing Step 2:
 workflow_context = {
     "job_id": "...",
-    "start_time": time.time(),
-    "job_config": {...},
-    "site_setup": {...},      # Results from step 1
-    "brand_theme": {...},     # Results from step 2
-    "content_plugin": {...},  # Results from step 3
-    # ... and so on
+    "job_config": {...},        # From config.json
+    "site_setup": {...},        # From results.json (Step 1)
+    # Step 2 will add "brand_theme" after execution
 }
 ```
 
@@ -265,7 +307,8 @@ workflow_context = {
 ### Custom Validations
 1. Add validation logic in processing steps
 2. Raise exceptions with descriptive messages
-3. SSE will propagate errors to UI
+3. Frontend shows red ✗ icon on error
+4. User can see which step failed immediately
 
 ---
 

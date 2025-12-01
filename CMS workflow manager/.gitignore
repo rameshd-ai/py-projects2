@@ -31,10 +31,10 @@ env/
 instance/
 .webassets-cache
 
-# Uploads and Outputs
-uploads/*
+# Uploads and Outputs (all job data)
+uploads/
+output/
 !uploads/.gitkeep
-output/*
 !output/.gitkeep
 
 # Logs

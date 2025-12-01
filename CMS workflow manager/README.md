@@ -5,7 +5,8 @@ A sophisticated web application for managing CMS website creation workflows with
 ## 🌟 Features
 
 - **Multi-Step Wizard Interface**: Beautiful, modern UI with 5 comprehensive steps
-- **Real-Time Progress Tracking**: Server-Sent Events (SSE) for live workflow updates
+- **Step-by-Step Processing**: Each step processes immediately when "Process" is clicked
+- **Visual Status Indicators**: Green ✓ (success), Red ✗ (failed), Orange ⊘ (skipped)
 - **Modular Architecture**: Independent, reusable processing steps
 - **Dynamic Configuration**: Flexible configuration management with JSON persistence
 - **Responsive Design**: Modern, mobile-friendly UI built with custom CSS
@@ -108,15 +109,18 @@ http://localhost:5000
 - Set site IDs and profile aliases
 - Define site creation parameters
 - Configure site language and country
+- Click **"Process"** → Step executes immediately → ✓ Green checkmark appears
 
 #### **Step 2: Brand/Theme Setup**
 - Pull fonts from existing site, or
 - Upload custom CSV/JSON configuration
+- Click **"Process"** → Step executes → ✓ Green checkmark
 
 #### **Step 3: Content Plug-in**
 - Enable MiBlock migration (optional)
 - Upload content mapping sheet
 - Define migration approach
+- Click **"Process"** → Step executes → ✓ Green or ⊘ Orange (if skipped)
 
 #### **Step 4: Modules/Features**
 - Select required modules:
@@ -126,21 +130,21 @@ http://localhost:5000
   - LTO Migration
   - RFP Form
   - DAM Migration
+- Click **"Process"** → Step executes → ✓ Green or ⊘ Orange (if none selected)
 
 #### **Step 5: Review & Complete**
 - Review configuration summary
-- Start the workflow
-- Monitor real-time progress
+- Click **"Process"** → Final step executes → Report generated
 - Download completion report
 
-### 3. Monitor Progress
+### 3. Step Status Indicators
 
-The workflow processing will show:
-- Real-time step execution
-- Processing logs
-- Step completion status
-- Total duration
-- Download link for final report
+Each step shows visual feedback:
+- **✓ Green Checkmark**: Step completed successfully
+- **✗ Red Cross**: Step failed (error occurred)
+- **⊘ Orange Symbol**: Step skipped (not enabled/selected)
+- **⟳ Blue Spinner**: Step is currently processing
+- **Empty Circle**: Step not started yet
 
 ## 🔧 Configuration
 
@@ -177,24 +181,21 @@ Each processing step:
 - Returns results for the next step
 - Can access shared configuration via JSON files
 
-### Server-Sent Events (SSE)
+### Step-by-Step Processing Flow
 
-The application uses SSE for real-time communication:
-- **No polling required** - Server pushes updates to client
-- **Event-driven** - Updates sent as they occur
-- **Automatic reconnection** - Browser handles connection issues
-- **Structured messages** - JSON-formatted event data
+**New Processing Model:**
+- Each step processes **immediately** when "Process" button is clicked
+- Steps execute **sequentially** as you navigate through the wizard
+- Results are **saved** after each step completes
+- Previous step results are **available** to subsequent steps
 
-### Event Types
-
-```javascript
-{
-  "status": "start" | "in_progress" | "done" | "complete" | "error" | "close",
-  "step_id": "site_setup",
-  "step_name": "Site Setup Readiness",
-  "message": "Processing...",
-  "duration": 2.5
-}
+**Processing Flow:**
+```
+Step 1 → Click "Process" → Executes → ✓/✗/⊘ → Moves to Step 2
+Step 2 → Click "Process" → Executes → ✓/✗/⊘ → Moves to Step 3
+Step 3 → Click "Process" → Executes → ✓/✗/⊘ → Moves to Step 4
+Step 4 → Click "Process" → Executes → ✓/✗/⊘ → Moves to Step 5
+Step 5 → Click "Process" → Executes → ✓ → Generates Report
 ```
 
 ## 📝 Adding New Processing Steps
@@ -240,23 +241,21 @@ PROCESSING_STEPS.append({
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Main wizard interface |
-| GET | `/api/steps` | Get all processing steps |
-| POST | `/api/save-config` | Save wizard configuration |
-| POST | `/api/upload` | Upload files |
-| POST | `/api/start-workflow` | Start workflow processing |
-| GET | `/api/stream/<job_id>` | SSE stream for progress |
+| POST | `/api/save-config` | Save config & process current step |
+| POST | `/api/generate-report` | Generate final completion report |
 | GET | `/download/<filename>` | Download reports |
-| GET | `/health` | Health check |
 
 ## 🧪 Testing
 
 ### Manual Testing
 
-1. Fill out the wizard with test data
-2. Upload test files (CSV/JSON)
-3. Start the workflow
-4. Observe real-time progress
-5. Download and verify the completion report
+1. Fill out Step 1 form
+2. Click **"Process"** → Watch step icon change to ✓
+3. Fill out Step 2 form
+4. Click **"Process"** → Watch step icon change to ✓
+5. Repeat for Steps 3, 4, 5
+6. On Step 5, click **"Process"** → Final report generated
+7. Download and verify the completion report
 
 ### Unit Testing (optional)
 
