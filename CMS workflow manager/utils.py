@@ -113,6 +113,16 @@ def execute_single_step(job_id: str, step_number: int) -> Dict[str, Any]:
         workflow_context=workflow_context
     )
     
+    # Save updated job_config if it was modified by the step (e.g., tokens added)
+    # Since job_config is a mutable dict, modifications in the step function update workflow_context
+    updated_job_config = workflow_context.get("job_config", {})
+    
+    # Check if tokens were added (indicating config was modified)
+    has_tokens = "source_cms_token" in updated_job_config or "destination_cms_token" in updated_job_config
+    if has_tokens:
+        save_job_config(job_id, updated_job_config)
+        logger.info(f"Updated job config saved for {job_id} (CMS tokens added)")
+    
     # Save results
     if not os.path.exists(results_file):
         all_results = {}

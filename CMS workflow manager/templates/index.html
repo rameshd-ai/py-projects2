@@ -34,6 +34,13 @@
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             padding: 32px;
             color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wizard-header-content {
+            flex: 1;
         }
 
         .wizard-header h1 {
@@ -45,6 +52,29 @@
         .wizard-header p {
             color: #bfdbfe;
             font-size: 14px;
+        }
+
+        .header-link {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .header-link:hover {
+            background: #f0f9ff !important;
+            color: #1d4ed8 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .wizard-body {
@@ -282,7 +312,7 @@
         .upload-area {
             border: 2px dashed #d1d5db;
             border-radius: 8px;
-            padding: 48px 24px;
+            padding: 24px 16px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
@@ -294,31 +324,31 @@
         }
 
         .upload-icon {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 16px;
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 8px;
             color: #9ca3af;
         }
 
         .upload-text {
             color: #6b7280;
-            font-size: 14px;
-            margin-bottom: 4px;
+            font-size: 13px;
+            margin-bottom: 2px;
         }
 
         .upload-subtext {
             color: #9ca3af;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .upload-button {
             display: inline-block;
-            margin-top: 16px;
-            padding: 10px 20px;
+            margin-top: 10px;
+            padding: 8px 16px;
             background: #2563eb;
             color: white;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 6px;
+            font-size: 13px;
             cursor: pointer;
             transition: all 0.2s;
         }
@@ -328,9 +358,9 @@
         }
 
         .file-name {
-            margin-top: 12px;
+            margin-top: 8px;
             color: #10b981;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .grid-2 {
@@ -565,11 +595,32 @@
         <div class="wizard-card">
             <!-- Header -->
             <div class="wizard-header">
-                <h1>WebSite Creation Workflow</h1>
-                <p>OSB/Template/Custom project</p>
+                <div class="wizard-header-content">
+                    <h1>WebSite Creation Workflow</h1>
+                    <p>OSB/Template/Custom project</p>
+                </div>
+                <a href="/jobs" class="header-link" style="background: white !important; color: #2563eb !important; border: 2px solid white !important; padding: 12px 24px !important; font-size: 15px !important; font-weight: 600 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    View All Jobs
+                </a>
             </div>
 
-            <div class="wizard-body">
+        <!-- Jobs Link Banner (Additional Prominent Link) -->
+        <div style="background: #f0f9ff; border-bottom: 2px solid #2563eb; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="color: #1e40af; font-size: 14px;">
+                <strong>💡 Tip:</strong> View and manage all your jobs from the jobs list page
+            </div>
+            <a href="/jobs" style="background: #2563eb; color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" onmouseover="this.style.background='#1d4ed8'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';" onmouseout="this.style.background='#2563eb'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                View All Jobs
+            </a>
+        </div>
+
+        <div class="wizard-body">
                 <!-- Sidebar -->
                 <div class="wizard-sidebar">
                     <div id="stepsList">
@@ -824,21 +875,35 @@
                                 </label>
 
                                 <div class="form-group">
-                                    <label class="form-label">Upload CSV/JSON File</label>
-                                    <div class="upload-area" onclick="document.getElementById('csvJsonFile').click()">
+                                    <label class="form-label">Upload Font File <span style="color: #6b7280; font-weight: normal;">(CSV/JSON)</span></label>
+                                    <div class="upload-area" onclick="document.getElementById('fontFile').click()">
                                         <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                                         </svg>
-                                        <p class="upload-text">Upload CSV or JSON File</p>
+                                        <p class="upload-text">Upload Font Configuration</p>
                                         <p class="upload-subtext">CSV or JSON file format</p>
                                         <span class="upload-button">Choose File</span>
-                                        <input type="file" id="csvJsonFile" accept=".csv,.json" style="display: none;" onchange="displayCsvJsonFileName(this)">
-                                        <div id="csvJsonFileName" class="file-name"></div>
+                                        <input type="file" id="fontFile" accept=".csv,.json" style="display: none;" onchange="displayFileName(this, 'fontFileName')">
+                                        <div id="fontFileName" class="file-name"></div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Upload Color File <span style="color: #6b7280; font-weight: normal;">(CSV/JSON)</span></label>
+                                    <div class="upload-area" onclick="document.getElementById('colorFile').click()">
+                                        <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                        </svg>
+                                        <p class="upload-text">Upload Color Configuration</p>
+                                        <p class="upload-subtext">CSV or JSON file format</p>
+                                        <span class="upload-button">Choose File</span>
+                                        <input type="file" id="colorFile" accept=".csv,.json" style="display: none;" onchange="displayFileName(this, 'colorFileName')">
+                                        <div id="colorFileName" class="file-name"></div>
                                     </div>
                                 </div>
 
                                 <div class="info-box blue">
-                                    <p><strong>Note:</strong> Fonts and typography will be automatically extracted from the current site if the checkbox is selected, or you can upload a CSV/JSON file with custom configuration.</p>
+                                    <p><strong>Note:</strong> Fonts and colors will be automatically extracted from the current site if the checkbox is selected, or you can upload separate CSV/JSON files for font and color configurations.</p>
                                 </div>
                             </div>
                         </div>
@@ -863,7 +928,7 @@
                                         <p class="upload-text">Upload Content Mapping Sheet</p>
                                         <p class="upload-subtext">Excel or CSV file</p>
                                         <span class="upload-button">Choose File</span>
-                                        <input type="file" id="mappingSheet" accept=".xlsx,.xls,.csv" style="display: none;" onchange="displayFileName(this)">
+                                        <input type="file" id="mappingSheet" accept=".xlsx,.xls,.csv" style="display: none;" onchange="displayFileName(this, 'fileName')">
                                         <div id="fileName" class="file-name"></div>
                                     </div>
                                 </div>
@@ -979,6 +1044,39 @@
             return 'job_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         }
 
+        // Load job status when jobId changes
+        let lastJobId = null;
+        
+        async function checkAndLoadJobStatus() {
+            if (jobId && jobId !== lastJobId) {
+                lastJobId = jobId;
+                await loadJobStatus();
+                updateUI();
+            }
+        }
+        
+        async function loadJobStatus() {
+            // Load completed steps from JSON
+            try {
+                const response = await fetch(`/api/job-status/${jobId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const completedSteps = result.completed_steps || [];
+                    const stepIds = ['site_setup', 'brand_theme', 'content_plugin', 'modules_features', 'finalize'];
+                    
+                    completedSteps.forEach(stepId => {
+                        const stepIndex = stepIds.indexOf(stepId);
+                        if (stepIndex >= 0) {
+                            stepStatus[stepIndex + 1] = 'success';
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading job status:', error);
+            }
+        }
+        
         function updateUI() {
             // Update step items
             document.querySelectorAll('.step-item').forEach((item, index) => {
@@ -997,8 +1095,12 @@
                 } else if (status === 'skipped') {
                     icon.classList.add('skipped');
                     icon.innerHTML = '⊘';
+                } else if (status === 'success') {
+                    // Step is marked as completed in JSON
+                    icon.classList.add('completed');
+                    icon.innerHTML = '✓';
                 } else if (stepNum < currentStep) {
-                    // Completed step - default to success if no status
+                    // Step was processed but not yet marked complete
                     icon.classList.add('completed');
                     icon.innerHTML = '✓';
                 } else if (stepNum === currentStep) {
@@ -1069,7 +1171,8 @@
                 
                 // Step 2: Brand/Theme
                 fontPulled: document.getElementById('fontPulled')?.checked || false,
-                csvJsonFile: document.getElementById('csvJsonFile')?.files[0]?.name || '',
+                fontFile: document.getElementById('fontFile')?.files[0]?.name || '',
+                colorFile: document.getElementById('colorFile')?.files[0]?.name || '',
                 
                 // Step 3: Content
                 miblockMigration: document.getElementById('miblockMigration')?.checked || false,
@@ -1302,6 +1405,13 @@
             stepStatus = {}; // Clear step status
             updateUI();
         }
+        
+        function closeStepProcessingModal() {
+            const modal = document.getElementById('stepProcessingModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
 
         async function nextStep() {
             if (currentStep < totalSteps) {
@@ -1317,7 +1427,80 @@
             }
         }
         
+        function showProcessingModal(message = 'Processing...') {
+            // Remove existing modal if any
+            const existingModal = document.getElementById('stepProcessingModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Create modal
+            const modal = document.createElement('div');
+            modal.id = 'stepProcessingModal';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;';
+            
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 16px; padding: 32px; max-width: 400px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+                    <div style="margin-bottom: 24px;">
+                        <div class="spinner" style="width: 48px; height: 48px; border: 4px solid #e5e7eb; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                    </div>
+                    <h3 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 8px;">Processing Step ${currentStep}</h3>
+                    <p id="processingModalMessage" style="color: #6b7280; font-size: 14px; margin-bottom: 0;">${message}</p>
+                </div>
+            `;
+            
+            // Add spinner animation
+            if (!document.getElementById('spinnerStyle')) {
+                const style = document.createElement('style');
+                style.id = 'spinnerStyle';
+                style.textContent = `
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(modal);
+            return modal;
+        }
+        
+        function updateProcessingModalMessage(message) {
+            const messageEl = document.getElementById('processingModalMessage');
+            if (messageEl) {
+                messageEl.textContent = message;
+            }
+        }
+        
+        function closeProcessingModal() {
+            const modal = document.getElementById('stepProcessingModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        async function markStepAsComplete(stepNumber) {
+            try {
+                const response = await fetch('/api/mark-step-complete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        job_id: jobId,
+                        step_number: stepNumber
+                    })
+                });
+                
+                const result = await response.json();
+                return result.success;
+            } catch (error) {
+                console.error('Error marking step as complete:', error);
+                return false;
+            }
+        }
+        
         async function saveAndProcessStep() {
+            const processingModal = showProcessingModal('Initializing step processing...');
+            
             try {
                 // Show processing indicator
                 const stepItem = document.querySelector(`.step-item[data-step="${currentStep}"]`);
@@ -1327,9 +1510,13 @@
                     stepIcon.style.background = '#2563eb';
                 }
                 
+                updateProcessingModalMessage('Collecting form data...');
+                
                 // Collect and save config, then process step
                 const formData = await collectFormData();
                 formData.step_number = currentStep;
+                
+                updateProcessingModalMessage('Saving configuration...');
                 
                 const response = await fetch('/api/save-config', {
                     method: 'POST',
@@ -1337,49 +1524,69 @@
                     body: JSON.stringify(formData)
                 });
                 
+                updateProcessingModalMessage('Processing step (this may take a moment)...');
+                
                 const result = await response.json();
                 
                 if (!result.success) {
+                    closeProcessingModal();
                     // Mark step as failed
                     stepStatus[currentStep] = 'failed';
                     throw new Error(result.error || 'Failed to process step');
                 }
                 
-                // Check step status from backend
-                const stepStatusFromBackend = result.step_result?.status || 'success';
-                const stepResult = result.step_result?.result || {};
-                const stepMessage = stepResult.message || '';
-                
-                // Determine if step was skipped
-                const isSkipped = stepStatusFromBackend === 'skipped' || 
-                                 stepMessage.toLowerCase().includes('skipped') || 
-                                 stepMessage.toLowerCase().includes('not enabled') ||
-                                 stepMessage.toLowerCase().includes('not selected') ||
-                                 stepMessage.toLowerCase().includes('no modules');
-                
-                // Update step status
-                if (isSkipped) {
-                    stepStatus[currentStep] = 'skipped';
-                    if (stepIcon) {
-                        stepIcon.innerHTML = '⊘';
-                        stepIcon.style.background = '#f59e0b';
-                        stepIcon.classList.add('skipped');
+                // Check if step processing completed (but not marked as complete yet)
+                if (result.step_processed && result.step_result) {
+                    updateProcessingModalMessage('Step processing completed. Finalizing...');
+                    
+                    // Explicitly mark step as complete
+                    const markedComplete = await markStepAsComplete(currentStep);
+                    
+                    if (markedComplete) {
+                        // Check step status from backend
+                        const stepStatusFromBackend = result.step_result?.status || 'success';
+                        const stepResult = result.step_result?.result || {};
+                        const stepMessage = stepResult.message || '';
+                        
+                        // Determine if step was skipped
+                        const isSkipped = stepStatusFromBackend === 'skipped' || 
+                                         stepMessage.toLowerCase().includes('skipped') || 
+                                         stepMessage.toLowerCase().includes('not enabled') ||
+                                         stepMessage.toLowerCase().includes('not selected') ||
+                                         stepMessage.toLowerCase().includes('no modules');
+                        
+                        // Update step status
+                        if (isSkipped) {
+                            stepStatus[currentStep] = 'skipped';
+                            if (stepIcon) {
+                                stepIcon.innerHTML = '⊘';
+                                stepIcon.style.background = '#f59e0b';
+                                stepIcon.classList.add('skipped');
+                            }
+                        } else {
+                            stepStatus[currentStep] = 'success';
+                            if (stepIcon) {
+                                stepIcon.innerHTML = '✓';
+                                stepIcon.style.background = '#10b981';
+                                stepIcon.classList.add('completed');
+                            }
+                        }
+                        
+                        updateProcessingModalMessage('Step completed successfully!');
+                        await new Promise(resolve => setTimeout(resolve, 500)); // Brief delay to show success
+                        closeProcessingModal();
+                        
+                        console.log(`Step ${currentStep} ${isSkipped ? 'skipped' : 'completed'}:`, result.step_result.step_name);
+                    } else {
+                        closeProcessingModal();
+                        alert('Step processed but failed to mark as complete. Please try again.');
                     }
                 } else {
-                    stepStatus[currentStep] = 'success';
-                    if (stepIcon) {
-                        stepIcon.innerHTML = '✓';
-                        stepIcon.style.background = '#10b981';
-                        stepIcon.classList.add('completed');
-                    }
-                }
-                
-                // Show success message
-                if (result.step_processed && result.step_result) {
-                    console.log(`Step ${currentStep} ${isSkipped ? 'skipped' : 'completed'}:`, result.step_result.step_name);
+                    closeProcessingModal();
                 }
                 
             } catch (error) {
+                closeProcessingModal();
                 console.error('Error processing step:', error);
                 
                 // Mark step as failed
@@ -1437,28 +1644,38 @@
             });
         });
 
-        function displayFileName(input) {
+        function displayFileName(input, targetId) {
             const fileName = input.files[0]?.name;
-            if (fileName) {
-                document.getElementById('fileName').textContent = '✓ ' + fileName;
+            if (fileName && targetId) {
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.textContent = '✓ ' + fileName;
+                }
+            } else if (fileName) {
+                // Fallback for mapping sheet (uses 'fileName' as default)
+                const defaultElement = document.getElementById('fileName');
+                if (defaultElement) {
+                    defaultElement.textContent = '✓ ' + fileName;
+                }
             }
         }
 
         function displayCsvJsonFileName(input) {
-            const fileName = input.files[0]?.name;
-            if (fileName) {
-                document.getElementById('csvJsonFileName').textContent = '✓ ' + fileName;
-            }
+            // Legacy function - kept for backward compatibility
+            displayFileName(input, 'fontFileName');
         }
 
         function updateSummary() {
-            // Brand/Theme status - check if CSV/JSON file is uploaded or Pull from Site is checked
+            // Brand/Theme status - check if font/color files are uploaded or Pull from Site is checked
             const fontPulled = document.getElementById('fontPulled');
-            const csvJsonFile = document.getElementById('csvJsonFile');
-            const hasFile = csvJsonFile && csvJsonFile.files && csvJsonFile.files.length > 0;
+            const fontFile = document.getElementById('fontFile');
+            const colorFile = document.getElementById('colorFile');
+            const hasFontFile = fontFile && fontFile.files && fontFile.files.length > 0;
+            const hasColorFile = colorFile && colorFile.files && colorFile.files.length > 0;
             const isPulled = fontPulled && fontPulled.checked;
+            const isConfigured = (hasFontFile || hasColorFile || isPulled);
             document.getElementById('brandThemeStatus').textContent = 
-                (hasFile || isPulled) ? '✓ Configured' : '○ Pending';
+                isConfigured ? '✓ Configured' : '○ Pending';
 
             // Content migration status
             const miblockMigration = document.getElementById('miblockMigration');
@@ -1479,8 +1696,11 @@
             document.getElementById('modulesCount').textContent = modulesCount + ' modules';
         }
 
-        // Initialize
-        updateUI();
+        // Initialize - load job status and update UI
+        (async function init() {
+            await loadJobStatus();
+            updateUI();
+        })();
     </script>
 </body>
 </html>
