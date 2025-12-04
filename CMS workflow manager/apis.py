@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 #export_mi_block_component(base_url,componentId,siteId, headers)
 #get_active_pages_from_api(base_url, site_id, headers)
 #get_theme_configuration(base_url, site_id, headers)
+#get_group_record(base_url, site_id, groups, headers)
 """
 Example response from API:
 
@@ -1087,6 +1088,89 @@ def get_theme_configuration(base_url: str, site_id: int, headers: Dict[str, str]
         return None
     except Exception as e:
         logging.error(f"❌ Unexpected error in get_theme_configuration: {e}")
+        return None
+
+
+def get_group_record(base_url: str, site_id: int, groups: list, headers: Dict[str, str]) -> Union[Dict[str, Any], None]:
+    """
+    Fetches group records with theme variables from the CMS Theme API.
+    
+    Endpoint: /ccadmin/cms/api/ThemeApi/GetGroupRecord
+    
+    Args:
+        base_url (str): The base URL of the CMS API.
+        site_id (int): The Site ID.
+        groups (list): List of group dictionaries with themeId and groupId.
+                      Example: [{"themeId": 81, "groupId": 9533}, {"themeId": 83, "groupId": 9542}]
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+    
+    Returns:
+        dict: The JSON response containing group records with variables if successful, otherwise None.
+        
+    Example Response:
+        {
+            "groupsRecordDetails": [
+                {
+                    "themeId": 81,
+                    "themeName": "milestoneGlobal",
+                    "groupId": 9533,
+                    "groupName": "Front 12",
+                    "grouptype": 2,
+                    "groupVariables": [
+                        {
+                            "variableName": "milestoneGlobal font variable",
+                            "variableType": 2,
+                            "variableAlias": null,
+                            "variableValue": "test2121"
+                        }
+                    ]
+                }
+            ],
+            "success": true,
+            "errorMessage": null
+        }
+    """
+    api_url = f"{base_url}/ccadmin/cms/api/ThemeApi/GetGroupRecord"
+    
+    payload = {
+        "SiteId": site_id,
+        "groups": groups
+    }
+    
+    try:
+        logging.info(f"Fetching group records for SiteId: {site_id} with {len(groups)} groups")
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        
+        response_data = response.json()
+        
+        if response_data.get("success", False):
+            logging.info(f"✅ Successfully fetched group records for SiteId: {site_id}")
+            return response_data
+        else:
+            error_message = response_data.get("errorMessage", "Unknown error")
+            logging.error(f"❌ API returned success=false: {error_message}")
+            return None
+            
+    except requests.exceptions.HTTPError as http_err:
+        status_code = response.status_code if 'response' in locals() else 'N/A'
+        logging.error(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
+        return None
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"❌ Connection error occurred: {conn_err}")
+        return None
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"❌ Timeout error occurred: {timeout_err}")
+        return None
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"❌ Request error occurred: {req_err}")
+        return None
+    except json.JSONDecodeError as json_err:
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"❌ JSON decode error: {json_err}. Response: {response_text[:200]}")
+        return None
+    except Exception as e:
+        logging.error(f"❌ Unexpected error in get_group_record: {e}")
         return None
 
 

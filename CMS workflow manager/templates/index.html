@@ -323,6 +323,27 @@
             background: #f9fafb;
         }
 
+        .upload-area.disabled {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            background: #f3f4f6 !important;
+        }
+
+        .upload-area.disabled * {
+            pointer-events: none !important;
+        }
+
+        .upload-area.disabled .upload-button {
+            background: #9ca3af !important;
+            cursor: not-allowed !important;
+        }
+        
+        .upload-area.disabled:hover {
+            border-color: #d1d5db !important;
+            background: #f3f4f6 !important;
+        }
+
         .upload-icon {
             width: 32px;
             height: 32px;
@@ -870,13 +891,13 @@
 
                             <div class="form-section">
                                 <label class="checkbox-item">
-                                    <input type="checkbox" name="fontPulled" id="fontPulled">
+                                    <input type="checkbox" name="fontPulled" id="fontPulled" onchange="toggleBrandUploadFields()">
                                     <span class="checkbox-label">Pull from Current Site</span>
                                 </label>
 
-                                <div class="form-group">
+                                <div class="form-group" id="fontFileGroup">
                                     <label class="form-label">Upload Font File <span style="color: #6b7280; font-weight: normal;">(CSV/JSON)</span></label>
-                                    <div class="upload-area" onclick="document.getElementById('fontFile').click()">
+                                    <div class="upload-area" id="fontUploadArea" onclick="if(!this.classList.contains('disabled')) document.getElementById('fontFile').click()">
                                         <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                                         </svg>
@@ -888,9 +909,9 @@
                                     </div>
                                 </div>
 
-                                <div class="form-group">
+                                <div class="form-group" id="colorFileGroup">
                                     <label class="form-label">Upload Color File <span style="color: #6b7280; font-weight: normal;">(CSV/JSON)</span></label>
-                                    <div class="upload-area" onclick="document.getElementById('colorFile').click()">
+                                    <div class="upload-area" id="colorUploadArea" onclick="if(!this.classList.contains('disabled')) document.getElementById('colorFile').click()">
                                         <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                                         </svg>
@@ -1696,10 +1717,53 @@
             document.getElementById('modulesCount').textContent = modulesCount + ' modules';
         }
 
+        function toggleBrandUploadFields() {
+            const fontPulled = document.getElementById('fontPulled');
+            const fontUploadArea = document.getElementById('fontUploadArea');
+            const colorUploadArea = document.getElementById('colorUploadArea');
+            const fontFileInput = document.getElementById('fontFile');
+            const colorFileInput = document.getElementById('colorFile');
+            
+            if (fontPulled && fontPulled.checked) {
+                // Disable file uploads when checkbox is checked
+                if (fontUploadArea) {
+                    fontUploadArea.classList.add('disabled');
+                    fontUploadArea.style.pointerEvents = 'none';
+                }
+                if (colorUploadArea) {
+                    colorUploadArea.classList.add('disabled');
+                    colorUploadArea.style.pointerEvents = 'none';
+                }
+                if (fontFileInput) {
+                    fontFileInput.disabled = true;
+                }
+                if (colorFileInput) {
+                    colorFileInput.disabled = true;
+                }
+            } else {
+                // Enable file uploads when checkbox is unchecked
+                if (fontUploadArea) {
+                    fontUploadArea.classList.remove('disabled');
+                    fontUploadArea.style.pointerEvents = 'auto';
+                }
+                if (colorUploadArea) {
+                    colorUploadArea.classList.remove('disabled');
+                    colorUploadArea.style.pointerEvents = 'auto';
+                }
+                if (fontFileInput) {
+                    fontFileInput.disabled = false;
+                }
+                if (colorFileInput) {
+                    colorFileInput.disabled = false;
+                }
+            }
+        }
+
         // Initialize - load job status and update UI
         (async function init() {
             await loadJobStatus();
             updateUI();
+            toggleBrandUploadFields(); // Apply initial state for file uploads
         })();
     </script>
 </body>

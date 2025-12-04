@@ -106,12 +106,18 @@ def execute_single_step(job_id: str, step_number: int) -> Dict[str, Any]:
     if not step_function:
         raise Exception(f"Step function {step_function_name} not found")
     
+    print(f"\n⚙️ Executing step function: {step_function_name}", flush=True)
+    print(f"⚙️ Job ID: {job_id}", flush=True)
+    print(f"⚙️ Step ID: {step_id}\n", flush=True)
+    
     # Execute step
     step_result = step_function(
         job_id=job_id,
         step_config=step_config,
         workflow_context=workflow_context
     )
+    
+    print(f"\n✅ Step function completed: {step_function_name}\n", flush=True)
     
     # Save updated job_config if it was modified by the step (e.g., tokens added)
     # Since job_config is a mutable dict, modifications in the step function update workflow_context
