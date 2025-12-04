@@ -107,7 +107,7 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                     job_folder = os.path.join("uploads", job_id)
                     os.makedirs(job_folder, exist_ok=True)
                     
-                    response_file = os.path.join(job_folder, "get_theme_configuration.json")
+                    response_file = os.path.join(job_folder, "source_get_theme_configuration.json")
                     with open(response_file, 'w', encoding='utf-8') as f:
                         json.dump(theme_config_response, f, indent=4, ensure_ascii=False)
                     
@@ -172,7 +172,7 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                 job_folder = os.path.join("uploads", job_id)
                                 os.makedirs(job_folder, exist_ok=True)
                                 
-                                response_file = os.path.join(job_folder, "get_group_record.json")
+                                response_file = os.path.join(job_folder, "source_get_group_record.json")
                                 with open(response_file, 'w', encoding='utf-8') as f:
                                     json.dump(group_record_response, f, indent=4, ensure_ascii=False)
                                 
@@ -203,9 +203,83 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                 logger.info(f"[{job_id}] Copied color_mapper.json to job folder")
                                 
                                 print(f"\n💾 All mapper files copied successfully!", flush=True)
+                                
+                                # Now update the mapper files with API response data
+                                print(f"\n🔄 Updating mapper files with API data...", flush=True)
+                                
+                                # Build a lookup dictionary from group_record_response
+                                variable_lookup = {}
+                                if group_record_response and 'groupsRecordDetails' in group_record_response:
+                                    for group_detail in group_record_response['groupsRecordDetails']:
+                                        group_variables = group_detail.get('groupVariables', [])
+                                        for var in group_variables:
+                                            var_alias = var.get('variableAlias', '').strip()
+                                            var_value = var.get('variableValue', '').strip()
+                                            var_name = var.get('variableName', '').strip()
+                                            
+                                            # Store by alias if available, otherwise by name
+                                            if var_alias:
+                                                variable_lookup[var_alias] = var_value
+                                            if var_name:
+                                                variable_lookup[var_name] = var_value
+                                
+                                print(f"📊 Built lookup with {len(variable_lookup)} variables", flush=True)
+                                
+                                # Update font_mapper.json
+                                print(f"\n📝 Updating font_mapper.json...", flush=True)
+                                with open(font_mapper_dest, 'r', encoding='utf-8') as f:
+                                    font_mapper = json.load(f)
+                                
+                                updated_font_count = 0
+                                for entry in font_mapper:
+                                    old_key = entry.get('old_key', '').strip()
+                                    new_key = entry.get('new_key', '').strip()
+                                    current_value = entry.get('value', '').strip()
+                                    
+                                    # Only update if value is empty/blank
+                                    if not current_value and old_key:
+                                        # Search for old_key in variable_lookup
+                                        if old_key in variable_lookup:
+                                            entry['value'] = variable_lookup[old_key]
+                                            updated_font_count += 1
+                                            print(f"  ✓ Updated '{new_key}' (from old_key '{old_key}') = '{variable_lookup[old_key]}'", flush=True)
+                                
+                                # Save updated font_mapper
+                                with open(font_mapper_dest, 'w', encoding='utf-8') as f:
+                                    json.dump(font_mapper, f, indent=2, ensure_ascii=False)
+                                
+                                print(f"✅ Updated {updated_font_count} entries in font_mapper.json", flush=True)
+                                
+                                # Update color_mapper.json
+                                print(f"\n🎨 Updating color_mapper.json...", flush=True)
+                                with open(color_mapper_dest, 'r', encoding='utf-8') as f:
+                                    color_mapper = json.load(f)
+                                
+                                updated_color_count = 0
+                                for entry in color_mapper:
+                                    old_key = entry.get('old_key', '').strip()
+                                    new_key = entry.get('new_key', '').strip()
+                                    
+                                    # Try to find value by old_key first, then new_key
+                                    if old_key and old_key in variable_lookup:
+                                        entry['value'] = variable_lookup[old_key]
+                                        updated_color_count += 1
+                                        print(f"  ✓ Updated '{new_key}' (from old_key '{old_key}') = '{variable_lookup[old_key]}'", flush=True)
+                                    elif new_key and new_key in variable_lookup:
+                                        entry['value'] = variable_lookup[new_key]
+                                        updated_color_count += 1
+                                        print(f"  ✓ Updated '{new_key}' = '{variable_lookup[new_key]}'", flush=True)
+                                
+                                # Save updated color_mapper
+                                with open(color_mapper_dest, 'w', encoding='utf-8') as f:
+                                    json.dump(color_mapper, f, indent=2, ensure_ascii=False)
+                                
+                                print(f"✅ Updated {updated_color_count} entries in color_mapper.json", flush=True)
+                                print(f"\n🎉 All mapper files updated successfully!", flush=True)
+                                
                             except Exception as copy_error:
-                                print(f"⚠️ Warning: Could not copy mapper files: {copy_error}", flush=True)
-                                logger.warning(f"[{job_id}] Failed to copy mapper files: {copy_error}")
+                                print(f"⚠️ Warning: Could not copy/update mapper files: {copy_error}", flush=True)
+                                logger.warning(f"[{job_id}] Failed to copy/update mapper files: {copy_error}")
                         else:
                             print("❌ Group Record API returned None", flush=True)
                         print("="*80 + "\n", flush=True)
