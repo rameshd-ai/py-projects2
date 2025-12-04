@@ -2,6 +2,7 @@ import time
 import logging
 import json
 import sys
+import os
 from typing import Dict, Any
 from apis import get_theme_configuration, get_group_record
 
@@ -98,8 +99,22 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                         print()
                 
                 print("\nFull Response:", flush=True)
-                import json
                 print(json.dumps(theme_config_response, indent=2), flush=True)
+                
+                # Save response to file
+                try:
+                    job_folder = os.path.join("uploads", job_id)
+                    os.makedirs(job_folder, exist_ok=True)
+                    
+                    response_file = os.path.join(job_folder, "get_theme_configuration.json")
+                    with open(response_file, 'w', encoding='utf-8') as f:
+                        json.dump(theme_config_response, f, indent=4, ensure_ascii=False)
+                    
+                    print(f"\n💾 Saved response to: {response_file}", flush=True)
+                    logger.info(f"[{job_id}] Saved theme configuration to {response_file}")
+                except Exception as save_error:
+                    print(f"⚠️ Warning: Could not save response file: {save_error}", flush=True)
+                    logger.warning(f"[{job_id}] Failed to save theme configuration: {save_error}")
                 
                 # Call get_group_record if theme configuration was successful
                 if theme_config_response.get('success'):
@@ -150,6 +165,21 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                             
                             print("\nFull Response:", flush=True)
                             print(json.dumps(group_record_response, indent=2), flush=True)
+                            
+                            # Save response to file
+                            try:
+                                job_folder = os.path.join("uploads", job_id)
+                                os.makedirs(job_folder, exist_ok=True)
+                                
+                                response_file = os.path.join(job_folder, "get_group_record.json")
+                                with open(response_file, 'w', encoding='utf-8') as f:
+                                    json.dump(group_record_response, f, indent=4, ensure_ascii=False)
+                                
+                                print(f"\n💾 Saved response to: {response_file}", flush=True)
+                                logger.info(f"[{job_id}] Saved group record to {response_file}")
+                            except Exception as save_error:
+                                print(f"⚠️ Warning: Could not save response file: {save_error}", flush=True)
+                                logger.warning(f"[{job_id}] Failed to save group record: {save_error}")
                         else:
                             print("❌ Group Record API returned None", flush=True)
                         print("="*80 + "\n", flush=True)
