@@ -3,6 +3,7 @@ import logging
 import json
 import sys
 import os
+import shutil
 from typing import Dict, Any
 from apis import get_theme_configuration, get_group_record
 
@@ -180,6 +181,31 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                             except Exception as save_error:
                                 print(f"⚠️ Warning: Could not save response file: {save_error}", flush=True)
                                 logger.warning(f"[{job_id}] Failed to save group record: {save_error}")
+                            
+                            # Copy mapper files from resource folder to job folder
+                            print(f"\n📋 Copying mapper files to job folder...", flush=True)
+                            try:
+                                job_folder = os.path.join("uploads", job_id)
+                                os.makedirs(job_folder, exist_ok=True)
+                                
+                                # Copy font_mapper.json
+                                font_mapper_src = os.path.join("resource", "font_mapper.json")
+                                font_mapper_dest = os.path.join(job_folder, "font_mapper.json")
+                                shutil.copy(font_mapper_src, font_mapper_dest)
+                                print(f"✅ Copied: font_mapper.json -> {font_mapper_dest}", flush=True)
+                                logger.info(f"[{job_id}] Copied font_mapper.json to job folder")
+                                
+                                # Copy color_mapper.json
+                                color_mapper_src = os.path.join("resource", "color_mapper.json")
+                                color_mapper_dest = os.path.join(job_folder, "color_mapper.json")
+                                shutil.copy(color_mapper_src, color_mapper_dest)
+                                print(f"✅ Copied: color_mapper.json -> {color_mapper_dest}", flush=True)
+                                logger.info(f"[{job_id}] Copied color_mapper.json to job folder")
+                                
+                                print(f"\n💾 All mapper files copied successfully!", flush=True)
+                            except Exception as copy_error:
+                                print(f"⚠️ Warning: Could not copy mapper files: {copy_error}", flush=True)
+                                logger.warning(f"[{job_id}] Failed to copy mapper files: {copy_error}")
                         else:
                             print("❌ Group Record API returned None", flush=True)
                         print("="*80 + "\n", flush=True)
