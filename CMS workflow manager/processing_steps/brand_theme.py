@@ -137,7 +137,13 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                         print(f"Groups: {groups}", flush=True)
                         print("="*80, flush=True)
                         
-                        group_record_response = get_group_record(source_url, int(source_site_id), groups, headers)
+                        # Build payload for get_group_record
+                        group_record_payload = {
+                            "SiteId": int(source_site_id),
+                            "groups": groups
+                        }
+                        
+                        group_record_response = get_group_record(source_url, group_record_payload, headers)
                         
                         print("\n" + "="*80, flush=True)
                         print(f"📋 GET_GROUP_RECORD API RESPONSE", flush=True)
@@ -280,6 +286,75 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                             except Exception as copy_error:
                                 print(f"⚠️ Warning: Could not copy/update mapper files: {copy_error}", flush=True)
                                 logger.warning(f"[{job_id}] Failed to copy/update mapper files: {copy_error}")
+                            
+                            # Now fetch destination site theme configuration
+                            print(f"\n" + "="*80, flush=True)
+                            print(f"🎯 FETCHING DESTINATION SITE THEME DATA", flush=True)
+                            print(f"="*80, flush=True)
+                            
+                            # Get destination site info
+                            destination_url = job_config.get("destinationUrl", "").strip()
+                            destination_site_id = job_config.get("destinationSiteId", "").strip()
+                            destination_token = site_setup.get("destination_cms_token") or job_config.get("destination_cms_token")
+                            
+                            print(f"\n📊 DESTINATION SITE INFO:", flush=True)
+                            print(f"  Destination URL: {destination_url}", flush=True)
+                            print(f"  Destination Site ID: {destination_site_id}", flush=True)
+                            print(f"  Destination Token exists: {bool(destination_token)}", flush=True)
+                            
+                            if destination_token and destination_site_id:
+                                try:
+                                    print(f"\n🎨 Calling get_theme_configuration for DESTINATION site...", flush=True)
+                                    print("="*80, flush=True)
+                                    
+                                    dest_headers = {
+                                        'Authorization': f'Bearer {destination_token}',
+                                        'Content-Type': 'application/json'
+                                    }
+                                    
+                                    dest_theme_response = get_theme_configuration(destination_url, int(destination_site_id), dest_headers)
+                                    
+                                    print(f"\n📋 DESTINATION THEME CONFIGURATION RESPONSE", flush=True)
+                                    print("="*80, flush=True)
+                                    
+                                    if dest_theme_response:
+                                        print(f"Success: {dest_theme_response.get('success', False)}", flush=True)
+                                        print(f"Error Message: {dest_theme_response.get('errorMessage', 'None')}", flush=True)
+                                        
+                                        dest_theme_mapping = dest_theme_response.get('websiteThemeMappping', {})
+                                        if dest_theme_mapping:
+                                            print(f"\nTheme Name: {dest_theme_mapping.get('themeName', 'N/A')}", flush=True)
+                                            print(f"Theme ID: {dest_theme_mapping.get('themeId', 'N/A')}", flush=True)
+                                            
+                                            dest_group_mapping = dest_theme_mapping.get('groupMapping', [])
+                                            print(f"Group Mappings: {len(dest_group_mapping)} groups", flush=True)
+                                        
+                                        print("\nFull Response:", flush=True)
+                                        print(json.dumps(dest_theme_response, indent=2), flush=True)
+                                        
+                                        # Save destination theme configuration
+                                        try:
+                                            job_folder = os.path.join("uploads", job_id)
+                                            dest_theme_file = os.path.join(job_folder, "destination_get_theme_configuration.json")
+                                            with open(dest_theme_file, 'w', encoding='utf-8') as f:
+                                                json.dump(dest_theme_response, f, indent=4, ensure_ascii=False)
+                                            
+                                            print(f"\n💾 Saved destination theme config to: {dest_theme_file}", flush=True)
+                                            logger.info(f"[{job_id}] Saved destination theme configuration")
+                                            
+                                            print(f"\n🎉 Destination site theme configuration fetched and saved successfully!", flush=True)
+                                        except Exception as save_error:
+                                            print(f"⚠️ Warning: Could not save destination theme config: {save_error}", flush=True)
+                                    else:
+                                        print("❌ Destination theme configuration API returned None", flush=True)
+                                    
+                                    print("="*80 + "\n", flush=True)
+                                    
+                                except Exception as dest_error:
+                                    print(f"❌ Error fetching destination site data: {dest_error}", flush=True)
+                                    logger.error(f"[{job_id}] Failed to fetch destination data: {dest_error}")
+                            else:
+                                print(f"⚠️ Missing destination token or site ID - skipping destination data fetch", flush=True)
                         else:
                             print("❌ Group Record API returned None", flush=True)
                         print("="*80 + "\n", flush=True)
