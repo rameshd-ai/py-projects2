@@ -1181,6 +1181,91 @@ def get_group_record(base_url: str, payload: dict, headers: Dict[str, str]) -> U
         return None
 
 
+def update_theme_configuration(base_url: str, payload: dict, headers: dict = None) -> dict:
+    """
+    Update theme configuration for a site
+    
+    Args:
+        base_url: Base URL of the CMS (e.g., "https://example.cms.milestoneinternet.info")
+        payload: Complete request payload containing:
+                 - siteId: Site ID (int)
+                 - themeId: Theme ID (int)
+                 - groups: List of group objects with groupId
+        headers: Optional headers (should include Authorization token)
+    
+    Returns:
+        dict: API response with success status
+    
+    Example:
+        payload = {
+            "siteId": 8292,
+            "themeId": 75037833,
+            "groups": [
+                {"groupId": 8871},
+                {"groupId": 8872}
+            ]
+        }
+        response = update_theme_configuration(base_url, payload, headers)
+    """
+    try:
+        # Build the API endpoint
+        api_endpoint = f"{base_url.rstrip('/')}/ccadmin/cms/api/ThemeApi/UpdateThemeConfiguration"
+        
+        # Set default headers if not provided
+        if headers is None:
+            headers = {
+                'Content-Type': 'application/json'
+            }
+        else:
+            # Ensure Content-Type is set
+            headers = headers.copy()
+            headers['Content-Type'] = 'application/json'
+        
+        logging.info(f"Calling UpdateThemeConfiguration API: {api_endpoint}")
+        logging.info(f"Payload: siteId={payload.get('siteId')}, themeId={payload.get('themeId')}, groups={len(payload.get('groups', []))}")
+        
+        # Make POST request
+        response = requests.post(
+            api_endpoint,
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+        
+        # Log response status
+        logging.info(f"UpdateThemeConfiguration API response status: {response.status_code}")
+        
+        # Raise exception for bad status codes
+        response.raise_for_status()
+        
+        # Parse and return JSON response
+        response_data = response.json()
+        logging.info(f"UpdateThemeConfiguration API response: {response_data.get('success', False)}")
+        
+        return response_data
+        
+    except requests.exceptions.HTTPError as http_err:
+        status_code = response.status_code if 'response' in locals() else 'N/A'
+        logging.error(f"❌ HTTP error in update_theme_configuration: {http_err} (Status Code: {status_code})")
+        return None
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"❌ Connection error in update_theme_configuration: {conn_err}")
+        return None
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"❌ Timeout error in update_theme_configuration: {timeout_err}")
+        return None
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"❌ Request error in update_theme_configuration: {req_err}")
+        return None
+    except json.JSONDecodeError as json_err:
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"❌ JSON decode error in update_theme_configuration: {json_err}. Response: {response_text[:200]}")
+        return None
+    except Exception as e:
+        logging.error(f"❌ Unexpected error in update_theme_configuration: {e}")
+        return None
+
+
 def update_theme_variables(base_url: str, payload: dict, headers: dict = None) -> dict:
     """
     Update theme variables for a site

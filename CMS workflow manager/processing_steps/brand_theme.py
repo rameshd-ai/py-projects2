@@ -5,7 +5,7 @@ import sys
 import os
 import shutil
 from typing import Dict, Any
-from apis import get_theme_configuration, get_group_record
+from apis import get_theme_configuration, get_group_record, update_theme_variables, update_theme_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -421,11 +421,11 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                                 }
                                                 
                                                 # Save final payload to file
-                                                final_payload_file = os.path.join(job_folder, "final_update_payload.json")
+                                                final_payload_file = os.path.join(job_folder, "update_theme_variables_payload.json")
                                                 with open(final_payload_file, 'w', encoding='utf-8') as f:
                                                     json.dump(final_payload, f, indent=4, ensure_ascii=False)
                                                 
-                                                print(f"\n💾 Final payload saved to: {final_payload_file}", flush=True)
+                                                print(f"\n💾 Theme variables payload saved to: {final_payload_file}", flush=True)
                                                 print(f"\n📦 Payload Summary:", flush=True)
                                                 print(f"  Site ID: {final_payload['siteId']}", flush=True)
                                                 print(f"  Theme ID: {final_payload['themeId']}", flush=True)
@@ -435,6 +435,132 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                                 print(f"\n🎉 Final payload created and saved successfully!", flush=True)
                                                 
                                                 logger.info(f"[{job_id}] Created final update payload with {len(color_variables)} color and {len(font_variables)} font variables")
+                                                
+                                                # Now call update_theme_variables API for DESTINATION site
+                                                print(f"\n" + "="*80, flush=True)
+                                                print(f"🚀 UPDATING DESTINATION SITE THEME VARIABLES", flush=True)
+                                                print(f"="*80, flush=True)
+                                                
+                                                try:
+                                                    # Use destination token for the update
+                                                    update_headers = {
+                                                        'Authorization': f'Bearer {destination_token}',
+                                                        'Content-Type': 'application/json'
+                                                    }
+                                                    
+                                                    print(f"\n📤 Sending update request to DESTINATION site...", flush=True)
+                                                    print(f"  URL: {destination_url}", flush=True)
+                                                    print(f"  Site ID: {destination_site_id}", flush=True)
+                                                    print(f"  Theme ID: {dest_theme_id}", flush=True)
+                                                    
+                                                    update_response = update_theme_variables(
+                                                        base_url=destination_url,
+                                                        payload=final_payload,
+                                                        headers=update_headers
+                                                    )
+                                                    
+                                                    print(f"\n📋 UPDATE RESPONSE", flush=True)
+                                                    print("="*80, flush=True)
+                                                    
+                                                    if update_response:
+                                                        print(f"Success: {update_response.get('success', False)}", flush=True)
+                                                        print(f"Message: {update_response.get('message', 'N/A')}", flush=True)
+                                                        
+                                                        updated_groups = update_response.get('data', [])
+                                                        if updated_groups:
+                                                            print(f"\n✅ Updated Groups:", flush=True)
+                                                            for group in updated_groups:
+                                                                group_id = group.get('GroupId')
+                                                                group_type = group.get('GroupType')
+                                                                group_type_name = "Color" if group_type == 1 else "Font" if group_type == 2 else "Unknown"
+                                                                print(f"  - Group ID: {group_id} (Type: {group_type_name})", flush=True)
+                                                        
+                                                        print(f"\nFull Response:", flush=True)
+                                                        print(json.dumps(update_response, indent=2), flush=True)
+                                                        
+                                                        # Save update response to file
+                                                        update_response_file = os.path.join(job_folder, "update_theme_variables_response.json")
+                                                        with open(update_response_file, 'w', encoding='utf-8') as f:
+                                                            json.dump(update_response, f, indent=4, ensure_ascii=False)
+                                                        
+                                                        print(f"\n💾 Theme variables response saved to: {update_response_file}", flush=True)
+                                                        print(f"\n🎉 DESTINATION SITE THEME VARIABLES UPDATED SUCCESSFULLY!", flush=True)
+                                                        logger.info(f"[{job_id}] Successfully updated destination site theme variables")
+                                                        
+                                                        # Now call UpdateThemeConfiguration to finalize the theme update
+                                                        print(f"\n" + "="*80, flush=True)
+                                                        print(f"🔧 FINALIZING THEME CONFIGURATION", flush=True)
+                                                        print(f"="*80, flush=True)
+                                                        
+                                                        try:
+                                                            # Build groups list from update response
+                                                            config_groups = []
+                                                            for group in updated_groups:
+                                                                group_id = group.get('GroupId')
+                                                                if group_id:
+                                                                    config_groups.append({"groupId": group_id})
+                                                            
+                                                            # Build payload for theme configuration update
+                                                            config_payload = {
+                                                                "siteId": int(destination_site_id),
+                                                                "themeId": dest_theme_id,
+                                                                "groups": config_groups
+                                                            }
+                                                            
+                                                            # Save configuration payload to file
+                                                            config_payload_file = os.path.join(job_folder, "update_theme_configuration_payload.json")
+                                                            with open(config_payload_file, 'w', encoding='utf-8') as f:
+                                                                json.dump(config_payload, f, indent=4, ensure_ascii=False)
+                                                            
+                                                            print(f"\n💾 Theme configuration payload saved to: {config_payload_file}", flush=True)
+                                                            
+                                                            print(f"\n📤 Updating theme configuration...", flush=True)
+                                                            print(f"  Site ID: {destination_site_id}", flush=True)
+                                                            print(f"  Theme ID: {dest_theme_id}", flush=True)
+                                                            print(f"  Groups: {config_groups}", flush=True)
+                                                            
+                                                            config_response = update_theme_configuration(
+                                                                base_url=destination_url,
+                                                                payload=config_payload,
+                                                                headers=update_headers
+                                                            )
+                                                            
+                                                            print(f"\n📋 THEME CONFIGURATION RESPONSE", flush=True)
+                                                            print("="*80, flush=True)
+                                                            
+                                                            if config_response:
+                                                                print(f"Success: {config_response.get('success', False)}", flush=True)
+                                                                print(f"Message: {config_response.get('message', 'N/A')}", flush=True)
+                                                                
+                                                                print(f"\nFull Response:", flush=True)
+                                                                print(json.dumps(config_response, indent=2), flush=True)
+                                                                
+                                                                # Save configuration response to file
+                                                                config_response_file = os.path.join(job_folder, "update_theme_configuration_response.json")
+                                                                with open(config_response_file, 'w', encoding='utf-8') as f:
+                                                                    json.dump(config_response, f, indent=4, ensure_ascii=False)
+                                                                
+                                                                print(f"\n💾 Theme configuration response saved to: {config_response_file}", flush=True)
+                                                                print(f"\n✅ THEME CONFIGURATION FINALIZED SUCCESSFULLY!", flush=True)
+                                                                logger.info(f"[{job_id}] Successfully finalized theme configuration")
+                                                            else:
+                                                                print("❌ Theme configuration API returned None", flush=True)
+                                                                logger.error(f"[{job_id}] Update theme configuration API returned None")
+                                                            
+                                                            print("="*80 + "\n", flush=True)
+                                                            
+                                                        except Exception as config_error:
+                                                            print(f"❌ Error updating theme configuration: {config_error}", flush=True)
+                                                            logger.error(f"[{job_id}] Failed to update theme configuration: {config_error}")
+                                                    else:
+                                                        print("❌ Update API returned None - check error logs", flush=True)
+                                                        logger.error(f"[{job_id}] Update theme variables API returned None")
+                                                    
+                                                    print("="*80 + "\n", flush=True)
+                                                    
+                                                except Exception as update_error:
+                                                    print(f"❌ Error updating destination site theme variables: {update_error}", flush=True)
+                                                    logger.error(f"[{job_id}] Failed to update destination theme variables: {update_error}")
                                         
                                         except Exception as save_error:
                                             print(f"⚠️ Warning: Could not save destination theme config: {save_error}", flush=True)
