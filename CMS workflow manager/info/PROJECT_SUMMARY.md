@@ -71,8 +71,16 @@ This project implements a **process-based workflow management system** for CMS w
 - **Single step execution**: `execute_single_step()` - NEW
 - **Config management**: Load/save job configs
 - **Results management**: Load/save step results
+- **Job folder management**: `get_job_folder()`, `get_job_output_folder()`, `ensure_job_folders()`
 - **Status detection**: Detect skipped steps
 - **Report generation**: Create completion reports
+
+#### `apis.py` - CMS API Integrations - NEW
+- **Token generation**: `generate_cms_token()` - Authenticate with CMS
+- **Theme fetching**: `get_theme_configuration()`, `get_group_record()`
+- **Theme updating**: `update_theme_variables()`, `update_theme_configuration()`
+- **Request/Response handling**: Comprehensive error handling and logging
+- **Payload-based**: All APIs use payload dictionaries for flexibility
 
 ---
 
@@ -90,8 +98,14 @@ def run_STEP_NAME_step(job_id: str, step_config: dict, workflow_context: dict) -
 ```
 
 #### Step Files:
-1. **`site_setup.py`** - Validate and configure site parameters
-2. **`brand_theme.py`** - Process branding and theme settings
+1. **`site_setup.py`** - Validate site parameters, generate CMS tokens for source and destination
+2. **`brand_theme.py`** - Complete theme migration workflow:
+   - Fetch source theme data (configuration + group records)
+   - Map font and color variables
+   - Fetch destination theme data
+   - Create update payloads
+   - Update destination site theme variables
+   - Finalize theme configuration
 3. **`content_plugin.py`** - Handle content migration
 4. **`modules_features.py`** - Install selected modules
 5. **`finalize.py`** - Generate reports and finalize deployment
@@ -223,10 +237,12 @@ for step in PROCESSING_STEPS:
 
 ### 4. **Job-Based Processing**
 - Unique UUID for each job
-- Configuration file: `{job_id}_config.json`
-- Results file: `{job_id}_results.json` (NEW)
-- Report file: `{job_id}_report.json`
-- Isolated execution
+- **Job-specific folders**: All files in `uploads/{job_id}/` and `output/{job_id}/`
+- Configuration file: `uploads/{job_id}/config.json`
+- Results file: `uploads/{job_id}/results.json`
+- Report file: `output/{job_id}/report.json`
+- **API responses**: All API payloads and responses saved in job folder
+- Isolated execution with complete traceability
 
 ### 5. **Status Tracking & Visual Feedback**
 - Three states: success (✓), failed (✗), skipped (⊘)

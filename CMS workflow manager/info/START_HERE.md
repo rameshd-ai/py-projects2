@@ -31,18 +31,26 @@ http://127.0.0.1:5000
 ```
 ├── app.py                    # Flask app with all routes
 ├── config.py                 # Pipeline configuration
-├── utils.py                  # SSE streaming & orchestration
+├── utils.py                  # Orchestration & job management
+├── apis.py                   # CMS API integrations (NEW)
 ├── requirements.txt          # Dependencies
 ```
 
 **Processing Steps (5 steps):**
 ```
 └── processing_steps/
-    ├── site_setup.py         # Step 1
-    ├── brand_theme.py        # Step 2
+    ├── site_setup.py         # Step 1: Token generation
+    ├── brand_theme.py        # Step 2: Theme migration (NEW)
     ├── content_plugin.py     # Step 3
     ├── modules_features.py   # Step 4
     └── finalize.py           # Step 5
+```
+
+**Resource Files (NEW):**
+```
+└── resource/
+    ├── font_mapper.json      # Font variable mappings
+    └── color_mapper.json     # Color variable mappings
 ```
 
 **Frontend:**

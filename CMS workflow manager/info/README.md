@@ -7,7 +7,11 @@ A sophisticated web application for managing CMS website creation workflows with
 - **Multi-Step Wizard Interface**: Beautiful, modern UI with 5 comprehensive steps
 - **Step-by-Step Processing**: Each step processes immediately when "Process" is clicked
 - **Visual Status Indicators**: Green ✓ (success), Red ✗ (failed), Orange ⊘ (skipped)
+- **CMS API Integration**: Token generation, theme configuration, group records, theme updates
+- **Theme Migration**: Automated theme and branding transfer from source to destination site
+- **Variable Mapping**: Font and color variable mapping with customizable templates
 - **Modular Architecture**: Independent, reusable processing steps
+- **Job-Based Organization**: All files organized by job ID in dedicated folders
 - **Dynamic Configuration**: Flexible configuration management with JSON persistence
 - **Responsive Design**: Modern, mobile-friendly UI built with custom CSS
 - **Comprehensive Logging**: Detailed logging for debugging and monitoring
@@ -19,24 +23,46 @@ A sophisticated web application for managing CMS website creation workflows with
 CMS workflow manager/
 ├── app.py                      # Main Flask application
 ├── config.py                   # Configuration and pipeline definition
-├── utils.py                    # Utility functions and SSE orchestration
+├── utils.py                    # Utility functions and orchestration
+├── apis.py                     # CMS API integrations (NEW)
 ├── requirements.txt            # Python dependencies
 ├── README.md                   # This file
 ├── .gitignore                  # Git ignore patterns
 │
 ├── processing_steps/           # Modular processing steps
-│   ├── site_setup.py          # Step 1: Site Setup Readiness
-│   ├── brand_theme.py         # Step 2: Brand/Theme Configuration
+│   ├── site_setup.py          # Step 1: Site Setup & Token Generation
+│   ├── brand_theme.py         # Step 2: Theme Migration & Updates
 │   ├── content_plugin.py      # Step 3: Content Migration
 │   ├── modules_features.py    # Step 4: Modules Installation
 │   └── finalize.py            # Step 5: Finalization & Reports
 │
+├── resource/                   # Mapping templates (NEW)
+│   ├── font_mapper.json       # Font variable mappings
+│   └── color_mapper.json      # Color variable mappings
+│
 ├── templates/                  # HTML templates
-│   └── index.html             # Main wizard interface
+│   ├── index.html             # Main wizard interface
+│   └── jobs_list.html         # Job management interface
 │
 ├── static/                     # Static files (CSS, JS, images)
-├── uploads/                    # Uploaded files and job configs
-└── output/                     # Generated reports and outputs
+│
+├── uploads/                    # Job-specific folders
+│   └── {job_id}/              # Each job has its own folder
+│       ├── config.json
+│       ├── results.json
+│       ├── source_get_theme_configuration.json
+│       ├── source_get_group_record.json
+│       ├── destination_get_theme_configuration.json
+│       ├── font_mapper.json
+│       ├── color_mapper.json
+│       ├── update_theme_variables_payload.json
+│       ├── update_theme_variables_response.json
+│       ├── update_theme_configuration_payload.json
+│       └── update_theme_configuration_response.json
+│
+└── output/                     # Generated reports
+    └── {job_id}/              # Job-specific output
+        └── report.json
 ```
 
 ## 🚀 Quick Start
@@ -109,12 +135,21 @@ http://localhost:5000
 - Set site IDs and profile aliases
 - Define site creation parameters
 - Configure site language and country
+- **Automatic CMS Token Generation** for both source and destination
 - Click **"Process"** → Step executes immediately → ✓ Green checkmark appears
 
-#### **Step 2: Brand/Theme Setup**
-- Pull fonts from existing site, or
-- Upload custom CSV/JSON configuration
-- Click **"Process"** → Step executes → ✓ Green checkmark
+#### **Step 2: Brand/Theme Setup & Migration**
+- Check "Pull from Current Site" to enable theme migration
+- **Automated Theme Migration Process**:
+  - Fetches source site theme configuration and group records
+  - Extracts font and color variables with values
+  - Maps variables using customizable templates
+  - Fetches destination site theme information
+  - Creates update payloads for destination site
+  - Updates destination site with mapped theme variables
+  - Finalizes theme configuration
+- All API requests/responses saved to job folder
+- Click **"Process"** → Complete migration executes → ✓ Green checkmark
 
 #### **Step 3: Content Plug-in**
 - Enable MiBlock migration (optional)
@@ -146,6 +181,46 @@ Each step shows visual feedback:
 - **⟳ Blue Spinner**: Step is currently processing
 - **Empty Circle**: Step not started yet
 
+## 🎨 Theme Migration Workflow (Step 2)
+
+When "Pull from Current Site" is checked, Step 2 performs automated theme migration:
+
+### **1. Fetch Source Site Data**
+- Calls `get_theme_configuration()` to get theme structure
+- Calls `get_group_record()` to get all font and color variables with values
+- Saves responses: `source_get_theme_configuration.json`, `source_get_group_record.json`
+
+### **2. Map Variables**
+- Copies `font_mapper.json` and `color_mapper.json` from resource folder
+- Updates font mappings: Matches `old_key` → `variableAlias` → Gets `variableValue`
+- Updates color mappings: Matches `old_key` → `variableAlias` → Gets `variableValue`
+- All mapped values saved in job folder
+
+### **3. Fetch Destination Site Data**
+- Calls `get_theme_configuration()` for destination to get theme ID
+- Saves response: `destination_get_theme_configuration.json`
+
+### **4. Create Update Payloads**
+- Extracts destination theme ID and site ID
+- Builds group names from destination URL (e.g., `sitename_font`, `sitename_color`)
+- Creates payload with all mapped variables
+- Saves: `update_theme_variables_payload.json`
+
+### **5. Update Destination Site**
+- Calls `update_theme_variables()` API with payload
+- Receives new group IDs from response
+- Saves: `update_theme_variables_response.json`
+
+### **6. Finalize Theme Configuration**
+- Extracts group IDs from previous response
+- Calls `update_theme_configuration()` with group IDs
+- Links new groups to destination theme
+- Saves: `update_theme_configuration_payload.json`, `update_theme_configuration_response.json`
+
+**Result:** Destination site now has all fonts and colors from source site! 🎉
+
+---
+
 ## 🔧 Configuration
 
 ### Application Settings (`config.py`)
@@ -153,11 +228,31 @@ Each step shows visual feedback:
 ```python
 # File upload settings
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-ALLOWED_EXTENSIONS = {'csv', 'json', 'xlsx', 'xls'}
 
-# Processing pipeline
-PROCESSING_STEPS = [...]  # 5 steps defined
+# Processing pipeline - 5 steps
+PROCESSING_STEPS = [
+    {"id": "site_setup", "name": "Site Setup Readiness", ...},
+    {"id": "brand_theme", "name": "Brand/Theme Setup", ...},
+    {"id": "content_plugin", "name": "Content Plug-in", ...},
+    {"id": "modules_features", "name": "Modules/Features", ...},
+    {"id": "finalize", "name": "Finalize & Deploy", ...}
+]
 ```
+
+### CMS API Integration (`apis.py`)
+
+The application integrates with CMS Theme APIs:
+
+- **`generate_cms_token()`** - Generate authentication tokens
+- **`get_theme_configuration()`** - Fetch theme configuration
+- **`get_group_record()`** - Fetch theme group variables
+- **`update_theme_variables()`** - Update theme variables (add groups)
+- **`update_theme_configuration()`** - Finalize theme configuration
+
+### Resource Mappers (`resource/`)
+
+- **`font_mapper.json`** - 129 font variable mappings
+- **`color_mapper.json`** - 46 color variable mappings
 
 ### Environment Variables
 
@@ -238,12 +333,29 @@ PROCESSING_STEPS.append({
 
 ## 🔍 API Endpoints
 
+### **Application Endpoints**
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | Main wizard interface |
+| GET | `/jobs` | Job management interface |
+| GET | `/api/jobs` | List all jobs with status |
+| DELETE | `/api/jobs/<job_id>` | Delete a job and its files |
 | POST | `/api/save-config` | Save config & process current step |
+| GET | `/api/job-status/<job_id>` | Get job completion status |
+| POST | `/api/mark-step-complete` | Mark a step as complete |
 | POST | `/api/generate-report` | Generate final completion report |
-| GET | `/download/<filename>` | Download reports |
+| GET | `/download/<job_id>/<filename>` | Download reports |
+
+### **CMS API Integrations (`apis.py`)**
+
+| Function | API Endpoint | Purpose |
+|----------|--------------|---------|
+| `generate_cms_token()` | `/TokenGenerationApi/GenerateToken` | Generate authentication tokens |
+| `get_theme_configuration()` | `/ThemeApi/GetThemeConfiguration` | Fetch theme structure and groups |
+| `get_group_record()` | `/ThemeApi/GetGroupRecord` | Fetch theme variables with values |
+| `update_theme_variables()` | `/ThemeApi/UpdateThemeVariables` | Add/update theme groups and variables |
+| `update_theme_configuration()` | `/ThemeApi/UpdateThemeConfiguration` | Finalize theme with new groups |
 
 ## 🧪 Testing
 
@@ -301,6 +413,28 @@ Check the console output or `workflow.log` file for detailed logs.
 - **Sanitize filenames** using `secure_filename()`
 - **Set strong SECRET_KEY** in production
 
+## 📊 Job Folder Structure
+
+Each job creates its own folder with all related files:
+
+```
+uploads/{job_id}/
+  ├── config.json                                    # Job configuration
+  ├── results.json                                   # Step results
+  ├── source_get_theme_configuration.json            # Source theme config
+  ├── source_get_group_record.json                   # Source theme variables
+  ├── destination_get_theme_configuration.json       # Destination theme config
+  ├── font_mapper.json                               # Font mappings (updated)
+  ├── color_mapper.json                              # Color mappings (updated)
+  ├── update_theme_variables_payload.json            # API payload for variables
+  ├── update_theme_variables_response.json           # API response with group IDs
+  ├── update_theme_configuration_payload.json        # API payload for config
+  └── update_theme_configuration_response.json       # Final API response
+
+output/{job_id}/
+  └── report.json                                    # Final completion report
+```
+
 ## 📊 Workflow Report Format
 
 Generated reports include:
@@ -309,14 +443,23 @@ Generated reports include:
 {
   "job_id": "job_1234567890_abc123",
   "status": "completed",
-  "total_duration_seconds": 15.7,
-  "completed_steps": ["site_setup", "brand_theme", ...],
-  "timestamp": "2025-11-30 17:30:00",
+  "timestamp": "2025-12-05 12:00:00",
   "configuration": { ... },
   "results": {
-    "site_setup": { ... },
-    "brand_theme": { ... }
-  }
+    "site_setup": {
+      "source_cms_token": "...",
+      "destination_cms_token": "...",
+      "source_token_generated": true,
+      "destination_token_generated": true
+    },
+    "brand_theme": {
+      "branding_complete": true,
+      "fonts_configured": true,
+      "theme_applied": true,
+      "config_source": "pulled_from_site"
+    }
+  },
+  "completed_steps": ["site_setup", "brand_theme", ...]
 }
 ```
 

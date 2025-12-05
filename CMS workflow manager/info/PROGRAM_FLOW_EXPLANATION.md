@@ -221,8 +221,12 @@ User clicks "Process"
 ```
 
 **Files Created:**
-- `uploads/{job_id}_config.json` - Configuration
-- `uploads/{job_id}_results.json` - Step results
+- `uploads/{job_id}/config.json` - Configuration
+- `uploads/{job_id}/results.json` - Step results
+- `uploads/{job_id}/source_*.json` - Source site API responses
+- `uploads/{job_id}/destination_*.json` - Destination site API responses
+- `uploads/{job_id}/*_mapper.json` - Updated variable mappings
+- `uploads/{job_id}/update_*.json` - API payloads and responses
 
 ---
 
@@ -495,11 +499,14 @@ def execute_single_step(job_id: str, step_number: int):
 
 | File | Responsibility |
 |------|---------------|
-| `app.py` | HTTP routes, step processing trigger |
+| `app.py` | HTTP routes, step processing trigger, job management |
 | `config.py` | Pipeline definition, settings |
-| `utils.py` | Single step execution, config management |
-| `processing_steps/*.py` | Individual step logic |
+| `utils.py` | Single step execution, config management, job folders |
+| `apis.py` | CMS API integrations (tokens, theme, updates) |
+| `processing_steps/*.py` | Individual step logic, API orchestration |
+| `resource/*.json` | Mapping templates (font, color) |
 | `templates/index.html` | UI, status tracking, visual feedback |
+| `templates/jobs_list.html` | Job management interface |
 
 ---
 
