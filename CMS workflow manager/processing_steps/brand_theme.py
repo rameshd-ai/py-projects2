@@ -343,6 +343,99 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                             logger.info(f"[{job_id}] Saved destination theme configuration")
                                             
                                             print(f"\n🎉 Destination site theme configuration fetched and saved successfully!", flush=True)
+                                            
+                                            # Create final payload for theme update
+                                            print(f"\n" + "="*80, flush=True)
+                                            print(f"📦 CREATING FINAL PAYLOAD FOR THEME UPDATE", flush=True)
+                                            print(f"="*80, flush=True)
+                                            
+                                            # Get destination theme ID
+                                            dest_theme_id = dest_theme_mapping.get('themeId')
+                                            
+                                            if not dest_theme_id:
+                                                print(f"⚠️ Warning: Could not find destination theme ID", flush=True)
+                                            else:
+                                                # Extract site name from destination URL for group naming
+                                                site_identifier = destination_url.split('//')[-1].split('.')[0]
+                                                
+                                                # Create group names with suffixes
+                                                font_group_name = f"{site_identifier}_font"
+                                                color_group_name = f"{site_identifier}_color"
+                                                
+                                                print(f"\n📋 Payload Details:", flush=True)
+                                                print(f"  Destination Site ID: {destination_site_id}", flush=True)
+                                                print(f"  Destination Theme ID: {dest_theme_id}", flush=True)
+                                                print(f"  Font Group Name: {font_group_name}", flush=True)
+                                                print(f"  Color Group Name: {color_group_name}", flush=True)
+                                                
+                                                # Load mapper files
+                                                font_mapper_file = os.path.join(job_folder, "font_mapper.json")
+                                                color_mapper_file = os.path.join(job_folder, "color_mapper.json")
+                                                
+                                                # Build font variables JSON string
+                                                font_variables = {}
+                                                if os.path.exists(font_mapper_file):
+                                                    with open(font_mapper_file, 'r', encoding='utf-8') as f:
+                                                        font_mapper = json.load(f)
+                                                    
+                                                    for entry in font_mapper:
+                                                        new_key = entry.get('new_key', '').strip()
+                                                        value = entry.get('value', '').strip()
+                                                        if new_key and value:
+                                                            font_variables[new_key] = value
+                                                    
+                                                    print(f"\n✅ Loaded {len(font_variables)} font variables", flush=True)
+                                                
+                                                # Build color variables JSON string
+                                                color_variables = {}
+                                                if os.path.exists(color_mapper_file):
+                                                    with open(color_mapper_file, 'r', encoding='utf-8') as f:
+                                                        color_mapper = json.load(f)
+                                                    
+                                                    for entry in color_mapper:
+                                                        new_key = entry.get('new_key', '').strip()
+                                                        value = entry.get('value', '').strip()
+                                                        if new_key and value:
+                                                            color_variables[new_key] = value
+                                                    
+                                                    print(f"✅ Loaded {len(color_variables)} color variables", flush=True)
+                                                
+                                                # Create final payload
+                                                final_payload = {
+                                                    "siteId": int(destination_site_id),
+                                                    "themeId": dest_theme_id,
+                                                    "groups": [
+                                                        {
+                                                            "Groupid": 0,  # 0 for new group (add operation)
+                                                            "GroupName": color_group_name,
+                                                            "GroupType": 1,  # 1 for color
+                                                            "themeVariables": json.dumps(color_variables)
+                                                        },
+                                                        {
+                                                            "Groupid": 0,  # 0 for new group (add operation)
+                                                            "GroupName": font_group_name,
+                                                            "GroupType": 2,  # 2 for font
+                                                            "themeVariables": json.dumps(font_variables)
+                                                        }
+                                                    ]
+                                                }
+                                                
+                                                # Save final payload to file
+                                                final_payload_file = os.path.join(job_folder, "final_update_payload.json")
+                                                with open(final_payload_file, 'w', encoding='utf-8') as f:
+                                                    json.dump(final_payload, f, indent=4, ensure_ascii=False)
+                                                
+                                                print(f"\n💾 Final payload saved to: {final_payload_file}", flush=True)
+                                                print(f"\n📦 Payload Summary:", flush=True)
+                                                print(f"  Site ID: {final_payload['siteId']}", flush=True)
+                                                print(f"  Theme ID: {final_payload['themeId']}", flush=True)
+                                                print(f"  Groups: {len(final_payload['groups'])}", flush=True)
+                                                print(f"    - Color Group: {color_group_name} ({len(color_variables)} variables)", flush=True)
+                                                print(f"    - Font Group: {font_group_name} ({len(font_variables)} variables)", flush=True)
+                                                print(f"\n🎉 Final payload created and saved successfully!", flush=True)
+                                                
+                                                logger.info(f"[{job_id}] Created final update payload with {len(color_variables)} color and {len(font_variables)} font variables")
+                                        
                                         except Exception as save_error:
                                             print(f"⚠️ Warning: Could not save destination theme config: {save_error}", flush=True)
                                     else:
