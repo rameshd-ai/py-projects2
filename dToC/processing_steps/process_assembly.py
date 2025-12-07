@@ -1992,13 +1992,14 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 
 
 
-def update_menu_navigation(file_prefix: str):
+def update_menu_navigation(file_prefix: str, api_base_url: str, api_headers: Dict[str, str]):
     """
     Updates menu navigation by:
     1. Reading _util_pages.json to extract menu component name from Automation Guide
-    2. Reading _simplified.json to extract page tree structure
-    3. Filtering pages where meta_info is not blank
-    4. Creating and saving menu_navigation.json file
+    2. Calling API to get all components and saving the response
+    3. Reading _simplified.json to extract page tree structure
+    4. Filtering pages where meta_info is not blank
+    5. Creating and saving menu_navigation.json file
     """
     logging.info("========================================================")
     logging.info("START: Menu Navigation Update")
@@ -2088,6 +2089,33 @@ def update_menu_navigation(file_prefix: str):
                 pages_tree.append(page_tree)
         
         logging.info(f"Extracted {len(pages_tree)} main pages with their sub-pages")
+        
+        # 2.5. Call API to get all components and save the response
+        try:
+            logging.info("Calling API to fetch all components...")
+            all_components_response = GetAllVComponents(api_base_url, api_headers, page_size=1000)
+            
+            if all_components_response and isinstance(all_components_response, list):
+                # Save the full component list response to a JSON file for debugging
+                components_output_filename = f"{file_prefix}_all_components_response.json"
+                components_output_filepath = os.path.join(UPLOAD_FOLDER, components_output_filename)
+                
+                components_data_to_save = {
+                    "total_components": len(all_components_response),
+                    "components": all_components_response
+                }
+                
+                with open(components_output_filepath, 'w', encoding='utf-8') as f:
+                    json.dump(components_data_to_save, f, indent=4, ensure_ascii=False)
+                
+                logging.info(f"✅ All components JSON response saved to: {components_output_filepath}")
+                logging.info(f"   Total components saved: {len(all_components_response)}")
+                print(f"Saved all components response to: {components_output_filename} ({len(all_components_response)} components)")
+            else:
+                logging.warning(f"⚠️ API response was not a list or was empty. Response type: {type(all_components_response)}")
+        except Exception as e:
+            logging.error(f"❌ Error fetching/saving components: {e}")
+            # Continue execution even if component fetch fails
         
         # 3. Create new JSON structure
         menu_navigation_data = {
@@ -2211,7 +2239,7 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     # assemble_page_templates_level1(full_payload, vcomponent_cache, api_base_url, site_id, api_headers)
 
     # --- 5.5. Update Menu Navigation ---
-    update_menu_navigation(file_prefix)
+    update_menu_navigation(file_prefix, api_base_url, api_headers)
 
     # --- 6. SAVE THE STATUS FILE AS CSV ---
     STATUS_SUFFIX = "_assembly_report.csv" 
