@@ -1992,6 +1992,133 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 
 
 
+def update_menu_navigation(file_prefix: str):
+    """
+    Updates menu navigation by:
+    1. Reading _util_pages.json to extract menu component name from Automation Guide
+    2. Reading _simplified.json to extract page tree structure
+    3. Filtering pages where meta_info is not blank
+    4. Creating and saving menu_navigation.json file
+    """
+    logging.info("========================================================")
+    logging.info("START: Menu Navigation Update")
+    logging.info("========================================================")
+    
+    try:
+        # 1. Read _util_pages.json and extract menu component name from Automation Guide
+        util_pages_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_util_pages.json")
+        
+        if not os.path.exists(util_pages_file):
+            logging.error(f"File not found: {util_pages_file}")
+            raise FileNotFoundError(f"Could not find {util_pages_file}")
+        
+        with open(util_pages_file, 'r', encoding='utf-8') as f:
+            util_pages_data = json.load(f)
+        
+        menu_component_name = None
+        for page in util_pages_data.get('pages', []):
+            page_name = page.get('text', page.get('page_name', ''))
+            if "automation guide" in page_name.strip().lower():
+                # Extract "Main Menu" component name from description/content
+                content_source = page.get('content_blocks', '') or page.get('description', '')
+                
+                # Look for "Main Menu: ComponentName" pattern
+                # The format in JSON is: "Main\nMenu:\nCustom\nHeader" (each word on a new line)
+                # Pattern captures everything after "Main Menu:" until end of string
+                main_menu_pattern = r'Main\s*Menu:\s*(.+)$'
+                match = re.search(main_menu_pattern, content_source, re.IGNORECASE | re.DOTALL)
+                if match:
+                    # Extract and clean up the component name (remove newlines, normalize whitespace)
+                    menu_component_name = match.group(1).strip()
+                    # Replace newlines with spaces and normalize multiple spaces
+                    menu_component_name = re.sub(r'[\n\r]+', ' ', menu_component_name)
+                    menu_component_name = re.sub(r'\s+', ' ', menu_component_name).strip()
+                    logging.info(f"Found menu component name: {menu_component_name}")
+                    break
+        
+        if not menu_component_name:
+            logging.warning("Menu component name not found in Automation Guide. Using default.")
+            menu_component_name = "Main Menu"
+        
+        # 2. Read _simplified.json and extract page tree structure
+        simplified_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_simplified.json")
+        
+        if not os.path.exists(simplified_file):
+            logging.error(f"File not found: {simplified_file}")
+            raise FileNotFoundError(f"Could not find {simplified_file}")
+        
+        with open(simplified_file, 'r', encoding='utf-8') as f:
+            simplified_data = json.load(f)
+        
+        def extract_page_tree(page_node):
+            """Recursively extract page_name and sub_pages maintaining tree structure.
+            Only includes pages where meta_info is not blank/empty."""
+            page_name = page_node.get("page_name", "")
+            
+            # Check if meta_info exists and is not empty
+            meta_info = page_node.get("meta_info", {})
+            if not meta_info or meta_info == {}:
+                # Skip pages with empty meta_info
+                return None
+            
+            page_tree = {
+                "page_name": page_name
+            }
+            
+            # Recursively process sub_pages and filter out None values (pages with empty meta_info)
+            sub_pages = page_node.get("sub_pages", [])
+            if sub_pages:
+                processed_sub_pages = [extract_page_tree(sub_page) for sub_page in sub_pages]
+                valid_sub_pages = [sp for sp in processed_sub_pages if sp is not None]
+                
+                # Only add sub_pages key if there are valid sub_pages
+                if valid_sub_pages:
+                    page_tree["sub_pages"] = valid_sub_pages
+            
+            return page_tree
+        
+        # Extract pages tree from simplified.json - only pages with non-empty meta_info
+        pages_tree = []
+        pages_list_simplified = simplified_data.get('pages', [])
+        
+        for page in pages_list_simplified:
+            page_tree = extract_page_tree(page)
+            # Only add pages that have non-empty meta_info
+            if page_tree is not None:
+                pages_tree.append(page_tree)
+        
+        logging.info(f"Extracted {len(pages_tree)} main pages with their sub-pages")
+        
+        # 3. Create new JSON structure
+        menu_navigation_data = {
+            "menu_component_name": menu_component_name,
+            "pages": pages_tree
+        }
+        
+        # 4. Save the new JSON file
+        output_filename = f"{file_prefix}_menu_navigation.json"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+        
+        with open(output_filepath, 'w', encoding='utf-8') as f:
+            json.dump(menu_navigation_data, f, indent=4, ensure_ascii=False)
+        
+        logging.info(f"✅ Menu navigation JSON saved to: {output_filepath}")
+        print(f"Created new JSON file: {output_filename}")
+        
+    except FileNotFoundError as e:
+        logging.error(f"File not found: {e}")
+        raise
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error: {e}")
+        raise
+    except Exception as e:
+        logging.error(f"Error processing menu navigation: {e}")
+        raise
+    
+    logging.info("END: Menu Navigation Update Complete")
+    logging.info("========================================================")
+
+
 # ================= Main Entry Function (Uses Dynamic Config) =================
 
 def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *args, **kwargs) -> Dict[str, Any]:
@@ -2081,7 +2208,10 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     logging.info(f"Successfully loaded {len(vcomponent_cache)} components into cache for fast lookup.")
 
     # --- 5. Assembly Execution (PASSES CACHE and NEW PARAMS) ---
-    assemble_page_templates_level1(full_payload, vcomponent_cache, api_base_url, site_id, api_headers)
+    # assemble_page_templates_level1(full_payload, vcomponent_cache, api_base_url, site_id, api_headers)
+
+    # --- 5.5. Update Menu Navigation ---
+    update_menu_navigation(file_prefix)
 
     # --- 6. SAVE THE STATUS FILE AS CSV ---
     STATUS_SUFFIX = "_assembly_report.csv" 
