@@ -1992,7 +1992,7 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 
 
 
-def update_menu_navigation(file_prefix: str, api_base_url: str, api_headers: Dict[str, str]):
+def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     """
     Updates menu navigation by:
     1. Reading _util_pages.json to extract menu component name from Automation Guide
@@ -2111,6 +2111,90 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, api_headers: Dic
                 logging.info(f"✅ All components JSON response saved to: {components_output_filepath}")
                 logging.info(f"   Total components saved: {len(all_components_response)}")
                 print(f"Saved all components response to: {components_output_filename} ({len(all_components_response)} components)")
+                
+                # 2.6. Search for matching component and download zip if found
+                if menu_component_name:
+                    try:
+                        logging.info(f"Searching for component matching '{menu_component_name}'...")
+                        
+                        # Normalize the search name for flexible matching
+                        def normalize_component_name(name: str) -> str:
+                            """Normalize component name for comparison (remove spaces, hyphens, underscores, case-insensitive)"""
+                            if not name:
+                                return ""
+                            return re.sub(r'[\s\-_]+', '', name).lower()
+                        
+                        normalized_search_name = normalize_component_name(menu_component_name)
+                        matching_component = None
+                        
+                        # Search through all components
+                        for comp in all_components_response:
+                            comp_name = comp.get('name', '')
+                            comp_component_name = comp.get('component', {}).get('componentName', '')
+                            
+                            # Check both 'name' and 'component.componentName' fields
+                            if (comp_name and normalize_component_name(comp_name) == normalized_search_name) or \
+                               (comp_component_name and normalize_component_name(comp_component_name) == normalized_search_name):
+                                matching_component = comp
+                                logging.info(f"✅ Found matching component: '{comp_name}' or '{comp_component_name}'")
+                                break
+                        
+                        if matching_component:
+                            # Get componentId from component.componentId or miBlockId
+                            component_id = matching_component.get('component', {}).get('componentId') or \
+                                          matching_component.get('miBlockId') or \
+                                          matching_component.get('blockId')
+                            
+                            if component_id:
+                                logging.info(f"Downloading component with ID: {component_id}")
+                                print(f"\n{'='*80}")
+                                print(f"Downloading component: {menu_component_name} (ID: {component_id})")
+                                print(f"{'='*80}\n")
+                                
+                                # Call export API to download zip
+                                response_content, content_disposition = export_mi_block_component(
+                                    api_base_url, component_id, site_id, api_headers
+                                )
+                                
+                                if response_content:
+                                    # Set up export folder structure
+                                    mi_block_folder = f"mi-block-ID-{component_id}"
+                                    output_dir = os.path.join("output", str(site_id))
+                                    save_folder = os.path.join(output_dir, mi_block_folder)
+                                    os.makedirs(save_folder, exist_ok=True)
+                                    
+                                    # Save the zip file
+                                    filename = (
+                                        content_disposition.split('filename=')[1].strip('"')
+                                        if content_disposition and 'filename=' in content_disposition
+                                        else f"component_{component_id}.zip"
+                                    )
+                                    file_path = os.path.join(save_folder, filename)
+                                    
+                                    logging.info(f"Saving zip file to: {file_path}")
+                                    print(f"💾 Saving zip file...")
+                                    with open(file_path, "wb") as file:
+                                        file.write(response_content)
+                                    
+                                    file_size = len(response_content)
+                                    logging.info(f"✅ Zip file saved successfully! Size: {file_size} bytes")
+                                    print(f"✅ Zip file saved successfully!")
+                                    print(f"   File: {filename}")
+                                    print(f"   Size: {file_size} bytes")
+                                    print(f"   Location: {file_path}")
+                                    print(f"{'='*80}\n")
+                                else:
+                                    logging.warning(f"⚠️ Component export returned no content for component ID: {component_id}")
+                                    print(f"⚠️ Component export returned no content")
+                            else:
+                                logging.warning(f"⚠️ Component ID not found in matching component data")
+                        else:
+                            logging.warning(f"⚠️ No matching component found for '{menu_component_name}'")
+                            print(f"\n⚠️  No matching component found for '{menu_component_name}'")
+                    except Exception as export_error:
+                        logging.error(f"❌ Error during component download: {export_error}")
+                        logging.exception("Full traceback:")
+                        # Continue execution even if download fails
             else:
                 logging.warning(f"⚠️ API response was not a list or was empty. Response type: {type(all_components_response)}")
         except Exception as e:
@@ -2239,7 +2323,7 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     # assemble_page_templates_level1(full_payload, vcomponent_cache, api_base_url, site_id, api_headers)
 
     # --- 5.5. Update Menu Navigation ---
-    update_menu_navigation(file_prefix, api_base_url, api_headers)
+    update_menu_navigation(file_prefix, api_base_url, site_id, api_headers)
 
     # --- 6. SAVE THE STATUS FILE AS CSV ---
     STATUS_SUFFIX = "_assembly_report.csv" 
