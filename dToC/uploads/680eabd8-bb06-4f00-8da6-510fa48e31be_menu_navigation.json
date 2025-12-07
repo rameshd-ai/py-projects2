@@ -1,0 +1,94 @@
+{
+    "menu_component_name": "Custom Header",
+    "pages": [
+        {
+            "page_name": "Our Property",
+            "sub_pages": [
+                {
+                    "page_name": "Our Story"
+                },
+                {
+                    "page_name": "Gallery"
+                },
+                {
+                    "page_name": "Location"
+                },
+                {
+                    "page_name": "Contact"
+                },
+                {
+                    "page_name": "Property Map"
+                },
+                {
+                    "page_name": "Reviews"
+                },
+                {
+                    "page_name": "Blogs"
+                },
+                {
+                    "page_name": "FAQs"
+                }
+            ]
+        },
+        {
+            "page_name": "Weddings",
+            "sub_pages": [
+                {
+                    "page_name": "Our Spaces"
+                },
+                {
+                    "page_name": "Wedding Celebrations"
+                },
+                {
+                    "page_name": "Wedding Packages"
+                },
+                {
+                    "page_name": "Meet the Team"
+                },
+                {
+                    "page_name": "Plan your Wedding"
+                }
+            ]
+        },
+        {
+            "page_name": "Meetings and Events",
+            "sub_pages": [
+                {
+                    "page_name": "Event and Expo Spaces"
+                },
+                {
+                    "page_name": "Meeting Services"
+                },
+                {
+                    "page_name": "Special Occasions"
+                },
+                {
+                    "page_name": "Meeting Packages"
+                },
+                {
+                    "page_name": "Plan your Meeting"
+                }
+            ]
+        },
+        {
+            "page_name": "Guest Rooms",
+            "sub_pages": [
+                {
+                    "page_name": "Room Packages"
+                },
+                {
+                    "page_name": "Group Block"
+                }
+            ]
+        },
+        {
+            "page_name": "Amenities"
+        },
+        {
+            "page_name": "Dining"
+        },
+        {
+            "page_name": "Explore Ohio"
+        }
+    ]
+}

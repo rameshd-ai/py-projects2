@@ -2175,6 +2175,13 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                     print(f"💾 Saving zip file...")
                                     with open(file_path, "wb") as file:
                                         file.write(response_content)
+
+                                    if zipfile.is_zipfile(file_path):
+                                        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                                            zip_ref.extractall(save_folder)
+                                        os.remove(file_path)
+                                    else:
+                                        print(f"  [WARNING] Exported file {filename} is not a zip file.")
                                     
                                     file_size = len(response_content)
                                     logging.info(f"✅ Zip file saved successfully! Size: {file_size} bytes")
@@ -2186,11 +2193,74 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                 else:
                                     logging.warning(f"⚠️ Component export returned no content for component ID: {component_id}")
                                     print(f"⚠️ Component export returned no content")
+
+                                    
+                                time.sleep(2) 
+                                # 2. Convert .txt files to .json (if they exist)
+                                for extracted_file in os.listdir(save_folder):
+                                    extracted_file_path = os.path.join(save_folder, extracted_file)
+                                    if extracted_file.endswith('.txt'):
+                                        new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
+                                        try:
+                                            # Read and process content inside the 'with' block
+                                            with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
+                                                content = txt_file.read()
+                                                json_content = json.loads(content)
+                                            
+                                            # Write to new file inside its own 'with' block
+                                            with open(new_file_path, 'w', encoding="utf-8") as json_file:
+                                                json.dump(json_content, json_file, indent=4)
+                                            
+                                            # Add a micro-sleep to help OS release the file handle before deletion
+                                            time.sleep(0.05) 
+                                            
+                                            os.remove(extracted_file_path)
+                                        except (json.JSONDecodeError, OSError) as e:
+                                            # Log the error but continue to the next file
+                                            logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+
+                                # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
+                                config_file_name = "MiBlockComponentConfig.json"
+                                config_file_path = os.path.join(save_folder, config_file_name)
+                                
+                                MAX_WAIT_SECONDS = 120 # 2 minutes max wait
+                                POLL_INTERVAL = 5      # Check every 5 seconds
+                                start_time = time.time()
+                                file_ready = False
+
+                                # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
+
+                                while time.time() - start_time < MAX_WAIT_SECONDS:
+                                    if os.path.exists(config_file_path):
+                                        # Try to open the file to check if it's locked
+                                        try:
+                                            with open(config_file_path, 'r') as f:
+                                                f.read(1) # Read a byte to confirm accessibility
+                                            file_ready = True
+                                            break
+                                        except IOError:
+                                            print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
+                                    else:
+                                        print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
+                                    
+                                    time.sleep(POLL_INTERVAL)
+
+                                if not file_ready:
+                                    raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
+                                # --- END POLLING LOGIC ---
+
+
+
+
                             else:
                                 logging.warning(f"⚠️ Component ID not found in matching component data")
                         else:
                             logging.warning(f"⚠️ No matching component found for '{menu_component_name}'")
                             print(f"\n⚠️  No matching component found for '{menu_component_name}'")
+
+
+
+
                     except Exception as export_error:
                         logging.error(f"❌ Error during component download: {export_error}")
                         logging.exception("Full traceback:")
