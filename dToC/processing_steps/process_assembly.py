@@ -10,6 +10,7 @@ import glob
 import requests
 import uuid # <-- Required for generating pageSectionGuid
 import zipfile # <-- Required for handling exported component files
+import html # <-- Required for HTML entity decoding
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
 from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName
@@ -2017,24 +2018,78 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
             util_pages_data = json.load(f)
         
         menu_component_name = None
+        menu_level = None
         for page in util_pages_data.get('pages', []):
             page_name = page.get('text', page.get('page_name', ''))
             if "automation guide" in page_name.strip().lower():
-                # Extract "Main Menu" component name from description/content
+                # Extract menu component name and menuLevel from description/content
+                # New format: JSON embedded in description with HTML entities
                 content_source = page.get('content_blocks', '') or page.get('description', '')
                 
-                # Look for "Main Menu: ComponentName" pattern
-                # The format in JSON is: "Main\nMenu:\nCustom\nHeader" (each word on a new line)
-                # Pattern captures everything after "Main Menu:" until end of string
+                # Decode HTML entities multiple times to handle nested encoding
+                decoded_content = html.unescape(content_source)
+                decoded_content = html.unescape(decoded_content)
+                decoded_content = html.unescape(decoded_content)
+                
+                # Try to extract JSON from the content
+                # Look for "mainMenu" JSON structure: "mainMenu": [{...}]
+                # Pattern matches: "mainMenu": [...] or 'mainMenu': [...] or mainMenu: [...]
+                main_menu_json_pattern = r'["\']?mainMenu["\']?\s*:\s*\[(.*?)\]'
+                json_match = re.search(main_menu_json_pattern, decoded_content, re.IGNORECASE | re.DOTALL)
+                
+                if json_match:
+                    try:
+                        # Extract the array content
+                        array_content = json_match.group(1)
+                        
+                        # Clean up HTML tags and line breaks from array content
+                        array_content = re.sub(r'<[^>]+>', '', array_content)  # Remove HTML tags
+                        array_content = re.sub(r'<br\s*/?>', '', array_content, flags=re.IGNORECASE)  # Remove <br> tags
+                        array_content = re.sub(r'\s+', ' ', array_content)  # Normalize whitespace
+                        
+                        # Try to parse as full JSON object to get both componentName and menuLevel
+                        json_obj_str = '{"mainMenu": [' + array_content + ']}'
+                        try:
+                            parsed_json = json.loads(json_obj_str)
+                            if 'mainMenu' in parsed_json and isinstance(parsed_json['mainMenu'], list) and len(parsed_json['mainMenu']) > 0:
+                                menu_item = parsed_json['mainMenu'][0]
+                                menu_component_name = menu_item.get('componentName', '').strip()
+                                menu_level = menu_item.get('menuLevel')
+                                
+                                if menu_component_name:
+                                    logging.info(f"Found menu component name from parsed JSON: {menu_component_name}, menuLevel: {menu_level}")
+                                    break
+                        except json.JSONDecodeError:
+                            # Fallback: Extract componentName and menuLevel using regex if JSON parsing fails
+                            component_name_match = re.search(r'["\']componentName["\']\s*:\s*["\']([^"\']+)["\']', array_content, re.IGNORECASE)
+                            if component_name_match:
+                                menu_component_name = component_name_match.group(1).strip()
+                                logging.info(f"Found menu component name from JSON: {menu_component_name}")
+                            
+                            # Extract menuLevel
+                            menu_level_match = re.search(r'["\']menuLevel["\']\s*:\s*(\d+)', array_content, re.IGNORECASE)
+                            if menu_level_match:
+                                try:
+                                    menu_level = int(menu_level_match.group(1))
+                                    logging.info(f"Found menuLevel: {menu_level}")
+                                except ValueError:
+                                    pass
+                            
+                            if menu_component_name:
+                                break
+                    except Exception as e:
+                        logging.warning(f"Error parsing JSON from Automation Guide: {e}")
+                
+                # Fallback: Look for "Main Menu: ComponentName" pattern (old format)
                 main_menu_pattern = r'Main\s*Menu:\s*(.+)$'
-                match = re.search(main_menu_pattern, content_source, re.IGNORECASE | re.DOTALL)
+                match = re.search(main_menu_pattern, decoded_content, re.IGNORECASE | re.DOTALL)
                 if match:
                     # Extract and clean up the component name (remove newlines, normalize whitespace)
                     menu_component_name = match.group(1).strip()
                     # Replace newlines with spaces and normalize multiple spaces
                     menu_component_name = re.sub(r'[\n\r]+', ' ', menu_component_name)
                     menu_component_name = re.sub(r'\s+', ' ', menu_component_name).strip()
-                    logging.info(f"Found menu component name: {menu_component_name}")
+                    logging.info(f"Found menu component name (old format): {menu_component_name}")
                     break
         
         if not menu_component_name:
@@ -2051,9 +2106,22 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
         with open(simplified_file, 'r', encoding='utf-8') as f:
             simplified_data = json.load(f)
         
-        def extract_page_tree(page_node):
-            """Recursively extract page_name and sub_pages maintaining tree structure.
-            Only includes pages where meta_info is not blank/empty."""
+        # Determine starting level based on menuLevel
+        # If menuLevel is 0, pages start from level 0, otherwise start from level 1
+        starting_level = 0 if menu_level == 0 else 1
+        
+        def extract_page_tree(page_node, level=None):
+            """Recursively extract page_name, level, and sub_pages maintaining tree structure.
+            Only includes pages where meta_info is not blank/empty.
+            
+            Args:
+                page_node: The page node from simplified.json
+                level: The current depth level (uses starting_level for top-level pages)
+            """
+            # Use starting_level if level is not provided (first call)
+            if level is None:
+                level = starting_level
+                
             page_name = page_node.get("page_name", "")
             
             # Check if meta_info exists and is not empty
@@ -2063,13 +2131,14 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                 return None
             
             page_tree = {
-                "page_name": page_name
+                "page_name": page_name,
+                "level": level
             }
             
             # Recursively process sub_pages and filter out None values (pages with empty meta_info)
             sub_pages = page_node.get("sub_pages", [])
             if sub_pages:
-                processed_sub_pages = [extract_page_tree(sub_page) for sub_page in sub_pages]
+                processed_sub_pages = [extract_page_tree(sub_page, level + 1) for sub_page in sub_pages]
                 valid_sub_pages = [sp for sp in processed_sub_pages if sp is not None]
                 
                 # Only add sub_pages key if there are valid sub_pages
@@ -2196,28 +2265,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
 
                                     
                                 time.sleep(2) 
-                                # 2. Convert .txt files to .json (if they exist)
-                                for extracted_file in os.listdir(save_folder):
-                                    extracted_file_path = os.path.join(save_folder, extracted_file)
-                                    if extracted_file.endswith('.txt'):
-                                        new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
-                                        try:
-                                            # Read and process content inside the 'with' block
-                                            with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
-                                                content = txt_file.read()
-                                                json_content = json.loads(content)
-                                            
-                                            # Write to new file inside its own 'with' block
-                                            with open(new_file_path, 'w', encoding="utf-8") as json_file:
-                                                json.dump(json_content, json_file, indent=4)
-                                            
-                                            # Add a micro-sleep to help OS release the file handle before deletion
-                                            time.sleep(0.05) 
-                                            
-                                            os.remove(extracted_file_path)
-                                        except (json.JSONDecodeError, OSError) as e:
-                                            # Log the error but continue to the next file
-                                            logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+                                # Note: .txt to .json conversion removed - not needed in menu navigation step
 
                                 # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
                                 config_file_name = "MiBlockComponentConfig.json"
@@ -2274,6 +2322,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
         # 3. Create new JSON structure
         menu_navigation_data = {
             "menu_component_name": menu_component_name,
+            "menuLevel": menu_level,
             "pages": pages_tree
         }
         
@@ -2377,15 +2426,26 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     
     # The import check is removed since it's confirmed to be in apis.py
     try:
-        vcomponent_cache = GetAllVComponents(api_base_url, api_headers)
+        vcomponent_cache = GetAllVComponents(api_base_url, api_headers, page_size=1000)
     except Exception as e:
-        logging.error(f"FATAL: Failed to retrieve V-Component list: {e}")
-        raise RuntimeError("V-Component list retrieval failed. Cannot proceed with assembly.")
+        logging.error(f"FATAL: Exception during V-Component list retrieval: {e}")
+        logging.exception("Full exception traceback:")
+        raise RuntimeError(f"V-Component list retrieval failed. Cannot proceed with assembly. Error: {str(e)}")
 
 
     if not isinstance(vcomponent_cache, list):
-        logging.error(f"FATAL: Failed to retrieve V-Component list. API returned error: {vcomponent_cache}")
-        raise RuntimeError("V-Component list retrieval failed. Cannot proceed with assembly.")
+        error_details = ""
+        if isinstance(vcomponent_cache, dict):
+            error_details = f" Error details: {json.dumps(vcomponent_cache, indent=2)}"
+        elif vcomponent_cache is None:
+            error_details = " API returned None"
+        logging.error(f"FATAL: Failed to retrieve V-Component list. API returned non-list response: {type(vcomponent_cache)}{error_details}")
+        logging.error(f"API Base URL: {api_base_url}")
+        logging.error(f"Site ID: {site_id}")
+        raise RuntimeError(f"V-Component list retrieval failed. API returned: {vcomponent_cache}. Cannot proceed with assembly.")
+
+    if len(vcomponent_cache) == 0:
+        logging.warning("WARNING: V-Component list is empty. This may indicate an API issue or no components available.")
 
     logging.info(f"Successfully loaded {len(vcomponent_cache)} components into cache for fast lookup.")
 
