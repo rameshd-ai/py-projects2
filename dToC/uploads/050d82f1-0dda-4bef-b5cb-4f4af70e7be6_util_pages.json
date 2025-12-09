@@ -1,0 +1,33 @@
+{
+    "title": "394279 Nationwide Hotel & Conference Center",
+    "link": "https://milestoneinc.slickplan.com/uh9lygwkz",
+    "pages": [
+        {
+            "id": "svgkttxhl8z33o9bv90",
+            "text": "color guide",
+            "level": "util",
+            "description": "grey\n-\nnon-\ncontent\npage\nwhite\n-\ncontent\npage\npink\n-\nform\non\nthe\npage",
+            "content_blocks": "",
+            "meta_info": {},
+            "children": []
+        },
+        {
+            "id": "svgrrl9vhssc3u8bmz7",
+            "text": "Book Your Stay",
+            "level": "util",
+            "description": "",
+            "content_blocks": "",
+            "meta_info": {},
+            "children": []
+        },
+        {
+            "id": "svgxv2zmdtnwshe8uu5",
+            "text": "Automation Guide",
+            "level": "util",
+            "description": "Site\nLink:\nhttps://automation-nationwide.web4cms.milestoneinternet.info/\nSiteId:\n16617\nProfile\nAlias:\n123.28\n\"mainMenu\":\n[\n{\n\"componentName\":\n\"Custom\nHeader\",\n\"menuLevel\":\n0\n}\n]",
+            "content_blocks": "",
+            "meta_info": {},
+            "children": []
+        }
+    ]
+}

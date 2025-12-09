@@ -132,7 +132,98 @@ def check_component_availability(component_name: str, component_cache: List[Dict
     return None
 
 
+def add_levels_to_records(records_file_path: str) -> bool:
+    """
+    Adds 'level' field to each record in MiBlockComponentRecords.json based on ParentId hierarchy.
     
+    Logic:
+    - Records with ParentId = 0 (or null) are root records -> level = 0
+    - Records whose ParentId matches another record's Id are children -> level = parent_level + 1
+    - Continues recursively for deeper levels
+    
+    Args:
+        records_file_path: Path to the MiBlockComponentRecords.json file
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Read the records file
+        with open(records_file_path, 'r', encoding='utf-8') as f:
+            records_data = json.load(f)
+        
+        component_records = records_data.get("componentRecords", [])
+        if not component_records:
+            logging.warning(f"No componentRecords found in {records_file_path}")
+            return False
+        
+        # Create a map of Id -> record for quick lookup
+        records_map = {}
+        for record in component_records:
+            record_id = record.get("Id")
+            if record_id is not None:
+                records_map[record_id] = record
+                # Initialize level to -1 (unknown)
+                record["level"] = -1
+        
+        # First pass: Set level 0 for root records (ParentId = 0 or null)
+        for record in component_records:
+            parent_id = record.get("ParentId")
+            if parent_id is None or parent_id == 0:
+                record["level"] = 0
+        
+        # Iterative pass: Resolve child levels
+        max_depth = len(component_records)  # Safety limit
+        current_level = 0
+        
+        while current_level < max_depth:
+            changes_made = False
+            next_level = current_level + 1
+            
+            # Find all records with unknown level (-1) and check if their parent has current_level
+            for record in component_records:
+                if record.get("level") == -1:  # Only process unclassified records
+                    parent_id = record.get("ParentId")
+                    
+                    # Check if parent exists and has the current level
+                    if parent_id and parent_id in records_map:
+                        parent_record = records_map[parent_id]
+                        if parent_record.get("level") == current_level:
+                            record["level"] = next_level
+                            changes_made = True
+            
+            if not changes_made:
+                break  # No more levels to resolve
+            
+            current_level = next_level
+        
+        # Check for any remaining unclassified records (orphaned records)
+        unclassified_count = sum(1 for r in component_records if r.get("level") == -1)
+        if unclassified_count > 0:
+            logging.warning(f"Found {unclassified_count} unclassified records (orphaned or circular references)")
+            # Set orphaned records to a high level to avoid breaking the structure
+            for record in component_records:
+                if record.get("level") == -1:
+                    record["level"] = 999
+        
+        # Save the updated records back to the file
+        with open(records_file_path, 'w', encoding='utf-8') as f:
+            json.dump(records_data, f, indent=4, ensure_ascii=False)
+        
+        logging.info(f"✅ Successfully added level fields to {len(component_records)} records")
+        return True
+        
+    except FileNotFoundError:
+        logging.error(f"Records file not found: {records_file_path}")
+        return False
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error in {records_file_path}: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Error adding levels to records: {e}")
+        logging.exception("Full traceback:")
+        return False
+
 
 # --- MODIFIED: add_records_for_page now contains the complex file processing logic ---
 def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str):
@@ -219,6 +310,15 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
                     except (json.JSONDecodeError, OSError) as e:
                         # Log the error but continue to the next file
                         logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+
+            # 3. Add level fields to MiBlockComponentRecords.json
+            records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+            if os.path.exists(records_file_path):
+                try:
+                    add_levels_to_records(records_file_path)
+                    logging.info(f"✅ Added level fields to records in {records_file_path}")
+                except Exception as e:
+                    logging.error(f"⚠️ Error adding levels to records: {e}")
 
             # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
             config_file_name = "MiBlockComponentConfig.json"
@@ -2265,7 +2365,37 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
 
                                     
                                 time.sleep(2) 
-                                # Note: .txt to .json conversion removed - not needed in menu navigation step
+                                # 2. Convert .txt files to .json (if they exist)
+                                for extracted_file in os.listdir(save_folder):
+                                    extracted_file_path = os.path.join(save_folder, extracted_file)
+                                    if extracted_file.endswith('.txt'):
+                                        new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
+                                        try:
+                                            # Read and process content inside the 'with' block
+                                            with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
+                                                content = txt_file.read()
+                                                json_content = json.loads(content)
+                                            
+                                            # Write to new file inside its own 'with' block
+                                            with open(new_file_path, 'w', encoding="utf-8") as json_file:
+                                                json.dump(json_content, json_file, indent=4)
+                                            
+                                            # Add a micro-sleep to help OS release the file handle before deletion
+                                            time.sleep(0.05) 
+                                            
+                                            os.remove(extracted_file_path)
+                                        except (json.JSONDecodeError, OSError) as e:
+                                            # Log the error but continue to the next file
+                                            logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+
+                                # 3. Add level fields to MiBlockComponentRecords.json
+                                records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+                                if os.path.exists(records_file_path):
+                                    try:
+                                        add_levels_to_records(records_file_path)
+                                        logging.info(f"✅ Added level fields to records in {records_file_path}")
+                                    except Exception as e:
+                                        logging.error(f"⚠️ Error adding levels to records: {e}")
 
                                 # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
                                 config_file_name = "MiBlockComponentConfig.json"
