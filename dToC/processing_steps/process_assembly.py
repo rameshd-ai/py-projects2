@@ -2119,6 +2119,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
         
         menu_component_name = None
         menu_level = None
+        downloaded_component_id = None
         for page in util_pages_data.get('pages', []):
             page_name = page.get('text', page.get('page_name', ''))
             if "automation guide" in page_name.strip().lower():
@@ -2315,6 +2316,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                           matching_component.get('blockId')
                             
                             if component_id:
+                                downloaded_component_id = component_id  # Store for later use
                                 logging.info(f"Downloading component with ID: {component_id}")
                                 print(f"\n{'='*80}")
                                 print(f"Downloading component: {menu_component_name} (ID: {component_id})")
@@ -2466,6 +2468,16 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
         logging.info(f"✅ Menu navigation JSON saved to: {output_filepath}")
         print(f"Created new JSON file: {output_filename}")
         
+        # 5. Map pages to records if component was downloaded
+        if downloaded_component_id:
+            logging.info(f"Starting page-to-record mapping for component ID: {downloaded_component_id}")
+            if map_pages_to_records(file_prefix, site_id, downloaded_component_id):
+                # 6. Create saveMiBlockRecords payload after successful mapping
+                logging.info("Creating saveMiBlockRecords payload...")
+                create_save_miblock_records_payload(file_prefix, downloaded_component_id, site_id)
+        else:
+            logging.warning("Component ID not found for page-to-record mapping. Skipping.")
+        
     except FileNotFoundError as e:
         logging.error(f"File not found: {e}")
         raise
@@ -2478,6 +2490,474 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
     
     logging.info("END: Menu Navigation Update Complete")
     logging.info("========================================================")
+
+
+def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> bool:
+    """
+    Maps page names from menu_navigation.json to records in MiBlockComponentRecords.json
+    based on menuLevel.
+    
+    Logic:
+    - If menuLevel = 0:
+      * Level 0 pages → search in records with level = 0
+      * Level 1 pages → search in records with level = 1
+    - If menuLevel = 1:
+      * Level 0 pages → search in records with level = 1
+      * Level 1 pages → search in records with level = 2
+    
+    For each page, searches RecordJsonString for keys ending with '-name' and matches
+    the value with page_name. If match found, saves the entire record to a new JSON file.
+    If no match, updates menu_navigation.json with matchFound: false.
+    
+    Args:
+        file_prefix: The file prefix for menu_navigation.json
+        site_id: The site ID to locate the records folder
+        component_id: The component ID to locate the records folder
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logging.info("========================================================")
+    logging.info("START: Mapping Pages to Records")
+    logging.info("========================================================")
+    
+    try:
+        # 1. Read menu_navigation.json
+        menu_nav_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_menu_navigation.json")
+        if not os.path.exists(menu_nav_file):
+            logging.error(f"Menu navigation file not found: {menu_nav_file}")
+            return False
+        
+        with open(menu_nav_file, 'r', encoding='utf-8') as f:
+            menu_nav_data = json.load(f)
+        
+        menu_level = menu_nav_data.get("menuLevel")
+        if menu_level is None:
+            logging.warning("menuLevel not found in menu_navigation.json. Skipping mapping.")
+            return False
+        
+        # 2. Locate MiBlockComponentRecords.json
+        records_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id}")
+        records_file = os.path.join(records_folder, "MiBlockComponentRecords.json")
+        
+        if not os.path.exists(records_file):
+            logging.error(f"Records file not found: {records_file}")
+            return False
+        
+        with open(records_file, 'r', encoding='utf-8') as f:
+            records_data = json.load(f)
+        
+        component_records = records_data.get("componentRecords", [])
+        if not component_records:
+            logging.warning("No componentRecords found in MiBlockComponentRecords.json")
+            return False
+        
+        # 3. Helper function to normalize strings for comparison
+        def normalize_string_for_matching(text: str) -> str:
+            """Normalizes strings for comparison by handling special characters and HTML entities."""
+            if not text:
+                return ""
+            
+            # Convert to string and strip
+            normalized = str(text).strip()
+            
+            # Decode HTML entities (like &amp; -> &)
+            normalized = html.unescape(normalized)
+            
+            # Replace common variations
+            normalized = normalized.replace('&', ' and ')  # Replace & with " and "
+            normalized = normalized.replace('&amp;', ' and ')  # Replace &amp; with " and "
+            normalized = normalized.replace('&nbsp;', ' ')  # Replace &nbsp; with space
+            
+            # Normalize whitespace (multiple spaces to single space)
+            normalized = re.sub(r'\s+', ' ', normalized)
+            
+            # Convert to lowercase for case-insensitive comparison
+            normalized = normalized.lower()
+            
+            # Remove leading/trailing spaces
+            normalized = normalized.strip()
+            
+            return normalized
+        
+        # 4. Helper function to extract name values from RecordJsonString
+        def extract_name_from_record(record_json_string: str) -> Optional[str]:
+            """Extracts value from any key ending with '-name' in RecordJsonString."""
+            try:
+                # Parse the JSON string
+                record_json = json.loads(record_json_string)
+                
+                # Find keys ending with '-name'
+                for key, value in record_json.items():
+                    if key.endswith('-name') and value:
+                        # Return the first non-empty value found
+                        name_value = str(value).strip()
+                        logging.debug(f"Found key '{key}' with value '{name_value}'")
+                        return name_value
+                
+                return None
+            except (json.JSONDecodeError, Exception) as e:
+                logging.warning(f"Error parsing RecordJsonString: {e}")
+                logging.debug(f"RecordJsonString content (first 200 chars): {record_json_string[:200]}")
+                return None
+        
+        # 4. Helper function to generate URL-friendly slug from page name
+        def generate_url_slug(page_name: str) -> str:
+            """Converts page name to URL-friendly slug."""
+            if not page_name:
+                return ""
+            
+            # Replace & with and
+            slug = page_name.replace('&', 'and')
+            slug = slug.replace('&amp;', 'and')
+            
+            # Convert to lowercase
+            slug = slug.lower()
+            
+            # Replace spaces and special characters with hyphens
+            slug = re.sub(r'[^\w\s-]', '', slug)  # Remove special chars except hyphens
+            slug = re.sub(r'[-\s]+', '-', slug)  # Replace spaces and multiple hyphens with single hyphen
+            slug = slug.strip('-')  # Remove leading/trailing hyphens
+            
+            return slug
+        
+        # 5. Helper function to update link in RecordJsonString and extract name/link values
+        def update_record_link(record_json_string: str, page_name: str, parent_page_name: Optional[str] = None) -> Tuple[str, Optional[str], Optional[str]]:
+            """
+            Updates the link field (ending with -link) in RecordJsonString with page name.
+            Also extracts the -name and -link values for easy access.
+            
+            Returns:
+                Tuple of (updated_json_string, name_key, name_value, link_key, link_value)
+            """
+            try:
+                # Parse the JSON string
+                record_json = json.loads(record_json_string)
+                
+                # Find keys ending with -name and -link
+                name_key = None
+                name_value = None
+                link_key = None
+                link_value = None
+                
+                for key in record_json.keys():
+                    if key.endswith('-name'):
+                        name_key = key
+                        name_value = record_json.get(key)
+                    elif key.endswith('-link'):
+                        link_key = key
+                        link_value = record_json.get(key)
+                
+                if link_key:
+                    # Generate URL slug from page name
+                    page_slug = generate_url_slug(page_name)
+                    
+                    # Build the link path
+                    if parent_page_name:
+                        # For sub-pages, include parent in path
+                        parent_slug = generate_url_slug(parent_page_name)
+                        link_path = f"{parent_slug}/{page_slug}"
+                    else:
+                        # For top-level pages, just use the page slug
+                        link_path = page_slug
+                    
+                    # Update the link with %%strpath%% prefix
+                    new_link = f"%%strpath%%{link_path}"
+                    record_json[link_key] = new_link
+                    link_value = new_link  # Update the extracted value
+                    
+                    logging.info(f"  Updated link '{link_key}' to '{new_link}'")
+                    
+                    # Convert back to JSON string
+                    updated_json_string = json.dumps(record_json, ensure_ascii=False)
+                    return updated_json_string, name_key, name_value, link_key, link_value
+                else:
+                    logging.warning(f"  No '-link' key found in RecordJsonString")
+                    return record_json_string, name_key, name_value, None, None
+                    
+            except (json.JSONDecodeError, Exception) as e:
+                logging.warning(f"Error updating link in RecordJsonString: {e}")
+                return record_json_string, None, None, None, None
+        
+        # 6. Collect all matched records in a list
+        all_matched_records = []
+        
+        # Helper function to recursively process pages
+        def process_page(page_node: Dict[str, Any], page_level: int, records_level: int, parent_page_name: Optional[str] = None) -> bool:
+            """Process a single page and its sub_pages recursively."""
+            page_name = page_node.get("page_name", "").strip()
+            if not page_name:
+                return False
+            
+            logging.info(f"Searching for page '{page_name}' (page_level={page_level}) in records with level={records_level}")
+            
+            # Find matching record in records with the specified level
+            matched_record = None
+            records_checked = 0
+            for record in component_records:
+                record_level = record.get("level")
+                if record_level == records_level:
+                    records_checked += 1
+                    record_json_string = record.get("RecordJsonString", "")
+                    if record_json_string:
+                        extracted_name = extract_name_from_record(record_json_string)
+                        if extracted_name:
+                            # Normalize both strings for comparison
+                            normalized_extracted = normalize_string_for_matching(extracted_name)
+                            normalized_page = normalize_string_for_matching(page_name)
+                            
+                            logging.debug(f"  Comparing '{extracted_name}' (normalized: '{normalized_extracted}') with '{page_name}' (normalized: '{normalized_page}')")
+                            if normalized_extracted == normalized_page:
+                                matched_record = record
+                                logging.info(f"  ✅ Match found! Record ID: {record.get('Id')}")
+                                break
+                        else:
+                            logging.debug(f"  No '-name' key found in record ID: {record.get('Id')}")
+            
+            logging.info(f"Checked {records_checked} records at level {records_level} for page '{page_name}'")
+            
+            if matched_record:
+                # Update the link in RecordJsonString before saving and extract name/link values
+                original_record_json_string = matched_record.get("RecordJsonString", "")
+                updated_record_json_string, name_key, name_value, link_key, link_value = update_record_link(
+                    original_record_json_string, page_name, parent_page_name
+                )
+                
+                # Create a copy of the matched record with updated link
+                matched_record_with_page_info = matched_record.copy()
+                matched_record_with_page_info["RecordJsonString"] = updated_record_json_string
+                matched_record_with_page_info["matched_page_name"] = page_name
+                matched_record_with_page_info["matched_page_level"] = page_level
+                matched_record_with_page_info["matched_records_level"] = records_level
+                
+                # Add extracted name and link as top-level keys for easy access
+                if name_key and name_value is not None:
+                    matched_record_with_page_info[name_key] = name_value
+                    logging.debug(f"  Added top-level key '{name_key}' = '{name_value}'")
+                
+                if link_key and link_value is not None:
+                    matched_record_with_page_info[link_key] = link_value
+                    logging.debug(f"  Added top-level key '{link_key}' = '{link_value}'")
+                
+                # Add to the collection
+                all_matched_records.append(matched_record_with_page_info)
+                
+                logging.info(f"✅ Matched '{page_name}' (level {page_level}) → added to collection")
+                page_node["matchFound"] = True
+            else:
+                logging.warning(f"❌ No match found for '{page_name}' (level {page_level})")
+                page_node["matchFound"] = False
+            
+            # Process sub_pages recursively (pass current page_name as parent)
+            sub_pages = page_node.get("sub_pages", [])
+            if sub_pages:
+                # Determine the records level for sub_pages based on menuLevel
+                if menu_level == 0:
+                    # Sub-pages search in records level = sub_page_level
+                    for sub_page in sub_pages:
+                        sub_page_level = sub_page.get("level", page_level + 1)
+                        sub_records_level = sub_page_level
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
+                elif menu_level == 1:
+                    # Sub-pages of level 1 pages search in records level 2
+                    # But if parent is level 0, sub-pages (level 1) search in level 1
+                    for sub_page in sub_pages:
+                        sub_page_level = sub_page.get("level", page_level + 1)
+                        if page_level == 0 and sub_page_level == 1:
+                            sub_records_level = 1  # Level 1 sub-pages of level 0 parent search in level 1
+                        elif page_level == 1 and sub_page_level == 2:
+                            sub_records_level = 2  # Level 2 sub-pages of level 1 parent search in level 2
+                        else:
+                            sub_records_level = sub_page_level
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
+                else:
+                    # Default: increment records level
+                    for sub_page in sub_pages:
+                        sub_page_level = sub_page.get("level", page_level + 1)
+                        sub_records_level = records_level + 1
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
+            
+            return matched_record is not None
+        
+        # 7. Process all pages based on menuLevel
+        pages = menu_nav_data.get("pages", [])
+        logging.info(f"Processing {len(pages)} pages with menuLevel={menu_level}")
+        
+        for page in pages:
+            page_level = page.get("level", 0)
+            
+            # Determine records level based on menuLevel
+            # If menuLevel = 0: level 0 pages → records level 0, level 1 pages → records level 1
+            # If menuLevel = 1: level 0 pages → records level 1, level 1 pages → records level 1
+            if menu_level == 0:
+                # Level 0 pages search in records level 0, level 1 pages search in records level 1
+                records_level = page_level
+            elif menu_level == 1:
+                # Level 0 pages search in records level 1
+                # Level 1 pages also search in records level 1 (not level 2)
+                if page_level == 0:
+                    records_level = 1
+                elif page_level == 1:
+                    records_level = 1  # Level 1 pages search in level 1 records when menuLevel = 1
+                else:
+                    # For level 2+ pages, search in records with level = page_level
+                    records_level = page_level
+            else:
+                # Default: use page_level as records_level
+                records_level = page_level
+                logging.warning(f"Unknown menuLevel {menu_level}, using default mapping")
+            
+            logging.info(f"Page '{page.get('page_name')}' (level {page_level}) → searching in records level {records_level}")
+            process_page(page, page_level, records_level, None)  # Top-level pages have no parent
+        
+        # 6. Save all matched records to a single JSON file
+        if all_matched_records:
+            output_filename = f"{file_prefix}_matched_records.json"
+            output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+            
+            matched_records_data = {
+                "total_matched": len(all_matched_records),
+                "menuLevel": menu_level,
+                "component_id": component_id,
+                "matched_records": all_matched_records
+            }
+            
+            with open(output_filepath, 'w', encoding='utf-8') as f:
+                json.dump(matched_records_data, f, indent=4, ensure_ascii=False)
+            
+            logging.info(f"✅ Saved {len(all_matched_records)} matched records to {output_filename}")
+        else:
+            logging.warning("No matched records found to save")
+        
+        # 7. Save updated menu_navigation.json with matchFound status
+        with open(menu_nav_file, 'w', encoding='utf-8') as f:
+            json.dump(menu_nav_data, f, indent=4, ensure_ascii=False)
+        
+        logging.info(f"✅ Updated menu_navigation.json with matchFound status")
+        logging.info("END: Mapping Pages to Records Complete")
+        logging.info("========================================================")
+        return True
+        
+    except FileNotFoundError as e:
+        logging.error(f"File not found: {e}")
+        return False
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Error mapping pages to records: {e}")
+        logging.exception("Full traceback:")
+        return False
+
+
+def create_save_miblock_records_payload(file_prefix: str, component_id: int, site_id: int) -> bool:
+    """
+    Creates payloads for saveMiBlockRecords API from matched_records.json.
+    These payloads are for updating existing records.
+    
+    Args:
+        file_prefix: The file prefix for matched_records.json
+        component_id: The component ID to use in the payload
+        site_id: The site ID (for logging)
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logging.info("========================================================")
+    logging.info("START: Creating SaveMiBlockRecords Payload")
+    logging.info("========================================================")
+    
+    try:
+        # 1. Read matched_records.json
+        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
+        if not os.path.exists(matched_records_file):
+            logging.error(f"Matched records file not found: {matched_records_file}")
+            return False
+        
+        with open(matched_records_file, 'r', encoding='utf-8') as f:
+            matched_data = json.load(f)
+        
+        matched_records = matched_data.get("matched_records", [])
+        if not matched_records:
+            logging.warning("No matched records found to create payload")
+            return False
+        
+        # 2. Transform records into API payload format
+        api_payloads = []
+        
+        for record in matched_records:
+            # Extract required fields
+            record_id = record.get("Id", 0)
+            parent_id = record.get("ParentId", 0)
+            record_json_string = record.get("RecordJsonString", "")
+            status = record.get("Status", True)
+            display_order = record.get("DisplayOrder", 0)
+            updated_by = record.get("UpdatedBy", 0)
+            
+            # Get tags if available
+            tags = record.get("tags", [])
+            if not isinstance(tags, list):
+                tags = []
+            
+            # Create API payload record
+            api_record = {
+                "componentId": component_id,
+                "recordId": record_id,  # Use existing ID for updates
+                "parentRecordId": parent_id,
+                "recordDataJson": record_json_string,
+                "status": status,
+                "tags": tags,
+                "displayOrder": display_order,
+                "updatedBy": updated_by,
+                # Note: pageSectionGuid is not included as it's typically for new records
+                # If needed for updates, it should be extracted from the original record
+            }
+            
+            api_payloads.append(api_record)
+        
+        # 3. Group payloads by record set (if needed)
+        # For now, we'll create a simple structure with all records
+        final_payload = {
+            "componentId": component_id,
+            "siteId": site_id,
+            "total_records": len(api_payloads),
+            "records": api_payloads
+        }
+        
+        # 4. Save payload to separate file
+        output_filename = f"{file_prefix}_save_miblock_records_payload.json"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+        
+        with open(output_filepath, 'w', encoding='utf-8') as f:
+            json.dump(final_payload, f, indent=4, ensure_ascii=False)
+        
+        logging.info(f"✅ Created payload file: {output_filename}")
+        logging.info(f"   Total records in payload: {len(api_payloads)}")
+        logging.info("END: Creating SaveMiBlockRecords Payload Complete")
+        logging.info("========================================================")
+        return True
+        
+    except FileNotFoundError as e:
+        logging.error(f"File not found: {e}")
+        return False
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Error creating saveMiBlockRecords payload: {e}")
+        logging.exception("Full traceback:")
+        return False
+        
+    except FileNotFoundError as e:
+        logging.error(f"File not found: {e}")
+        return False
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Error mapping pages to records: {e}")
+        logging.exception("Full traceback:")
+        return False
 
 
 # ================= Main Entry Function (Uses Dynamic Config) =================

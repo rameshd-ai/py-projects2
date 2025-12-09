@@ -1,0 +1,277 @@
+{
+    "componentId": 526435,
+    "siteId": "16617",
+    "total_records": 27,
+    "records": [
+        {
+            "componentId": 526435,
+            "recordId": 2980174,
+            "parentRecordId": 2980173,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Our Property\", \"menu-item-link\": \"%%strpath%%our-property\", \"open-url-in-new-tab[]\": [\"\"], \"enable-dropdown[]\": [\"Yes\"], \"enable-menu-item-in-left[]\": [\"Yes\"], \"enable-menu-item-in-right[]\": [\"\"], \"menu-overview-img\": [{\"ResourceID\": 0, \"AssetId\": \"0adf6fb6-fbcf-4313-b5cb-163969d6b1d0\", \"ResourceTitle\": null, \"ResourceFile\": \"landscape-view-of-ohioan-hotel-lewis-center.jpg\", \"OriginalImagePath\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg\", \"isSpinCarImage\": false, \"isFromDAM\": true, \"OriginalImagePathLarge\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=410&height=231\", \"OriginalImagePathSmall\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=410&height=231\", \"OriginalImagePathMedium\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=410&height=231\", \"ThumbNailImagePath\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=100&height=100\", \"OriginalParentSiteImagePath\": null, \"OriginalParentSiteImagePathLarge\": null, \"OriginalParentSiteImagePathSmall\": null, \"OriginalParentSiteImagePathMedium\": null, \"DamAsset\": {\"AssetId\": \"0adf6fb6-fbcf-4313-b5cb-163969d6b1d0\", \"FolderPath\": null, \"AssetName\": \"landscape-view-of-ohioan-hotel-lewis-center.jpg\", \"AssetAlias\": \"landscape-view-of-ohioan-hotel-lewis-center.jpg\", \"FolderId\": 53669, \"StockImage\": false, \"ManualMeta\": {\"Title\": \"Landscape-view-of-ohioan-hotel-lewis-center\", \"Description\": \"A aerial view of a town\"}, \"DamAssetInfo\": {\"OriginalUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg\", \"ThumbnailUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=100&height=100\", \"PreviewUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=300&height=300\", \"LargeUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=410&height=231\", \"MediumUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=410&height=231\", \"SmallUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/landscape-view-of-ohioan-hotel-lewis-center.jpg?width=410&height=231\", \"ManualMeta\": {\"Description\": \"A aerial view of a town\", \"Title\": \"Landscape-view-of-ohioan-hotel-lewis-center\", \"isCustomizedAltText\": true}}, \"ImageTransformations\": {\"Large\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}, \"Medium\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}, \"Small\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}}}, \"ResourceWidth\": 410, \"ResourceHeight\": 231, \"TabletResourceWidth\": 410, \"TabletResourceHeight\": 231, \"MobileResourceWidth\": 410, \"MobileResourceHeight\": 231, \"AssetAltText\": \"A aerial view of a town\"}], \"menu-overview-alt\": \"Landscape view of Ohioan Hotel, Lewis Center\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 1,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980178,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Our Story\", \"sub-navigation-item-link\": \"%%strpath%%our-property/our-story\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 1,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980797,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Gallery\", \"sub-navigation-item-link\": \"%%strpath%%our-property/gallery\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 2,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980798,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Location\", \"sub-navigation-item-link\": \"%%strpath%%our-property/location\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 3,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980799,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Contact\", \"sub-navigation-item-link\": \"%%strpath%%our-property/contact\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 4,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980800,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Property Map\", \"sub-navigation-item-link\": \"%%strpath%%our-property/property-map\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 5,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980801,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Reviews\", \"sub-navigation-item-link\": \"%%strpath%%our-property/reviews\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 6,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980802,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Blogs\", \"sub-navigation-item-link\": \"%%strpath%%our-property/blogs\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 7,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980803,
+            "parentRecordId": 2980174,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"FAQs\", \"sub-navigation-item-link\": \"%%strpath%%our-property/faqs\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 9,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980175,
+            "parentRecordId": 2980173,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Weddings\", \"menu-item-link\": \"%%strpath%%weddings\", \"open-url-in-new-tab[]\": [\"\"], \"enable-dropdown[]\": [\"Yes\"], \"enable-menu-item-in-left[]\": [\"Yes\"], \"enable-menu-item-in-right[]\": [\"\"], \"menu-overview-img\": [{\"ResourceID\": 0, \"AssetId\": \"ff3184f9-0702-4fbe-8386-0093b11f098c\", \"ResourceTitle\": null, \"ResourceFile\": \"elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg\", \"OriginalImagePath\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg\", \"isSpinCarImage\": false, \"isFromDAM\": true, \"OriginalImagePathLarge\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=410&height=231\", \"OriginalImagePathSmall\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=410&height=231\", \"OriginalImagePathMedium\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=410&height=231\", \"ThumbNailImagePath\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=100&height=100\", \"OriginalParentSiteImagePath\": null, \"OriginalParentSiteImagePathLarge\": null, \"OriginalParentSiteImagePathSmall\": null, \"OriginalParentSiteImagePathMedium\": null, \"DamAsset\": {\"AssetId\": \"ff3184f9-0702-4fbe-8386-0093b11f098c\", \"FolderPath\": null, \"AssetName\": \"elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg\", \"AssetAlias\": \"elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg\", \"FolderId\": 53669, \"StockImage\": false, \"ManualMeta\": null, \"DamAssetInfo\": {\"OriginalUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg\", \"ThumbnailUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=100&height=100\", \"PreviewUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?width=300&height=300\", \"LargeUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=410&height=231\", \"MediumUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=410&height=231\", \"SmallUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center.jpg?cropY=227&cropW=4446&cropH=2505&width=410&height=231\", \"ManualMeta\": {\"Description\": \"A long table with candles and plants on it\", \"Title\": \"Elegant-banquet-table-with-gold-plates-at-ohioan-hotel-lewis-center\"}}, \"ImageTransformations\": {\"Large\": {\"rotateAngle\": 0, \"cropX\": 0, \"cropY\": 227, \"cropH\": 2505, \"cropW\": 4446, \"height\": 231, \"width\": 410}, \"Medium\": {\"rotateAngle\": 0, \"cropX\": 0, \"cropY\": 227, \"cropH\": 2505, \"cropW\": 4446, \"height\": 231, \"width\": 410}, \"Small\": {\"rotateAngle\": null, \"cropX\": 0, \"cropY\": 227, \"cropH\": 2505, \"cropW\": 4446, \"height\": 231, \"width\": 410}}}, \"ResourceWidth\": 410, \"ResourceHeight\": 231, \"TabletResourceWidth\": 410, \"TabletResourceHeight\": 231, \"MobileResourceWidth\": 410, \"MobileResourceHeight\": 231, \"AssetAltText\": null}], \"menu-overview-alt\": \"Elegant banquet table with gold plates at Ohioan Hotel, Lewis Center\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 2,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980804,
+            "parentRecordId": 2980175,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"ProfileCouponMapping\": \"\", \"ComponentLevel\": \"3\", \"displayName\": \"Header Sub Navigation\", \"Offset\": \"+00:00\", \"ComponentName\": \"Header Sub Navigation\", \"RecordText\": \"\", \"PluginName\": \"\", \"PrimaryLanguageRecordId\": \"0\", \"UrlLanguageCode\": \"\", \"LanguageId\": \"0\", \"sub-navigation-item-name\": \"Our Spaces\", \"sub-navigation-item-link\": \"%%strpath%%weddings/our-spaces\", \"EnableClientEdit\": true, \"IsRecordIncludedInTranslation\": false, \"IsLanguageRecordInEnglish\": false, \"IsProtected\": \"false\", \"IsMemberRoleTaggingEnable\": \"false\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 2,
+            "updatedBy": 17716
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980805,
+            "parentRecordId": 2980175,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Wedding Celebrations\", \"sub-navigation-item-link\": \"%%strpath%%weddings/wedding-celebrations\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 3,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980806,
+            "parentRecordId": 2980175,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Wedding Packages\", \"sub-navigation-item-link\": \"%%strpath%%weddings/wedding-packages\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 4,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980807,
+            "parentRecordId": 2980175,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Meet the Team\", \"sub-navigation-item-link\": \"%%strpath%%weddings/meet-the-team\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 5,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980808,
+            "parentRecordId": 2980175,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Plan your Wedding\", \"sub-navigation-item-link\": \"%%strpath%%weddings/plan-your-wedding\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 6,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980180,
+            "parentRecordId": 2980173,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Meetings & Events\", \"menu-item-link\": \"%%strpath%%meetings-and-events\", \"open-url-in-new-tab[]\": [], \"enable-dropdown[]\": [\"Yes\"], \"enable-menu-item-in-left[]\": [\"Yes\"], \"enable-menu-item-in-right[]\": [], \"menu-overview-img\": [{\"ResourceID\": 0, \"AssetId\": \"50c6c686-6c3e-4388-b138-bc56c45410a1\", \"ResourceTitle\": null, \"ResourceFile\": \"conference-room-at-ohioan-hotel-lewis-center.jpg\", \"OriginalImagePath\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg\", \"isSpinCarImage\": false, \"isFromDAM\": true, \"OriginalImagePathLarge\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=410&height=231\", \"OriginalImagePathSmall\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=410&height=231\", \"OriginalImagePathMedium\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=410&height=231\", \"ThumbNailImagePath\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=100&height=100\", \"OriginalParentSiteImagePath\": null, \"OriginalParentSiteImagePathLarge\": null, \"OriginalParentSiteImagePathSmall\": null, \"OriginalParentSiteImagePathMedium\": null, \"DamAsset\": {\"AssetId\": \"50c6c686-6c3e-4388-b138-bc56c45410a1\", \"FolderPath\": null, \"AssetName\": \"conference-room-at-ohioan-hotel-lewis-center.jpg\", \"AssetAlias\": \"conference-room-at-ohioan-hotel-lewis-center.jpg\", \"FolderId\": 53669, \"StockImage\": false, \"ManualMeta\": null, \"DamAssetInfo\": {\"OriginalUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg\", \"ThumbnailUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=100&height=100\", \"PreviewUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?width=300&height=300\", \"LargeUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=410&height=231\", \"MediumUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=410&height=231\", \"SmallUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/conference-room-at-ohioan-hotel-lewis-center.jpg?cropY=308&cropW=6048&cropH=3408&width=410&height=231\", \"ManualMeta\": {\"Description\": \"A room with chairs and tables\", \"Title\": \"Conference-room-at-ohioan-hotel-lewis-center\"}}, \"ImageTransformations\": {\"Large\": {\"rotateAngle\": 0, \"cropX\": 0, \"cropY\": 308, \"cropH\": 3408, \"cropW\": 6048, \"height\": 231, \"width\": 410}, \"Medium\": {\"rotateAngle\": 0, \"cropX\": 0, \"cropY\": 308, \"cropH\": 3408, \"cropW\": 6048, \"height\": 231, \"width\": 410}, \"Small\": {\"rotateAngle\": null, \"cropX\": 0, \"cropY\": 308, \"cropH\": 3408, \"cropW\": 6048, \"height\": 231, \"width\": 410}}}, \"ResourceWidth\": 410, \"ResourceHeight\": 231, \"TabletResourceWidth\": 410, \"TabletResourceHeight\": 231, \"MobileResourceWidth\": 410, \"MobileResourceHeight\": 231, \"AssetAltText\": null}], \"menu-overview-alt\": \"Conference room at Ohioan Hotel, Lewis Center\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 5,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980809,
+            "parentRecordId": 2980180,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Event & Expo Spaces\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/event-and-expo-spaces\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 3,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980810,
+            "parentRecordId": 2980180,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Meeting Services\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/meeting-services\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 4,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980811,
+            "parentRecordId": 2980180,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Special Occasions\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/special-occasions\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 5,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980812,
+            "parentRecordId": 2980180,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Meeting Packages\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/meeting-packages\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 6,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980813,
+            "parentRecordId": 2980180,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Plan your Meeting\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/plan-your-meeting\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 7,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980181,
+            "parentRecordId": 2980173,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Guest Rooms\", \"menu-item-link\": \"%%strpath%%guest-rooms\", \"open-url-in-new-tab[]\": [], \"enable-dropdown[]\": [\"Yes\"], \"enable-menu-item-in-left[]\": [\"Yes\"], \"enable-menu-item-in-right[]\": [], \"menu-overview-img\": [{\"ResourceID\": 0, \"AssetId\": \"c2090183-33f7-4c97-b2b7-b201b77e75f8\", \"ResourceTitle\": null, \"ResourceFile\": \"spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg\", \"OriginalImagePath\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg\", \"isSpinCarImage\": false, \"isFromDAM\": true, \"OriginalImagePathLarge\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=410&height=231\", \"OriginalImagePathSmall\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=410&height=231\", \"OriginalImagePathMedium\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=410&height=231\", \"ThumbNailImagePath\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=100&height=100\", \"OriginalParentSiteImagePath\": null, \"OriginalParentSiteImagePathLarge\": null, \"OriginalParentSiteImagePathSmall\": null, \"OriginalParentSiteImagePathMedium\": null, \"DamAsset\": {\"AssetId\": \"c2090183-33f7-4c97-b2b7-b201b77e75f8\", \"FolderPath\": null, \"AssetName\": \"spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg\", \"AssetAlias\": \"spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg\", \"FolderId\": 53669, \"StockImage\": false, \"ManualMeta\": null, \"DamAssetInfo\": {\"OriginalUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg\", \"ThumbnailUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=100&height=100\", \"PreviewUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?width=300&height=300\", \"LargeUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=410&height=231\", \"MediumUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=410&height=231\", \"SmallUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/menu/spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center.jpg?cropY=106&cropW=2048&cropH=1154&width=410&height=231\", \"ManualMeta\": {\"Description\": \"A hotel room with two beds and a couch\", \"Title\": \"Spaces-guest-room-facilities-available-at-ohioan-hotel-lewis-center\"}}, \"ImageTransformations\": {\"Large\": {\"rotateAngle\": 0, \"cropX\": 0, \"cropY\": 106, \"cropH\": 1154, \"cropW\": 2048, \"height\": 231, \"width\": 410}, \"Medium\": {\"rotateAngle\": 0, \"cropX\": 0, \"cropY\": 106, \"cropH\": 1154, \"cropW\": 2048, \"height\": 231, \"width\": 410}, \"Small\": {\"rotateAngle\": null, \"cropX\": 0, \"cropY\": 106, \"cropH\": 1154, \"cropW\": 2048, \"height\": 231, \"width\": 410}}}, \"ResourceWidth\": 410, \"ResourceHeight\": 231, \"TabletResourceWidth\": 410, \"TabletResourceHeight\": 231, \"MobileResourceWidth\": 410, \"MobileResourceHeight\": 231, \"AssetAltText\": null}], \"menu-overview-alt\": \"Spaces guest room facilities available at Ohioan Hotel, Lewis Center\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 6,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980182,
+            "parentRecordId": 2980181,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Room Packages\", \"sub-navigation-item-link\": \"%%strpath%%guest-rooms/room-packages\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 2,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980814,
+            "parentRecordId": 2980181,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Group Block\", \"sub-navigation-item-link\": \"%%strpath%%guest-rooms/group-block\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 3,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980176,
+            "parentRecordId": 2980173,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Amenities\", \"menu-item-link\": \"%%strpath%%amenities\", \"open-url-in-new-tab[]\": [\"\"], \"enable-dropdown[]\": [], \"enable-menu-item-in-left[]\": [\"\"], \"enable-menu-item-in-right[]\": [\"Yes\"], \"menu-overview-img\": \"[{\\\"ResourceID\\\":0,\\\"AssetId\\\":\\\"0216ef74-46b9-49aa-bb59-e63958ee99d1\\\",\\\"ResourceTitle\\\":null,\\\"ResourceFile\\\":\\\"coming-soon-place-holder.jpg\\\",\\\"OriginalImagePath\\\":\\\"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg\\\",\\\"isSpinCarImage\\\":false,\\\"isFromDAM\\\":true,\\\"OriginalImagePathLarge\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\\\",\\\"OriginalImagePathSmall\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\\\",\\\"OriginalImagePathMedium\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\\\",\\\"ThumbNailImagePath\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=100&height=100\\\",\\\"OriginalParentSiteImagePath\\\":null,\\\"OriginalParentSiteImagePathLarge\\\":null,\\\"OriginalParentSiteImagePathSmall\\\":null,\\\"OriginalParentSiteImagePathMedium\\\":null,\\\"DamAsset\\\":{\\\"AssetId\\\":\\\"0216ef74-46b9-49aa-bb59-e63958ee99d1\\\",\\\"FolderPath\\\":null,\\\"AssetName\\\":\\\"coming-soon-place-holder.jpg\\\",\\\"AssetAlias\\\":\\\"coming-soon-place-holder.jpg\\\",\\\"FolderId\\\":52300,\\\"StockImage\\\":false,\\\"ManualMeta\\\":null,\\\"DamAssetInfo\\\":{\\\"OriginalUrl\\\":\\\"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg\\\",\\\"ThumbnailUrl\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=100&height=100\\\",\\\"PreviewUrl\\\":\\\"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=300&height=300\\\",\\\"LargeUrl\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\\\",\\\"MediumUrl\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\\\",\\\"SmallUrl\\\":\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\\\",\\\"ManualMeta\\\":{\\\"Description\\\":\\\"A black background with a square and a white logo\\\",\\\"Title\\\":\\\"Coming-soon-place-holder\\\"}},\\\"ImageTransformations\\\":{\\\"Large\\\":{\\\"width\\\":410,\\\"height\\\":231,\\\"thumbnailDimensions\\\":{\\\"height\\\":100,\\\"width\\\":100}},\\\"Medium\\\":{\\\"width\\\":410,\\\"height\\\":231,\\\"thumbnailDimensions\\\":{\\\"height\\\":100,\\\"width\\\":100}},\\\"Small\\\":{\\\"width\\\":410,\\\"height\\\":231,\\\"thumbnailDimensions\\\":{\\\"height\\\":100,\\\"width\\\":100}}}},\\\"ResourceWidth\\\":410,\\\"ResourceHeight\\\":231,\\\"TabletResourceWidth\\\":410,\\\"TabletResourceHeight\\\":231,\\\"MobileResourceWidth\\\":410,\\\"MobileResourceHeight\\\":231}]\", \"menu-overview-alt\": \"\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 3,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980177,
+            "parentRecordId": 2980173,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Dining\", \"menu-item-link\": \"%%strpath%%dining\", \"open-url-in-new-tab[]\": [\"\"], \"enable-dropdown[]\": [], \"enable-menu-item-in-left[]\": [], \"enable-menu-item-in-right[]\": [\"Yes\"], \"menu-overview-img\": [{\"ResourceID\": 0, \"AssetId\": \"0216ef74-46b9-49aa-bb59-e63958ee99d1\", \"ResourceTitle\": null, \"ResourceFile\": \"coming-soon-place-holder.jpg\", \"OriginalImagePath\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg\", \"isSpinCarImage\": false, \"isFromDAM\": true, \"OriginalImagePathLarge\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"OriginalImagePathSmall\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"OriginalImagePathMedium\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"ThumbNailImagePath\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=100&height=100\", \"OriginalParentSiteImagePath\": null, \"OriginalParentSiteImagePathLarge\": null, \"OriginalParentSiteImagePathSmall\": null, \"OriginalParentSiteImagePathMedium\": null, \"DamAsset\": {\"AssetId\": \"0216ef74-46b9-49aa-bb59-e63958ee99d1\", \"FolderPath\": null, \"AssetName\": \"coming-soon-place-holder.jpg\", \"AssetAlias\": \"coming-soon-place-holder.jpg\", \"FolderId\": 52300, \"StockImage\": false, \"ManualMeta\": null, \"DamAssetInfo\": {\"OriginalUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg\", \"ThumbnailUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=100&height=100\", \"PreviewUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=300&height=300\", \"LargeUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"MediumUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"SmallUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"ManualMeta\": {\"Description\": \"A black background with a square and a white logo\", \"Title\": \"Coming-soon-place-holder\"}}, \"ImageTransformations\": {\"Large\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}, \"Medium\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}, \"Small\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}}}, \"ResourceWidth\": 410, \"ResourceHeight\": 231, \"TabletResourceWidth\": 410, \"TabletResourceHeight\": 231, \"MobileResourceWidth\": 410, \"MobileResourceHeight\": 231}], \"menu-overview-alt\": \"Alt\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 4,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 526435,
+            "recordId": 2980183,
+            "parentRecordId": 2980173,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Explore Ohio\", \"menu-item-link\": \"%%strpath%%explore-ohio\", \"open-url-in-new-tab[]\": [], \"enable-dropdown[]\": [], \"enable-menu-item-in-left[]\": [], \"enable-menu-item-in-right[]\": [\"Yes\"], \"menu-overview-img\": [{\"ResourceID\": 0, \"AssetId\": \"0216ef74-46b9-49aa-bb59-e63958ee99d1\", \"ResourceTitle\": null, \"ResourceFile\": \"coming-soon-place-holder.jpg\", \"OriginalImagePath\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg\", \"isSpinCarImage\": false, \"isFromDAM\": true, \"OriginalImagePathLarge\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"OriginalImagePathSmall\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"OriginalImagePathMedium\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"ThumbNailImagePath\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=100&height=100\", \"OriginalParentSiteImagePath\": null, \"OriginalParentSiteImagePathLarge\": null, \"OriginalParentSiteImagePathSmall\": null, \"OriginalParentSiteImagePathMedium\": null, \"DamAsset\": {\"AssetId\": \"0216ef74-46b9-49aa-bb59-e63958ee99d1\", \"FolderPath\": null, \"AssetName\": \"coming-soon-place-holder.jpg\", \"AssetAlias\": \"coming-soon-place-holder.jpg\", \"FolderId\": 52300, \"StockImage\": false, \"ManualMeta\": null, \"DamAssetInfo\": {\"OriginalUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg\", \"ThumbnailUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=100&height=100\", \"PreviewUrl\": \"https://assets.milestoneinternet.com/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=300&height=300\", \"LargeUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"MediumUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"SmallUrl\": \"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/nationwide-hotel-conference-center/site-images/place-holder/coming-soon-place-holder.jpg?width=410&height=231\", \"ManualMeta\": {\"Description\": \"A black background with a square and a white logo\", \"Title\": \"Coming-soon-place-holder\"}}, \"ImageTransformations\": {\"Large\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}, \"Medium\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}, \"Small\": {\"width\": 410, \"height\": 231, \"thumbnailDimensions\": {\"height\": 100, \"width\": 100}}}}, \"ResourceWidth\": 410, \"ResourceHeight\": 231, \"TabletResourceWidth\": 410, \"TabletResourceHeight\": 231, \"MobileResourceWidth\": 410, \"MobileResourceHeight\": 231}], \"menu-overview-alt\": \"Alt\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 7,
+            "updatedBy": 0
+        }
+    ]
+}
