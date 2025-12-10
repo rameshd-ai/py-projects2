@@ -2494,9 +2494,12 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
         if downloaded_component_id:
             logging.info(f"Starting page-to-record mapping for component ID: {downloaded_component_id}")
             if map_pages_to_records(file_prefix, site_id, downloaded_component_id):
-                # 6. Create saveMiBlockRecords payload after successful mapping
-                logging.info("Creating saveMiBlockRecords payload...")
+                # 6. Create payloads for both matched and unmatched records
+                logging.info("Creating payloads for matched records (update)...")
                 create_save_miblock_records_payload(file_prefix, downloaded_component_id, site_id)
+                
+                logging.info("Creating payloads for unmatched records (create new)...")
+                create_new_records_payload(file_prefix, downloaded_component_id, site_id)
         else:
             logging.warning("Component ID not found for page-to-record mapping. Skipping.")
         
@@ -2872,6 +2875,113 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         return False
 
 
+def create_new_records_payload(file_prefix: str, component_id: int, site_id: int) -> bool:
+    """
+    Creates payloads for creating new records from menu_navigation.json where matchFound=False.
+    """
+    logging.info("========================================================")
+    logging.info("START: Creating New Records Payload (Unmatched Pages)")
+    logging.info("========================================================")
+    
+    try:
+        menu_nav_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_menu_navigation.json")
+        if not os.path.exists(menu_nav_file):
+            logging.error(f"Menu navigation file not found: {menu_nav_file}")
+            return False
+        
+        with open(menu_nav_file, 'r', encoding='utf-8') as f:
+            menu_nav_data = json.load(f)
+        
+        # Read MiBlockComponentRecords.json to get ComponentId mapping
+        records_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id}")
+        records_file = os.path.join(records_folder, "MiBlockComponentRecords.json")
+        
+        main_parent_component_id = component_id  # Level 1
+        child_component_id = component_id  # Level 2, default to main if not found
+        
+        if os.path.exists(records_file):
+            with open(records_file, 'r', encoding='utf-8') as f:
+                records_data = json.load(f)
+            
+            component_records = records_data.get("componentRecords", [])
+            for record in component_records:
+                rec_main_parent_id = record.get("MainParentComponentId")
+                rec_component_id = record.get("ComponentId")
+                
+                # Find child ComponentId (different from MainParentComponentId)
+                if rec_main_parent_id and rec_component_id and rec_component_id != rec_main_parent_id:
+                    main_parent_component_id = rec_main_parent_id  # Level 1
+                    child_component_id = rec_component_id  # Level 2
+                    break
+            
+            logging.info(f"Level 1 ComponentId: {main_parent_component_id}, Level 2 ComponentId: {child_component_id}")
+        else:
+            logging.warning(f"Records file not found: {records_file}. Using main component_id for all levels.")
+        
+        new_records = []
+        
+        def collect_unmatched(page_node, parent_id=0, display_order=0):
+            if not page_node.get("matchFound", False):
+                page_name = page_node.get("page_name", "")
+                level = page_node.get("level", 0)
+                
+                # Level 1 uses main parent, Level 2+ uses child component
+                if level == 1:
+                    record_component_id = main_parent_component_id
+                else:
+                    record_component_id = child_component_id
+                
+                record_data = {
+                    f"{page_name.lower().replace(' ', '-')}-name": page_name,
+                    f"{page_name.lower().replace(' ', '-')}-link": f"/{page_name.lower().replace(' ', '-')}"
+                }
+                
+                new_record = {
+                    "componentId": record_component_id,
+                    "recordId": 0,
+                    "parentRecordId": parent_id,
+                    "recordDataJson": json.dumps(record_data),
+                    "status": True,
+                    "tags": [],
+                    "displayOrder": display_order,
+                    "updatedBy": 0,
+                    "page_name": page_name,
+                    "level": level
+                }
+                new_records.append(new_record)
+            
+            for idx, sub_page in enumerate(page_node.get("sub_pages", [])):
+                collect_unmatched(sub_page, 0, idx)
+        
+        for idx, page in enumerate(menu_nav_data.get("pages", [])):
+            collect_unmatched(page, 0, idx)
+        
+        if new_records:
+            output_filename = f"{file_prefix}_new_records_payload.json"
+            output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+            
+            payload = {
+                "componentId": component_id,
+                "siteId": site_id,
+                "total_records": len(new_records),
+                "records": new_records
+            }
+            
+            with open(output_filepath, 'w', encoding='utf-8') as f:
+                json.dump(payload, f, indent=4, ensure_ascii=False)
+            
+            logging.info(f"✅ Created new records payload: {output_filename} ({len(new_records)} records)")
+            return True
+        else:
+            logging.info("No unmatched records to create")
+            return False
+    
+    except Exception as e:
+        logging.error(f"Error creating new records payload: {e}")
+        logging.exception("Full traceback:")
+        return False
+
+
 def create_save_miblock_records_payload(file_prefix: str, component_id: int, site_id: int) -> bool:
     """
     Creates payloads for saveMiBlockRecords API from matched_records.json.
@@ -2886,7 +2996,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         bool: True if successful, False otherwise
     """
     logging.info("========================================================")
-    logging.info("START: Creating SaveMiBlockRecords Payload")
+    logging.info("START: Creating SaveMiBlockRecords Payload (Matched)")
     logging.info("========================================================")
     
     try:
@@ -2894,6 +3004,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
         if not os.path.exists(matched_records_file):
             logging.error(f"Matched records file not found: {matched_records_file}")
+            logging.info("Skipping matched records payload creation")
             return False
         
         with open(matched_records_file, 'r', encoding='utf-8') as f:
@@ -2953,9 +3064,9 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         with open(output_filepath, 'w', encoding='utf-8') as f:
             json.dump(final_payload, f, indent=4, ensure_ascii=False)
         
-        logging.info(f"✅ Created payload file: {output_filename}")
-        logging.info(f"   Total records in payload: {len(api_payloads)}")
-        logging.info("END: Creating SaveMiBlockRecords Payload Complete")
+        logging.info(f"✅ Created matched records payload: {output_filename}")
+        logging.info(f"   Total matched records in payload: {len(api_payloads)}")
+        logging.info("END: Creating SaveMiBlockRecords Payload (Matched) Complete")
         logging.info("========================================================")
         return True
         

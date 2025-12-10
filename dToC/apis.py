@@ -823,6 +823,7 @@ def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1
     logger.info(f"Starting V-Component fetch with page size: {page_size}")
 
     while records_fetched < total_records:
+        response = None  # Initialize to avoid UnboundLocalError in exception handlers
         try:
             # --- 2. Update Payload for Current Page ---
             payload = BASE_PAYLOAD.copy()
