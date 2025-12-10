@@ -4,10 +4,10 @@
     "total_records": 27,
     "records": [
         {
-            "componentId": 542061,
+            "componentId": 542062,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"our-property-name\": \"Our Property\", \"our-property-link\": \"%%strpath%%our-property\"}",
+            "parentRecordId": 0,
+            "recordDataJson": "{\"menu-item-name\": \"Our Property\", \"menu-item-link\": \"%%strpath%%our-property\"}",
             "status": true,
             "tags": [],
             "displayOrder": 0,
@@ -16,10 +16,10 @@
             "level": 1
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"our-story-name\": \"Our Property - Our Story\", \"our-story-link\": \"%%strpath%%our-property/our-story\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Our Story\", \"sub-navigation-item-link\": \"%%strpath%%our-property/our-story\"}",
             "status": true,
             "tags": [],
             "displayOrder": 0,
@@ -28,10 +28,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"gallery-name\": \"Our Property - Gallery\", \"gallery-link\": \"%%strpath%%our-property/gallery\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Gallery\", \"sub-navigation-item-link\": \"%%strpath%%our-property/gallery\"}",
             "status": true,
             "tags": [],
             "displayOrder": 1,
@@ -40,10 +40,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"location-name\": \"Our Property - Location\", \"location-link\": \"%%strpath%%our-property/location\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Location\", \"sub-navigation-item-link\": \"%%strpath%%our-property/location\"}",
             "status": true,
             "tags": [],
             "displayOrder": 2,
@@ -52,10 +52,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"contact-name\": \"Our Property - Contact\", \"contact-link\": \"%%strpath%%our-property/contact\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Contact\", \"sub-navigation-item-link\": \"%%strpath%%our-property/contact\"}",
             "status": true,
             "tags": [],
             "displayOrder": 3,
@@ -64,10 +64,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"property-map-name\": \"Our Property - Property Map\", \"property-map-link\": \"%%strpath%%our-property/property-map\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Property Map\", \"sub-navigation-item-link\": \"%%strpath%%our-property/property-map\"}",
             "status": true,
             "tags": [],
             "displayOrder": 4,
@@ -76,10 +76,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"reviews-name\": \"Our Property - Reviews\", \"reviews-link\": \"%%strpath%%our-property/reviews\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Reviews\", \"sub-navigation-item-link\": \"%%strpath%%our-property/reviews\"}",
             "status": true,
             "tags": [],
             "displayOrder": 5,
@@ -88,10 +88,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"blogs-name\": \"Our Property - Blogs\", \"blogs-link\": \"%%strpath%%our-property/blogs\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Blogs\", \"sub-navigation-item-link\": \"%%strpath%%our-property/blogs\"}",
             "status": true,
             "tags": [],
             "displayOrder": 6,
@@ -100,10 +100,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"faqs-name\": \"Our Property - FAQs\", \"faqs-link\": \"%%strpath%%our-property/faqs\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"FAQs\", \"sub-navigation-item-link\": \"%%strpath%%our-property/faqs\"}",
             "status": true,
             "tags": [],
             "displayOrder": 7,
@@ -112,10 +112,10 @@
             "level": 2
         },
         {
-            "componentId": 542061,
+            "componentId": 542062,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"weddings-name\": \"Weddings\", \"weddings-link\": \"%%strpath%%weddings\"}",
+            "parentRecordId": 0,
+            "recordDataJson": "{\"menu-item-name\": \"Weddings\", \"menu-item-link\": \"%%strpath%%weddings\"}",
             "status": true,
             "tags": [],
             "displayOrder": 1,
@@ -124,10 +124,10 @@
             "level": 1
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"our-spaces-name\": \"Weddings - Our Spaces\", \"our-spaces-link\": \"%%strpath%%weddings/our-spaces\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Our Spaces\", \"sub-navigation-item-link\": \"%%strpath%%weddings/our-spaces\"}",
             "status": true,
             "tags": [],
             "displayOrder": 0,
@@ -136,10 +136,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"wedding-celebrations-name\": \"Weddings - Wedding Celebrations\", \"wedding-celebrations-link\": \"%%strpath%%weddings/wedding-celebrations\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Wedding Celebrations\", \"sub-navigation-item-link\": \"%%strpath%%weddings/wedding-celebrations\"}",
             "status": true,
             "tags": [],
             "displayOrder": 1,
@@ -148,10 +148,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"wedding-packages-name\": \"Weddings - Wedding Packages\", \"wedding-packages-link\": \"%%strpath%%weddings/wedding-packages\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Wedding Packages\", \"sub-navigation-item-link\": \"%%strpath%%weddings/wedding-packages\"}",
             "status": true,
             "tags": [],
             "displayOrder": 2,
@@ -160,10 +160,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"meet-the-team-name\": \"Weddings - Meet the Team\", \"meet-the-team-link\": \"%%strpath%%weddings/meet-the-team\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Meet the Team\", \"sub-navigation-item-link\": \"%%strpath%%weddings/meet-the-team\"}",
             "status": true,
             "tags": [],
             "displayOrder": 3,
@@ -172,10 +172,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"plan-your-wedding-name\": \"Weddings - Plan your Wedding\", \"plan-your-wedding-link\": \"%%strpath%%weddings/plan-your-wedding\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Plan your Wedding\", \"sub-navigation-item-link\": \"%%strpath%%weddings/plan-your-wedding\"}",
             "status": true,
             "tags": [],
             "displayOrder": 4,
@@ -184,10 +184,10 @@
             "level": 2
         },
         {
-            "componentId": 542061,
+            "componentId": 542062,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"meetings-and-events-name\": \"Meetings and Events\", \"meetings-and-events-link\": \"%%strpath%%meetings-and-events\"}",
+            "parentRecordId": 0,
+            "recordDataJson": "{\"menu-item-name\": \"Meetings and Events\", \"menu-item-link\": \"%%strpath%%meetings-and-events\"}",
             "status": true,
             "tags": [],
             "displayOrder": 2,
@@ -196,10 +196,10 @@
             "level": 1
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"event-and-expo-spaces-name\": \"Meetings and Events - Event and Expo Spaces\", \"event-and-expo-spaces-link\": \"%%strpath%%meetings-and-events/event-and-expo-spaces\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Event and Expo Spaces\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/event-and-expo-spaces\"}",
             "status": true,
             "tags": [],
             "displayOrder": 0,
@@ -208,10 +208,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"meeting-services-name\": \"Meetings and Events - Meeting Services\", \"meeting-services-link\": \"%%strpath%%meetings-and-events/meeting-services\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Meeting Services\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/meeting-services\"}",
             "status": true,
             "tags": [],
             "displayOrder": 1,
@@ -220,10 +220,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"special-occasions-name\": \"Meetings and Events - Special Occasions\", \"special-occasions-link\": \"%%strpath%%meetings-and-events/special-occasions\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Special Occasions\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/special-occasions\"}",
             "status": true,
             "tags": [],
             "displayOrder": 2,
@@ -232,10 +232,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"meeting-packages-name\": \"Meetings and Events - Meeting Packages\", \"meeting-packages-link\": \"%%strpath%%meetings-and-events/meeting-packages\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Meeting Packages\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/meeting-packages\"}",
             "status": true,
             "tags": [],
             "displayOrder": 3,
@@ -244,10 +244,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"plan-your-meeting-name\": \"Meetings and Events - Plan your Meeting\", \"plan-your-meeting-link\": \"%%strpath%%meetings-and-events/plan-your-meeting\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Plan your Meeting\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/plan-your-meeting\"}",
             "status": true,
             "tags": [],
             "displayOrder": 4,
@@ -256,10 +256,10 @@
             "level": 2
         },
         {
-            "componentId": 542061,
+            "componentId": 542062,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"guest-rooms-name\": \"Guest Rooms\", \"guest-rooms-link\": \"%%strpath%%guest-rooms\"}",
+            "parentRecordId": 0,
+            "recordDataJson": "{\"menu-item-name\": \"Guest Rooms\", \"menu-item-link\": \"%%strpath%%guest-rooms\"}",
             "status": true,
             "tags": [],
             "displayOrder": 3,
@@ -268,10 +268,10 @@
             "level": 1
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"room-packages-name\": \"Guest Rooms - Room Packages\", \"room-packages-link\": \"%%strpath%%guest-rooms/room-packages\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Room Packages\", \"sub-navigation-item-link\": \"%%strpath%%guest-rooms/room-packages\"}",
             "status": true,
             "tags": [],
             "displayOrder": 0,
@@ -280,10 +280,10 @@
             "level": 2
         },
         {
-            "componentId": 542062,
+            "componentId": 542063,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"group-block-name\": \"Guest Rooms - Group Block\", \"group-block-link\": \"%%strpath%%guest-rooms/group-block\"}",
+            "parentRecordId": 3074758,
+            "recordDataJson": "{\"sub-navigation-item-name\": \"Group Block\", \"sub-navigation-item-link\": \"%%strpath%%guest-rooms/group-block\"}",
             "status": true,
             "tags": [],
             "displayOrder": 1,
@@ -292,10 +292,10 @@
             "level": 2
         },
         {
-            "componentId": 542061,
+            "componentId": 542062,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"amenities-name\": \"Amenities\", \"amenities-link\": \"%%strpath%%amenities\"}",
+            "parentRecordId": 0,
+            "recordDataJson": "{\"menu-item-name\": \"Amenities\", \"menu-item-link\": \"%%strpath%%amenities\"}",
             "status": true,
             "tags": [],
             "displayOrder": 4,
@@ -304,10 +304,10 @@
             "level": 1
         },
         {
-            "componentId": 542061,
+            "componentId": 542062,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"dining-name\": \"Dining\", \"dining-link\": \"%%strpath%%dining\"}",
+            "parentRecordId": 0,
+            "recordDataJson": "{\"menu-item-name\": \"Dining\", \"menu-item-link\": \"%%strpath%%dining\"}",
             "status": true,
             "tags": [],
             "displayOrder": 5,
@@ -316,10 +316,10 @@
             "level": 1
         },
         {
-            "componentId": 542061,
+            "componentId": 542062,
             "recordId": 0,
-            "parentRecordId": 3074755,
-            "recordDataJson": "{\"explore-ohio-name\": \"Explore Ohio\", \"explore-ohio-link\": \"%%strpath%%explore-ohio\"}",
+            "parentRecordId": 0,
+            "recordDataJson": "{\"menu-item-name\": \"Explore Ohio\", \"menu-item-link\": \"%%strpath%%explore-ohio\"}",
             "status": true,
             "tags": [],
             "displayOrder": 6,

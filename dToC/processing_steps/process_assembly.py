@@ -2892,32 +2892,62 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         with open(menu_nav_file, 'r', encoding='utf-8') as f:
             menu_nav_data = json.load(f)
         
+        # Get menuLevel to adjust component mapping
+        menu_level = menu_nav_data.get("menuLevel", 1)
+        logging.info(f"Menu Level from navigation: {menu_level}")
+        
         # Read MiBlockComponentRecords.json to get ComponentId mapping
         records_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id}")
         records_file = os.path.join(records_folder, "MiBlockComponentRecords.json")
         
-        main_parent_component_id = component_id  # Level 1
-        child_component_id = component_id  # Level 2, default to main if not found
-        parent_record_id_for_level_2 = 0  # ParentId for level 2 records
+        main_parent_component_id = component_id
+        level_1_component_id = component_id
+        level_2_component_id = component_id
+        parent_record_id_for_level_1 = 0
+        parent_record_id_for_level_2 = 0
         
         if os.path.exists(records_file):
             with open(records_file, 'r', encoding='utf-8') as f:
                 records_data = json.load(f)
             
             component_records = records_data.get("componentRecords", [])
+            
+            # Find level 0 record (parent container) and its ParentId
             for record in component_records:
-                rec_main_parent_id = record.get("MainParentComponentId")
+                rec_level = record.get("level")
                 rec_component_id = record.get("ComponentId")
                 rec_parent_id = record.get("ParentId")
                 
-                # Find child ComponentId (different from MainParentComponentId)
-                if rec_main_parent_id and rec_component_id and rec_component_id != rec_main_parent_id:
-                    main_parent_component_id = rec_main_parent_id  # Level 1
-                    child_component_id = rec_component_id  # Level 2
-                    parent_record_id_for_level_2 = rec_parent_id if rec_parent_id else 0  # ParentId for level 2
+                if rec_level == 0 and rec_component_id:
+                    main_parent_component_id = rec_component_id
+                    parent_record_id_for_level_1 = rec_parent_id if rec_parent_id else 0
                     break
             
-            logging.info(f"Level 1 ComponentId: {main_parent_component_id}, Level 2 ComponentId: {child_component_id}, Level 2 ParentId: {parent_record_id_for_level_2}")
+            # Find first child component (for level 1 menu items)
+            child_components = set()
+            for record in component_records:
+                rec_component_id = record.get("ComponentId")
+                rec_main_parent = record.get("MainParentComponentId")
+                
+                if rec_component_id and rec_main_parent and rec_component_id != rec_main_parent:
+                    child_components.add(rec_component_id)
+            
+            child_components_list = sorted(list(child_components))
+            if len(child_components_list) >= 1:
+                level_1_component_id = child_components_list[0]  # First child for level 1
+            if len(child_components_list) >= 2:
+                level_2_component_id = child_components_list[1]  # Second child for level 2
+            elif len(child_components_list) >= 1:
+                level_2_component_id = child_components_list[0]  # Use same if only one child
+            
+            # Get ParentId for level 2 from any level 2 record
+            for record in component_records:
+                if record.get("ComponentId") == level_2_component_id:
+                    parent_record_id_for_level_2 = record.get("ParentId", 0)
+                    break
+            
+            logging.info(f"Main Parent: {main_parent_component_id}, Level 1 ComponentId: {level_1_component_id}, Level 2 ComponentId: {level_2_component_id}")
+            logging.info(f"Level 1 ParentId: {parent_record_id_for_level_1}, Level 2 ParentId: {parent_record_id_for_level_2}")
         else:
             logging.warning(f"Records file not found: {records_file}. Using main component_id for all levels.")
         
@@ -2929,7 +2959,9 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             with open(config_file, 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
             
-            definitions = config_data.get("definition", [])
+            definitions = config_data.get("componentDefinition", [])
+            logging.info(f"Found {len(definitions)} componentDefinitions in config")
+            
             for definition in definitions:
                 comp_id = definition.get("ComponentId")
                 property_alias = definition.get("PropertyAliasName", "")
@@ -2939,12 +2971,16 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                         component_property_aliases[comp_id] = {}
                     
                     # Look for properties ending with -name or -link
-                    if property_alias.endswith("-item-name") or property_alias.endswith("-navigation-item-name"):
+                    # Match any property ending with -name (menu-item-name, sub-navigation-item-name, etc.)
+                    if property_alias.endswith("-name"):
                         component_property_aliases[comp_id]["name_key"] = property_alias
-                    elif property_alias.endswith("-item-link") or property_alias.endswith("-navigation-item-link"):
+                        logging.debug(f"Found name key for ComponentId {comp_id}: {property_alias}")
+                    # Match any property ending with -link (menu-item-link, sub-navigation-item-link, etc.)
+                    elif property_alias.endswith("-link"):
                         component_property_aliases[comp_id]["link_key"] = property_alias
+                        logging.debug(f"Found link key for ComponentId {comp_id}: {property_alias}")
             
-            logging.info(f"Property aliases mapping: {component_property_aliases}")
+            logging.info(f"Property aliases mapping by ComponentId: {component_property_aliases}")
         else:
             logging.warning(f"Config file not found: {config_file}. Using default property names.")
         
@@ -2972,24 +3008,48 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 page_name = page_node.get("page_name", "")
                 level = page_node.get("level", 0)
                 
-                # Level 1 uses main parent, Level 2+ uses child component
-                if level == 1:
-                    record_component_id = main_parent_component_id
-                    # Level 1 pages use the standard parent record ID from existing records
-                    parent_record_id = parent_record_id_for_level_2
+                # Determine ComponentId and ParentId based on menuLevel and page level
+                if menu_level == 0:
+                    # menuLevel=0: level 0->main_parent, level 1->level_1_component, level 2->level_2_component
+                    if level == 0:
+                        record_component_id = main_parent_component_id
+                        parent_record_id = 0
+                    elif level == 1:
+                        record_component_id = level_1_component_id
+                        parent_record_id = parent_record_id_for_level_1
+                    else:  # level 2+
+                        record_component_id = level_2_component_id
+                        parent_record_id = parent_record_id_for_level_2 if not (parent_page_name and parent_page_name in page_name_to_record_id) else page_name_to_record_id[parent_page_name]
+                elif menu_level == 1:
+                    # menuLevel=1: level 1->level_1_component, level 2->level_2_component
+                    if level == 1:
+                        record_component_id = level_1_component_id
+                        parent_record_id = parent_record_id_for_level_1
+                    else:  # level 2+
+                        record_component_id = level_2_component_id
+                        parent_record_id = parent_record_id_for_level_2 if not (parent_page_name and parent_page_name in page_name_to_record_id) else page_name_to_record_id[parent_page_name]
                 else:
-                    record_component_id = child_component_id
-                    # Level 2+ pages: check if parent page has a matched record
-                    if parent_page_name and parent_page_name in page_name_to_record_id:
-                        parent_record_id = page_name_to_record_id[parent_page_name]
-                    else:
-                        # If parent not matched, use standard parent ID
-                        parent_record_id = parent_record_id_for_level_2
+                    # Default fallback
+                    record_component_id = level_1_component_id if level <= 1 else level_2_component_id
+                    parent_record_id = parent_record_id_for_level_1 if level <= 1 else parent_record_id_for_level_2
                 
                 # Get property aliases for this component
                 property_aliases = component_property_aliases.get(record_component_id, {})
-                name_key = property_aliases.get("name_key", f"{page_name.lower().replace(' ', '-')}-name")
-                link_key = property_aliases.get("link_key", f"{page_name.lower().replace(' ', '-')}-link")
+                
+                # Debug logging
+                if not property_aliases:
+                    logging.warning(f"No property aliases found for ComponentId {record_component_id}. Available ComponentIds: {list(component_property_aliases.keys())}")
+                
+                # Get the actual property alias names from config, with fallback
+                if "name_key" in property_aliases and "link_key" in property_aliases:
+                    name_key = property_aliases["name_key"]
+                    link_key = property_aliases["link_key"]
+                    logging.debug(f"Using config keys for ComponentId {record_component_id}: name='{name_key}', link='{link_key}'")
+                else:
+                    # Fallback: use default naming pattern
+                    name_key = f"{page_name.lower().replace(' ', '-')}-name"
+                    link_key = f"{page_name.lower().replace(' ', '-')}-link"
+                    logging.warning(f"Using fallback keys for ComponentId {record_component_id}: name='{name_key}', link='{link_key}'")
                 
                 # Format the name value - just the page name for all levels
                 name_value = page_name
