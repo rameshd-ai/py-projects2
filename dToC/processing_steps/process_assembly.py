@@ -2898,6 +2898,7 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         
         main_parent_component_id = component_id  # Level 1
         child_component_id = component_id  # Level 2, default to main if not found
+        parent_record_id_for_level_2 = 0  # ParentId for level 2 records
         
         if os.path.exists(records_file):
             with open(records_file, 'r', encoding='utf-8') as f:
@@ -2907,20 +2908,39 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             for record in component_records:
                 rec_main_parent_id = record.get("MainParentComponentId")
                 rec_component_id = record.get("ComponentId")
+                rec_parent_id = record.get("ParentId")
                 
                 # Find child ComponentId (different from MainParentComponentId)
                 if rec_main_parent_id and rec_component_id and rec_component_id != rec_main_parent_id:
                     main_parent_component_id = rec_main_parent_id  # Level 1
                     child_component_id = rec_component_id  # Level 2
+                    parent_record_id_for_level_2 = rec_parent_id if rec_parent_id else 0  # ParentId for level 2
                     break
             
-            logging.info(f"Level 1 ComponentId: {main_parent_component_id}, Level 2 ComponentId: {child_component_id}")
+            logging.info(f"Level 1 ComponentId: {main_parent_component_id}, Level 2 ComponentId: {child_component_id}, Level 2 ParentId: {parent_record_id_for_level_2}")
         else:
             logging.warning(f"Records file not found: {records_file}. Using main component_id for all levels.")
         
+        # Read matched_records.json to get page_name -> record Id mapping
+        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
+        page_name_to_record_id = {}
+        
+        if os.path.exists(matched_records_file):
+            with open(matched_records_file, 'r', encoding='utf-8') as f:
+                matched_data = json.load(f)
+            
+            matched_records = matched_data.get("matched_records", [])
+            for record in matched_records:
+                matched_page_name = record.get("matched_page_name", "")
+                record_id = record.get("Id")
+                if matched_page_name and record_id:
+                    page_name_to_record_id[matched_page_name] = record_id
+            
+            logging.info(f"Found {len(page_name_to_record_id)} matched pages for parent record lookup")
+        
         new_records = []
         
-        def collect_unmatched(page_node, parent_id=0, display_order=0):
+        def collect_unmatched(page_node, parent_page_name=None, display_order=0):
             if not page_node.get("matchFound", False):
                 page_name = page_node.get("page_name", "")
                 level = page_node.get("level", 0)
@@ -2928,8 +2948,16 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 # Level 1 uses main parent, Level 2+ uses child component
                 if level == 1:
                     record_component_id = main_parent_component_id
+                    # Level 1 pages use the standard parent record ID from existing records
+                    parent_record_id = parent_record_id_for_level_2
                 else:
                     record_component_id = child_component_id
+                    # Level 2+ pages: check if parent page has a matched record
+                    if parent_page_name and parent_page_name in page_name_to_record_id:
+                        parent_record_id = page_name_to_record_id[parent_page_name]
+                    else:
+                        # If parent not matched, use standard parent ID
+                        parent_record_id = parent_record_id_for_level_2
                 
                 record_data = {
                     f"{page_name.lower().replace(' ', '-')}-name": page_name,
@@ -2939,7 +2967,7 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 new_record = {
                     "componentId": record_component_id,
                     "recordId": 0,
-                    "parentRecordId": parent_id,
+                    "parentRecordId": parent_record_id,
                     "recordDataJson": json.dumps(record_data),
                     "status": True,
                     "tags": [],
@@ -2950,11 +2978,13 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 }
                 new_records.append(new_record)
             
+            # Process sub_pages with current page name as parent
+            current_page_name = page_node.get("page_name", "")
             for idx, sub_page in enumerate(page_node.get("sub_pages", [])):
-                collect_unmatched(sub_page, 0, idx)
+                collect_unmatched(sub_page, current_page_name, idx)
         
         for idx, page in enumerate(menu_nav_data.get("pages", [])):
-            collect_unmatched(page, 0, idx)
+            collect_unmatched(page, None, idx)
         
         if new_records:
             output_filename = f"{file_prefix}_new_records_payload.json"
