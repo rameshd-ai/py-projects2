@@ -2499,7 +2499,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                 create_save_miblock_records_payload(file_prefix, downloaded_component_id, site_id)
                 
                 logging.info("Creating payloads for unmatched records (create new)...")
-                create_new_records_payload(file_prefix, downloaded_component_id, site_id)
+                create_new_records_payload(file_prefix, downloaded_component_id, site_id, api_base_url, api_headers)
         else:
             logging.warning("Component ID not found for page-to-record mapping. Skipping.")
         
@@ -2875,7 +2875,94 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         return False
 
 
-def create_new_records_payload(file_prefix: str, component_id: int, site_id: int) -> bool:
+def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str) -> Dict[str, int]:
+    """
+    Calls the SaveMiblockRecord API for each record in order.
+    Processes level 1 records first, then level 2.
+    
+    Args:
+        api_base_url: Base URL for the API
+        api_headers: Headers for authentication
+        records: List of record payloads to save
+        file_prefix: File prefix for saving response
+        
+    Returns:
+        dict: Mapping of page_name -> new_record_id
+    """
+    logging.info(f"Calling API to save {len(records)} records...")
+    
+    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
+    
+    saved_records = {}  # Store new record IDs: page_name -> new_id
+    api_responses = []  # Store full API responses
+    
+    for idx, record in enumerate(records):
+        record_level = record.get("level", 0)
+        page_name = record.get("page_name", f"Record {idx}")
+        
+        # Remove debug fields before API call
+        api_record = {
+            "componentId": record["componentId"],
+            "recordId": record["recordId"],
+            "parentRecordId": record["parentRecordId"],
+            "recordDataJson": record["recordDataJson"],
+            "status": record["status"],
+            "tags": record["tags"],
+            "displayOrder": record["displayOrder"],
+            "updatedBy": record["updatedBy"]
+        }
+        
+        try:
+            logging.info(f"  Saving record {idx+1}/{len(records)}: '{page_name}' (level {record_level})")
+            response = requests.post(api_url, headers=api_headers, json=api_record, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            new_record_id = result.get("result")
+            
+            if new_record_id:
+                saved_records[page_name] = new_record_id
+                
+                # Store API response with additional context
+                api_responses.append({
+                    "page_name": page_name,
+                    "level": record_level,
+                    "old_recordId": record["recordId"],
+                    "new_recordId": new_record_id,
+                    "componentId": record["componentId"],
+                    "api_response": result
+                })
+                
+                logging.info(f"    ✅ Saved successfully. New Record ID: {new_record_id}")
+            else:
+                logging.error(f"    ❌ API response missing 'result': {result}")
+                return saved_records
+                
+        except Exception as e:
+            logging.error(f"    ❌ Failed to save record '{page_name}': {e}")
+            return saved_records
+    
+    # Save API responses to file
+    response_filename = f"{file_prefix}_new_records_api_response.json"
+    response_filepath = os.path.join(UPLOAD_FOLDER, response_filename)
+    
+    response_data = {
+        "total_saved": len(saved_records),
+        "saved_records_map": saved_records,
+        "api_responses": api_responses
+    }
+    
+    with open(response_filepath, 'w', encoding='utf-8') as f:
+        json.dump(response_data, f, indent=4, ensure_ascii=False)
+    
+    logging.info(f"✅ Successfully saved all {len(records)} records to CMS")
+    logging.info(f"   New Record IDs: {saved_records}")
+    logging.info(f"   API responses saved to: {response_filename}")
+    
+    return saved_records
+
+
+def create_new_records_payload(file_prefix: str, component_id: int, site_id: int, api_base_url: str = None, api_headers: Dict[str, str] = None) -> bool:
     """
     Creates payloads for creating new records from menu_navigation.json where matchFound=False.
     """
@@ -2903,8 +2990,8 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         main_parent_component_id = component_id
         level_1_component_id = component_id
         level_2_component_id = component_id
-        parent_record_id_for_level_1 = 0
-        parent_record_id_for_level_2 = 0
+        parent_record_id_for_level_1 = 0  # Id of level 0 record
+        parent_record_id_for_level_2 = 0  # Id of level 1 record
         
         if os.path.exists(records_file):
             with open(records_file, 'r', encoding='utf-8') as f:
@@ -2912,18 +2999,29 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             
             component_records = records_data.get("componentRecords", [])
             
-            # Find level 0 record (parent container) and its ParentId
+            # Find the ORIGINAL level 0 record (ComponentId=542061, ParentId=0)
+            # Don't rely on computed level field, use ComponentId and ParentId
+            level_0_found = False
             for record in component_records:
-                rec_level = record.get("level")
                 rec_component_id = record.get("ComponentId")
                 rec_parent_id = record.get("ParentId")
+                rec_id = record.get("Id")
                 
-                if rec_level == 0 and rec_component_id:
+                # The container record has ComponentId=542061 and ParentId=0
+                if rec_component_id == component_id and rec_parent_id == 0:
                     main_parent_component_id = rec_component_id
-                    parent_record_id_for_level_1 = rec_parent_id if rec_parent_id else 0
+                    parent_record_id_for_level_1 = rec_id if rec_id else 0
+                    level_0_found = True
+                    logging.info(f"Found level 0 container record: Id={rec_id}, ComponentId={rec_component_id}")
                     break
             
-            # Find first child component (for level 1 menu items)
+            if not level_0_found:
+                logging.warning(f"No level 0 record found (ComponentId={component_id}, ParentId=0)")
+            
+            # Level 1 should use the main parent ComponentId (542061)
+            level_1_component_id = main_parent_component_id
+            
+            # Find child components for level 2
             child_components = set()
             for record in component_records:
                 rec_component_id = record.get("ComponentId")
@@ -2934,20 +3032,19 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             
             child_components_list = sorted(list(child_components))
             if len(child_components_list) >= 1:
-                level_1_component_id = child_components_list[0]  # First child for level 1
-            if len(child_components_list) >= 2:
-                level_2_component_id = child_components_list[1]  # Second child for level 2
-            elif len(child_components_list) >= 1:
-                level_2_component_id = child_components_list[0]  # Use same if only one child
+                level_2_component_id = child_components_list[0]  # First child for level 2
+            else:
+                level_2_component_id = main_parent_component_id  # Fallback
             
-            # Get ParentId for level 2 from any level 2 record
+            # Get ParentId for level 2 from any record with level_2_component_id
             for record in component_records:
                 if record.get("ComponentId") == level_2_component_id:
                     parent_record_id_for_level_2 = record.get("ParentId", 0)
                     break
             
-            logging.info(f"Main Parent: {main_parent_component_id}, Level 1 ComponentId: {level_1_component_id}, Level 2 ComponentId: {level_2_component_id}")
-            logging.info(f"Level 1 ParentId: {parent_record_id_for_level_1}, Level 2 ParentId: {parent_record_id_for_level_2}")
+            logging.info(f"Level 0 (Container): ComponentId={main_parent_component_id}, RecordId={parent_record_id_for_level_1}")
+            logging.info(f"Level 1: ComponentId={level_1_component_id}, ParentId={parent_record_id_for_level_1}")
+            logging.info(f"Level 2: ComponentId={level_2_component_id}, ParentId={parent_record_id_for_level_2}")
         else:
             logging.warning(f"Records file not found: {records_file}. Using main component_id for all levels.")
         
@@ -3003,35 +3100,43 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         
         new_records = []
         
-        def collect_unmatched(page_node, parent_page_name=None, display_order=0):
-            if not page_node.get("matchFound", False):
-                page_name = page_node.get("page_name", "")
-                level = page_node.get("level", 0)
+        def collect_unmatched(page_node, parent_page_name=None, display_order=0, parent_record_id_override=None):
+            page_name = page_node.get("page_name", "")
+            level = page_node.get("level", 0)
+            is_matched = page_node.get("matchFound", False)
+            
+            if not is_matched:
                 
-                # Determine ComponentId and ParentId based on menuLevel and page level
-                if menu_level == 0:
-                    # menuLevel=0: level 0->main_parent, level 1->level_1_component, level 2->level_2_component
-                    if level == 0:
-                        record_component_id = main_parent_component_id
-                        parent_record_id = 0
-                    elif level == 1:
-                        record_component_id = level_1_component_id
-                        parent_record_id = parent_record_id_for_level_1
-                    else:  # level 2+
-                        record_component_id = level_2_component_id
-                        parent_record_id = parent_record_id_for_level_2 if not (parent_page_name and parent_page_name in page_name_to_record_id) else page_name_to_record_id[parent_page_name]
-                elif menu_level == 1:
-                    # menuLevel=1: level 1->level_1_component, level 2->level_2_component
-                    if level == 1:
-                        record_component_id = level_1_component_id
-                        parent_record_id = parent_record_id_for_level_1
-                    else:  # level 2+
-                        record_component_id = level_2_component_id
-                        parent_record_id = parent_record_id_for_level_2 if not (parent_page_name and parent_page_name in page_name_to_record_id) else page_name_to_record_id[parent_page_name]
+                # Use override if provided (for sub-pages of matched parents)
+                if parent_record_id_override is not None:
+                    parent_record_id = parent_record_id_override
+                    # Level 2 uses child component
+                    record_component_id = level_2_component_id
                 else:
-                    # Default fallback
-                    record_component_id = level_1_component_id if level <= 1 else level_2_component_id
-                    parent_record_id = parent_record_id_for_level_1 if level <= 1 else parent_record_id_for_level_2
+                    # Determine ComponentId and ParentId based on menuLevel and page level
+                    if menu_level == 0:
+                        # menuLevel=0: level 0->main_parent, level 1->level_1_component, level 2->level_2_component
+                        if level == 0:
+                            record_component_id = main_parent_component_id
+                            parent_record_id = 0
+                        elif level == 1:
+                            record_component_id = level_1_component_id
+                            parent_record_id = parent_record_id_for_level_1
+                        else:  # level 2+
+                            record_component_id = level_2_component_id
+                            parent_record_id = parent_record_id_for_level_2 if not (parent_page_name and parent_page_name in page_name_to_record_id) else page_name_to_record_id[parent_page_name]
+                    elif menu_level == 1:
+                        # menuLevel=1: level 1->level_1_component, level 2->level_2_component
+                        if level == 1:
+                            record_component_id = level_1_component_id
+                            parent_record_id = parent_record_id_for_level_1
+                        else:  # level 2+
+                            record_component_id = level_2_component_id
+                            parent_record_id = parent_record_id_for_level_2 if not (parent_page_name and parent_page_name in page_name_to_record_id) else page_name_to_record_id[parent_page_name]
+                    else:
+                        # Default fallback
+                        record_component_id = level_1_component_id if level <= 1 else level_2_component_id
+                        parent_record_id = parent_record_id_for_level_1 if level <= 1 else parent_record_id_for_level_2
                 
                 # Get property aliases for this component
                 property_aliases = component_property_aliases.get(record_component_id, {})
@@ -3067,6 +3172,8 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                         link_value = f"%%strpath%%{page_slug}"
                 
                 record_data = {
+                    "Id": "##Id##",
+                    "ParentId": "##ParentId##",
                     name_key: name_value,
                     link_key: link_value
                 }
@@ -3085,15 +3192,25 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 }
                 new_records.append(new_record)
             
-            # Process sub_pages with current page name as parent
+            # Process sub_pages - pass parent info even if parent is matched
             current_page_name = page_node.get("page_name", "")
+            
+            # If current page is matched, get its record ID for sub-pages
+            parent_override = None
+            if is_matched and current_page_name in page_name_to_record_id:
+                parent_override = page_name_to_record_id[current_page_name]
+                logging.debug(f"Parent '{current_page_name}' is matched (Id={parent_override}), will use for sub-pages")
+            
             for idx, sub_page in enumerate(page_node.get("sub_pages", [])):
-                collect_unmatched(sub_page, current_page_name, idx)
+                collect_unmatched(sub_page, current_page_name, idx, parent_override)
         
         for idx, page in enumerate(menu_nav_data.get("pages", [])):
             collect_unmatched(page, None, idx)
         
         if new_records:
+            # Sort records by level to ensure level 1 is saved before level 2
+            new_records.sort(key=lambda r: r["level"])
+            
             output_filename = f"{file_prefix}_new_records_payload.json"
             output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
             
@@ -3108,6 +3225,28 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 json.dump(payload, f, indent=4, ensure_ascii=False)
             
             logging.info(f"✅ Created new records payload: {output_filename} ({len(new_records)} records)")
+            
+            # Call API to save records if api_base_url and api_headers provided
+            if api_base_url and api_headers:
+                logging.info("Calling API to save new records to CMS...")
+                saved_record_ids = call_save_miblock_records_api(api_base_url, api_headers, new_records, file_prefix)
+                
+                # Update the payload file with new record IDs
+                if saved_record_ids:
+                    for record in new_records:
+                        page_name = record.get("page_name")
+                        if page_name in saved_record_ids:
+                            record["new_recordId"] = saved_record_ids[page_name]
+                    
+                    # Resave payload with new record IDs
+                    payload["records"] = new_records
+                    with open(output_filepath, 'w', encoding='utf-8') as f:
+                        json.dump(payload, f, indent=4, ensure_ascii=False)
+                    
+                    logging.info(f"✅ Updated payload file with new record IDs")
+            else:
+                logging.warning("API credentials not provided, skipping API call")
+            
             return True
         else:
             logging.info("No unmatched records to create")
@@ -3152,7 +3291,64 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             logging.warning("No matched records found to create payload")
             return False
         
-        # 2. Transform records into API payload format
+        # 2. Read ComponentId mapping and property aliases
+        records_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id}")
+        config_file = os.path.join(records_folder, "MiBlockComponentConfig.json")
+        records_file = os.path.join(records_folder, "MiBlockComponentRecords.json")
+        
+        # Get correct ComponentIds for each level
+        level_1_component_id = component_id
+        level_2_component_id = component_id
+        
+        if os.path.exists(records_file):
+            with open(records_file, 'r', encoding='utf-8') as f:
+                records_data = json.load(f)
+            
+            component_records = records_data.get("componentRecords", [])
+            
+            # Find container
+            for record in component_records:
+                if record.get("ComponentId") == component_id and record.get("ParentId") == 0:
+                    main_parent_component_id = component_id
+                    break
+            
+            # Find child components
+            child_components = set()
+            for record in component_records:
+                rec_component_id = record.get("ComponentId")
+                rec_main_parent = record.get("MainParentComponentId")
+                
+                if rec_component_id and rec_main_parent and rec_component_id != rec_main_parent:
+                    child_components.add(rec_component_id)
+            
+            child_components_list = sorted(list(child_components))
+            if len(child_components_list) >= 1:
+                level_1_component_id = child_components_list[0]  # 542062 for level 1
+            if len(child_components_list) >= 2:
+                level_2_component_id = child_components_list[1]  # 542063 for level 2
+        
+        component_property_aliases = {}
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            
+            definitions = config_data.get("componentDefinition", [])
+            for definition in definitions:
+                comp_id = definition.get("ComponentId")
+                property_alias = definition.get("PropertyAliasName", "")
+                
+                if comp_id and property_alias:
+                    if comp_id not in component_property_aliases:
+                        component_property_aliases[comp_id] = {}
+                    
+                    if property_alias.endswith("-name"):
+                        component_property_aliases[comp_id]["name_key"] = property_alias
+                    elif property_alias.endswith("-link"):
+                        component_property_aliases[comp_id]["link_key"] = property_alias
+        
+        logging.info(f"Matched records: Level 1 ComponentId={level_1_component_id}, Level 2 ComponentId={level_2_component_id}")
+        
+        # 3. Transform records into API payload format
         api_payloads = []
         
         for record in matched_records:
@@ -3163,15 +3359,62 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             status = record.get("Status", True)
             display_order = record.get("DisplayOrder", 0)
             updated_by = record.get("UpdatedBy", 0)
+            matched_page_level = record.get("matched_page_level", 1)
+            original_component_id = record.get("ComponentId")
+            
+            # Determine correct ComponentId based on level
+            if matched_page_level == 1:
+                correct_component_id = level_1_component_id
+            else:  # level 2+
+                correct_component_id = level_2_component_id
             
             # Get tags if available
             tags = record.get("tags", [])
             if not isinstance(tags, list):
                 tags = []
             
+            # Fix keys in recordDataJson based on correct ComponentId
+            try:
+                record_data = json.loads(record_json_string)
+                
+                # Get correct property aliases for the CORRECTED ComponentId
+                correct_aliases = component_property_aliases.get(correct_component_id, {})
+                correct_name_key = correct_aliases.get("name_key")
+                correct_link_key = correct_aliases.get("link_key")
+                
+                # Find current keys and values
+                name_value = None
+                link_value = None
+                keys_to_remove = []
+                
+                for key, value in record_data.items():
+                    if key.endswith("-name") and key not in ["Id", "ParentId"]:
+                        keys_to_remove.append(key)
+                        name_value = value
+                    elif key.endswith("-link"):
+                        keys_to_remove.append(key)
+                        link_value = value
+                
+                # Remove all old keys
+                for key in keys_to_remove:
+                    del record_data[key]
+                
+                # Add correct keys
+                if correct_name_key and name_value:
+                    record_data[correct_name_key] = name_value
+                    logging.debug(f"Set key: {correct_name_key} = {name_value}")
+                
+                if correct_link_key and link_value:
+                    record_data[correct_link_key] = link_value
+                    logging.debug(f"Set key: {correct_link_key} = {link_value}")
+                
+                record_json_string = json.dumps(record_data, ensure_ascii=False)
+            except Exception as e:
+                logging.warning(f"Error fixing keys in record {record_id}: {e}")
+            
             # Create API payload record
             api_record = {
-                "componentId": component_id,
+                "componentId": correct_component_id,  # Use corrected ComponentId
                 "recordId": record_id,  # Use existing ID for updates
                 "parentRecordId": parent_id,
                 "recordDataJson": record_json_string,
@@ -3179,8 +3422,6 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                 "tags": tags,
                 "displayOrder": display_order,
                 "updatedBy": updated_by,
-                # Note: pageSectionGuid is not included as it's typically for new records
-                # If needed for updates, it should be extracted from the original record
             }
             
             api_payloads.append(api_record)

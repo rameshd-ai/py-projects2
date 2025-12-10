@@ -1,0 +1,277 @@
+{
+    "componentId": 542061,
+    "siteId": "16724",
+    "total_records": 27,
+    "records": [
+        {
+            "componentId": 542062,
+            "recordId": 3096838,
+            "parentRecordId": 3096813,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Our Property\", \"menu-item-link\": \"%%strpath%%our-property\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 15,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100593,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Our Story\", \"sub-navigation-item-link\": \"%%strpath%%our-property/our-story\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 22,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100594,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Gallery\", \"sub-navigation-item-link\": \"%%strpath%%our-property/gallery\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 23,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100595,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Location\", \"sub-navigation-item-link\": \"%%strpath%%our-property/location\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 24,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100596,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Contact\", \"sub-navigation-item-link\": \"%%strpath%%our-property/contact\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 25,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100597,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Property Map\", \"sub-navigation-item-link\": \"%%strpath%%our-property/property-map\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 26,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100598,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Reviews\", \"sub-navigation-item-link\": \"%%strpath%%our-property/reviews\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 27,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100599,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Blogs\", \"sub-navigation-item-link\": \"%%strpath%%our-property/blogs\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 28,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100600,
+            "parentRecordId": 3096838,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"FAQs\", \"sub-navigation-item-link\": \"%%strpath%%our-property/faqs\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 29,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542062,
+            "recordId": 3096839,
+            "parentRecordId": 3096813,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Weddings\", \"menu-item-link\": \"%%strpath%%weddings\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 16,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100601,
+            "parentRecordId": 3096839,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Our Spaces\", \"sub-navigation-item-link\": \"%%strpath%%weddings/our-spaces\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 30,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100602,
+            "parentRecordId": 3096839,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Wedding Celebrations\", \"sub-navigation-item-link\": \"%%strpath%%weddings/wedding-celebrations\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 31,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100603,
+            "parentRecordId": 3096839,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Wedding Packages\", \"sub-navigation-item-link\": \"%%strpath%%weddings/wedding-packages\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 32,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100604,
+            "parentRecordId": 3096839,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Meet the Team\", \"sub-navigation-item-link\": \"%%strpath%%weddings/meet-the-team\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 33,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100605,
+            "parentRecordId": 3096839,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Plan your Wedding\", \"sub-navigation-item-link\": \"%%strpath%%weddings/plan-your-wedding\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 34,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542062,
+            "recordId": 3096840,
+            "parentRecordId": 3096813,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Meetings and Events\", \"menu-item-link\": \"%%strpath%%meetings-and-events\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 17,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100606,
+            "parentRecordId": 3096840,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Event and Expo Spaces\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/event-and-expo-spaces\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 35,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100607,
+            "parentRecordId": 3096840,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Meeting Services\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/meeting-services\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 36,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100608,
+            "parentRecordId": 3096840,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Special Occasions\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/special-occasions\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 37,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100609,
+            "parentRecordId": 3096840,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Meeting Packages\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/meeting-packages\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 38,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100610,
+            "parentRecordId": 3096840,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Plan your Meeting\", \"sub-navigation-item-link\": \"%%strpath%%meetings-and-events/plan-your-meeting\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 39,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542062,
+            "recordId": 3096841,
+            "parentRecordId": 3096813,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Guest Rooms\", \"menu-item-link\": \"%%strpath%%guest-rooms\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 18,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100611,
+            "parentRecordId": 3096841,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Room Packages\", \"sub-navigation-item-link\": \"%%strpath%%guest-rooms/room-packages\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 40,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542063,
+            "recordId": 3100612,
+            "parentRecordId": 3096841,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"sub-navigation-item-name\": \"Group Block\", \"sub-navigation-item-link\": \"%%strpath%%guest-rooms/group-block\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 41,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542062,
+            "recordId": 3096842,
+            "parentRecordId": 3096813,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Amenities\", \"menu-item-link\": \"%%strpath%%amenities\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 19,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542062,
+            "recordId": 3096843,
+            "parentRecordId": 3096813,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Dining\", \"menu-item-link\": \"%%strpath%%dining\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 20,
+            "updatedBy": 0
+        },
+        {
+            "componentId": 542062,
+            "recordId": 3096844,
+            "parentRecordId": 3096813,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Explore Ohio\", \"menu-item-link\": \"%%strpath%%explore-ohio\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 21,
+            "updatedBy": 0
+        }
+    ]
+}
