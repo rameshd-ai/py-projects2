@@ -3,11 +3,16 @@ from werkzeug.utils import secure_filename
 import os
 import json
 import uuid
+import sys
 
 # Import config and utils files
 # Note: You must ensure 'config.py' defines UPLOAD_FOLDER, MAX_CONTENT_LENGTH, and allowed_file
 from config import UPLOAD_FOLDER, MAX_CONTENT_LENGTH, PROCESSING_STEPS, allowed_file
 from utils import generate_progress_stream 
+
+# Configure environment to ignore output folder before Flask app initialization
+# This prevents Flask's auto-reloader from restarting when files are created in output folder
+os.environ['WATCHDOG_IGNORE_PATTERNS'] = '*/output/*;*/output/**/*'
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -135,4 +140,22 @@ def download_status_report(filename):
 # --- Run Application ---
 
 if __name__ == '__main__':
+    # Monkey patch werkzeug's reloader to ignore output folder
+    # This prevents Flask from restarting when files are created in output folder during processing
+    try:
+        from werkzeug._reloader import WatchdogReloaderLoop
+        original_trigger_reload = WatchdogReloaderLoop.trigger_reload
+        output_dir_abs = os.path.abspath('output')
+        
+        def patched_trigger_reload(self, filename):
+            """Skip reload if the file is in the output directory"""
+            if filename and output_dir_abs in os.path.abspath(str(filename)):
+                return
+            return original_trigger_reload(self, filename)
+        
+        WatchdogReloaderLoop.trigger_reload = patched_trigger_reload
+    except ImportError:
+        # If watchdog is not available, it will fall back to stat reloader
+        pass
+    
     app.run(debug=True, host='0.0.0.0', port=5000)

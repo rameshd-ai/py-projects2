@@ -1,11 +1,11 @@
 {
     "component": [
         {
-            "ComponentId": 526435,
+            "ComponentId": 542061,
             "ComponentName": "Custom-Header",
             "ComponentAliasName": "custom-header",
             "ParentId": null,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "FormatId": 0,
             "DisableAIContentGeneration": false,
             "IsGlobal": false,
@@ -45,11 +45,11 @@
             "AmpTemplateId": 0
         },
         {
-            "ComponentId": 526436,
+            "ComponentId": 542062,
             "ComponentName": "Header Navigation",
             "ComponentAliasName": "header-navigation",
-            "ParentId": 526435,
-            "SiteId": 16617,
+            "ParentId": 542061,
+            "SiteId": 16724,
             "FormatId": 0,
             "DisableAIContentGeneration": false,
             "IsGlobal": false,
@@ -89,11 +89,11 @@
             "AmpTemplateId": 0
         },
         {
-            "ComponentId": 526437,
+            "ComponentId": 542063,
             "ComponentName": "Header Sub Navigation",
             "ComponentAliasName": "header-sub-navigation",
-            "ParentId": 526436,
-            "SiteId": 16617,
+            "ParentId": 542062,
+            "SiteId": 16724,
             "FormatId": 0,
             "DisableAIContentGeneration": false,
             "IsGlobal": false,
@@ -135,8 +135,8 @@
     ],
     "componentDefinition": [
         {
-            "DefinitionId": 2641891,
-            "ComponentId": 526435,
+            "DefinitionId": 2726659,
+            "ComponentId": 542061,
             "PropertyName": "Logo",
             "PropertyAliasName": "logo",
             "PropertyValue": null,
@@ -144,9 +144,9 @@
             "DisableAIContentGeneration": false,
             "ShowInGrid": false,
             "IsMandatory": true,
-            "ResourceTypeId": 306503,
+            "ResourceTypeId": 309841,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 17716,
@@ -162,8 +162,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641892,
-            "ComponentId": 526435,
+            "DefinitionId": 2726660,
+            "ComponentId": 542061,
             "PropertyName": "logo-small",
             "PropertyAliasName": "logo-small",
             "PropertyValue": null,
@@ -173,7 +173,7 @@
             "IsMandatory": true,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": false,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -189,8 +189,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641893,
-            "ComponentId": 526435,
+            "DefinitionId": 2726661,
+            "ComponentId": 542061,
             "PropertyName": "call",
             "PropertyAliasName": "call",
             "PropertyValue": null,
@@ -200,7 +200,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": false,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -216,8 +216,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641894,
-            "ComponentId": 526435,
+            "DefinitionId": 2726662,
+            "ComponentId": 542061,
             "PropertyName": "Event Name",
             "PropertyAliasName": "event-name",
             "PropertyValue": null,
@@ -227,7 +227,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": false,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -243,8 +243,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641895,
-            "ComponentId": 526435,
+            "DefinitionId": 2726663,
+            "ComponentId": 542061,
             "PropertyName": "Booking Button text",
             "PropertyAliasName": "booking-button-text",
             "PropertyValue": null,
@@ -254,7 +254,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -270,8 +270,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641896,
-            "ComponentId": 526435,
+            "DefinitionId": 2726664,
+            "ComponentId": 542061,
             "PropertyName": "Item Url",
             "PropertyAliasName": "item-url",
             "PropertyValue": null,
@@ -281,7 +281,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -297,8 +297,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641897,
-            "ComponentId": 526435,
+            "DefinitionId": 2726665,
+            "ComponentId": 542061,
             "PropertyName": "Booking Button Mobile Text",
             "PropertyAliasName": "booking-button-mobile-text",
             "PropertyValue": null,
@@ -308,7 +308,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 25352,
             "UpdatedBy": 0,
@@ -324,8 +324,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641898,
-            "ComponentId": 526435,
+            "DefinitionId": 2726666,
+            "ComponentId": 542061,
             "PropertyName": "Primary Logo",
             "PropertyAliasName": "primary-logo",
             "PropertyValue": null,
@@ -333,9 +333,9 @@
             "DisableAIContentGeneration": false,
             "ShowInGrid": false,
             "IsMandatory": true,
-            "ResourceTypeId": 306503,
+            "ResourceTypeId": 309841,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 25352,
             "UpdatedBy": 0,
@@ -351,8 +351,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641899,
-            "ComponentId": 526435,
+            "DefinitionId": 2726667,
+            "ComponentId": 542061,
             "PropertyName": "Component Name",
             "PropertyAliasName": "component-name",
             "PropertyValue": null,
@@ -362,7 +362,7 @@
             "IsMandatory": true,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 17695,
@@ -378,8 +378,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641900,
-            "ComponentId": 526436,
+            "DefinitionId": 2726668,
+            "ComponentId": 542062,
             "PropertyName": "Menu Item Link",
             "PropertyAliasName": "menu-item-link",
             "PropertyValue": null,
@@ -389,7 +389,7 @@
             "IsMandatory": true,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 17695,
@@ -405,8 +405,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641901,
-            "ComponentId": 526436,
+            "DefinitionId": 2726669,
+            "ComponentId": 542062,
             "PropertyName": "Open Url In New Tab",
             "PropertyAliasName": "open-url-in-new-tab",
             "PropertyValue": "Yes",
@@ -416,7 +416,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 17695,
@@ -432,8 +432,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641902,
-            "ComponentId": 526436,
+            "DefinitionId": 2726670,
+            "ComponentId": 542062,
             "PropertyName": "Enable Dropdown",
             "PropertyAliasName": "enable-dropdown",
             "PropertyValue": "Yes",
@@ -443,7 +443,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -459,8 +459,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641903,
-            "ComponentId": 526436,
+            "DefinitionId": 2726671,
+            "ComponentId": 542062,
             "PropertyName": "Enable Menu Item In Left",
             "PropertyAliasName": "enable-menu-item-in-left",
             "PropertyValue": "Yes",
@@ -470,7 +470,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -486,8 +486,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641904,
-            "ComponentId": 526436,
+            "DefinitionId": 2726672,
+            "ComponentId": 542062,
             "PropertyName": "Enable Menu Item In Right",
             "PropertyAliasName": "enable-menu-item-in-right",
             "PropertyValue": "Yes",
@@ -497,7 +497,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -513,8 +513,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641905,
-            "ComponentId": 526436,
+            "DefinitionId": 2726673,
+            "ComponentId": 542062,
             "PropertyName": "Menu Overview Img",
             "PropertyAliasName": "menu-overview-img",
             "PropertyValue": null,
@@ -522,9 +522,9 @@
             "DisableAIContentGeneration": false,
             "ShowInGrid": false,
             "IsMandatory": false,
-            "ResourceTypeId": 306519,
+            "ResourceTypeId": 309857,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17716,
             "UpdatedBy": 17716,
@@ -540,8 +540,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641906,
-            "ComponentId": 526436,
+            "DefinitionId": 2726674,
+            "ComponentId": 542062,
             "PropertyName": "Menu Overview Alt",
             "PropertyAliasName": "menu-overview-alt",
             "PropertyValue": null,
@@ -551,7 +551,7 @@
             "IsMandatory": false,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17716,
             "UpdatedBy": 17716,
@@ -567,8 +567,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641907,
-            "ComponentId": 526436,
+            "DefinitionId": 2726675,
+            "ComponentId": 542062,
             "PropertyName": "Menu Item Name",
             "PropertyAliasName": "menu-item-name",
             "PropertyValue": null,
@@ -578,7 +578,7 @@
             "IsMandatory": true,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 17695,
@@ -594,8 +594,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641908,
-            "ComponentId": 526437,
+            "DefinitionId": 2726676,
+            "ComponentId": 542063,
             "PropertyName": "Sub Navigation Item Link",
             "PropertyAliasName": "sub-navigation-item-link",
             "PropertyValue": null,
@@ -605,7 +605,7 @@
             "IsMandatory": true,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -621,8 +621,8 @@
             "IsClientEdit": false
         },
         {
-            "DefinitionId": 2641909,
-            "ComponentId": 526437,
+            "DefinitionId": 2726677,
+            "ComponentId": 542063,
             "PropertyName": "Sub Navigation Item Name",
             "PropertyAliasName": "sub-navigation-item-name",
             "PropertyValue": null,
@@ -632,7 +632,7 @@
             "IsMandatory": true,
             "ResourceTypeId": 0,
             "ResourceTypeGroupId": 0,
-            "SiteId": 16617,
+            "SiteId": 16724,
             "Status": true,
             "CreatedBy": 17695,
             "UpdatedBy": 0,
@@ -650,9 +650,9 @@
     ],
     "componentSiteLevelSetting": [
         {
-            "ComponentId": 526435,
+            "ComponentId": 542061,
             "ResourceTypeID": 0,
-            "FormatId": 867590,
+            "FormatId": 874402,
             "Status": true,
             "CreatedDate": "2025-08-19T10:21:18.317",
             "CreatedBy": 17716,
@@ -663,11 +663,11 @@
     ],
     "SiteDetail": [
         {
-            "SiteId": 16617,
-            "SiteName": "Automation component Test",
-            "SiteUrl": "https://automation-nationwide.web4cms.milestoneinternet.info/",
+            "SiteId": 16724,
+            "SiteName": "Automation nation website 2",
+            "SiteUrl": "https://automation-nationwide-2.web4cms.milestoneinternet.info/",
             "SiteDetails": null,
-            "SiteLastModified": "2025-12-08T07:25:17.157",
+            "SiteLastModified": "2025-12-10T08:29:25.29",
             "SiteCssLastModified": "2025-11-24T17:56:56.87",
             "SitejsLastModified": "2025-11-24T17:56:56.87",
             "SiteResourceLastModified": "2025-11-24T17:56:56.87",

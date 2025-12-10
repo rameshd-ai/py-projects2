@@ -2,7 +2,7 @@
     "resourceTypeList": [
         {
             "CarouselID": 0,
-            "ResourceTypeID": 306503,
+            "ResourceTypeID": 309841,
             "ResourceTypeName": "Header Logo",
             "ResourceTypeFolderName": "header-logo",
             "ResourceFileType": "All",
@@ -27,7 +27,7 @@
         },
         {
             "CarouselID": 0,
-            "ResourceTypeID": 306519,
+            "ResourceTypeID": 309857,
             "ResourceTypeName": "Menu overview img",
             "ResourceTypeFolderName": "menu-overview-img",
             "ResourceFileType": "ImageFile",

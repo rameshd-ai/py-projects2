@@ -111,7 +111,6 @@
                 {
                     "page_name": "Reviews",
                     "components": [
-                        "on",
                         "M1-Inside Hero",
                         "L1-Image Intro"
                     ],
@@ -167,7 +166,7 @@
                 }
             ],
             "category_info": {
-                "CategoryId": 150111,
+                "CategoryId": 150629,
                 "CategoryName": "Our Property",
                 "match_type": "fuzzy_name_match"
             }
@@ -203,7 +202,8 @@
                         "L1-Image Intro",
                         "L4-Rooms/Venue Snippet",
                         "L32-Chart Table",
-                        "L8-Feature Snippet",
+                        "L8-Fea",
+                        "t",
                         "L30-inside Page Gallery"
                     ],
                     "meta_info": {
@@ -358,7 +358,7 @@
                 }
             ],
             "category_info": {
-                "CategoryId": 150108,
+                "CategoryId": 150626,
                 "CategoryName": "Weddings",
                 "match_type": "fuzzy_name_match"
             }
@@ -514,7 +514,7 @@
                 }
             ],
             "category_info": {
-                "CategoryId": 150105,
+                "CategoryId": 150623,
                 "CategoryName": "Meetings and Events",
                 "match_type": "fuzzy_name_match"
             }
@@ -647,7 +647,7 @@
                 }
             ],
             "category_info": {
-                "CategoryId": 150102,
+                "CategoryId": 150620,
                 "CategoryName": "Guest Rooms",
                 "match_type": "fuzzy_name_match"
             }
@@ -675,7 +675,7 @@
             },
             "sub_pages": [],
             "category_info": {
-                "CategoryId": 150112,
+                "CategoryId": 150630,
                 "CategoryName": "Amenities",
                 "match_type": "fuzzy_name_match"
             }
@@ -718,7 +718,7 @@
                 }
             ],
             "category_info": {
-                "CategoryId": 150103,
+                "CategoryId": 150621,
                 "CategoryName": "Dining",
                 "match_type": "fuzzy_name_match"
             }
@@ -740,7 +740,7 @@
             },
             "sub_pages": [],
             "category_info": {
-                "CategoryId": 150113,
+                "CategoryId": 150631,
                 "CategoryName": "Explore Ohio",
                 "match_type": "fuzzy_name_match"
             }

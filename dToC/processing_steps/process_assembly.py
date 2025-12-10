@@ -289,11 +289,17 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
             time.sleep(2) 
 
             # 2. Convert .txt files to .json (if they exist)
+            logging.info("🔄 Starting TXT to JSON conversion...")
+            txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
+            logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
+            
+            converted_count = 0
             for extracted_file in os.listdir(save_folder):
                 extracted_file_path = os.path.join(save_folder, extracted_file)
                 if extracted_file.endswith('.txt'):
                     new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
                     try:
+                        logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
                         # Read and process content inside the 'with' block
                         with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
                             content = txt_file.read()
@@ -307,9 +313,13 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
                         time.sleep(0.05) 
                         
                         os.remove(extracted_file_path)
+                        converted_count += 1
+                        logging.info(f"   ✅ Successfully converted: {extracted_file}")
                     except (json.JSONDecodeError, OSError) as e:
                         # Log the error but continue to the next file
                         logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+            
+            logging.info(f"✅ TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
 
             # 3. Add level fields to MiBlockComponentRecords.json
             records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
@@ -2367,12 +2377,19 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
 
                                     
                                 time.sleep(2) 
+                                
                                 # 2. Convert .txt files to .json (if they exist)
+                                logging.info("🔄 Starting TXT to JSON conversion...")
+                                txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
+                                logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
+                                
+                                converted_count = 0
                                 for extracted_file in os.listdir(save_folder):
                                     extracted_file_path = os.path.join(save_folder, extracted_file)
                                     if extracted_file.endswith('.txt'):
                                         new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
                                         try:
+                                            logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
                                             # Read and process content inside the 'with' block
                                             with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
                                                 content = txt_file.read()
@@ -2386,9 +2403,13 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                             time.sleep(0.05) 
                                             
                                             os.remove(extracted_file_path)
+                                            converted_count += 1
+                                            logging.info(f"   ✅ Successfully converted: {extracted_file}")
                                         except (json.JSONDecodeError, OSError) as e:
                                             # Log the error but continue to the next file
                                             logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+                                
+                                logging.info(f"✅ TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
 
                                 # 3. Add level fields to MiBlockComponentRecords.json
                                 records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
@@ -2399,6 +2420,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                     except Exception as e:
                                         logging.error(f"⚠️ Error adding levels to records: {e}")
 
+                                
                                 # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
                                 config_file_name = "MiBlockComponentConfig.json"
                                 config_file_path = os.path.join(save_folder, config_file_name)
