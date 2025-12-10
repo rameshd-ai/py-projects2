@@ -209,7 +209,7 @@ def addUpdateRecordsToCMS(base_url, headers, payload):
         tuple: (bool, dict or str): A boolean indicating success or failure,
                and the JSON response data or an error message.
     """
-    api_url = f"{base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
+    api_url = f"{base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
     
     responses = {}
     try:
