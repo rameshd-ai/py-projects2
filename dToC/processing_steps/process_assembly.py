@@ -2921,6 +2921,33 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         else:
             logging.warning(f"Records file not found: {records_file}. Using main component_id for all levels.")
         
+        # Read MiBlockComponentConfig.json to get property alias names for each component level
+        config_file = os.path.join(records_folder, "MiBlockComponentConfig.json")
+        component_property_aliases = {}  # ComponentId -> {name_key, link_key}
+        
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            
+            definitions = config_data.get("definition", [])
+            for definition in definitions:
+                comp_id = definition.get("ComponentId")
+                property_alias = definition.get("PropertyAliasName", "")
+                
+                if comp_id and property_alias:
+                    if comp_id not in component_property_aliases:
+                        component_property_aliases[comp_id] = {}
+                    
+                    # Look for properties ending with -name or -link
+                    if property_alias.endswith("-item-name") or property_alias.endswith("-navigation-item-name"):
+                        component_property_aliases[comp_id]["name_key"] = property_alias
+                    elif property_alias.endswith("-item-link") or property_alias.endswith("-navigation-item-link"):
+                        component_property_aliases[comp_id]["link_key"] = property_alias
+            
+            logging.info(f"Property aliases mapping: {component_property_aliases}")
+        else:
+            logging.warning(f"Config file not found: {config_file}. Using default property names.")
+        
         # Read matched_records.json to get page_name -> record Id mapping
         matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
         page_name_to_record_id = {}
@@ -2959,9 +2986,29 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                         # If parent not matched, use standard parent ID
                         parent_record_id = parent_record_id_for_level_2
                 
+                # Get property aliases for this component
+                property_aliases = component_property_aliases.get(record_component_id, {})
+                name_key = property_aliases.get("name_key", f"{page_name.lower().replace(' ', '-')}-name")
+                link_key = property_aliases.get("link_key", f"{page_name.lower().replace(' ', '-')}-link")
+                
+                # Format the name value - just the page name for all levels
+                name_value = page_name
+                
+                # Generate link value
+                page_slug = page_name.lower().replace(' ', '-').replace('&', 'and')
+                if level == 1:
+                    link_value = f"%%strpath%%{page_slug}"
+                else:
+                    # Level 2+: include parent in path
+                    if parent_page_name:
+                        parent_slug = parent_page_name.lower().replace(' ', '-').replace('&', 'and')
+                        link_value = f"%%strpath%%{parent_slug}/{page_slug}"
+                    else:
+                        link_value = f"%%strpath%%{page_slug}"
+                
                 record_data = {
-                    f"{page_name.lower().replace(' ', '-')}-name": page_name,
-                    f"{page_name.lower().replace(' ', '-')}-link": f"/{page_name.lower().replace(' ', '-')}"
+                    name_key: name_value,
+                    link_key: link_value
                 }
                 
                 new_record = {
