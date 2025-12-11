@@ -3227,11 +3227,17 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                     link_key: link_value
                 }
                 
+                # Determine parentComponentId based on level
+                if level == 1:
+                    parent_component_id = main_parent_component_id  # Level 1 parent is main container
+                else:
+                    parent_component_id = level_1_component_id  # Level 2 parent is level 1 component
+                
                 new_record = {
                     "componentId": record_component_id,
                     "recordId": 0,
                     "parentRecordId": parent_record_id,
-                    "parentComponentId": main_parent_component_id,
+                    "parentComponentId": parent_component_id,
                     "recordDataJson": json.dumps(record_data),
                     "status": True,
                     "tags": [],
@@ -3462,12 +3468,18 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             except Exception as e:
                 logging.warning(f"Error fixing keys in record {record_id}: {e}")
             
+            # Determine parentComponentId based on level
+            if matched_page_level == 1:
+                parent_component_id = main_parent_component_id  # Level 1 parent is main container
+            else:
+                parent_component_id = level_1_component_id  # Level 2 parent is level 1 component
+            
             # Create API payload record
             api_record = {
                 "componentId": correct_component_id,  # Use corrected ComponentId
                 "recordId": 0,  # Use 0 for add operation
                 "parentRecordId": correct_parent_id,  # Use corrected parentRecordId
-                "parentComponentId": main_parent_component_id,  # Parent component ID
+                "parentComponentId": parent_component_id,  # Parent component ID based on level
                 "recordDataJson": record_json_string,
                 "status": status,
                 "tags": tags,
