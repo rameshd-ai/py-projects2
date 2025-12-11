@@ -3136,10 +3136,7 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             if not level_0_found:
                 logging.warning(f"No level 0 record found (ComponentId={component_id}, ParentId=0)")
             
-            # Level 1 should use the main parent ComponentId (542061)
-            level_1_component_id = main_parent_component_id
-            
-            # Find child components for level 2
+            # Find child components
             child_components = set()
             for record in component_records:
                 rec_component_id = record.get("ComponentId")
@@ -3150,13 +3147,15 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             
             child_components_list = sorted(list(child_components))
             if len(child_components_list) >= 1:
-                level_2_component_id = child_components_list[0]  # First child for level 2
-            else:
-                level_2_component_id = main_parent_component_id  # Fallback
+                level_1_component_id = child_components_list[0]  # 542062 for level 1
+            if len(child_components_list) >= 2:
+                level_2_component_id = child_components_list[1]  # 542063 for level 2
+            elif len(child_components_list) >= 1:
+                level_2_component_id = child_components_list[0]  # Fallback if only 1 child
             
-            # Get ParentId for level 2 from any record with level_2_component_id
+            # Get ParentId for level 2 from any record with level_1_component_id
             for record in component_records:
-                if record.get("ComponentId") == level_2_component_id:
+                if record.get("ComponentId") == level_1_component_id:
                     parent_record_id_for_level_2 = record.get("ParentId", 0)
                     break
             
