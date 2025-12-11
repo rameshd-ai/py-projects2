@@ -2876,6 +2876,65 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         return False
 
 
+def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str, payload_filename: str) -> Dict[str, int]:
+    """
+    Updates existing records in CMS using their actual record IDs.
+    """
+    logging.info(f"Calling API to UPDATE {len(records)} existing records...")
+    
+    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
+    payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
+    
+    updated_records = {}
+    
+    for idx, record in enumerate(records):
+        page_name = record.get("matched_page_name", f"Record {idx}")
+        record_id = record.get("recordId", 0)
+        
+        api_record = {
+            "componentId": record["componentId"],
+            "recordId": record["recordId"],
+            "parentRecordId": record["parentRecordId"],
+            "recordDataJson": record["recordDataJson"],
+            "status": record["status"],
+            "tags": record["tags"],
+            "displayOrder": record["displayOrder"],
+            "updatedBy": record["updatedBy"]
+        }
+        
+        try:
+            logging.info(f"  [UPDATE {idx+1}/{len(records)}] '{page_name}' (recordId={record_id})")
+            response = requests.post(api_url, headers=api_headers, json=api_record, timeout=30)
+            response.raise_for_status()
+            
+            result = response.json()
+            result_id = result.get("result")
+            
+            if result_id:
+                updated_records[page_name] = result_id
+                record["updated_recordId"] = result_id
+                logging.info(f"    ✅ Updated. Result ID: {result_id}")
+            else:
+                logging.warning(f"    ⚠️ No result ID returned: {result}")
+        except Exception as e:
+            logging.error(f"    ❌ Failed to update '{page_name}': {e}")
+    
+    # Save updated payload
+    with open(payload_filepath, 'r', encoding='utf-8') as f:
+        payload_data = json.load(f)
+    
+    for rec in payload_data.get("records", []):
+        rec_page = rec.get("matched_page_name")
+        if rec_page in updated_records:
+            rec["updated_recordId"] = updated_records[rec_page]
+    
+    with open(payload_filepath, 'w', encoding='utf-8') as f:
+        json.dump(payload_data, f, indent=4, ensure_ascii=False)
+    
+    logging.info(f"✅ Successfully updated {len(updated_records)} records in CMS")
+    return updated_records
+
+
 def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str, payload_filename: str) -> Dict[str, int]:
     """
     Saves records level by level, updating payload file after each parent is saved.
@@ -3300,19 +3359,21 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
 
 def create_save_miblock_records_payload(file_prefix: str, component_id: int, site_id: int, api_base_url: str = None, api_headers: Dict[str, str] = None) -> bool:
     """
-    Creates payloads for saveMiBlockRecords API from matched_records.json.
-    These payloads are for updating existing records.
+    Creates payloads for UPDATING existing matched records in CMS.
+    Uses actual record IDs for update operation.
     
     Args:
         file_prefix: The file prefix for matched_records.json
         component_id: The component ID to use in the payload
         site_id: The site ID (for logging)
+        api_base_url: API base URL for calling update API
+        api_headers: Headers for authentication
         
     Returns:
         bool: True if successful, False otherwise
     """
     logging.info("========================================================")
-    logging.info("START: Creating SaveMiBlockRecords Payload (Matched)")
+    logging.info("START: Creating SaveMiBlockRecords Payload (UPDATE Matched)")
     logging.info("========================================================")
     
     try:
@@ -3320,7 +3381,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
         if not os.path.exists(matched_records_file):
             logging.error(f"Matched records file not found: {matched_records_file}")
-            logging.info("Skipping matched records payload creation")
+            logging.info("Skipping matched records update")
             return False
         
         with open(matched_records_file, 'r', encoding='utf-8') as f:
@@ -3474,10 +3535,10 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             else:
                 parent_component_id = level_1_component_id  # Level 2 parent is level 1 component
             
-            # Create API payload record
+            # Create API payload record for UPDATE
             api_record = {
                 "componentId": correct_component_id,  # Use corrected ComponentId
-                "recordId": 0,  # Use 0 for add operation
+                "recordId": original_record_id,  # Use actual record ID for UPDATE operation
                 "parentRecordId": correct_parent_id,  # Use corrected parentRecordId
                 "parentComponentId": parent_component_id,  # Parent component ID based on level
                 "recordDataJson": record_json_string,
@@ -3485,7 +3546,6 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                 "tags": tags,
                 "displayOrder": display_order,
                 "updatedBy": updated_by,
-                "original_recordId": original_record_id,  # Keep for reference
                 "matched_page_name": matched_page_name,  # Keep for reference
                 "matched_page_level": matched_page_level,  # Keep for reference
                 "parent_page_name": record.get("parent_page_name")  # Keep for API processing
@@ -3511,18 +3571,19 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         logging.info(f"✅ Created matched records payload: {output_filename}")
         logging.info(f"   Total matched records in payload: {len(api_payloads)}")
         
-        # Call API to save matched records if credentials provided
+        # Call API to UPDATE matched records if credentials provided
         if api_base_url and api_headers:
-            logging.info("Calling API to save matched records to CMS...")
+            logging.info("Calling API to UPDATE matched records in CMS...")
             
-            # Sort by level to ensure level 1 is saved before level 2
+            # Sort by level to ensure level 1 is updated before level 2
             api_payloads.sort(key=lambda r: r.get("matched_page_level", 0))
             
-            call_save_miblock_records_api(api_base_url, api_headers, api_payloads, file_prefix, output_filename)
+            # Call update API (uses existing record IDs)
+            call_update_miblock_records_api(api_base_url, api_headers, api_payloads, file_prefix, output_filename)
         else:
             logging.warning("API credentials not provided, skipping API call for matched records")
         
-        logging.info("END: Creating SaveMiBlockRecords Payload (Matched) Complete")
+        logging.info("END: Creating SaveMiBlockRecords Payload (UPDATE Matched) Complete")
         logging.info("========================================================")
         return True
         
