@@ -3146,12 +3146,20 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                     child_components.add(rec_component_id)
             
             child_components_list = sorted(list(child_components))
+            logging.info(f"Found {len(child_components_list)} child components: {child_components_list}")
+            
             if len(child_components_list) >= 1:
                 level_1_component_id = child_components_list[0]  # 542062 for level 1
+            else:
+                logging.warning(f"No child components found, using main parent for level 1")
+                level_1_component_id = main_parent_component_id
+            
             if len(child_components_list) >= 2:
                 level_2_component_id = child_components_list[1]  # 542063 for level 2
             elif len(child_components_list) >= 1:
                 level_2_component_id = child_components_list[0]  # Fallback if only 1 child
+            else:
+                level_2_component_id = main_parent_component_id
             
             # Get ParentId for level 2 from any record with level_1_component_id
             for record in component_records:
@@ -3422,10 +3430,20 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                     child_components.add(rec_component_id)
             
             child_components_list = sorted(list(child_components))
+            logging.info(f"Found {len(child_components_list)} child components: {child_components_list}")
+            
             if len(child_components_list) >= 1:
                 level_1_component_id = child_components_list[0]  # 542062 for level 1
+            else:
+                logging.warning(f"No child components found, using main parent for level 1")
+                level_1_component_id = main_parent_component_id
+            
             if len(child_components_list) >= 2:
                 level_2_component_id = child_components_list[1]  # 542063 for level 2
+            elif len(child_components_list) >= 1:
+                level_2_component_id = child_components_list[0]
+            else:
+                level_2_component_id = main_parent_component_id
         
         component_property_aliases = {}
         if os.path.exists(config_file):
@@ -3446,7 +3464,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                     elif property_alias.endswith("-link"):
                         component_property_aliases[comp_id]["link_key"] = property_alias
         
-        logging.info(f"Matched records: Level 1 ComponentId={level_1_component_id}, Level 2 ComponentId={level_2_component_id}")
+        logging.info(f"Matched records: Main={main_parent_component_id}, Level 1 ComponentId={level_1_component_id}, Level 2 ComponentId={level_2_component_id}")
         
         # 3. Transform records into API payload format
         api_payloads = []
@@ -3709,10 +3727,9 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     logging.info(f"Successfully loaded {len(vcomponent_cache)} components into cache for fast lookup.")
 
     # --- 5. Assembly Execution (PASSES CACHE and NEW PARAMS) ---
-    # assemble_page_templates_level1(full_payload, vcomponent_cache, api_base_url, site_id, api_headers)
-
-    # --- 5.5. Update Menu Navigation ---
-    update_menu_navigation(file_prefix, api_base_url, site_id, api_headers)
+    assemble_page_templates_level1(full_payload, vcomponent_cache, api_base_url, site_id, api_headers)
+    
+    # Menu navigation is now a separate processing step before this one
 
     # --- 6. SAVE THE STATUS FILE AS CSV ---
     STATUS_SUFFIX = "_assembly_report.csv" 

@@ -42,6 +42,13 @@ PROCESSING_STEPS: List[Dict[str, Any]] = [
         "error_chance": 0.00
     },
     {
+        "id": "process_menu_navigation",
+        "name": "Processing Menu Navigation and Records",
+        "module": "run_menu_navigation_step",
+        "delay": 2.0,
+        "error_chance": 0.00
+    },
+    {
         "id": "process_assembly",
         "name": "Assembling CMS Pages and Publishing",
         "module": "run_assembly_processing_step",
