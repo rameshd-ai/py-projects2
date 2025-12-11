@@ -2885,162 +2885,138 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
     payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
     
-    # Separate records by level
-    level_1_records = []
-    level_2_records = []
+    # Group records by parent-child
+    parent_child_groups = {}
+    record_order = []
     
     for r in records:
         rec_level = r.get("level") or r.get("matched_page_level", 0)
+        page_name = r.get("page_name") or r.get("matched_page_name", "")
+        parent_name = r.get("parent_page_name")
+        
         if rec_level == 1:
-            level_1_records.append(r)
-        elif rec_level == 2:
-            level_2_records.append(r)
-        else:
-            level_1_records.append(r)
+            if page_name not in parent_child_groups:
+                parent_child_groups[page_name] = {"parent": r, "children": []}
+                record_order.append(page_name)
+        elif rec_level == 2 and parent_name:
+            if parent_name not in parent_child_groups:
+                parent_child_groups[parent_name] = {"parent": None, "children": []}
+            parent_child_groups[parent_name]["children"].append(r)
     
-    logging.info(f"Processing {len(level_1_records)} level 1 records first...")
+    logging.info(f"Grouped into {len(parent_child_groups)} parent-child groups")
     
     saved_records = {}
     
-    # PHASE 1: Save level 1 records and update payload file after EACH save
-    for idx, record in enumerate(level_1_records):
-        page_name = record.get("page_name") or record.get("matched_page_name", f"Record {idx}")
+    # Process each group: parent → children
+    for group_idx, group_name in enumerate(record_order):
+        group = parent_child_groups[group_name]
+        parent_rec = group["parent"]
+        children = group["children"]
         
+        if not parent_rec:
+            logging.warning(f"Group {group_idx+1} '{group_name}' has no parent, skipping")
+            continue
+        
+        logging.info(f"\n[Group {group_idx+1}/{len(record_order)}] '{group_name}': 1 parent + {len(children)} children")
+        
+        # STEP 1: Save parent
         api_record = {
-            "componentId": record["componentId"],
-            "recordId": record["recordId"],
-            "parentRecordId": record["parentRecordId"],
-            "recordDataJson": record["recordDataJson"],
-            "status": record["status"],
-            "tags": record["tags"],
-            "displayOrder": record["displayOrder"],
-            "updatedBy": record["updatedBy"]
+            "componentId": parent_rec["componentId"],
+            "recordId": parent_rec["recordId"],
+            "parentRecordId": parent_rec["parentRecordId"],
+            "recordDataJson": parent_rec["recordDataJson"],
+            "status": parent_rec["status"],
+            "tags": parent_rec["tags"],
+            "displayOrder": parent_rec["displayOrder"],
+            "updatedBy": parent_rec["updatedBy"]
         }
         
         try:
-            logging.info(f"  [L1] Saving {idx+1}/{len(level_1_records)}: '{page_name}'")
+            logging.info(f"  [Parent] Saving '{group_name}'")
             response = requests.post(api_url, headers=api_headers, json=api_record, timeout=30)
             response.raise_for_status()
             
             result = response.json()
-            new_record_id = result.get("result")
+            new_parent_id = result.get("result")
             
-            if new_record_id:
-                saved_records[page_name] = new_record_id
-                record["new_recordId"] = new_record_id
-                logging.info(f"    ✅ New Record ID: {new_record_id}")
+            if not new_parent_id:
+                logging.error(f"    ❌ No result ID")
+                continue
+            
+            saved_records[group_name] = new_parent_id
+            parent_rec["new_recordId"] = new_parent_id
+            logging.info(f"    ✅ Parent ID: {new_parent_id}")
+            
+            # STEP 2: Update children parentRecordId immediately
+            for child in children:
+                child["parentRecordId"] = new_parent_id
+            
+            # STEP 3: Update file
+            with open(payload_filepath, 'r', encoding='utf-8') as f:
+                payload_data = json.load(f)
+            
+            for file_rec in payload_data.get("records", []):
+                file_page = file_rec.get("page_name") or file_rec.get("matched_page_name")
+                if file_page == group_name:
+                    file_rec["new_recordId"] = new_parent_id
+                file_parent = file_rec.get("parent_page_name")
+                if file_parent == group_name:
+                    file_rec["parentRecordId"] = new_parent_id
+            
+            with open(payload_filepath, 'w', encoding='utf-8') as f:
+                json.dump(payload_data, f, indent=4, ensure_ascii=False)
+            
+            logging.info(f"    → Updated {len(children)} children parentRecordId → {new_parent_id}")
+            
+            # STEP 4: Save children
+            for child_idx, child in enumerate(children):
+                child_name = child.get("page_name") or child.get("matched_page_name")
                 
-                # IMMEDIATELY update all children and save to file
-                updated_children = 0
-                for child_record in level_2_records:
-                    child_parent_name = child_record.get("parent_page_name")
-                    if child_parent_name == page_name:
-                        child_record["parentRecordId"] = new_record_id
-                        updated_children += 1
+                child_api_record = {
+                    "componentId": child["componentId"],
+                    "recordId": child["recordId"],
+                    "parentRecordId": child["parentRecordId"],
+                    "recordDataJson": child["recordDataJson"],
+                    "status": child["status"],
+                    "tags": child["tags"],
+                    "displayOrder": child["displayOrder"],
+                    "updatedBy": child["updatedBy"]
+                }
                 
-                if updated_children > 0:
-                    logging.info(f"    → Updated {updated_children} child records' parentRecordId in memory to {new_record_id}")
+                try:
+                    logging.info(f"  [Child {child_idx+1}] Saving '{child_name}' (parent={child['parentRecordId']})")
+                    child_resp = requests.post(api_url, headers=api_headers, json=child_api_record, timeout=30)
+                    child_resp.raise_for_status()
                     
-                    # Read current payload file
-                    with open(payload_filepath, 'r', encoding='utf-8') as f:
-                        payload_data = json.load(f)
+                    child_result = child_resp.json()
+                    new_child_id = child_result.get("result")
                     
-                    # Update records in file one by one
-                    for file_rec in payload_data.get("records", []):
-                        file_page_name = file_rec.get("page_name") or file_rec.get("matched_page_name")
-                        file_parent_name = file_rec.get("parent_page_name")
+                    if new_child_id:
+                        saved_records[child_name] = new_child_id
+                        child["new_recordId"] = new_child_id
+                        logging.info(f"    ✅ Child ID: {new_child_id}")
                         
-                        # Update parent's new_recordId
-                        if file_page_name == page_name:
-                            file_rec["new_recordId"] = new_record_id
-                            logging.debug(f"      File: Set {file_page_name} new_recordId = {new_record_id}")
+                        # Update file
+                        with open(payload_filepath, 'r', encoding='utf-8') as f:
+                            payload_data = json.load(f)
                         
-                        # Update children's parentRecordId
-                        if file_parent_name == page_name:
-                            file_rec["parentRecordId"] = new_record_id
-                            logging.debug(f"      File: Set {file_page_name} parentRecordId = {new_record_id}")
-                    
-                    # Write back to file
-                    with open(payload_filepath, 'w', encoding='utf-8') as f:
-                        json.dump(payload_data, f, indent=4, ensure_ascii=False)
-                    
-                    logging.info(f"    → Saved to file with updated parentRecordIds")
-            else:
-                logging.error(f"    ❌ API response missing 'result': {result}")
-                return saved_records
-        except Exception as e:
-            logging.error(f"    ❌ Failed: {e}")
-            return saved_records
-    
-    # PHASE 2: Re-read file to get updated level 2 records
-    logging.info(f"\nRe-reading payload file to get level 2 with updated parentRecordIds...")
-    
-    with open(payload_filepath, 'r', encoding='utf-8') as f:
-        payload_data = json.load(f)
-    
-    all_records_from_file = payload_data.get("records", [])
-    level_2_records = [r for r in all_records_from_file if (r.get("level") or r.get("matched_page_level", 0)) == 2]
-    
-    logging.info(f"Loaded {len(level_2_records)} level 2 records from file")
-    
-    # Debug: Log first few level 2 parentRecordIds
-    for i, rec in enumerate(level_2_records[:3]):
-        logging.debug(f"  L2[{i}]: {rec.get('page_name') or rec.get('matched_page_name')} parentRecordId={rec.get('parentRecordId')}")
-    
-    # PHASE 3: Save level 2 records
-    for idx, record in enumerate(level_2_records):
-        page_name = record.get("page_name") or record.get("matched_page_name", f"Record {idx}")
-        parent_id = record.get("parentRecordId", 0)
+                        for file_rec in payload_data.get("records", []):
+                            file_page = file_rec.get("page_name") or file_rec.get("matched_page_name")
+                            if file_page == child_name:
+                                file_rec["new_recordId"] = new_child_id
+                        
+                        with open(payload_filepath, 'w', encoding='utf-8') as f:
+                            json.dump(payload_data, f, indent=4, ensure_ascii=False)
+                    else:
+                        logging.error(f"    ❌ No result ID")
+                except Exception as e:
+                    logging.error(f"    ❌ Failed: {e}")
         
-        api_record = {
-            "componentId": record["componentId"],
-            "recordId": record["recordId"],
-            "parentRecordId": record["parentRecordId"],
-            "recordDataJson": record["recordDataJson"],
-            "status": record["status"],
-            "tags": record["tags"],
-            "displayOrder": record["displayOrder"],
-            "updatedBy": record["updatedBy"]
-        }
-        
-        try:
-            logging.info(f"  [L2] Saving {idx+1}/{len(level_2_records)}: '{page_name}' (parentRecordId={parent_id})")
-            response = requests.post(api_url, headers=api_headers, json=api_record, timeout=30)
-            response.raise_for_status()
-            
-            result = response.json()
-            new_record_id = result.get("result")
-            
-            if new_record_id:
-                saved_records[page_name] = new_record_id
-                record["new_recordId"] = new_record_id
-                logging.info(f"    ✅ New Record ID: {new_record_id}")
-            else:
-                logging.error(f"    ❌ API response missing 'result': {result}")
-                return saved_records
         except Exception as e:
-            logging.error(f"    ❌ Failed: {e}")
-            return saved_records
+            logging.error(f"  ❌ Failed to save parent '{group_name}': {e}")
     
-    # Final: Save updated payload with all new IDs
-    with open(payload_filepath, 'r', encoding='utf-8') as f:
-        payload_data = json.load(f)
-    
-    all_updated_records = payload_data.get("records", [])
-    
-    # Update with level 2 new_recordIds
-    for rec in all_updated_records:
-        rec_page_name = rec.get("page_name") or rec.get("matched_page_name")
-        if rec_page_name in saved_records:
-            rec["new_recordId"] = saved_records[rec_page_name]
-    
-    payload_data["records"] = all_updated_records
-    
-    with open(payload_filepath, 'w', encoding='utf-8') as f:
-        json.dump(payload_data, f, indent=4, ensure_ascii=False)
-    
-    logging.info(f"✅ Successfully saved all {len(saved_records)} records to CMS")
-    logging.info(f"✅ Final payload file updated: {payload_filename}")
+    logging.info(f"\n✅ Successfully saved all {len(saved_records)} records to CMS")
+    logging.info(f"✅ Payload file continuously updated: {payload_filename}")
     
     return saved_records
 
@@ -3255,6 +3231,7 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                     "componentId": record_component_id,
                     "recordId": 0,
                     "parentRecordId": parent_record_id,
+                    "parentComponentId": main_parent_component_id,
                     "recordDataJson": json.dumps(record_data),
                     "status": True,
                     "tags": [],
@@ -3282,9 +3259,6 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             collect_unmatched(page, None, idx)
         
         if new_records:
-            # Sort records by level to ensure level 1 is saved before level 2
-            new_records.sort(key=lambda r: r["level"])
-            
             output_filename = f"{file_prefix}_new_records_payload.json"
             output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
             
@@ -3493,6 +3467,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                 "componentId": correct_component_id,  # Use corrected ComponentId
                 "recordId": 0,  # Use 0 for add operation
                 "parentRecordId": correct_parent_id,  # Use corrected parentRecordId
+                "parentComponentId": main_parent_component_id,  # Parent component ID
                 "recordDataJson": record_json_string,
                 "status": status,
                 "tags": tags,
@@ -3500,13 +3475,13 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                 "updatedBy": updated_by,
                 "original_recordId": original_record_id,  # Keep for reference
                 "matched_page_name": matched_page_name,  # Keep for reference
-                "matched_page_level": matched_page_level  # Keep for reference
+                "matched_page_level": matched_page_level,  # Keep for reference
+                "parent_page_name": record.get("parent_page_name")  # Keep for API processing
             }
             
             api_payloads.append(api_record)
         
-        # 3. Group payloads by record set (if needed)
-        # For now, we'll create a simple structure with all records
+        # 3. Create final payload with all records
         final_payload = {
             "componentId": component_id,
             "siteId": site_id,
