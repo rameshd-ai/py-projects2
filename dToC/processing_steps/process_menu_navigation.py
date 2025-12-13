@@ -21,8 +21,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Global custom properties for level 1 records
 # Set these to apply custom properties, or set to None/empty dict to skip
 LEVEL_1_CUSTOM_PROPERTIES = {
-    "enable-dropdown[]": ["No"],
-    "enable-menu-item-in-left[]": ["No"]
+    "enable-dropdown[]": ["Yes"],
+    "enable-menu-item-in-left[]": ["Yes"]
 }
 
 def get_config_filepath(file_prefix: str) -> str:
