@@ -18,6 +18,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Global custom properties for level 1 records
+# Set these to apply custom properties, or set to None/empty dict to skip
+LEVEL_1_CUSTOM_PROPERTIES = {
+    "enable-dropdown[]": ["No"],
+    "enable-menu-item-in-left[]": ["No"]
+}
+
 def get_config_filepath(file_prefix: str) -> str:
     base_prefix = os.path.basename(file_prefix)
     config_filename = f"{base_prefix}_config.json"
@@ -309,10 +316,96 @@ def run_menu_navigation_step(
         
         # 5. Map pages to records and create payloads
         if downloaded_component_id:
-            from process_assembly import map_pages_to_records, create_save_miblock_records_payload, create_new_records_payload
+            from process_assembly import map_pages_to_records, create_save_miblock_records_payload, create_new_records_payload, call_save_miblock_records_api, call_update_miblock_records_api
             if map_pages_to_records(file_prefix, site_id, downloaded_component_id):
-                create_save_miblock_records_payload(file_prefix, downloaded_component_id, site_id, api_base_url, api_headers)
-                create_new_records_payload(file_prefix, downloaded_component_id, site_id, api_base_url, api_headers)
+                # Create payloads first (skip API calls by passing None)
+                create_save_miblock_records_payload(file_prefix, downloaded_component_id, site_id, None, None)
+                create_new_records_payload(file_prefix, downloaded_component_id, site_id, None, None)
+                
+                # 6. Apply custom properties to level 1 records in payloads if configured
+                if LEVEL_1_CUSTOM_PROPERTIES:
+                    logging.info("Applying custom properties to level 1 records in payloads...")
+                    
+                    # Update new_records_payload.json
+                    new_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_new_records_payload.json")
+                    if os.path.exists(new_records_file):
+                        with open(new_records_file, 'r', encoding='utf-8') as f:
+                            new_data = json.load(f)
+                        
+                        updated_count = 0
+                        for record in new_data.get("records", []):
+                            rec_level = record.get("level", 0)
+                            if rec_level == 1:
+                                try:
+                                    record_json_string = record.get("recordDataJson", "{}")
+                                    record_data = json.loads(record_json_string)
+                                    record_data.update(LEVEL_1_CUSTOM_PROPERTIES)
+                                    record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
+                                    updated_count += 1
+                                    logging.debug(f"Updated level 1 record: {record.get('page_name')}")
+                                except Exception as e:
+                                    logging.error(f"Error updating new record: {e}")
+                        
+                        if updated_count > 0:
+                            with open(new_records_file, 'w', encoding='utf-8') as f:
+                                json.dump(new_data, f, indent=4, ensure_ascii=False)
+                            logging.info(f"✅ Updated {updated_count} level 1 records in new_records_payload.json")
+                            
+                            # Call API with updated records
+                            if api_base_url and api_headers:
+                                logging.info("Calling API to save new records with custom properties...")
+                                call_save_miblock_records_api(api_base_url, api_headers, new_data.get("records", []), file_prefix, f"{file_prefix}_new_records_payload.json")
+                    
+                    # Update save_miblock_records_payload.json
+                    matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_save_miblock_records_payload.json")
+                    if os.path.exists(matched_records_file):
+                        with open(matched_records_file, 'r', encoding='utf-8') as f:
+                            matched_data = json.load(f)
+                        
+                        updated_count = 0
+                        for record in matched_data.get("records", []):
+                            rec_level = record.get("matched_page_level", 0)
+                            if rec_level == 1:
+                                try:
+                                    record_json_string = record.get("recordDataJson", "{}")
+                                    record_data = json.loads(record_json_string)
+                                    record_data.update(LEVEL_1_CUSTOM_PROPERTIES)
+                                    record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
+                                    updated_count += 1
+                                    logging.debug(f"Updated level 1 matched record: {record.get('matched_page_name')}")
+                                except Exception as e:
+                                    logging.error(f"Error updating matched record: {e}")
+                        
+                        if updated_count > 0:
+                            with open(matched_records_file, 'w', encoding='utf-8') as f:
+                                json.dump(matched_data, f, indent=4, ensure_ascii=False)
+                            logging.info(f"✅ Updated {updated_count} level 1 records in save_miblock_records_payload.json")
+                            
+                            # Call API with updated records
+                            if api_base_url and api_headers:
+                                logging.info("Calling API to update matched records with custom properties...")
+                                # Sort by level to ensure level 1 is updated before level 2
+                                matched_records = matched_data.get("records", [])
+                                matched_records.sort(key=lambda r: r.get("matched_page_level", 0))
+                                call_update_miblock_records_api(api_base_url, api_headers, matched_records, file_prefix, f"{file_prefix}_save_miblock_records_payload.json")
+                else:
+                    # No custom properties, call API normally with existing payloads
+                    if api_base_url and api_headers:
+                        # Read and call API for new records
+                        new_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_new_records_payload.json")
+                        if os.path.exists(new_records_file):
+                            with open(new_records_file, 'r', encoding='utf-8') as f:
+                                new_data = json.load(f)
+                            call_save_miblock_records_api(api_base_url, api_headers, new_data.get("records", []), file_prefix, f"{file_prefix}_new_records_payload.json")
+                        
+                        # Read and call API for matched records
+                        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_save_miblock_records_payload.json")
+                        if os.path.exists(matched_records_file):
+                            with open(matched_records_file, 'r', encoding='utf-8') as f:
+                                matched_data = json.load(f)
+                            matched_records = matched_data.get("records", [])
+                            matched_records.sort(key=lambda r: r.get("matched_page_level", 0))
+                            call_update_miblock_records_api(api_base_url, api_headers, matched_records, file_prefix, f"{file_prefix}_save_miblock_records_payload.json")
         
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
