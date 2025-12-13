@@ -42,11 +42,7 @@
             "PageIds": null,
             "ProfileIds": null,
             "level": 0,
-            "recordType": "MainComponent",
-            "isMigrated": true,
-            "sectionGuid": "dbfb19e1-f421-4c8d-beba-119173705533",
-            "component_alias": "aeb19207-884b-4210-baff-da59f7f8755e",
-            "vComponentId": 21000249
+            "recordType": "MainComponent"
         }
     ]
 }

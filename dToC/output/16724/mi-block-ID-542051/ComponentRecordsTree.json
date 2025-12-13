@@ -44,7 +44,7 @@
             "level": 0,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "bfc9fd82-d2e9-48b8-b54e-15124f9a993d",
+            "sectionGuid": "bf3ba6bf-2076-4168-8f72-109e877c1e54",
             "component_alias": "5ee7235b-d8bf-4fbb-b16f-1ba0dbd2a5df",
             "vComponentId": 21000307
         },
@@ -91,7 +91,7 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3112800
+            "parent_new_record_id": 3154692
         }
     ]
 }
