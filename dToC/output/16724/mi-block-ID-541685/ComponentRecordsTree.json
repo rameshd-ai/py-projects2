@@ -44,7 +44,7 @@
             "level": 0,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "a632c3ce-5ecc-4648-b776-ad1f3fa0583d",
+            "sectionGuid": "e330c4e0-2d42-4b59-bd4e-65b387e664cc",
             "component_alias": "048c1cec-494c-4e4f-a90b-800c3aa1de2c",
             "vComponentId": 21000338
         },
@@ -91,7 +91,7 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "UnknownType",
-            "parent_new_record_id": 3154973
+            "parent_new_record_id": 3154993
         },
         {
             "Id": 3071729,
@@ -136,7 +136,7 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "UnknownType",
-            "parent_new_record_id": 3154973
+            "parent_new_record_id": 3154993
         },
         {
             "Id": 3071730,
@@ -181,7 +181,7 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "UnknownType",
-            "parent_new_record_id": 3154973
+            "parent_new_record_id": 3154993
         },
         {
             "Id": 3071731,
@@ -226,7 +226,7 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "UnknownType",
-            "parent_new_record_id": 3154973
+            "parent_new_record_id": 3154993
         },
         {
             "Id": 3071732,
@@ -271,7 +271,7 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "UnknownType",
-            "parent_new_record_id": 3154973
+            "parent_new_record_id": 3154993
         }
     ]
 }
