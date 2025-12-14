@@ -1,8 +1,8 @@
 {
     "componentRecordsTree": [
         {
-            "Id": 3073448,
-            "RecordJsonString": "{\"Id\":\"##Id##\",\"ParentId\":\"##ParentId##\",\"ProfileCouponMapping\":\"\",\"ComponentLevel\":\"3\",\"displayName\":\"Layout-181\",\"Offset\":\"+00:00\",\"ComponentName\":\"Layout-181\",\"RecordText\":\"\",\"PluginName\":\"\",\"PrimaryLanguageRecordId\":\"0\",\"UrlLanguageCode\":\"\",\"LanguageId\":\"0\",\"section-tagline\":\"Featured offer\",\"section-title\":\"Special Summer savings\",\"section-description\":\"<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros elementum tristique. Duis cursus, mi quis viverra ornare, eros dolor interdum nulla, ut commodo diam libero vitae erat.</p>\\r\\n\",\"button-text\":\"Button\",\"button-link\":\"#\",\"EnableClientEdit\":true,\"IsRecordIncludedInTranslation\":false,\"IsLanguageRecordInEnglish\":false,\"IsProtected\":\"false\",\"IsMemberRoleTaggingEnable\":\"false\"}",
+            "Id": 3074864,
+            "RecordJsonString": "{\"Id\":\"##Id##\",\"ParentId\":\"##ParentId##\",\"section-tagline\":\"\",\"section-title\":\"Page Title\",\"section-description\":\"\",\"button-text\":\"\",\"button-link\":\"\"}",
             "ComponentId": 541647,
             "ParentComponentId": null,
             "ParentId": 0,
@@ -14,10 +14,10 @@
             "StartDate": null,
             "EndDate": null,
             "CreatedBy": 17707,
-            "CreatedDate": "2025-01-22T07:58:58.183",
-            "UpdatedBy": 17707,
-            "UpdatedDate": "2025-01-22T07:58:58.183",
-            "RecordUrl": null,
+            "CreatedDate": "2025-08-26T04:57:17.797",
+            "UpdatedBy": 0,
+            "UpdatedDate": "2025-08-26T04:57:43.04",
+            "RecordUrl": "",
             "RecordVersion": 0,
             "EnableClientEdit": true,
             "TemplateId": null,
@@ -36,7 +36,7 @@
             "IsLanguageRecordInEnglish": false,
             "Region": null,
             "OffsetZoneName": null,
-            "OffsetTime": "+00:00",
+            "OffsetTime": null,
             "IsPersonalized": false,
             "IsPageStudioRecord": true,
             "PageIds": null,
@@ -44,7 +44,7 @@
             "level": 0,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "5e5d332a-0897-4563-bb59-d0af252ade8f",
+            "sectionGuid": "4f1d6129-a0f1-4cb0-96be-1b9bc2479d49",
             "component_alias": "3f8ebd75-6b92-48aa-b185-0b8da896c0c8",
             "vComponentId": 21000094
         }

@@ -10,9 +10,9 @@ import sys
 from config import UPLOAD_FOLDER, MAX_CONTENT_LENGTH, PROCESSING_STEPS, allowed_file
 from utils import generate_progress_stream 
 
-# Configure environment to ignore output folder before Flask app initialization
-# This prevents Flask's auto-reloader from restarting when files are created in output folder
-os.environ['WATCHDOG_IGNORE_PATTERNS'] = '*/output/*;*/output/**/*'
+# Configure environment to ignore output and uploads folders before Flask app initialization
+# This prevents Flask's auto-reloader from restarting when files are created during processing
+os.environ['WATCHDOG_IGNORE_PATTERNS'] = '*/output/*;*/output/**/*;*/uploads/*;*/uploads/**/*'
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -140,22 +140,47 @@ def download_status_report(filename):
 # --- Run Application ---
 
 if __name__ == '__main__':
-    # Monkey patch werkzeug's reloader to ignore output folder
-    # This prevents Flask from restarting when files are created in output folder during processing
+    # Disable reloader to prevent connection breaks during processing
+    # The reloader watches all Python files and can trigger restarts during long operations
+    # For development, manually restart the server when code changes are needed
+    # For production, reloader should always be disabled
+    
+    # Alternative: More aggressive monkey patch if you want to keep reloader but ignore data folders
     try:
         from werkzeug._reloader import WatchdogReloaderLoop
         original_trigger_reload = WatchdogReloaderLoop.trigger_reload
         output_dir_abs = os.path.abspath('output')
+        uploads_dir_abs = os.path.abspath(UPLOAD_FOLDER)
+        processing_steps_abs = os.path.abspath('processing_steps')
         
         def patched_trigger_reload(self, filename):
-            """Skip reload if the file is in the output directory"""
-            if filename and output_dir_abs in os.path.abspath(str(filename)):
-                return
+            """Skip reload for data files and processing step modules during runtime"""
+            if filename:
+                file_abs = os.path.abspath(str(filename))
+                file_lower = file_abs.lower()
+                
+                # Ignore output and uploads folders
+                if output_dir_abs in file_abs or uploads_dir_abs in file_abs:
+                    return
+                
+                # Ignore JSON, CSV, TXT files in any location
+                if file_lower.endswith(('.json', '.csv', '.txt', '.xml', '.zip')):
+                    return
+                
+                # Only reload on actual Python code changes in main app files
+                # Ignore changes in processing_steps during active processing
+                if processing_steps_abs in file_abs:
+                    # Allow reload only if it's a critical file change
+                    # For now, ignore all processing_steps changes during runtime
+                    return
+            
             return original_trigger_reload(self, filename)
         
         WatchdogReloaderLoop.trigger_reload = patched_trigger_reload
-    except ImportError:
-        # If watchdog is not available, it will fall back to stat reloader
+    except (ImportError, AttributeError):
+        # If watchdog is not available or structure changed, fall back to stat reloader
         pass
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # DISABLE RELOADER to prevent connection breaks
+    # Set use_reloader=False to completely disable auto-reload
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False, use_debugger=True)

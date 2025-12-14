@@ -50,6 +50,8 @@ def generate_progress_stream(filename: str) -> Generator[str, None, None]:
     # Initialize previous_step_data and ensure the file_prefix is always available
     previous_step_data = {"file_prefix": file_prefix} 
     step_id = 'initial'
+    last_ping_time = time.time()
+    PING_INTERVAL = 30  # Send keep-alive ping every 30 seconds
 
     try:
         yield format_sse({"status": "start", "message": "Processing started..."}, event='update')
@@ -71,6 +73,12 @@ def generate_progress_stream(filename: str) -> Generator[str, None, None]:
                 "step_id": step_id,
                 "message": f"Step **'{step_name}'** is now in progress..."
             }, event='update')
+            
+            # Send keep-alive ping if needed
+            current_time = time.time()
+            if current_time - last_ping_time >= PING_INTERVAL:
+                yield format_sse({"status": "ping", "message": "keep-alive"}, event='ping')
+                last_ping_time = current_time
 
             # Simulate an occasional failure if error_chance > 0
             if random.random() < error_chance:
@@ -82,6 +90,12 @@ def generate_progress_stream(filename: str) -> Generator[str, None, None]:
             
             # Update shared data with results from the current step
             previous_step_data.update(step_result)
+            
+            # Send keep-alive ping if needed
+            current_time = time.time()
+            if current_time - last_ping_time >= PING_INTERVAL:
+                yield format_sse({"status": "ping", "message": "keep-alive"}, event='ping')
+                last_ping_time = current_time
 
             yield format_sse({
                 "status": "done",

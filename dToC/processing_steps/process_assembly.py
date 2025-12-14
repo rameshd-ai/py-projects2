@@ -403,7 +403,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
-    page_name = page_name + "-Demo"
+    # page_name = page_name + "-Demo"
     payload = {
         "pageId": 0,
         "pageName": page_name,
@@ -2945,24 +2945,125 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
     
     # Group records by parent-child
+    # First, sort records by level to ensure parents come before children
+    records_sorted = sorted(records, key=lambda r: r.get("level") or r.get("matched_page_level", 0))
+    
     parent_child_groups = {}
     record_order = []
     
-    for r in records:
+    # First pass: Identify all level 1 records (parents)
+    level_1_count = 0
+    level_2_plus_count = 0
+    
+    for r in records_sorted:
+        rec_level = r.get("level") or r.get("matched_page_level", 0)
+        page_name = r.get("page_name") or r.get("matched_page_name", "")
+        
+        if rec_level == 1:
+            level_1_count += 1
+            if page_name not in parent_child_groups:
+                parent_child_groups[page_name] = {"parent": r, "children": []}
+                record_order.append(page_name)
+                logging.debug(f"Created parent group for level 1: '{page_name}'")
+        elif rec_level >= 2:
+            level_2_plus_count += 1
+    
+    logging.info(f"Found {level_1_count} level 1 records and {level_2_plus_count} level 2+ records")
+    
+    # Second pass: Add level 2+ records to their parent groups
+    # Also handle orphaned children (parent is matched, so not in new_records)
+    orphaned_children = []
+    
+    for r in records_sorted:
         rec_level = r.get("level") or r.get("matched_page_level", 0)
         page_name = r.get("page_name") or r.get("matched_page_name", "")
         parent_name = r.get("parent_page_name")
         
-        if rec_level == 1:
-            if page_name not in parent_child_groups:
-                parent_child_groups[page_name] = {"parent": r, "children": []}
-                record_order.append(page_name)
-        elif rec_level == 2 and parent_name:
-            if parent_name not in parent_child_groups:
-                parent_child_groups[parent_name] = {"parent": None, "children": []}
-            parent_child_groups[parent_name]["children"].append(r)
+        if rec_level >= 2:
+            if not parent_name:
+                logging.warning(f"Level {rec_level} record '{page_name}' has no parent_page_name - skipping grouping")
+                continue
+            
+            if parent_name in parent_child_groups:
+                parent_child_groups[parent_name]["children"].append(r)
+                logging.info(f"✅ Added level {rec_level} record '{page_name}' to parent group '{parent_name}'")
+            else:
+                # Parent is matched (not in new_records), child needs to be saved separately
+                # We'll need to get the parent's record ID from matched_records
+                orphaned_children.append(r)
+                logging.info(f"⚠️ Level {rec_level} record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
+    
+    # Save orphaned children (children whose parents are matched)
+    if orphaned_children:
+        logging.info(f"Found {len(orphaned_children)} orphaned children (parents are matched)")
+        # Read matched_records to get parent IDs
+        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
+        parent_id_map = {}
+        
+        if os.path.exists(matched_records_file):
+            with open(matched_records_file, 'r', encoding='utf-8') as f:
+                matched_data = json.load(f)
+            
+            for matched_rec in matched_data.get("matched_records", []):
+                matched_page_name = matched_rec.get("matched_page_name", "")
+                matched_record_id = matched_rec.get("Id")
+                if matched_page_name and matched_record_id:
+                    parent_id_map[matched_page_name] = matched_record_id
+        
+        # Save orphaned children with their matched parent IDs
+        for orphan in orphaned_children:
+            orphan_name = orphan.get("page_name") or orphan.get("matched_page_name", "")
+            orphan_parent_name = orphan.get("parent_page_name")
+            
+            if orphan_parent_name in parent_id_map:
+                orphan["parentRecordId"] = parent_id_map[orphan_parent_name]
+                logging.info(f"Setting parentRecordId for '{orphan_name}' to matched parent ID: {parent_id_map[orphan_parent_name]}")
+            
+            # Save orphaned child directly
+            orphan_api_record = {
+                "componentId": orphan["componentId"],
+                "recordId": orphan["recordId"],
+                "parentRecordId": orphan["parentRecordId"],
+                "recordDataJson": orphan["recordDataJson"],
+                "status": orphan["status"],
+                "tags": orphan["tags"],
+                "displayOrder": orphan["displayOrder"],
+                "updatedBy": orphan["updatedBy"]
+            }
+            
+            try:
+                logging.info(f"  [Orphaned Child] Saving '{orphan_name}' (parent={orphan['parentRecordId']})")
+                orphan_resp = requests.post(api_url, headers=api_headers, json=orphan_api_record, timeout=30)
+                orphan_resp.raise_for_status()
+                
+                orphan_result = orphan_resp.json()
+                new_orphan_id = orphan_result.get("result")
+                
+                if new_orphan_id:
+                    saved_records[orphan_name] = new_orphan_id
+                    orphan["new_recordId"] = new_orphan_id
+                    logging.info(f"    ✅ Orphaned Child ID: {new_orphan_id}")
+                    
+                    # Update file
+                    with open(payload_filepath, 'r', encoding='utf-8') as f:
+                        payload_data = json.load(f)
+                    
+                    for file_rec in payload_data.get("records", []):
+                        file_page = file_rec.get("page_name") or file_rec.get("matched_page_name")
+                        if file_page == orphan_name:
+                            file_rec["new_recordId"] = new_orphan_id
+                            file_rec["parentRecordId"] = orphan["parentRecordId"]
+                    
+                    with open(payload_filepath, 'w', encoding='utf-8') as f:
+                        json.dump(payload_data, f, indent=4, ensure_ascii=False)
+                else:
+                    logging.error(f"    ❌ No result ID for orphaned child")
+            except Exception as e:
+                logging.error(f"    ❌ Failed to save orphaned child '{orphan_name}': {e}")
     
     logging.info(f"Grouped into {len(parent_child_groups)} parent-child groups")
+    total_children = sum(len(group["children"]) for group in parent_child_groups.values())
+    logging.info(f"Total children records: {total_children}")
     
     saved_records = {}
     
