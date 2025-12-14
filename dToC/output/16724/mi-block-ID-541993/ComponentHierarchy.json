@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 541993,
+        "type": "MainComponent",
+        "componentName": "Aspen-Room"
+    },
+    {
+        "componentId": 541995,
+        "type": "Level1Child",
+        "componentName": "Section Item List"
+    }
+]

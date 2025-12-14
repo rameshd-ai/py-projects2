@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 309861,
+            "ResourceTypeName": "snippet-with-small-image",
+            "ResourceTypeFolderName": "snippet-with-small-image",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 1,
+            "ResourceWidth": 650,
+            "ResourceHeight": 500,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 1,
+            "TabletResourceWidth": 650,
+            "TabletResourceHeight": 500,
+            "MobileResourceWidth": 400,
+            "MobileResourceHeight": 308,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 90,
+            "MobileImageQuality": 90,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

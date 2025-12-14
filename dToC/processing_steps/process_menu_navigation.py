@@ -322,7 +322,34 @@ def run_menu_navigation_step(
                 create_save_miblock_records_payload(file_prefix, downloaded_component_id, site_id, None, None)
                 create_new_records_payload(file_prefix, downloaded_component_id, site_id, None, None)
                 
-                # 6. Apply custom properties to level 1 records in payloads if configured
+                # 6. Update level 1 links based on sub-pages presence
+                # Read menu_navigation.json to check which level 1 pages have sub_pages
+                menu_nav_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_menu_navigation.json")
+                level_1_pages_with_subpages = set()
+                
+                if os.path.exists(menu_nav_file):
+                    with open(menu_nav_file, 'r', encoding='utf-8') as f:
+                        menu_nav_data = json.load(f)
+                    
+                    def collect_level_1_with_subpages(pages_list):
+                        """Recursively collect level 1 page names that have sub_pages"""
+                        for page in pages_list:
+                            page_level = page.get("level", 0)
+                            page_name = page.get("page_name", "")
+                            sub_pages = page.get("sub_pages", [])
+                            
+                            if page_level == 1 and sub_pages:
+                                level_1_pages_with_subpages.add(page_name)
+                                logging.debug(f"Level 1 page '{page_name}' has {len(sub_pages)} sub-pages")
+                            
+                            # Recursively check sub_pages
+                            if sub_pages:
+                                collect_level_1_with_subpages(sub_pages)
+                    
+                    collect_level_1_with_subpages(menu_nav_data.get("pages", []))
+                    logging.info(f"Found {len(level_1_pages_with_subpages)} level 1 pages with sub-pages: {list(level_1_pages_with_subpages)}")
+                
+                # 7. Apply custom properties and update links for level 1 records in payloads if configured
                 if LEVEL_1_CUSTOM_PROPERTIES:
                     logging.info("Applying custom properties to level 1 records in payloads...")
                     
@@ -333,16 +360,45 @@ def run_menu_navigation_step(
                             new_data = json.load(f)
                         
                         updated_count = 0
+                        link_updated_count = 0
                         for record in new_data.get("records", []):
                             rec_level = record.get("level", 0)
+                            page_name = record.get("page_name", "")
+                            
                             if rec_level == 1:
                                 try:
                                     record_json_string = record.get("recordDataJson", "{}")
                                     record_data = json.loads(record_json_string)
-                                    record_data.update(LEVEL_1_CUSTOM_PROPERTIES)
+                                    
+                                    # Determine if page has sub-pages
+                                    has_subpages = page_name in level_1_pages_with_subpages
+                                    
+                                    # Add custom properties, but adjust enable-dropdown based on sub-pages
+                                    custom_props = LEVEL_1_CUSTOM_PROPERTIES.copy()
+                                    if not has_subpages:
+                                        # No sub-pages, set enable-dropdown to No
+                                        custom_props["enable-dropdown[]"] = ["No"]
+                                    record_data.update(custom_props)
+                                    
+                                    # Update link if page has sub-pages
+                                    # Find the link key (ending with -link)
+                                    link_key = None
+                                    for key in record_data.keys():
+                                        if key.endswith("-link") and key != "Id" and key != "ParentId":
+                                            link_key = key
+                                            break
+                                    
+                                    if link_key:
+                                        if has_subpages:
+                                            # Has sub-pages, set to javascript:;
+                                            record_data[link_key] = "javascript:;"
+                                            link_updated_count += 1
+                                            logging.debug(f"Updated link for '{page_name}' to javascript:; (has sub-pages)")
+                                        # If no sub-pages, keep the existing link value
+                                    
                                     record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
                                     updated_count += 1
-                                    logging.debug(f"Updated level 1 record: {record.get('page_name')}")
+                                    logging.debug(f"Updated level 1 record: {page_name} (has_subpages={has_subpages})")
                                 except Exception as e:
                                     logging.error(f"Error updating new record: {e}")
                         
@@ -350,6 +406,8 @@ def run_menu_navigation_step(
                             with open(new_records_file, 'w', encoding='utf-8') as f:
                                 json.dump(new_data, f, indent=4, ensure_ascii=False)
                             logging.info(f"✅ Updated {updated_count} level 1 records in new_records_payload.json")
+                            if link_updated_count > 0:
+                                logging.info(f"   → Updated {link_updated_count} links to javascript:; (pages with sub-pages)")
                             
                             # Call API with updated records
                             if api_base_url and api_headers:
@@ -363,16 +421,45 @@ def run_menu_navigation_step(
                             matched_data = json.load(f)
                         
                         updated_count = 0
+                        link_updated_count = 0
                         for record in matched_data.get("records", []):
                             rec_level = record.get("matched_page_level", 0)
+                            page_name = record.get("matched_page_name", "")
+                            
                             if rec_level == 1:
                                 try:
                                     record_json_string = record.get("recordDataJson", "{}")
                                     record_data = json.loads(record_json_string)
-                                    record_data.update(LEVEL_1_CUSTOM_PROPERTIES)
+                                    
+                                    # Determine if page has sub-pages
+                                    has_subpages = page_name in level_1_pages_with_subpages
+                                    
+                                    # Add custom properties, but adjust enable-dropdown based on sub-pages
+                                    custom_props = LEVEL_1_CUSTOM_PROPERTIES.copy()
+                                    if not has_subpages:
+                                        # No sub-pages, set enable-dropdown to No
+                                        custom_props["enable-dropdown[]"] = ["No"]
+                                    record_data.update(custom_props)
+                                    
+                                    # Update link if page has sub-pages
+                                    # Find the link key (ending with -link)
+                                    link_key = None
+                                    for key in record_data.keys():
+                                        if key.endswith("-link") and key != "Id" and key != "ParentId":
+                                            link_key = key
+                                            break
+                                    
+                                    if link_key:
+                                        if has_subpages:
+                                            # Has sub-pages, set to javascript:;
+                                            record_data[link_key] = "javascript:;"
+                                            link_updated_count += 1
+                                            logging.debug(f"Updated link for '{page_name}' to javascript:; (has sub-pages)")
+                                        # If no sub-pages, keep the existing link value
+                                    
                                     record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
                                     updated_count += 1
-                                    logging.debug(f"Updated level 1 matched record: {record.get('matched_page_name')}")
+                                    logging.debug(f"Updated level 1 matched record: {page_name} (has_subpages={has_subpages})")
                                 except Exception as e:
                                     logging.error(f"Error updating matched record: {e}")
                         
@@ -380,6 +467,8 @@ def run_menu_navigation_step(
                             with open(matched_records_file, 'w', encoding='utf-8') as f:
                                 json.dump(matched_data, f, indent=4, ensure_ascii=False)
                             logging.info(f"✅ Updated {updated_count} level 1 records in save_miblock_records_payload.json")
+                            if link_updated_count > 0:
+                                logging.info(f"   → Updated {link_updated_count} links to javascript:; (pages with sub-pages)")
                             
                             # Call API with updated records
                             if api_base_url and api_headers:
@@ -389,17 +478,90 @@ def run_menu_navigation_step(
                                 matched_records.sort(key=lambda r: r.get("matched_page_level", 0))
                                 call_update_miblock_records_api(api_base_url, api_headers, matched_records, file_prefix, f"{file_prefix}_save_miblock_records_payload.json")
                 else:
-                    # No custom properties, call API normally with existing payloads
+                    # No custom properties, but still update links for level 1 pages with sub-pages
+                    logging.info("Updating links for level 1 pages with sub-pages...")
+                    
+                    # Update new_records_payload.json
+                    new_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_new_records_payload.json")
+                    if os.path.exists(new_records_file):
+                        with open(new_records_file, 'r', encoding='utf-8') as f:
+                            new_data = json.load(f)
+                        
+                        link_updated_count = 0
+                        for record in new_data.get("records", []):
+                            rec_level = record.get("level", 0)
+                            page_name = record.get("page_name", "")
+                            
+                            if rec_level == 1 and page_name in level_1_pages_with_subpages:
+                                try:
+                                    record_json_string = record.get("recordDataJson", "{}")
+                                    record_data = json.loads(record_json_string)
+                                    
+                                    # Find the link key (ending with -link)
+                                    link_key = None
+                                    for key in record_data.keys():
+                                        if key.endswith("-link") and key != "Id" and key != "ParentId":
+                                            link_key = key
+                                            break
+                                    
+                                    if link_key:
+                                        record_data[link_key] = "javascript:;"
+                                        record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
+                                        link_updated_count += 1
+                                        logging.debug(f"Updated link for '{page_name}' to javascript:;")
+                                except Exception as e:
+                                    logging.error(f"Error updating link for new record: {e}")
+                        
+                        if link_updated_count > 0:
+                            with open(new_records_file, 'w', encoding='utf-8') as f:
+                                json.dump(new_data, f, indent=4, ensure_ascii=False)
+                            logging.info(f"✅ Updated {link_updated_count} links in new_records_payload.json")
+                    
+                    # Update save_miblock_records_payload.json
+                    matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_save_miblock_records_payload.json")
+                    if os.path.exists(matched_records_file):
+                        with open(matched_records_file, 'r', encoding='utf-8') as f:
+                            matched_data = json.load(f)
+                        
+                        link_updated_count = 0
+                        for record in matched_data.get("records", []):
+                            rec_level = record.get("matched_page_level", 0)
+                            page_name = record.get("matched_page_name", "")
+                            
+                            if rec_level == 1 and page_name in level_1_pages_with_subpages:
+                                try:
+                                    record_json_string = record.get("recordDataJson", "{}")
+                                    record_data = json.loads(record_json_string)
+                                    
+                                    # Find the link key (ending with -link)
+                                    link_key = None
+                                    for key in record_data.keys():
+                                        if key.endswith("-link") and key != "Id" and key != "ParentId":
+                                            link_key = key
+                                            break
+                                    
+                                    if link_key:
+                                        record_data[link_key] = "javascript:;"
+                                        record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
+                                        link_updated_count += 1
+                                        logging.debug(f"Updated link for '{page_name}' to javascript:;")
+                                except Exception as e:
+                                    logging.error(f"Error updating link for matched record: {e}")
+                        
+                        if link_updated_count > 0:
+                            with open(matched_records_file, 'w', encoding='utf-8') as f:
+                                json.dump(matched_data, f, indent=4, ensure_ascii=False)
+                            logging.info(f"✅ Updated {link_updated_count} links in save_miblock_records_payload.json")
+                    
+                    # Call API normally with existing payloads
                     if api_base_url and api_headers:
                         # Read and call API for new records
-                        new_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_new_records_payload.json")
                         if os.path.exists(new_records_file):
                             with open(new_records_file, 'r', encoding='utf-8') as f:
                                 new_data = json.load(f)
                             call_save_miblock_records_api(api_base_url, api_headers, new_data.get("records", []), file_prefix, f"{file_prefix}_new_records_payload.json")
                         
                         # Read and call API for matched records
-                        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_save_miblock_records_payload.json")
                         if os.path.exists(matched_records_file):
                             with open(matched_records_file, 'r', encoding='utf-8') as f:
                                 matched_data = json.load(f)
