@@ -43,6 +43,114 @@ def load_settings(file_prefix: str) -> Dict[str, Any] | None:
         return None
 
 
+def fix_parent_record_ids_for_sub_records(file_prefix: str) -> bool:
+    """
+    Fixes parentRecordId for level 2+ records by mapping them to their parent's recordId.
+    This must be called before calling the update API for sub-records.
+    
+    Args:
+        file_prefix: The file prefix for the payload file
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_save_miblock_records_payload.json")
+    
+    if not os.path.exists(matched_records_file):
+        logging.warning(f"Payload file not found: {matched_records_file}")
+        return False
+    
+    try:
+        # Read the payload file
+        with open(matched_records_file, 'r', encoding='utf-8') as f:
+            matched_data = json.load(f)
+        
+        records = matched_data.get("records", [])
+        if not records:
+            logging.warning("No records found in payload file")
+            return False
+        
+        # Step 1: Build parent name to recordId map for level 1 records
+        parent_name_to_id_map = {}
+        level_1_count = 0
+        level_2_plus_count = 0
+        
+        for record in records:
+            rec_level = record.get("matched_page_level", 0)
+            page_name = record.get("matched_page_name", "")
+            record_id = record.get("recordId", 0)
+            
+            if rec_level == 1:
+                level_1_count += 1
+                if page_name and record_id:
+                    parent_name_to_id_map[page_name] = record_id
+                    logging.info(f"✅ Mapped parent '{page_name}' → recordId {record_id}")
+                else:
+                    logging.warning(f"⚠️ Level 1 record missing page_name or recordId: page_name='{page_name}', recordId={record_id}")
+            elif rec_level >= 2:
+                level_2_plus_count += 1
+        
+        logging.info(f"Found {level_1_count} level 1 records and {level_2_plus_count} level 2+ records")
+        logging.info(f"Created parent name-to-ID map with {len(parent_name_to_id_map)} level 1 parents: {list(parent_name_to_id_map.keys())}")
+        
+        if not parent_name_to_id_map:
+            logging.error("❌ No level 1 parents found in payload - cannot fix parentRecordId for sub-records")
+            return False
+        
+        # Step 2: Fix parentRecordId for level 2+ records
+        parent_id_updated_count = 0
+        for record in records:
+            rec_level = record.get("matched_page_level", 0)
+            
+            if rec_level >= 2:
+                page_name = record.get("matched_page_name", "")
+                parent_page_name = record.get("parent_page_name", "")
+                current_parent_id = record.get("parentRecordId", 0)
+                
+                logging.info(f"Processing level {rec_level} record: '{page_name}' (parent_page_name='{parent_page_name}', current_parentRecordId={current_parent_id})")
+                
+                if not parent_page_name:
+                    logging.warning(f"⚠️ Level {rec_level} record '{page_name}' has no parent_page_name - skipping")
+                    continue
+                
+                if parent_page_name in parent_name_to_id_map:
+                    parent_record_id = parent_name_to_id_map[parent_page_name]
+                    
+                    if current_parent_id != parent_record_id:
+                        record["parentRecordId"] = parent_record_id
+                        parent_id_updated_count += 1
+                        logging.info(f"✅ Fixed parentRecordId for '{page_name}' (level {rec_level}): {current_parent_id} → {parent_record_id} (parent: '{parent_page_name}')")
+                    else:
+                        logging.info(f"✓ ParentRecordId already correct for '{page_name}': {parent_record_id}")
+                else:
+                    logging.error(f"❌ Parent '{parent_page_name}' not found in map for '{page_name}'!")
+                    logging.error(f"   Available parents in map: {list(parent_name_to_id_map.keys())}")
+                    logging.error(f"   Record details: matched_page_name='{page_name}', parent_page_name='{parent_page_name}', recordId={record.get('recordId')}")
+        
+        # Step 3: Save updated payload file
+        logging.info(f"Total updates needed: {parent_id_updated_count} out of {level_2_plus_count} level 2+ records")
+        
+        if parent_id_updated_count > 0:
+            with open(matched_records_file, 'w', encoding='utf-8') as f:
+                json.dump(matched_data, f, indent=4, ensure_ascii=False)
+            logging.info(f"✅ Fixed {parent_id_updated_count} parentRecordId values for level 2+ records and saved to file")
+            logging.info(f"📁 File saved: {matched_records_file}")
+            
+            
+            return True
+        else:
+            logging.warning("⚠️ No parentRecordId values were updated - all may already be correct or there's a mapping issue")
+            # Still exit for debugging
+            logging.info("🛑 DEBUG: Exiting to check why no updates were made.")
+           
+            return True
+            
+    except Exception as e:
+        logging.error(f"Error fixing parent record IDs: {e}")
+        logging.exception("Full traceback:")
+        return False
+
+
 def run_menu_navigation_step(
     input_filepath: str,
     step_config: Dict[str, Any],
@@ -472,7 +580,14 @@ def run_menu_navigation_step(
                             
                             # Call API with updated records
                             if api_base_url and api_headers:
+                                # Fix parentRecordId for sub-records before calling update API
+                                logging.info("Fixing parentRecordId for sub-records before update API call...")
+                                fix_parent_record_ids_for_sub_records(file_prefix)
+                                
                                 logging.info("Calling API to update matched records with custom properties...")
+                                # Read updated file after parentRecordId fix
+                                with open(matched_records_file, 'r', encoding='utf-8') as f:
+                                    matched_data = json.load(f)
                                 # Sort by level to ensure level 1 is updated before level 2
                                 matched_records = matched_data.get("records", [])
                                 matched_records.sort(key=lambda r: r.get("matched_page_level", 0))
@@ -561,8 +676,12 @@ def run_menu_navigation_step(
                                 new_data = json.load(f)
                             call_save_miblock_records_api(api_base_url, api_headers, new_data.get("records", []), file_prefix, f"{file_prefix}_new_records_payload.json")
                         
-                        # Read and call API for matched records
+                        # Fix parentRecordId for sub-records before calling update API
                         if os.path.exists(matched_records_file):
+                            logging.info("Fixing parentRecordId for sub-records before update API call...")
+                            fix_parent_record_ids_for_sub_records(file_prefix)
+                            
+                            # Read updated file after parentRecordId fix
                             with open(matched_records_file, 'r', encoding='utf-8') as f:
                                 matched_data = json.load(f)
                             matched_records = matched_data.get("records", [])
@@ -571,7 +690,7 @@ def run_menu_navigation_step(
         
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
-        
+
         return {
             "menu_navigation_created": True,
             "file_prefix": file_prefix,
