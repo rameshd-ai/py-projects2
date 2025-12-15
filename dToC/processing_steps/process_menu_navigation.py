@@ -22,7 +22,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Set these to apply custom properties, or set to None/empty dict to skip
 LEVEL_1_CUSTOM_PROPERTIES = {
     "enable-dropdown[]": ["Yes"],
-    "enable-menu-item-in-left[]": ["Yes"]
+    "enable-menu-item-in-left[]": ["Yes"],
+    "enable-menu-item-in-right[]": ["Yes"]
 }
 
 def get_config_filepath(file_prefix: str) -> str:
@@ -467,6 +468,22 @@ def run_menu_navigation_step(
                         with open(new_records_file, 'r', encoding='utf-8') as f:
                             new_data = json.load(f)
                         
+                        # Collect all level 1 records first
+                        level_1_records = []
+                        for record in new_data.get("records", []):
+                            rec_level = record.get("level", 0)
+                            if rec_level == 1:
+                                level_1_records.append(record)
+                        
+                        # Split level 1 records in half: first half for left, second half for right
+                        # For odd numbers, the larger half goes to left (e.g., 7 items = 4 left, 3 right)
+                        total_level_1 = len(level_1_records)
+                        split_point = (total_level_1 + 1) // 2  # Round up - larger half to left, smaller half to right
+                        left_records = level_1_records[:split_point]
+                        right_records = level_1_records[split_point:]
+                        
+                        logging.info(f"Found {total_level_1} level 1 new records: {len(left_records)} for left, {len(right_records)} for right")
+                        
                         updated_count = 0
                         link_updated_count = 0
                         for record in new_data.get("records", []):
@@ -486,6 +503,16 @@ def run_menu_navigation_step(
                                     if not has_subpages:
                                         # No sub-pages, set enable-dropdown to No
                                         custom_props["enable-dropdown[]"] = ["No"]
+                                    
+                                    # Determine if this record should be in left or right
+                                    is_left = record in left_records
+                                    if is_left:
+                                        custom_props["enable-menu-item-in-left[]"] = ["Yes"]
+                                        custom_props["enable-menu-item-in-right[]"] = ["No"]
+                                    else:
+                                        custom_props["enable-menu-item-in-left[]"] = ["No"]
+                                        custom_props["enable-menu-item-in-right[]"] = ["Yes"]
+                                    
                                     record_data.update(custom_props)
                                     
                                     # Update link if page has sub-pages
@@ -506,7 +533,7 @@ def run_menu_navigation_step(
                                     
                                     record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
                                     updated_count += 1
-                                    logging.debug(f"Updated level 1 record: {page_name} (has_subpages={has_subpages})")
+                                    logging.debug(f"Updated level 1 record: {page_name} (has_subpages={has_subpages}, is_left={is_left})")
                                 except Exception as e:
                                     logging.error(f"Error updating new record: {e}")
                         
@@ -528,6 +555,22 @@ def run_menu_navigation_step(
                         with open(matched_records_file, 'r', encoding='utf-8') as f:
                             matched_data = json.load(f)
                         
+                        # Collect all level 1 records first
+                        level_1_records = []
+                        for record in matched_data.get("records", []):
+                            rec_level = record.get("matched_page_level", 0)
+                            if rec_level == 1:
+                                level_1_records.append(record)
+                        
+                        # Split level 1 records in half: first half for left, second half for right
+                        # For odd numbers, the larger half goes to left (e.g., 7 items = 4 left, 3 right)
+                        total_level_1 = len(level_1_records)
+                        split_point = (total_level_1 + 1) // 2  # Round up - larger half to left, smaller half to right
+                        left_records = level_1_records[:split_point]
+                        right_records = level_1_records[split_point:]
+                        
+                        logging.info(f"Found {total_level_1} level 1 matched records: {len(left_records)} for left, {len(right_records)} for right")
+                        
                         updated_count = 0
                         link_updated_count = 0
                         for record in matched_data.get("records", []):
@@ -547,6 +590,16 @@ def run_menu_navigation_step(
                                     if not has_subpages:
                                         # No sub-pages, set enable-dropdown to No
                                         custom_props["enable-dropdown[]"] = ["No"]
+                                    
+                                    # Determine if this record should be in left or right
+                                    is_left = record in left_records
+                                    if is_left:
+                                        custom_props["enable-menu-item-in-left[]"] = ["Yes"]
+                                        custom_props["enable-menu-item-in-right[]"] = ["No"]
+                                    else:
+                                        custom_props["enable-menu-item-in-left[]"] = ["No"]
+                                        custom_props["enable-menu-item-in-right[]"] = ["Yes"]
+                                    
                                     record_data.update(custom_props)
                                     
                                     # Update link if page has sub-pages
@@ -567,7 +620,7 @@ def run_menu_navigation_step(
                                     
                                     record["recordDataJson"] = json.dumps(record_data, ensure_ascii=False)
                                     updated_count += 1
-                                    logging.debug(f"Updated level 1 matched record: {page_name} (has_subpages={has_subpages})")
+                                    logging.debug(f"Updated level 1 matched record: {page_name} (has_subpages={has_subpages}, is_left={is_left})")
                                 except Exception as e:
                                     logging.error(f"Error updating matched record: {e}")
                         
