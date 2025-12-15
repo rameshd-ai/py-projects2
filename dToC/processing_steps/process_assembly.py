@@ -458,7 +458,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
     # Construct the base path to search: output/site_id/mi-block-ID-*
     search_path = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
     
-    # print(f"🔍 Searching for migration files in: {os.path.join('output', str(site_id), 'mi-block-ID-*')}")
+    # print(f"[INFO] Searching for migration files in: {os.path.join('output', str(site_id), 'mi-block-ID-*')}")
     
     # Use glob to find all matching ComponentRecordsTree.json files
     for file_path in glob.glob(search_path):
@@ -486,7 +486,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
                 # Simple validation before adding
                 if mapping_data["vComponentAlias"] and mapping_data["pageSectionGuid"]:
                     all_mappings.append(mapping_data)
-                    # print(f"  ✅ Extracted mapping for alias: {mapping_data['vComponentAlias']}")
+                    # print(f"  [SUCCESS] Extracted mapping for alias: {mapping_data['vComponentAlias']}")
                 else:
                     print(f"  [WARNING] Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
 
@@ -517,7 +517,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
             all_mappings.append(mapping_data)
             print(f"  [SUCCESS] Added {hf_key} mapping for alias: {hf_data.get('alias')}")
         elif hf_data.get("name"):
-            print(f"  ⚠️ Skipping {hf_key}: Component name '{hf_data.get('name')}' found, but GUID was missing/API failed during fetch.")
+            print(f"  [WARNING] Skipping {hf_key}: Component name '{hf_data.get('name')}' found, but GUID was missing/API failed during fetch.")
 
 
     # Content Entity Types: 1=Header/Prefix, 3=Footer/Suffix
@@ -560,7 +560,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
     except Exception as e:
         # This block now uses the correct variable name 'e' for the exception
         # and prints the error message directly.
-        print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+        print(f"\n[ERROR] **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
 
     return len(new_api_payload)
 
@@ -605,9 +605,9 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
                         "pageSectionGuid": section_guid
                     }
                     publish_payload.append(miblock_entry)
-                    # print(f"  ✅ Added MiBlock {component_id} for publishing.")
+                    # print(f"  [SUCCESS] Added MiBlock {component_id} for publishing.")
                 else:
-                    print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
+                    print(f"  [WARNING] Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
 
         except Exception as e:
             print(f"  [ERROR] Error processing file {file_path}: {e}")
@@ -631,10 +631,10 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
                 "pageSectionGuid": section_guid
             }
             publish_payload.append(component_entry)
-            print(f"  ✅ Added {hf_key} Component ID {component_id} for publishing.")
+            print(f"  [SUCCESS] Added {hf_key} Component ID {component_id} for publishing.")
         elif component_name and component_name != "N/A":
              # This means the component name was in the metadata but fetching its ID/GUID failed earlier
-             print(f"  ⚠️ Skipping {hf_key} ('{component_name}'): Component ID or GUID was missing for publishing.")
+             print(f"  [WARNING] Skipping {hf_key} ('{component_name}'): Component ID or GUID was missing for publishing.")
 
 
     print("\n--- Collecting Header/Footer Publish Data ---")
@@ -651,7 +651,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
         "type": "PAGE"
     }
     publish_payload.append(page_entry)
-    print(f"\n  ✅ Added Page ID {page_id} for publishing.")
+    print(f"\n  [SUCCESS] Added Page ID {page_id} for publishing.")
     
     if not publish_payload:
         print("\n[INFO] No content was collected for publishing.")
@@ -675,7 +675,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
     try:
         psPublishApi(base_url, headers, site_id, final_api_payload)
     except Exception as e:
-        print(f"\n❌ **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+        print(f"\n[ERROR] **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
 
     return len(publish_payload)
 
@@ -721,19 +721,19 @@ def CreatePage(base_url, headers, payload,template_id):
     except requests.exceptions.HTTPError as http_err:
         # Check if response object exists and has status code
         status_code = response.status_code if 'response' in locals() else 'N/A'
-        print(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
+        print(f"[ERROR] HTTP error occurred: {http_err} (Status Code: {status_code})")
         return {"error": "HTTP Error", "details": str(http_err), "status_code": status_code}
     except requests.exceptions.ConnectionError as conn_err:
-        print(f"❌ Connection error occurred: {conn_err}")
+        print(f"[ERROR] Connection error occurred: {conn_err}")
         return {"error": "Connection Error", "details": str(conn_err)}
     except requests.exceptions.Timeout as timeout_err:
-        print(f"❌ Timeout error occurred: {timeout_err}")
+        print(f"[ERROR] Timeout error occurred: {timeout_err}")
         return {"error": "Timeout Error", "details": str(timeout_err)}
     except requests.exceptions.RequestException as req_err:
-        print(f"❌ An unexpected request error occurred: {req_err}")
+        print(f"[ERROR] An unexpected request error occurred: {req_err}")
         return {"error": "Request Error", "details": str(req_err)}
     except json.JSONDecodeError:
-        print(f"❌ Failed to decode JSON response. Response text: {response.text if 'response' in locals() else 'No response object.'}")
+        print(f"[ERROR] Failed to decode JSON response. Response text: {response.text if 'response' in locals() else 'No response object.'}")
         return {"error": "JSON Decode Error", "details": "Response was not valid JSON"}
 
 
@@ -2366,14 +2366,14 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                     
                                     file_size = len(response_content)
                                     logging.info(f"[SUCCESS] Zip file saved successfully! Size: {file_size} bytes")
-                                    print(f"✅ Zip file saved successfully!")
+                                    print(f"[SUCCESS] Zip file saved successfully!")
                                     print(f"   File: {filename}")
                                     print(f"   Size: {file_size} bytes")
                                     print(f"   Location: {file_path}")
                                     print(f"{'='*80}\n")
                                 else:
                                     logging.warning(f"[WARNING] Component export returned no content for component ID: {component_id}")
-                                    print(f"⚠️ Component export returned no content")
+                                    print(f"[WARNING] Component export returned no content")
 
                                     
                                 time.sleep(2) 
@@ -2458,7 +2458,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                 logging.warning(f"[WARNING] Component ID not found in matching component data")
                         else:
                             logging.warning(f"[WARNING] No matching component found for '{menu_component_name}'")
-                            print(f"\n⚠️  No matching component found for '{menu_component_name}'")
+                            print(f"\n[WARNING]  No matching component found for '{menu_component_name}'")
 
 
 

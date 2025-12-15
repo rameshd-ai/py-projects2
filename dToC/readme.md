@@ -71,7 +71,7 @@ This project demonstrates a robust pipeline for processing XML files in a web en
 
 ---
 
-## ⚙️ Pipeline Configuration
+## [INFO] Pipeline Configuration
 
 The processing workflow is defined in the `config.py` file under the `PROCESSING_STEPS` list. **The connection between the file system and the code is managed by the `id` and `module` keys.**
 

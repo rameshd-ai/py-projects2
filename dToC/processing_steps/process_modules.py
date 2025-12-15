@@ -63,10 +63,10 @@ def find_processed_json_filepath(file_prefix: str) -> str | None:
         # Use the isolated base_prefix for matching
         if filename.startswith(base_prefix) and filename.endswith("_simplified.json"):
             filepath = os.path.join(UPLOAD_FOLDER, filename)
-            # print(f"Module Processor: ✅ Match found: {filename}")
+            # print(f"Module Processor: [SUCCESS] Match found: {filename}")
             return filepath
             
-    # print(f"Module Processor: ❌ No processed JSON file found matching the criteria for prefix '{base_prefix}'.")
+    # print(f"Module Processor: [ERROR] No processed JSON file found matching the criteria for prefix '{base_prefix}'.")
     return None
 
 # --- UTILITY FUNCTION TO SAVE PROCESSED JSON (Uses dynamic path) ---
@@ -82,7 +82,7 @@ def save_processed_json(file_prefix: str, data: Dict[str, Any]) -> bool:
     try:
         with open(filepath, "w") as f:
             json.dump(data, f, indent=4)
-        # print(f"✅ Successfully saved updated processed JSON to {filepath}")
+        # print(f"[SUCCESS] Successfully saved updated processed JSON to {filepath}")
         return True
     except Exception as e:
         print(f"Module Processor: Error saving processed JSON file: {e}")
@@ -91,7 +91,7 @@ def save_processed_json(file_prefix: str, data: Dict[str, Any]) -> bool:
 # --- PLACEHOLDER FUNCTION FOR CATEGORY CREATION ---
 def createCategory(page_name: str, site_id: str):
     """Placeholder function to simulate calling the API to create a new category."""
-    print(f"\n⚙️ Calling createCategory for Page Name: '{page_name}' (Site ID: {site_id})...")
+    print(f"\n[INFO] Calling createCategory for Page Name: '{page_name}' (Site ID: {site_id})...")
     print("TODO: Implement API call to /api/PageApi/CreateCategory in the next step.")
 
 
@@ -177,9 +177,9 @@ def run_module_processing_step(
             if 'page_name' in page:
                 level1_page_names.append(page['page_name'])
         
-        # print(f"\n✅ Extracted {len(level1_page_names)} Level 1 Page Name(s) from processed JSON: {level1_page_names}")
+        # print(f"\n[SUCCESS] Extracted {len(level1_page_names)} Level 1 Page Name(s) from processed JSON: {level1_page_names}")
     else:
-        # print("⚠️ Processed JSON structure is missing the 'pages' list. Aborting category check.")
+        # print("[WARNING] Processed JSON structure is missing the 'pages' list. Aborting category check.")
         return {
             "modules_fetched_count": 0,
             "file_prefix": file_prefix
@@ -238,7 +238,7 @@ def run_module_processing_step(
 
         normalized_page_name = normalize_page_name(page_name)
         
-        # print(f"\n🔍 Checking Page Name: '{page_name}' (Normalized: '{normalized_page_name}')")
+        # print(f"\n[INFO] Checking Page Name: '{page_name}' (Normalized: '{normalized_page_name}')")
 
         # Look up category info using the normalized name
         category_info = normalized_category_map.get(normalized_page_name)
@@ -256,10 +256,10 @@ def run_module_processing_step(
             }
             pages_updated += 1
             
-            # print("✅ match found") 
-            # print(f"✅ FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}'). Category ID attached to page object.")
+            # print("[SUCCESS] match found") 
+            # print(f"[SUCCESS] FOUND: Page '{page_name}' matches Category ID {category_id} ('{category_name_api}'). Category ID attached to page object.")
         else:
-            # print(f"❌ NOT FOUND: Page '{page_name}' does not match an existing Category.")
+            # print(f"[ERROR] NOT FOUND: Page '{page_name}' does not match an existing Category.")
             # Call the creation function if no match is found
             createCategory(page_name, site_id)
         

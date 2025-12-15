@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Tuple, Set, Optional
 from config import UPLOAD_FOLDER
 
 # ------------------------------------------------------------------
-# 🛠️ CONFIG UTILITY FUNCTIONS (Added for file persistence)
+# [TOOL] CONFIG UTILITY FUNCTIONS (Added for file persistence)
 # ------------------------------------------------------------------
 
 def get_config_filepath(file_prefix: str) -> str:
@@ -55,7 +55,7 @@ def save_settings(file_prefix: str, settings: Dict[str, Any]) -> bool:
 
 
 # ------------------------------------------------------------------
-# 🛠️ XML/HTML Utility Functions (MOVED from original config_and_logic.py)
+# [TOOL] XML/HTML Utility Functions (MOVED from original config_and_logic.py)
 # ------------------------------------------------------------------
 
 def aggressively_unescape_and_clean(content):
@@ -200,7 +200,7 @@ def extract_meta_info(raw_html_content: str) -> Dict[str, Any]:
             # Normalize internal whitespace (replace newlines/tabs/spaces with a single space)
             value = re.sub(r'[\r\n\s]+', ' ', value).strip()
             
-            # 🔄 CHANGE: Now we add the key to the dictionary if the marker was found.
+            # [PROCESSING] CHANGE: Now we add the key to the dictionary if the marker was found.
             # The value will be "" if it was blank in the source.
             meta_info[dict_key] = value
                 

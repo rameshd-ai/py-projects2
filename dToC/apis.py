@@ -609,7 +609,7 @@ def CreatePage(base_url, headers, payload,template_id):
     except requests.exceptions.HTTPError as http_err:
         # Check if response object exists and has status code
         status_code = response.status_code if 'response' in locals() else 'N/A'
-        print(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
+        print(f"[ERROR] HTTP error occurred: {http_err} (Status Code: {status_code})")
         return {"error": "HTTP Error", "details": str(http_err), "status_code": status_code}
     except requests.exceptions.ConnectionError as conn_err:
         print(f"[ERROR] Connection error occurred: {conn_err}")
@@ -662,7 +662,7 @@ def GetPageCategoryList(base_url, headers):
 
     except requests.exceptions.HTTPError as http_err:
         status_code = response.status_code if 'response' in locals() else 'N/A'
-        print(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
+        print(f"[ERROR] HTTP error occurred: {http_err} (Status Code: {status_code})")
         return {"error": "HTTP Error", "details": str(http_err), "status_code": status_code}
 
     except requests.exceptions.ConnectionError as conn_err:
@@ -763,11 +763,11 @@ def CustomGetComponentAliasByName(base_url, headers, component_name):
                 component_id = nested_component_details.get("componentId")
                 # --- END OF CORRECTION ---
                 
-                # print(f"✅ Found V-Component Alias and ID for '{component_name}': ({component_alias}, {component_id})")
+                # print(f"[SUCCESS] Found V-Component Alias and ID for '{component_name}': ({component_alias}, {component_id})")
                 return (vComponentId,component_alias, component_id) # <-- Return both values as a tuple
 
         # 5. Fallback if search returned data, but no exact name match was found
-        # print(f"⚠️ Search returned data, but no exact match found for '{component_name}' in the 'vComponents' list.")
+        # print(f"[WARNING] Search returned data, but no exact match found for '{component_name}' in the 'vComponents' list.")
         return {"error": "Component Not Found", "details": f"No exact component name match for '{component_name}' in returned list."}
 
     except requests.exceptions.RequestException as err:
@@ -997,7 +997,7 @@ def GetTemplatePageByName(base_url, headers, template_page_name):
                 "details": f"No page name contains '{template_page_name}'."
             }
 
-        # print(f"✅ Found {len(matched_pages)} match(es) for '{template_page_name}'.")
+        # print(f"[SUCCESS] Found {len(matched_pages)} match(es) for '{template_page_name}'.")
         return matched_pages
 
     except requests.exceptions.RequestException as err:
