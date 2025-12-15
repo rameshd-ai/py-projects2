@@ -85,9 +85,9 @@ def fix_parent_record_ids_for_sub_records(file_prefix: str) -> bool:
                 level_1_count += 1
                 if page_name and record_id:
                     parent_name_to_id_map[page_name] = record_id
-                    logging.info(f"✅ Mapped parent '{page_name}' → recordId {record_id}")
+                    logging.info(f"[SUCCESS] Mapped parent '{page_name}' → recordId {record_id}")
                 else:
-                    logging.warning(f"⚠️ Level 1 record missing page_name or recordId: page_name='{page_name}', recordId={record_id}")
+                    logging.warning(f"[WARNING] Level 1 record missing page_name or recordId: page_name='{page_name}', recordId={record_id}")
             elif rec_level >= 2:
                 level_2_plus_count += 1
         
@@ -95,7 +95,7 @@ def fix_parent_record_ids_for_sub_records(file_prefix: str) -> bool:
         logging.info(f"Created parent name-to-ID map with {len(parent_name_to_id_map)} level 1 parents: {list(parent_name_to_id_map.keys())}")
         
         if not parent_name_to_id_map:
-            logging.error("❌ No level 1 parents found in payload - cannot fix parentRecordId for sub-records")
+            logging.error("[ERROR] No level 1 parents found in payload - cannot fix parentRecordId for sub-records")
             return False
         
         # Step 2: Fix parentRecordId for level 2+ records
@@ -111,7 +111,7 @@ def fix_parent_record_ids_for_sub_records(file_prefix: str) -> bool:
                 logging.info(f"Processing level {rec_level} record: '{page_name}' (parent_page_name='{parent_page_name}', current_parentRecordId={current_parent_id})")
                 
                 if not parent_page_name:
-                    logging.warning(f"⚠️ Level {rec_level} record '{page_name}' has no parent_page_name - skipping")
+                    logging.warning(f"[WARNING] Level {rec_level} record '{page_name}' has no parent_page_name - skipping")
                     continue
                 
                 if parent_page_name in parent_name_to_id_map:
@@ -120,11 +120,11 @@ def fix_parent_record_ids_for_sub_records(file_prefix: str) -> bool:
                     if current_parent_id != parent_record_id:
                         record["parentRecordId"] = parent_record_id
                         parent_id_updated_count += 1
-                        logging.info(f"✅ Fixed parentRecordId for '{page_name}' (level {rec_level}): {current_parent_id} → {parent_record_id} (parent: '{parent_page_name}')")
+                        logging.info(f"[SUCCESS] Fixed parentRecordId for '{page_name}' (level {rec_level}): {current_parent_id} → {parent_record_id} (parent: '{parent_page_name}')")
                     else:
                         logging.info(f"✓ ParentRecordId already correct for '{page_name}': {parent_record_id}")
                 else:
-                    logging.error(f"❌ Parent '{parent_page_name}' not found in map for '{page_name}'!")
+                    logging.error(f"[ERROR] Parent '{parent_page_name}' not found in map for '{page_name}'!")
                     logging.error(f"   Available parents in map: {list(parent_name_to_id_map.keys())}")
                     logging.error(f"   Record details: matched_page_name='{page_name}', parent_page_name='{parent_page_name}', recordId={record.get('recordId')}")
         
@@ -134,13 +134,13 @@ def fix_parent_record_ids_for_sub_records(file_prefix: str) -> bool:
         if parent_id_updated_count > 0:
             with open(matched_records_file, 'w', encoding='utf-8') as f:
                 json.dump(matched_data, f, indent=4, ensure_ascii=False)
-            logging.info(f"✅ Fixed {parent_id_updated_count} parentRecordId values for level 2+ records and saved to file")
+            logging.info(f"[SUCCESS] Fixed {parent_id_updated_count} parentRecordId values for level 2+ records and saved to file")
             logging.info(f"📁 File saved: {matched_records_file}")
             
             
             return True
         else:
-            logging.warning("⚠️ No parentRecordId values were updated - all may already be correct or there's a mapping issue")
+            logging.warning("[WARNING] No parentRecordId values were updated - all may already be correct or there's a mapping issue")
             # Still exit for debugging
             logging.info("🛑 DEBUG: Exiting to check why no updates were made.")
            
@@ -317,7 +317,7 @@ def run_menu_navigation_step(
             with open(components_output_filepath, 'w', encoding='utf-8') as f:
                 json.dump({"total_components": len(all_components_response), "components": all_components_response}, f, indent=4, ensure_ascii=False)
             
-            logging.info(f"✅ Components saved: {len(all_components_response)}")
+            logging.info(f"[SUCCESS] Components saved: {len(all_components_response)}")
             
             if menu_component_name:
                 def normalize_component_name(name: str) -> str:
@@ -335,7 +335,7 @@ def run_menu_navigation_step(
                     if (comp_name and normalize_component_name(comp_name) == normalized_search_name) or \
                        (comp_component_name and normalize_component_name(comp_component_name) == normalized_search_name):
                         matching_component = comp
-                        logging.info(f"✅ Found matching component: '{comp_name}'")
+                        logging.info(f"[SUCCESS] Found matching component: '{comp_name}'")
                         break
                 
                 if matching_component:
@@ -374,12 +374,12 @@ def run_menu_navigation_step(
                                     zip_ref.extractall(save_folder)
                                 os.remove(file_path)
                             
-                            logging.info(f"✅ Zip extracted: {file_size} bytes")
+                            logging.info(f"[SUCCESS] Zip extracted: {file_size} bytes")
                             
                             time.sleep(2)
                             
                             # Convert txt to json
-                            logging.info("🔄 Converting TXT to JSON...")
+                            logging.info("[PROCESSING] Converting TXT to JSON...")
                             txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
                             
                             for extracted_file in os.listdir(save_folder):
@@ -397,16 +397,16 @@ def run_menu_navigation_step(
                                         time.sleep(0.05)
                                         os.remove(extracted_file_path)
                                     except (json.JSONDecodeError, OSError) as e:
-                                        logging.error(f"⚠️ Error: {e}")
+                                        logging.error(f"[ERROR] Error: {e}")
                             
-                            logging.info(f"✅ TXT to JSON complete")
+                            logging.info(f"[SUCCESS] TXT to JSON complete")
                             
                             # Add level fields
                             records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
                             if os.path.exists(records_file_path):
                                 from process_assembly import add_levels_to_records
                                 add_levels_to_records(records_file_path)
-                                logging.info(f"✅ Added level fields")
+                                logging.info(f"[SUCCESS] Added level fields")
         
         # 4. Create menu_navigation.json
         menu_navigation_data = {
@@ -421,7 +421,7 @@ def run_menu_navigation_step(
         with open(output_filepath, 'w', encoding='utf-8') as f:
             json.dump(menu_navigation_data, f, indent=4, ensure_ascii=False)
         
-        logging.info(f"✅ Menu navigation JSON saved: {output_filename}")
+        logging.info(f"[SUCCESS] Menu navigation JSON saved: {output_filename}")
         
         # 5. Map pages to records and create payloads
         if downloaded_component_id:
@@ -540,7 +540,7 @@ def run_menu_navigation_step(
                         if updated_count > 0:
                             with open(new_records_file, 'w', encoding='utf-8') as f:
                                 json.dump(new_data, f, indent=4, ensure_ascii=False)
-                            logging.info(f"✅ Updated {updated_count} level 1 records in new_records_payload.json")
+                            logging.info(f"[SUCCESS] Updated {updated_count} level 1 records in new_records_payload.json")
                             if link_updated_count > 0:
                                 logging.info(f"   → Updated {link_updated_count} links to javascript:; (pages with sub-pages)")
                             
@@ -627,7 +627,7 @@ def run_menu_navigation_step(
                         if updated_count > 0:
                             with open(matched_records_file, 'w', encoding='utf-8') as f:
                                 json.dump(matched_data, f, indent=4, ensure_ascii=False)
-                            logging.info(f"✅ Updated {updated_count} level 1 records in save_miblock_records_payload.json")
+                            logging.info(f"[SUCCESS] Updated {updated_count} level 1 records in save_miblock_records_payload.json")
                             if link_updated_count > 0:
                                 logging.info(f"   → Updated {link_updated_count} links to javascript:; (pages with sub-pages)")
                             
@@ -683,7 +683,7 @@ def run_menu_navigation_step(
                         if link_updated_count > 0:
                             with open(new_records_file, 'w', encoding='utf-8') as f:
                                 json.dump(new_data, f, indent=4, ensure_ascii=False)
-                            logging.info(f"✅ Updated {link_updated_count} links in new_records_payload.json")
+                            logging.info(f"[SUCCESS] Updated {link_updated_count} links in new_records_payload.json")
                     
                     # Update save_miblock_records_payload.json
                     matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_save_miblock_records_payload.json")
@@ -719,7 +719,7 @@ def run_menu_navigation_step(
                         if link_updated_count > 0:
                             with open(matched_records_file, 'w', encoding='utf-8') as f:
                                 json.dump(matched_data, f, indent=4, ensure_ascii=False)
-                            logging.info(f"✅ Updated {link_updated_count} links in save_miblock_records_payload.json")
+                            logging.info(f"[SUCCESS] Updated {link_updated_count} links in save_miblock_records_payload.json")
                     
                     # Call API normally with existing payloads
                     if api_base_url and api_headers:

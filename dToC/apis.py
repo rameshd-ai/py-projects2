@@ -59,7 +59,7 @@ def generate_cms_token(url, profile_alias):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ API Request Failed: {e}")
+        logging.error(f"[ERROR] API Request Failed: {e}")
         return None
 
 def export_mi_block_component(base_url,componentId,siteId, headers):
@@ -95,9 +95,9 @@ def export_mi_block_component(base_url,componentId,siteId, headers):
         return response.content, content_disposition
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ API request failed: {e}")
+        logging.error(f"[ERROR] API request failed: {e}")
     except Exception as e:
-        logging.error(f"❌ Unexpected error during API call: {e}")
+        logging.error(f"[ERROR] Unexpected error during API call: {e}")
     
     time.sleep(1)
     return None, None
@@ -120,10 +120,10 @@ def get_active_pages_from_api(base_url, site_id, headers):
         response.raise_for_status()
         active_pages = response.json()
         valid_page_ids = {str(page["PageId"]).strip() for page in active_pages}
-        print(f"✅ Fetched {len(valid_page_ids)} active PageIds.")
+        print(f"[SUCCESS] Fetched {len(valid_page_ids)} active PageIds.")
         return valid_page_ids
     except requests.RequestException as e:
-        print(f"❌ Failed to fetch active pages: {e}")
+        print(f"[ERROR] Failed to fetch active pages: {e}")
         return set()
 
 def get_active_pages_from_api_all(base_url, site_id, headers):
@@ -143,10 +143,10 @@ def get_active_pages_from_api_all(base_url, site_id, headers):
         response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         active_pages = response.json()
-        print(f"✅ Fetched {len(active_pages)} active Page records.")
+        print(f"[SUCCESS] Fetched {len(active_pages)} active Page records.")
         return active_pages
     except requests.RequestException as e:
-        print(f"❌ Failed to fetch active pages: {e}")
+        print(f"[ERROR] Failed to fetch active pages: {e}")
         return []
 
 def getComponentDetailsUsingVcompAlias(vcompalias, base_url, headers):
@@ -184,11 +184,11 @@ def getComponentDetailsUsingVcompAlias(vcompalias, base_url, headers):
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         data = response.json()
-        logging.info("✅ Successfully fetched VComponents data from API.")
+        logging.info("[SUCCESS] Successfully fetched VComponents data from API.")
         return data
 
     except requests.RequestException as e:
-        logging.error(f"❌ Failed to fetch VComponents: {e}")
+        logging.error(f"[ERROR] Failed to fetch VComponents: {e}")
         return None
     
 
@@ -263,20 +263,20 @@ def publishPage(base_url, headers, site_id, page_id):
         publish_resp.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
 
         if publish_resp.status_code // 100 == 2:
-            message = f"✅ Successfully published PageId {page_id}."
+            message = f"[SUCCESS] Successfully published PageId {page_id}."
             logging.info(message)
             return True, message
         else:
-            message = f"❌ Failed to publish PageId {page_id}: {publish_resp.status_code} - {publish_resp.text}"
+            message = f"[ERROR] Failed to publish PageId {page_id}: {publish_resp.status_code} - {publish_resp.text}"
             logging.error(message)
             return False, message
 
     except requests.RequestException as e:
-        message = f"❌ Failed to publish PageId {page_id} due to API request error: {e}"
+        message = f"[ERROR] Failed to publish PageId {page_id} due to API request error: {e}"
         logging.error(message)
         return False, message
     except Exception as e:
-        message = f"❌ An unexpected error occurred while trying to publish PageId {page_id}: {e}"
+        message = f"[ERROR] An unexpected error occurred while trying to publish PageId {page_id}: {e}"
         logging.error(message)
         return False, message
 
@@ -300,13 +300,13 @@ def get_page_info_by_id(base_url, page_id, headers):
         response = requests.get(api_url, headers=headers)
         response.raise_for_status()
         page_info = response.json()
-        logging.info(f"✅ Successfully fetched page info for PageId: {page_id}")
+        logging.info(f"[SUCCESS] Successfully fetched page info for PageId: {page_id}")
         return page_info
     except requests.RequestException as e:
-        logging.error(f"❌ Failed to fetch page info for PageId {page_id}: {e}")
+        logging.error(f"[ERROR] Failed to fetch page info for PageId {page_id}: {e}")
         return {}
     except Exception as e:
-        logging.error(f"❌ An unexpected error occurred while fetching page info for {page_id}: {e}")
+        logging.error(f"[ERROR] An unexpected error occurred while fetching page info for {page_id}: {e}")
         return {}
 
 
@@ -336,7 +336,7 @@ def get_vcomponent_detail_by_aliases_api(base_url, aliases, headers):
         
         return response_data
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Failed to fetch vcomponent details from API: {e}")
+        logging.error(f"[ERROR] Failed to fetch vcomponent details from API: {e}")
         return {}
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
@@ -358,10 +358,10 @@ def psMappingApi(base_url, headers, payload):
         logging.info("Calling Mapping API...")
         response = requests.post(api_url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
-        logging.info(f"✅ Mapping API call successful. Status: {response.status_code}")
+        logging.info(f"[SUCCESS] Mapping API call successful. Status: {response.status_code}")
         return response.json()
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Mapping API call failed: {e}")
+        logging.error(f"[ERROR] Mapping API call failed: {e}")
         return {"status": "error", "message": str(e)}
         
 def psPublishApi(base_url, headers, site_id, payload):
@@ -380,10 +380,10 @@ def psPublishApi(base_url, headers, site_id, payload):
         logging.info("Calling Publish API...")
         response = requests.post(api_url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
-        logging.info(f"✅ Publish API call successful. Status: {response.status_code}")
+        logging.info(f"[SUCCESS] Publish API call successful. Status: {response.status_code}")
         return response.json()
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Publish API call failed: {e}")
+        logging.error(f"[ERROR] Publish API call failed: {e}")
         return {"status": "error", "message": str(e)}
     
 
@@ -405,10 +405,10 @@ def get_page_info(base_url, page_id, headers):
     try:
         response = requests.get(api_url, headers=headers)
         response.raise_for_status()
-        logging.info(f"✅ Fetched page info for page ID: {page_id}")
+        logging.info(f"[SUCCESS] Fetched page info for page ID: {page_id}")
         return response.json()
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Failed to fetch page info: {e}")
+        logging.error(f"[ERROR] Failed to fetch page info: {e}")
         return {}
     
 
@@ -433,9 +433,9 @@ def save_page_metadata_api(base_url, headers, template_id, payload):
         print(resp)
     
         resp.raise_for_status()
-        logging.info(f"✅ Updated Meta Info for page ID: {payload.get('pageId')}")
+        logging.info(f"[SUCCESS] Updated Meta Info for page ID: {payload.get('pageId')}")
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Failed to update Meta Info for page ID: {payload.get('pageId')}: {e}")
+        logging.error(f"[ERROR] Failed to update Meta Info for page ID: {payload.get('pageId')}: {e}")
         logging.error(f"Response text: {resp.text if 'resp' in locals() else 'No response'}")
 
 
@@ -543,19 +543,19 @@ def CreateComponentRecord(base_url, headers, payload):
         return response.json()
 
     except requests.exceptions.HTTPError as http_err:
-        print(f"❌ HTTP error occurred: {http_err} (Status Code: {response.status_code})")
+        print(f"[ERROR] HTTP error occurred: {http_err} (Status Code: {response.status_code})")
         return {"error": "HTTP Error", "details": str(http_err), "status_code": response.status_code}
     except requests.exceptions.ConnectionError as conn_err:
-        print(f"❌ Connection error occurred: {conn_err}")
+        print(f"[ERROR] Connection error occurred: {conn_err}")
         return {"error": "Connection Error", "details": str(conn_err)}
     except requests.exceptions.Timeout as timeout_err:
-        print(f"❌ Timeout error occurred: {timeout_err}")
+        print(f"[ERROR] Timeout error occurred: {timeout_err}")
         return {"error": "Timeout Error", "details": str(timeout_err)}
     except requests.exceptions.RequestException as req_err:
-        print(f"❌ An unexpected error occurred: {req_err}")
+        print(f"[ERROR] An unexpected error occurred: {req_err}")
         return {"error": "Request Error", "details": str(req_err)}
     except json.JSONDecodeError:
-        print(f"❌ Failed to decode JSON response. Response text: {response.text}")
+        print(f"[ERROR] Failed to decode JSON response. Response text: {response.text}")
         return {"error": "JSON Decode Error", "details": "Response was not valid JSON"}
     
 
@@ -612,16 +612,16 @@ def CreatePage(base_url, headers, payload,template_id):
         print(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
         return {"error": "HTTP Error", "details": str(http_err), "status_code": status_code}
     except requests.exceptions.ConnectionError as conn_err:
-        print(f"❌ Connection error occurred: {conn_err}")
+        print(f"[ERROR] Connection error occurred: {conn_err}")
         return {"error": "Connection Error", "details": str(conn_err)}
     except requests.exceptions.Timeout as timeout_err:
-        print(f"❌ Timeout error occurred: {timeout_err}")
+        print(f"[ERROR] Timeout error occurred: {timeout_err}")
         return {"error": "Timeout Error", "details": str(timeout_err)}
     except requests.exceptions.RequestException as req_err:
-        print(f"❌ An unexpected request error occurred: {req_err}")
+        print(f"[ERROR] An unexpected request error occurred: {req_err}")
         return {"error": "Request Error", "details": str(req_err)}
     except json.JSONDecodeError:
-        print(f"❌ Failed to decode JSON response. Response text: {response.text if 'response' in locals() else 'No response object.'}")
+        print(f"[ERROR] Failed to decode JSON response. Response text: {response.text if 'response' in locals() else 'No response object.'}")
         return {"error": "JSON Decode Error", "details": "Response was not valid JSON"}
 
 
@@ -666,19 +666,19 @@ def GetPageCategoryList(base_url, headers):
         return {"error": "HTTP Error", "details": str(http_err), "status_code": status_code}
 
     except requests.exceptions.ConnectionError as conn_err:
-        print(f"❌ Connection error occurred: {conn_err}")
+        print(f"[ERROR] Connection error occurred: {conn_err}")
         return {"error": "Connection Error", "details": str(conn_err)}
 
     except requests.exceptions.Timeout as timeout_err:
-        print(f"❌ Timeout error occurred: {timeout_err}")
+        print(f"[ERROR] Timeout error occurred: {timeout_err}")
         return {"error": "Timeout Error", "details": str(timeout_err)}
 
     except requests.exceptions.RequestException as req_err:
-        print(f"❌ Request exception occurred: {req_err}")
+        print(f"[ERROR] Request exception occurred: {req_err}")
         return {"error": "Request Error", "details": str(req_err)}
 
     except json.JSONDecodeError:
-        print(f"❌ Failed to decode JSON. Response text: {response.text if 'response' in locals() else 'No response'}")
+        print(f"[ERROR] Failed to decode JSON. Response text: {response.text if 'response' in locals() else 'No response'}")
         return {"error": "JSON Decode Error", "details": "Invalid JSON response"}
 
 
@@ -748,7 +748,7 @@ def CustomGetComponentAliasByName(base_url, headers, component_name):
         v_components = response_data.get("vComponents", [])
 
         if not v_components:
-            print(f"⚠️ V-Component '{component_name}' not found. 'vComponents' array was empty or search failed.")
+            print(f"[WARNING] V-Component '{component_name}' not found. 'vComponents' array was empty or search failed.")
             return {"error": "Component Not Found", "details": f"No component matching '{component_name}' was returned by the API."}
         
         # 4. Iterate through the results to find an exact name match and extract the alias and ID
@@ -772,11 +772,11 @@ def CustomGetComponentAliasByName(base_url, headers, component_name):
 
     except requests.exceptions.RequestException as err:
         status_code = response.status_code if response is not None else 'N/A'
-        print(f"❌ API Error in GetComponentAliasByName: {err} (Status Code: {status_code})")
+        print(f"[ERROR] API Error in GetComponentAliasByName: {err} (Status Code: {status_code})")
         return {"error": "Request Error", "details": str(err), "status_code": status_code}
     except json.JSONDecodeError:
         response_text = response.text if response is not None else 'No response object.'
-        print(f"❌ JSON Decode Error. Response text: {response_text}")
+        print(f"[ERROR] JSON Decode Error. Response text: {response_text}")
         return {"error": "JSON Decode Error", "details": "Response was not valid JSON"}
 
 
@@ -865,12 +865,12 @@ def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1
 
         except requests.exceptions.RequestException as err:
             status_code = response.status_code if response is not None else 'N/A'
-            logger.error(f"❌ API Request Error on Page {current_page}: {err} (Status Code: {status_code})")
+            logger.error(f"[ERROR] API Request Error on Page {current_page}: {err} (Status Code: {status_code})")
             return {"error": "Request Error", "details": str(err), "status_code": status_code, "page": current_page}
             
         except json.JSONDecodeError:
             response_text = response.text if response is not None else 'No response object.'
-            logger.error(f"❌ JSON Decode Error on Page {current_page}. Response text: {response_text[:100]}...")
+            logger.error(f"[ERROR] JSON Decode Error on Page {current_page}. Response text: {response_text[:100]}...")
             return {"error": "JSON Decode Error", "details": "Response was not valid JSON", "page": current_page}
         
     return all_components
@@ -1002,12 +1002,12 @@ def GetTemplatePageByName(base_url, headers, template_page_name):
 
     except requests.exceptions.RequestException as err:
         status_code = response.status_code if response is not None else "N/A"
-        print(f"❌ API Request Error in GetTemplatePageByName: {err} (Status Code: {status_code})")
+        print(f"[ERROR] API Request Error in GetTemplatePageByName: {err} (Status Code: {status_code})")
         return {"error": "Request Error", "details": str(err), "status_code": status_code}
 
     except json.JSONDecodeError:
         response_text = response.text if response is not None else "No response object"
-        print(f"❌ JSON Decode Error in GetTemplatePageByName. Response body: {response_text}")
+        print(f"[ERROR] JSON Decode Error in GetTemplatePageByName. Response body: {response_text}")
         return {"error": "JSON Decode Error", "details": "Invalid JSON response received from API"}
 
 
@@ -1062,32 +1062,32 @@ def get_theme_configuration(base_url: str, site_id: int, headers: Dict[str, str]
         response_data = response.json()
         
         if response_data.get("success", False):
-            logging.info(f"✅ Successfully fetched theme configuration for SiteId: {site_id}")
+            logging.info(f"[SUCCESS] Successfully fetched theme configuration for SiteId: {site_id}")
             return response_data
         else:
             error_message = response_data.get("errorMessage", "Unknown error")
-            logging.error(f"❌ API returned success=false: {error_message}")
+            logging.error(f"[ERROR] API returned success=false: {error_message}")
             return None
             
     except requests.exceptions.HTTPError as http_err:
         status_code = response.status_code if 'response' in locals() else 'N/A'
-        logging.error(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
+        logging.error(f"[ERROR] HTTP error occurred: {http_err} (Status Code: {status_code})")
         return None
     except requests.exceptions.ConnectionError as conn_err:
-        logging.error(f"❌ Connection error occurred: {conn_err}")
+        logging.error(f"[ERROR] Connection error occurred: {conn_err}")
         return None
     except requests.exceptions.Timeout as timeout_err:
-        logging.error(f"❌ Timeout error occurred: {timeout_err}")
+        logging.error(f"[ERROR] Timeout error occurred: {timeout_err}")
         return None
     except requests.exceptions.RequestException as req_err:
-        logging.error(f"❌ Request error occurred: {req_err}")
+        logging.error(f"[ERROR] Request error occurred: {req_err}")
         return None
     except json.JSONDecodeError as json_err:
         response_text = response.text if 'response' in locals() else 'No response'
-        logging.error(f"❌ JSON decode error: {json_err}. Response: {response_text[:200]}")
+        logging.error(f"[ERROR] JSON decode error: {json_err}. Response: {response_text[:200]}")
         return None
     except Exception as e:
-        logging.error(f"❌ Unexpected error in get_theme_configuration: {e}")
+        logging.error(f"[ERROR] Unexpected error in get_theme_configuration: {e}")
         return None
 
 
@@ -1152,32 +1152,32 @@ def get_group_record(base_url: str, payload: dict, headers: Dict[str, str]) -> U
         response_data = response.json()
         
         if response_data.get("success", False):
-            logging.info(f"✅ Successfully fetched group records for SiteId: {site_id}")
+            logging.info(f"[SUCCESS] Successfully fetched group records for SiteId: {site_id}")
             return response_data
         else:
             error_message = response_data.get("errorMessage", "Unknown error")
-            logging.error(f"❌ API returned success=false: {error_message}")
+            logging.error(f"[ERROR] API returned success=false: {error_message}")
             return None
             
     except requests.exceptions.HTTPError as http_err:
         status_code = response.status_code if 'response' in locals() else 'N/A'
-        logging.error(f"❌ HTTP error occurred: {http_err} (Status Code: {status_code})")
+        logging.error(f"[ERROR] HTTP error occurred: {http_err} (Status Code: {status_code})")
         return None
     except requests.exceptions.ConnectionError as conn_err:
-        logging.error(f"❌ Connection error occurred: {conn_err}")
+        logging.error(f"[ERROR] Connection error occurred: {conn_err}")
         return None
     except requests.exceptions.Timeout as timeout_err:
-        logging.error(f"❌ Timeout error occurred: {timeout_err}")
+        logging.error(f"[ERROR] Timeout error occurred: {timeout_err}")
         return None
     except requests.exceptions.RequestException as req_err:
-        logging.error(f"❌ Request error occurred: {req_err}")
+        logging.error(f"[ERROR] Request error occurred: {req_err}")
         return None
     except json.JSONDecodeError as json_err:
         response_text = response.text if 'response' in locals() else 'No response'
-        logging.error(f"❌ JSON decode error: {json_err}. Response: {response_text[:200]}")
+        logging.error(f"[ERROR] JSON decode error: {json_err}. Response: {response_text[:200]}")
         return None
     except Exception as e:
-        logging.error(f"❌ Unexpected error in get_group_record: {e}")
+        logging.error(f"[ERROR] Unexpected error in get_group_record: {e}")
         return None
 
 
@@ -1246,23 +1246,23 @@ def update_theme_configuration(base_url: str, payload: dict, headers: dict = Non
         
     except requests.exceptions.HTTPError as http_err:
         status_code = response.status_code if 'response' in locals() else 'N/A'
-        logging.error(f"❌ HTTP error in update_theme_configuration: {http_err} (Status Code: {status_code})")
+        logging.error(f"[ERROR] HTTP error in update_theme_configuration: {http_err} (Status Code: {status_code})")
         return None
     except requests.exceptions.ConnectionError as conn_err:
-        logging.error(f"❌ Connection error in update_theme_configuration: {conn_err}")
+        logging.error(f"[ERROR] Connection error in update_theme_configuration: {conn_err}")
         return None
     except requests.exceptions.Timeout as timeout_err:
-        logging.error(f"❌ Timeout error in update_theme_configuration: {timeout_err}")
+        logging.error(f"[ERROR] Timeout error in update_theme_configuration: {timeout_err}")
         return None
     except requests.exceptions.RequestException as req_err:
-        logging.error(f"❌ Request error in update_theme_configuration: {req_err}")
+        logging.error(f"[ERROR] Request error in update_theme_configuration: {req_err}")
         return None
     except json.JSONDecodeError as json_err:
         response_text = response.text if 'response' in locals() else 'No response'
-        logging.error(f"❌ JSON decode error in update_theme_configuration: {json_err}. Response: {response_text[:200]}")
+        logging.error(f"[ERROR] JSON decode error in update_theme_configuration: {json_err}. Response: {response_text[:200]}")
         return None
     except Exception as e:
-        logging.error(f"❌ Unexpected error in update_theme_configuration: {e}")
+        logging.error(f"[ERROR] Unexpected error in update_theme_configuration: {e}")
         return None
 
 
@@ -1335,23 +1335,23 @@ def update_theme_variables(base_url: str, payload: dict, headers: dict = None) -
         
     except requests.exceptions.HTTPError as http_err:
         status_code = response.status_code if 'response' in locals() else 'N/A'
-        logging.error(f"❌ HTTP error in update_theme_variables: {http_err} (Status Code: {status_code})")
+        logging.error(f"[ERROR] HTTP error in update_theme_variables: {http_err} (Status Code: {status_code})")
         return None
     except requests.exceptions.ConnectionError as conn_err:
-        logging.error(f"❌ Connection error in update_theme_variables: {conn_err}")
+        logging.error(f"[ERROR] Connection error in update_theme_variables: {conn_err}")
         return None
     except requests.exceptions.Timeout as timeout_err:
-        logging.error(f"❌ Timeout error in update_theme_variables: {timeout_err}")
+        logging.error(f"[ERROR] Timeout error in update_theme_variables: {timeout_err}")
         return None
     except requests.exceptions.RequestException as req_err:
-        logging.error(f"❌ Request error in update_theme_variables: {req_err}")
+        logging.error(f"[ERROR] Request error in update_theme_variables: {req_err}")
         return None
     except json.JSONDecodeError as json_err:
         response_text = response.text if 'response' in locals() else 'No response'
-        logging.error(f"❌ JSON decode error in update_theme_variables: {json_err}. Response: {response_text[:200]}")
+        logging.error(f"[ERROR] JSON decode error in update_theme_variables: {json_err}. Response: {response_text[:200]}")
         return None
     except Exception as e:
-        logging.error(f"❌ Unexpected error in update_theme_variables: {e}")
+        logging.error(f"[ERROR] Unexpected error in update_theme_variables: {e}")
         return None
 
 

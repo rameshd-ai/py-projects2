@@ -210,7 +210,7 @@ def add_levels_to_records(records_file_path: str) -> bool:
         with open(records_file_path, 'w', encoding='utf-8') as f:
             json.dump(records_data, f, indent=4, ensure_ascii=False)
         
-        logging.info(f"✅ Successfully added level fields to {len(component_records)} records")
+        logging.info(f"[SUCCESS] Successfully added level fields to {len(component_records)} records")
         return True
         
     except FileNotFoundError:
@@ -361,7 +361,7 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
             # --- END POLLING LOGIC ---
         
         except FileNotFoundError as e:
-            logging.error(f"❌ File Polling Failed: {e}")
+            logging.error(f"[ERROR] File Polling Failed: {e}")
             raise # Re-raise the error to halt assembly for this component/page
 
         createPayloadJson(site_id,miBlockId) #this is only to create ComponentHierarchy.json 
@@ -1898,7 +1898,7 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
     
     # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
-        logging.error(f"❌ Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
+        logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
 
     # Category Matching Logic
@@ -1911,12 +1911,12 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
         # NOTE: normalize_page_name must be available/imported
         if cat_name and normalize_page_name(cat_name) == normalized_page_name:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"✅ MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
+            logging.info(f"[SUCCESS] MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
             # Exit loop immediately after finding a match
             break 
     else:
         # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
-        logging.warning(f"⚠ No matching category found for page '{current_page_name}', using CategoryId = 0")
+        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
         # matched_category_id remains 0, as initialized above.
     
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,matched_category_id)
@@ -1949,7 +1949,7 @@ def assemble_page_templates_level2(
     
     # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
-        logging.error(f"❌ Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
+        logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
 
     # Category Matching Logic
@@ -1962,12 +1962,12 @@ def assemble_page_templates_level2(
         # NOTE: normalize_page_name must be available/imported
         if cat_name and normalize_page_name(cat_name) == normalized_page_name:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"✅ MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
+            logging.info(f"[SUCCESS] MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
             # Exit loop immediately after finding a match
             break 
     else:
         # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
-        logging.warning(f"⚠ No matching category found for page '{current_page_name}', using CategoryId = 0")
+        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
         # matched_category_id remains 0, as initialized above.
 
     # The variable 'matched_category_id' now holds the correct ID (or 0 if none was found).
@@ -2288,7 +2288,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                 with open(components_output_filepath, 'w', encoding='utf-8') as f:
                     json.dump(components_data_to_save, f, indent=4, ensure_ascii=False)
                 
-                logging.info(f"✅ All components JSON response saved to: {components_output_filepath}")
+                logging.info(f"[SUCCESS] All components JSON response saved to: {components_output_filepath}")
                 logging.info(f"   Total components saved: {len(all_components_response)}")
                 print(f"Saved all components response to: {components_output_filename} ({len(all_components_response)} components)")
                 
@@ -2316,7 +2316,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                             if (comp_name and normalize_component_name(comp_name) == normalized_search_name) or \
                                (comp_component_name and normalize_component_name(comp_component_name) == normalized_search_name):
                                 matching_component = comp
-                                logging.info(f"✅ Found matching component: '{comp_name}' or '{comp_component_name}'")
+                                logging.info(f"[SUCCESS] Found matching component: '{comp_name}' or '{comp_component_name}'")
                                 break
                         
                         if matching_component:
@@ -2365,21 +2365,21 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                         print(f"  [WARNING] Exported file {filename} is not a zip file.")
                                     
                                     file_size = len(response_content)
-                                    logging.info(f"✅ Zip file saved successfully! Size: {file_size} bytes")
+                                    logging.info(f"[SUCCESS] Zip file saved successfully! Size: {file_size} bytes")
                                     print(f"✅ Zip file saved successfully!")
                                     print(f"   File: {filename}")
                                     print(f"   Size: {file_size} bytes")
                                     print(f"   Location: {file_path}")
                                     print(f"{'='*80}\n")
                                 else:
-                                    logging.warning(f"⚠️ Component export returned no content for component ID: {component_id}")
+                                    logging.warning(f"[WARNING] Component export returned no content for component ID: {component_id}")
                                     print(f"⚠️ Component export returned no content")
 
                                     
                                 time.sleep(2) 
                                 
                                 # 2. Convert .txt files to .json (if they exist)
-                                logging.info("🔄 Starting TXT to JSON conversion...")
+                                logging.info("[PROCESSING] Starting TXT to JSON conversion...")
                                 txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
                                 logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
                                 
@@ -2404,21 +2404,21 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                             
                                             os.remove(extracted_file_path)
                                             converted_count += 1
-                                            logging.info(f"   ✅ Successfully converted: {extracted_file}")
+                                            logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
                                         except (json.JSONDecodeError, OSError) as e:
                                             # Log the error but continue to the next file
-                                            logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+                                            logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
                                 
-                                logging.info(f"✅ TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
+                                logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
 
                                 # 3. Add level fields to MiBlockComponentRecords.json
                                 records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
                                 if os.path.exists(records_file_path):
                                     try:
                                         add_levels_to_records(records_file_path)
-                                        logging.info(f"✅ Added level fields to records in {records_file_path}")
+                                        logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
                                     except Exception as e:
-                                        logging.error(f"⚠️ Error adding levels to records: {e}")
+                                        logging.error(f"[ERROR] Error adding levels to records: {e}")
 
                                 
                                 # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
@@ -2455,22 +2455,22 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
 
 
                             else:
-                                logging.warning(f"⚠️ Component ID not found in matching component data")
+                                logging.warning(f"[WARNING] Component ID not found in matching component data")
                         else:
-                            logging.warning(f"⚠️ No matching component found for '{menu_component_name}'")
+                            logging.warning(f"[WARNING] No matching component found for '{menu_component_name}'")
                             print(f"\n⚠️  No matching component found for '{menu_component_name}'")
 
 
 
 
                     except Exception as export_error:
-                        logging.error(f"❌ Error during component download: {export_error}")
+                        logging.error(f"[ERROR] Error during component download: {export_error}")
                         logging.exception("Full traceback:")
                         # Continue execution even if download fails
             else:
-                logging.warning(f"⚠️ API response was not a list or was empty. Response type: {type(all_components_response)}")
+                logging.warning(f"[WARNING] API response was not a list or was empty. Response type: {type(all_components_response)}")
         except Exception as e:
-            logging.error(f"❌ Error fetching/saving components: {e}")
+            logging.error(f"[ERROR] Error fetching/saving components: {e}")
             # Continue execution even if component fetch fails
         
         # 3. Create new JSON structure
@@ -2487,7 +2487,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
         with open(output_filepath, 'w', encoding='utf-8') as f:
             json.dump(menu_navigation_data, f, indent=4, ensure_ascii=False)
         
-        logging.info(f"✅ Menu navigation JSON saved to: {output_filepath}")
+        logging.info(f"[SUCCESS] Menu navigation JSON saved to: {output_filepath}")
         print(f"Created new JSON file: {output_filename}")
         
         # 5. Map pages to records if component was downloaded
