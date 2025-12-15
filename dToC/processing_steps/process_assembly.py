@@ -79,11 +79,11 @@ ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = []
 #             component_id = nested_component_details.get("componentId")
             
 #             if vComponentId is not None and component_alias is not None and component_id is not None:
-#                  logging.info(f"    ✅ Component '{component_name}' found in cache as '{cms_component_name}'.")
+#                  logging.info(f"    [SUCCESS] Component '{component_name}' found in cache as '{cms_component_name}'.")
 #                  # Return the CMS name as the 4th element
 #                  return (vComponentId, component_alias, component_id, cms_component_name)
     
-#     logging.warning(f"    ❌ Component prefix '{search_key}' not found in the component cache.")
+#     logging.warning(f"    [ERROR] Component prefix '{search_key}' not found in the component cache.")
 #     return None
 
 
@@ -124,11 +124,11 @@ def check_component_availability(component_name: str, component_cache: List[Dict
             component_id = nested_component_details.get("componentId")
             
             if vComponentId is not None and component_alias is not None and component_id is not None:
-                logging.info(f"    ✅ Component '{component_name}' found in cache as '{cms_component_name}'.")
+                logging.info(f"    [SUCCESS] Component '{component_name}' found in cache as '{cms_component_name}'.")
                 # Return the CMS name as the 4th element
                 return (vComponentId, component_alias, component_id, cms_component_name)
     
-    logging.warning(f"    ❌ Component prefix '{search_key}' not found in the component cache.")
+    logging.warning(f"    [ERROR] Component prefix '{search_key}' not found in the component cache.")
     return None
 
 
@@ -289,7 +289,7 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
             time.sleep(2) 
 
             # 2. Convert .txt files to .json (if they exist)
-            logging.info("🔄 Starting TXT to JSON conversion...")
+            logging.info("[PROCESSING] Starting TXT to JSON conversion...")
             txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
             logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
             
@@ -314,21 +314,21 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
                         
                         os.remove(extracted_file_path)
                         converted_count += 1
-                        logging.info(f"   ✅ Successfully converted: {extracted_file}")
+                        logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
                     except (json.JSONDecodeError, OSError) as e:
                         # Log the error but continue to the next file
-                        logging.error(f"⚠️ Error processing file {extracted_file_path}: {e}")
+                        logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
             
-            logging.info(f"✅ TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
+            logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
 
             # 3. Add level fields to MiBlockComponentRecords.json
             records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
             if os.path.exists(records_file_path):
                 try:
                     add_levels_to_records(records_file_path)
-                    logging.info(f"✅ Added level fields to records in {records_file_path}")
+                    logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
                 except Exception as e:
-                    logging.error(f"⚠️ Error adding levels to records: {e}")
+                    logging.error(f"[ERROR] Error adding levels to records: {e}")
 
             # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
             config_file_name = "MiBlockComponentConfig.json"
@@ -488,10 +488,10 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
                     all_mappings.append(mapping_data)
                     # print(f"  ✅ Extracted mapping for alias: {mapping_data['vComponentAlias']}")
                 else:
-                    print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
+                    print(f"  [WARNING] Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
 
         except Exception as e:
-            print(f"  ❌ Error processing file {file_path}: {e}")
+            print(f"  [ERROR] Error processing file {file_path}: {e}")
 
     if not all_mappings:
         print("\n[INFO] No valid BODY component mappings were found. Proceeding with headers/footers only if available.")
@@ -515,7 +515,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
                 "pageSectionGuid": hf_data.get("guid")
             }
             all_mappings.append(mapping_data)
-            print(f"  ✅ Added {hf_key} mapping for alias: {hf_data.get('alias')}")
+            print(f"  [SUCCESS] Added {hf_key} mapping for alias: {hf_data.get('alias')}")
         elif hf_data.get("name"):
             print(f"  ⚠️ Skipping {hf_key}: Component name '{hf_data.get('name')}' found, but GUID was missing/API failed during fetch.")
 
@@ -610,7 +610,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
                     print(f"  ⚠️ Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
 
         except Exception as e:
-            print(f"  ❌ Error processing file {file_path}: {e}")
+            print(f"  [ERROR] Error processing file {file_path}: {e}")
 
     # --- PHASE 2: ADD HEADER/FOOTER PUBLISHING DATA ---
     
@@ -1317,7 +1317,7 @@ def createRecordsPayload(site_id, component_id):
 #         if api_result:
 #             vComponentId, alias, componentId, cms_component_name = api_result 
             
-#             logging.info(f"✅ Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
+#             logging.info(f"[SUCCESS] Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
             
 #             status_entry["available"] = True
 #             status_entry["cms_component_name"] = cms_component_name
@@ -1337,7 +1337,7 @@ def createRecordsPayload(site_id, component_id):
 #                 page_sections_html.append(section_payload)
             
 #         else:
-#             logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
+#             logging.warning(f"[ERROR] Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
         
 #         ASSEMBLY_STATUS_LOG.append(status_entry)
 
@@ -1435,7 +1435,7 @@ def createRecordsPayload(site_id, component_id):
 #         if api_result:
 #             vComponentId, alias, componentId, cms_component_name = api_result 
             
-#             logging.info(f"✅ Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
+#             logging.info(f"[SUCCESS] Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
             
 #             status_entry["available"] = True
 #             status_entry["cms_component_name"] = cms_component_name
@@ -1462,7 +1462,7 @@ def createRecordsPayload(site_id, component_id):
 #                 page_sections_html.append(section_payload)
             
 #         else:
-#             logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
+#             logging.warning(f"[ERROR] Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
         
 #         ASSEMBLY_STATUS_LOG.append(status_entry)
 
@@ -1615,7 +1615,7 @@ def getHeaderFooter_html(base_url: str, headers: Dict[str, str], headerFooterCom
 #         if api_result:
 #             vComponentId, alias, componentId, cms_component_name = api_result 
             
-#             logging.info(f"✅ Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
+#             logging.info(f"[SUCCESS] Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
             
 #             status_entry["available"] = True
 #             status_entry["cms_component_name"] = cms_component_name
@@ -1642,7 +1642,7 @@ def getHeaderFooter_html(base_url: str, headers: Dict[str, str], headerFooterCom
 #                 page_sections_html.append(section_payload)
             
 #         else:
-#             logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
+#             logging.warning(f"[ERROR] Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
         
 #         ASSEMBLY_STATUS_LOG.append(status_entry)
 
@@ -1785,7 +1785,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         if api_result:
             vComponentId, alias, componentId, cms_component_name = api_result 
             
-            logging.info(f"✅ Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
+            logging.info(f"[SUCCESS] Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
             
             status_entry["available"] = True
             status_entry["cms_component_name"] = cms_component_name
@@ -1806,7 +1806,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
                 page_sections_html.append(section_payload)
             
         else:
-            logging.warning(f"❌ Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
+            logging.warning(f"[ERROR] Component '{component_name}' **NOT AVAILABLE** for page **{page_name}**. Skipping.")
         
         ASSEMBLY_STATUS_LOG.append(status_entry)
 
@@ -2734,7 +2734,7 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                             logging.debug(f"  Comparing '{extracted_name}' (normalized: '{normalized_extracted}') with '{page_name}' (normalized: '{normalized_page}')")
                             if normalized_extracted == normalized_page:
                                 matched_record = record
-                                logging.info(f"  ✅ Match found! Record ID: {record.get('Id')}")
+                                logging.info(f"  [SUCCESS] Match found! Record ID: {record.get('Id')}")
                                 break
                         else:
                             logging.debug(f"  No '-name' key found in record ID: {record.get('Id')}")
@@ -2768,10 +2768,10 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                 # Add to the collection
                 all_matched_records.append(matched_record_with_page_info)
                 
-                logging.info(f"✅ Matched '{page_name}' (level {page_level}) → added to collection")
+                logging.info(f"[SUCCESS] Matched '{page_name}' (level {page_level}) → added to collection")
                 page_node["matchFound"] = True
             else:
-                logging.warning(f"❌ No match found for '{page_name}' (level {page_level})")
+                logging.warning(f"[ERROR] No match found for '{page_name}' (level {page_level})")
                 page_node["matchFound"] = False
             
             # Process sub_pages recursively (pass current page_name as parent)
@@ -2851,7 +2851,7 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
             with open(output_filepath, 'w', encoding='utf-8') as f:
                 json.dump(matched_records_data, f, indent=4, ensure_ascii=False)
             
-            logging.info(f"✅ Saved {len(all_matched_records)} matched records to {output_filename}")
+            logging.info(f"[SUCCESS] Saved {len(all_matched_records)} matched records to {output_filename}")
         else:
             logging.warning("No matched records found to save")
         
@@ -2859,7 +2859,7 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         with open(menu_nav_file, 'w', encoding='utf-8') as f:
             json.dump(menu_nav_data, f, indent=4, ensure_ascii=False)
         
-        logging.info(f"✅ Updated menu_navigation.json with matchFound status")
+        logging.info(f"[SUCCESS] Updated menu_navigation.json with matchFound status")
         logging.info("END: Mapping Pages to Records Complete")
         logging.info("========================================================")
         return True
@@ -2913,11 +2913,11 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
             if result_id:
                 updated_records[page_name] = result_id
                 record["updated_recordId"] = result_id
-                logging.info(f"    ✅ Updated. Result ID: {result_id}")
+                logging.info(f"    [SUCCESS] Updated. Result ID: {result_id}")
             else:
-                logging.warning(f"    ⚠️ No result ID returned: {result}")
+                logging.warning(f"    [WARNING] No result ID returned: {result}")
         except Exception as e:
-            logging.error(f"    ❌ Failed to update '{page_name}': {e}")
+            logging.error(f"    [ERROR] Failed to update '{page_name}': {e}")
     
     # Save updated payload
     with open(payload_filepath, 'r', encoding='utf-8') as f:
@@ -2931,7 +2931,7 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
     with open(payload_filepath, 'w', encoding='utf-8') as f:
         json.dump(payload_data, f, indent=4, ensure_ascii=False)
     
-    logging.info(f"✅ Successfully updated {len(updated_records)} records in CMS")
+    logging.info(f"[SUCCESS] Successfully updated {len(updated_records)} records in CMS")
     return updated_records
 
 
@@ -2986,12 +2986,12 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             
             if parent_name in parent_child_groups:
                 parent_child_groups[parent_name]["children"].append(r)
-                logging.info(f"✅ Added level {rec_level} record '{page_name}' to parent group '{parent_name}'")
+                logging.info(f"[SUCCESS] Added level {rec_level} record '{page_name}' to parent group '{parent_name}'")
             else:
                 # Parent is matched (not in new_records), child needs to be saved separately
                 # We'll need to get the parent's record ID from matched_records
                 orphaned_children.append(r)
-                logging.info(f"⚠️ Level {rec_level} record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
+                logging.info(f"[WARNING] Level {rec_level} record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
     
     # Save orphaned children (children whose parents are matched)
     if orphaned_children:
@@ -3042,7 +3042,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                 if new_orphan_id:
                     saved_records[orphan_name] = new_orphan_id
                     orphan["new_recordId"] = new_orphan_id
-                    logging.info(f"    ✅ Orphaned Child ID: {new_orphan_id}")
+                    logging.info(f"    [SUCCESS] Orphaned Child ID: {new_orphan_id}")
                     
                     # Update file
                     with open(payload_filepath, 'r', encoding='utf-8') as f:
@@ -3057,9 +3057,9 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                     with open(payload_filepath, 'w', encoding='utf-8') as f:
                         json.dump(payload_data, f, indent=4, ensure_ascii=False)
                 else:
-                    logging.error(f"    ❌ No result ID for orphaned child")
+                    logging.error(f"    [ERROR] No result ID for orphaned child")
             except Exception as e:
-                logging.error(f"    ❌ Failed to save orphaned child '{orphan_name}': {e}")
+                logging.error(f"    [ERROR] Failed to save orphaned child '{orphan_name}': {e}")
     
     logging.info(f"Grouped into {len(parent_child_groups)} parent-child groups")
     total_children = sum(len(group["children"]) for group in parent_child_groups.values())
@@ -3100,12 +3100,12 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             new_parent_id = result.get("result")
             
             if not new_parent_id:
-                logging.error(f"    ❌ No result ID")
+                logging.error(f"    [ERROR] No result ID")
                 continue
             
             saved_records[group_name] = new_parent_id
             parent_rec["new_recordId"] = new_parent_id
-            logging.info(f"    ✅ Parent ID: {new_parent_id}")
+            logging.info(f"    [SUCCESS] Parent ID: {new_parent_id}")
             
             # STEP 2: Update children parentRecordId immediately
             for child in children:
@@ -3154,7 +3154,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                     if new_child_id:
                         saved_records[child_name] = new_child_id
                         child["new_recordId"] = new_child_id
-                        logging.info(f"    ✅ Child ID: {new_child_id}")
+                        logging.info(f"    [SUCCESS] Child ID: {new_child_id}")
                         
                         # Update file
                         with open(payload_filepath, 'r', encoding='utf-8') as f:
@@ -3168,15 +3168,15 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                         with open(payload_filepath, 'w', encoding='utf-8') as f:
                             json.dump(payload_data, f, indent=4, ensure_ascii=False)
                     else:
-                        logging.error(f"    ❌ No result ID")
+                        logging.error(f"    [ERROR] No result ID")
                 except Exception as e:
-                    logging.error(f"    ❌ Failed: {e}")
+                    logging.error(f"    [ERROR] Failed: {e}")
         
         except Exception as e:
-            logging.error(f"  ❌ Failed to save parent '{group_name}': {e}")
+            logging.error(f"  [ERROR] Failed to save parent '{group_name}': {e}")
     
-    logging.info(f"\n✅ Successfully saved all {len(saved_records)} records to CMS")
-    logging.info(f"✅ Payload file continuously updated: {payload_filename}")
+    logging.info(f"\n[SUCCESS] Successfully saved all {len(saved_records)} records to CMS")
+    logging.info(f"[SUCCESS] Payload file continuously updated: {payload_filename}")
     
     return saved_records
 
@@ -3445,7 +3445,7 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             with open(output_filepath, 'w', encoding='utf-8') as f:
                 json.dump(payload, f, indent=4, ensure_ascii=False)
             
-            logging.info(f"✅ Created new records payload: {output_filename} ({len(new_records)} records)")
+            logging.info(f"[SUCCESS] Created new records payload: {output_filename} ({len(new_records)} records)")
             
             # Call API to save records if api_base_url and api_headers provided
             if api_base_url and api_headers:
@@ -3686,7 +3686,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         with open(output_filepath, 'w', encoding='utf-8') as f:
             json.dump(final_payload, f, indent=4, ensure_ascii=False)
         
-        logging.info(f"✅ Created matched records payload: {output_filename}")
+        logging.info(f"[SUCCESS] Created matched records payload: {output_filename}")
         logging.info(f"   Total matched records in payload: {len(api_payloads)}")
         
         # Call API to UPDATE matched records if credentials provided
@@ -3846,7 +3846,7 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
             writer.writeheader()
             writer.writerows(ASSEMBLY_STATUS_LOG)
         
-        logging.info(f"✅ Status report successfully saved as CSV to: {status_file_path}")
+        logging.info(f"[SUCCESS] Status report successfully saved as CSV to: {status_file_path}")
     except IOError as e:
         logging.error(f"Failed to write CSV status file {status_filename}: {e}")
 
