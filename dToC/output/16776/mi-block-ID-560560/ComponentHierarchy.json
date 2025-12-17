@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 560560,
+        "type": "MainComponent",
+        "componentName": "3-Col-Grid-Feature-Card"
+    },
+    {
+        "componentId": 560561,
+        "type": "Level1Child",
+        "componentName": "3-Col-Grid-child"
+    }
+]

@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 560577,
+        "type": "MainComponent",
+        "componentName": "Inside-Page-Zig-Zag"
+    },
+    {
+        "componentId": 560578,
+        "type": "Level1Child",
+        "componentName": "Inside Page Layout Zig Zag"
+    }
+]

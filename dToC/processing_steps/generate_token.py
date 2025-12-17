@@ -70,9 +70,11 @@ def extract_automation_details(json_data: Dict[str, Any]) -> Optional[Dict[str, 
                 content_source = page.get('content_blocks', '') or page.get('description', '') 
                 normalized_content = re.sub(r'\s+', ' ', content_source).strip()
                 
-                link_pattern = r'Site\s*Link:\s*([^\s]+)'
-                site_id_pattern = r'SiteId:\s*(\d+)'
-                alias_pattern = r'Profile\s*Alias:\s*([^\s]+)'
+                print(f"DEBUG: Normalized content: {normalized_content[:200]}...")  # First 200 chars
+                
+                link_pattern = r'Site\s*Link\s*:\s*([^\s]+)'
+                site_id_pattern = r'SiteId\s*:\s*(\d+)'
+                alias_pattern = r'Profile\s*Alias\s*:\s*([^\s]+)'
 
                 link_match = re.search(link_pattern, normalized_content, re.IGNORECASE)
                 site_id_match = re.search(site_id_pattern, normalized_content, re.IGNORECASE)
@@ -81,6 +83,10 @@ def extract_automation_details(json_data: Dict[str, Any]) -> Optional[Dict[str, 
                 site_link = link_match.group(1).strip() if link_match else None
                 site_id = site_id_match.group(1).strip() if site_id_match else None
                 profile_alias = alias_match.group(1).strip() if alias_match else None
+                
+                print(f"DEBUG: Extracted Site Link: {site_link}")
+                print(f"DEBUG: Extracted Site ID: {site_id}")
+                print(f"DEBUG: Extracted Profile Alias: {profile_alias}")
 
                 if all([site_link, site_id, profile_alias]):
                     return {

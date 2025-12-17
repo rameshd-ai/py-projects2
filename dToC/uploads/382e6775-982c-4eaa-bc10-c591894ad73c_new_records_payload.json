@@ -1,0 +1,80 @@
+{
+    "componentId": 560183,
+    "siteId": "16776",
+    "total_records": 5,
+    "records": [
+        {
+            "componentId": 560185,
+            "recordId": 0,
+            "parentRecordId": 0,
+            "parentComponentId": 560184,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"dropdown-menu-item-name\": \"Enterntainment and production\", \"dropdown-menu-item-link\": \"%%strpath%%experiences/enterntainment-and-production\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 2,
+            "updatedBy": 0,
+            "page_name": "Enterntainment and production",
+            "parent_page_name": "Experiences",
+            "level": 2
+        },
+        {
+            "componentId": 560185,
+            "recordId": 0,
+            "parentRecordId": 0,
+            "parentComponentId": 560184,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"dropdown-menu-item-name\": \"Puerto Vallarta\", \"dropdown-menu-item-link\": \"%%strpath%%destinations/puerto-vallarta\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 4,
+            "updatedBy": 0,
+            "page_name": "Puerto Vallarta",
+            "parent_page_name": "Destinations",
+            "level": 2
+        },
+        {
+            "componentId": 560184,
+            "recordId": 0,
+            "parentRecordId": 3182672,
+            "parentComponentId": 560183,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Request a Quote / Book Services\", \"menu-item-link\": \"%%strpath%%request-a-quote-/-book-services\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 3,
+            "updatedBy": 0,
+            "page_name": "Request a Quote / Book Services",
+            "parent_page_name": null,
+            "level": 1,
+            "new_recordId": 3207964
+        },
+        {
+            "componentId": 560184,
+            "recordId": 0,
+            "parentRecordId": 3182672,
+            "parentComponentId": 560183,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Contact Us\", \"menu-item-link\": \"%%strpath%%contact-us\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 4,
+            "updatedBy": 0,
+            "page_name": "Contact Us",
+            "parent_page_name": null,
+            "level": 1,
+            "new_recordId": 3207965
+        },
+        {
+            "componentId": 560184,
+            "recordId": 0,
+            "parentRecordId": 3182672,
+            "parentComponentId": 560183,
+            "recordDataJson": "{\"Id\": \"##Id##\", \"ParentId\": \"##ParentId##\", \"menu-item-name\": \"Client Testimonials & Case Studies\", \"menu-item-link\": \"%%strpath%%client-testimonials-and-case-studies\"}",
+            "status": true,
+            "tags": [],
+            "displayOrder": 5,
+            "updatedBy": 0,
+            "page_name": "Client Testimonials & Case Studies",
+            "parent_page_name": null,
+            "level": 1,
+            "new_recordId": 3207966
+        }
+    ]
+}

@@ -20,11 +20,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Global custom properties for level 1 records
 # Set these to apply custom properties, or set to None/empty dict to skip
-LEVEL_1_CUSTOM_PROPERTIES = {
-    "enable-dropdown[]": ["Yes"],
-    "enable-menu-item-in-left[]": ["Yes"],
-    "enable-menu-item-in-right[]": ["Yes"]
-}
+# LEVEL_1_CUSTOM_PROPERTIES = {
+#     "enable-dropdown[]": ["Yes"],
+#     "enable-menu-item-in-left[]": ["Yes"],
+#     "enable-menu-item-in-right[]": ["Yes"]
+# }
+
+LEVEL_1_CUSTOM_PROPERTIES = {}
 
 def get_config_filepath(file_prefix: str) -> str:
     base_prefix = os.path.basename(file_prefix)
@@ -1075,7 +1077,7 @@ def run_menu_navigation_step(
         
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
-
+        
         return {
             "menu_navigation_created": True,
             "file_prefix": file_prefix,

@@ -1,0 +1,92 @@
+{
+    "title": "Connect DMC",
+    "link": "https://milestoneinc.slickplan.com/ywp5miiaw",
+    "pages": [
+        {
+            "id": "svgemvrj8965q8tsbiv",
+            "text": "Sustainability",
+            "level": "foot",
+            "description": "",
+            "content_blocks": "<strong>\nMeta\nTitle\n</strong>\n<strong>\nMeta\nDescription\n</strong>\n<strong>\n</strong>\n<strong>\nM1-Inside\nHero\n</strong>\n<strong>\nM2-Image\nintro\n</strong>\nH1\nOverview\nPageInfoBlock\nPageTemplateName:\nWith\nBanner\nDefault\nTitle:\nSustainability\nDefault\nDescription:\nSustainability\nHeader1:\nnavbar-with-center-logo\nHeader2:\nFooter1:\nfooter-with-signup\nFooter2:",
+            "meta_info": {
+                "PageTemplateName": "With Banner",
+                "DefaultTitle": "",
+                "DefaultDescription": "",
+                "Header1": "navbar-with-center-logo",
+                "Header2": "",
+                "Footer1": "footer-with-signup",
+                "Footer2": ""
+            },
+            "children": []
+        },
+        {
+            "id": "svgtrn4syuo29ep8x6y",
+            "text": "Cookies Policy",
+            "level": "foot",
+            "description": "",
+            "content_blocks": "<div><strong><span class=\"NormalTextRun SCXW187083328 BCX8\">Meta Title</span></strong></div>\n\n---\n<div><strong><span class=\"NormalTextRun SCXW187083328 BCX8\">Meta Description </span></strong></div>\n\n---\n<div><strong><span class=\"NormalTextRun SCXW187083328 BCX8\">H1 </span></strong></div>\n\n---\n<div><span class=\"NormalTextRun SCXW187083328 BCX8\"></span></div>\n\n---\n<div></div>",
+            "meta_info": {},
+            "children": []
+        },
+        {
+            "id": "svgv5q2p1562acy210b",
+            "text": "Social Links",
+            "level": "foot",
+            "description": "",
+            "content_blocks": "",
+            "meta_info": {},
+            "children": []
+        },
+        {
+            "id": "svgjowixqqjcn0e23j3",
+            "text": "Sitemap",
+            "level": "foot",
+            "description": "",
+            "content_blocks": "<strong>\nMeta\nTitle\n</strong>\n<strong>\nMeta\nDescription\n</strong>\n<strong>\n</strong>\n<strong>\nM1-Inside\nHero\n</strong>\nH1\nPageInfoBlock\nPageTemplateName:\nWith\nBanner\nDefault\nTitle:\nSitemap\nDefault\nDescription:\nSitemap\nHeader1:\nnavbar-with-center-logo\nHeader2:\nFooter1:\nfooter-with-signup\nFooter2:",
+            "meta_info": {
+                "PageTemplateName": "With Banner",
+                "DefaultTitle": "Sitemap",
+                "DefaultDescription": "Sitemap",
+                "Header1": "navbar-with-center-logo",
+                "Header2": "",
+                "Footer1": "footer-with-signup",
+                "Footer2": ""
+            },
+            "children": []
+        },
+        {
+            "id": "svgmy519914fqtjc85v",
+            "text": "Privacy Policy",
+            "level": "foot",
+            "description": "",
+            "content_blocks": "<strong>\nMeta\nTitle\n</strong>\n<strong>\nMeta\nDescription\n</strong>\n<strong>\n</strong>\nH1\n<strong>\n</strong>\nPageInfoBlock\nPageTemplateName:\nWithout\nBanner\nDefault\nTitle:\nPrivacy\nPolicy\nDefault\nDescription:\nPrivacy\nPolicy\nHeader1:\nnavbar-with-center-logo\nHeader2:\nFooter1:\nfooter-with-signup\nFooter2:",
+            "meta_info": {
+                "PageTemplateName": "",
+                "DefaultTitle": "Privacy Policy",
+                "DefaultDescription": "Privacy Policy",
+                "Header1": "navbar-with-center-logo",
+                "Header2": "",
+                "Footer1": "footer-with-signup",
+                "Footer2": ""
+            },
+            "children": []
+        },
+        {
+            "id": "svgrgzpnrwvoym3zrz3",
+            "text": "Accesibility",
+            "level": "foot",
+            "description": "",
+            "content_blocks": "<strong>\nMeta\nTitle\n</strong>\n<strong>\nMeta\nDescription\n</strong>\n<strong>\n</strong>\nH1\nPageInfoBlock\nPageTemplateName:\nWithout\nBanner\nDefault\nTitle:\nAccessibility\nDefault\nDescription:\nAccessibility\nHeader1:\nnavbar-with-center-logo\nHeader2:\nFooter1:\nfooter-with-signup\nFooter2:",
+            "meta_info": {
+                "PageTemplateName": "",
+                "DefaultTitle": "Accessibility",
+                "DefaultDescription": "Accessibility",
+                "Header1": "navbar-with-center-logo",
+                "Header2": "",
+                "Footer1": "footer-with-signup",
+                "Footer2": ""
+            },
+            "children": []
+        }
+    ]
+}

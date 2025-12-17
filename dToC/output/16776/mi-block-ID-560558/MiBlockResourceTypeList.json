@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 313678,
+            "ResourceTypeName": "Our Service Grid",
+            "ResourceTypeFolderName": "our-service-grid",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 0,
+            "ResourceWidth": 580,
+            "ResourceHeight": 350,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 0,
+            "TabletResourceWidth": 580,
+            "TabletResourceHeight": 350,
+            "MobileResourceWidth": 580,
+            "MobileResourceHeight": 350,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 80,
+            "MobileImageQuality": 80,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

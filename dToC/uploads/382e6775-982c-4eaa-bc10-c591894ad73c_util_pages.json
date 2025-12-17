@@ -1,0 +1,24 @@
+{
+    "title": "Connect DMC",
+    "link": "https://milestoneinc.slickplan.com/ywp5miiaw",
+    "pages": [
+        {
+            "id": "svgjpf285gdw0peum2s",
+            "text": "Color code",
+            "level": "util",
+            "description": "Yellow-\nConfirm\nwith\nclient\nGray-\nDropdown\nWhite-\nGeneral\ncontent\npage\nPink-Forms\nlight\nblue-link\nout\nGrreen\ntext-main\nnavigation\nBlue\ntext-\nHamburger\nmenu\nyellow:\nPages\nthat\nwill\nbe\nrevamped",
+            "content_blocks": "",
+            "meta_info": {},
+            "children": []
+        },
+        {
+            "id": "svgfhc21ydiakdqo3m0",
+            "text": "Automation Guide",
+            "level": "util",
+            "description": "Site\nLink:https://connecttravelservices-automation-1.w021cms.milestoneinternet.info\nSiteId\n:16776\nProfile\nAlias:393721.1\n\"mainMenu\":\n[\n{\n\"componentName\":\n\"\nNavbar-with-center-logo\n\",\n\"menuLevel\":\n1\n}\n]",
+            "content_blocks": "",
+            "meta_info": {},
+            "children": []
+        }
+    ]
+}

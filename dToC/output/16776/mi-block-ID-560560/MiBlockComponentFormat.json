@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 881907,
+            "FormatName": "3 Col Grid Feature Card",
+            "FormatKey": "3-col-grid-feature-card",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each ComponentRecordJson.3-col-grid-feature-card}}\n<div class=\"inner-padding lt229-widget grid-card-with-design\n            {{IfCond data.set-top-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-top {{/IfCond}} \n            {{IfCond data.set-bottom-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-bottom {{/IfCond}}\">\n  <div class=\"uk-container dynamiccomponenteditenable\" %%componentRecordEditable%%>\n\n    {{IfCond data.title 'notempty' ''}}\n    <div class=\"snippet-grid__head\">\n      <h2 class=\"title title--xl lt229-widget__maintitle\" tabindex=\"0\">{{data.title}}</h2>\n    </div>\n    {{/IfCond}}\n    <div class=\"lt229-widget__slider\">\n      <div class=\"uk-grid snippet-grid\" data-uk-grid>\n        {{#each childRecords}}\n        <div class=\"lt229-widget__box grid-card uk-width-1-3@m uk-width-1-2@s\">\n          <div class=\"snippet-grid__box\">\n            <div class=\"snippet-grid__media\">\n              <img src=\"{{data.image.0.OriginalImagePath}}\" alt=\"{{data.alt-text}}\" width=\"{{data.image.0.ResourceWidth}}\" height=\"{{data.image.0.ResourceHeight}}\" tabindex=\"0\">\n            </div>\n            <div class=\"snippet-grid__content js-texttoggle dynamiccomponenteditenable\" %%componentRecordEditable%%>\n              {{IfCond data.tagline 'notempty' ''}}\n                <div class=\"title--tagline\">{{data.tagline}}</div>\n              {{/IfCond}}\n\n              <h3 class=\"title title--m lt229-widget__title\" tabindex=\"0\">{{data.title}}</h3>\n              {{IfCond data.description 'notempty' ''}}\n                <div class=\"text-editor\" tabindex=\"0\">\n                    {{{data.description}}}\n                    {{IfCond data.read-more-description 'notempty' ''}}\n                    <div class=\"js-texttoggle-content\" style=\"display: none;\">\n                        {{{data.read-more-description}}}\n                    </div>\n                    {{/IfCond}}\n                </div>\n\n                {{IfCond data.read-more-description 'notempty' ''}}\n                    <button type=\"button\" class=\"uk-button button-link button-readmore js-texttoggle-action\">\n                        <span class=\"button-readmore__text button-readmore__text--more\">Read More</span>\n                        <span class=\"button-readmore__text button-readmore__text--less\">Less</span>\n                    </button>\n                {{/IfCond}}\n              {{/IfCond}}\n\n              {{IfCond data.primary-button-text 'notempty' '' 'or' data.secondary-button-text 'notempty' ''}}\n              <div class=\"button-combo snippet-grid__actions\">\n                {{IfCond data.primary-button-text 'notempty' '' 'and' data.primary-button-link 'notempty' ''}}\n                <a href=\"{{data.primary-button-link}}\"\n                   class=\"uk-button uk-button-primary button-booknow\" role=\"button\">\n                    {{data.primary-button-text}}\n                    <span class=\"template-icon-chevron-right-thick reverse\"></span>\n                   <span class=\"sr-only\"> {{data.title}}</span></a>\n                {{/IfCond}}\n                {{IfCond data.secondary-button-text 'notempty' '' 'and' data.secondary-button-link 'notempty' ''}}\n                <a href=\"{{data.secondary-button-link}}\"\n                   class=\"uk-button button-link\">\n                   {{data.secondary-button-text}}\n                  <span class=\"template-icon-chevron-right-thick reverse\"></span>\n                   <span class=\"sr-only\"> {{data.title}}</span>\n                   \n                  </a>\n                {{/IfCond}}\n              </div>\n              {{/IfCond}}\n\n            </div>\n          </div>\n        </div>\n        {{/each}}\n      </div>\n    </div>\n  </div>\n</div>\n{{/each}}",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

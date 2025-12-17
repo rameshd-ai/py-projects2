@@ -2070,32 +2070,32 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
         print(current_page_name)
-        if current_page_name == "Our Property":
-            logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
+        # if current_page_name == "Our Property":
+        logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
 
-            # Default category ID
-            category_id = 0
+        # Default category ID
+        category_id = 0
 
-            # Call processor for page
-            _process_page_components(
-                top_level_page,
-                initial_level,
-                initial_hierarchy,
-                component_cache,
-                api_base_url,
-                site_id,
-                api_headers,
-                category_id  # passing resolved category id
-            )
+        # Call processor for page
+        _process_page_components(
+            top_level_page,
+            initial_level,
+            initial_hierarchy,
+            component_cache,
+            api_base_url,
+            site_id,
+            api_headers,
+            category_id  # passing resolved category id
+        )
 
-            next_level = initial_level + 1
-            new_hierarchy = initial_hierarchy + [current_page_name]
-            parent_page_name = current_page_name
-            # Go to sub-pages (level2)
-            for sub_page_data in top_level_page.get("sub_pages", []):
-                assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers,parent_page_name)
-        else:
-            pass
+        next_level = initial_level + 1
+        new_hierarchy = initial_hierarchy + [current_page_name]
+        parent_page_name = current_page_name
+        # Go to sub-pages (level2)
+        for sub_page_data in top_level_page.get("sub_pages", []):
+            assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers,parent_page_name)
+        # else:
+        #     pass
 
     logging.info("\n========================================================")
     logging.info("END: Component-Based Template Assembly Traversal Complete")
