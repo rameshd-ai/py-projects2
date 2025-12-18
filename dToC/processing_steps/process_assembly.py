@@ -740,19 +740,22 @@ def CreatePage(base_url, headers, payload,template_id):
 
 
 def load_records(file_path):
-    """MOCK: Loads records from the JSON file."""
-    # In a real scenario, this would handle file reading.
-    # We mock a simple failure or success.
+    """Loads records from the JSON file. Returns (records_list, full_data, is_dict_wrapper)"""
     if not os.path.exists(file_path):
-        return [], {}, True # Mock empty successful load
+        return [], {}, False
     
-    # Mocking a load where `records` is the main list and other variables are secondary
     with open(file_path, 'r') as f:
         data = json.load(f)
-        if isinstance(data, dict) and "records" in data:
-             return data["records"], data, False # records_data is the dict wrapper, original_wrapper_is_dict is False
+        if isinstance(data, dict):
+            # Check for both "records" and "componentRecordsTree" keys
+            if "records" in data:
+                return data["records"], data, True  # Dict wrapper, flag is True
+            elif "componentRecordsTree" in data:
+                return data["componentRecordsTree"], data, True  # Dict wrapper, flag is True  
+            else:
+                return [], data, True
         elif isinstance(data, list):
-             return data, data, True # records_data is the list, original_wrapper_is_dict is True
+             return data, data, False  # Plain list, flag is False
         else:
              return [], data, False
 
@@ -824,7 +827,7 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
         api_payload = {"main_record_set": [single_record]}
 
         # Call the API to create the record
-        resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload, level)
+        resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
         
         # --- Extract New Record ID ---
         new_record_id = None
@@ -855,6 +858,21 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
         else:
             print(f"    [WARNING] Failed to update CMS record for {level_name} ID {current_record_old_id}. Response: {resp_data}")
 
+    # PHASE 3: WRITE UPDATES BACK TO FILE (Persistence)
+    if migrated_count > 0:
+        try:
+            with open(records_file_path, 'w', encoding='utf-8') as wf:
+                if original_wrapper_is_dict:
+                    # Write back into the original dictionary structure
+                    records_data["componentRecordsTree"] = records
+                    json.dump(records_data, wf, indent=4)
+                else:
+                    # Write back as a list
+                    json.dump(records, wf, indent=4)
+            print(f"    [SUCCESS] Persisted {migrated_count} migrated {level_name} record(s) to {records_file_path}.")
+        except Exception as e:
+            print(f"    [ERROR] Failed to persist changes to file: {e}")
+    
     return migrated_count
 
 
@@ -2882,7 +2900,7 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
     """
     logging.info(f"Calling API to UPDATE {len(records)} existing records...")
     
-    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
+    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
     payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
     
     updated_records = {}
@@ -2941,7 +2959,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     """
     logging.info(f"Calling API to save {len(records)} records in sequential order...")
     
-    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
+    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
     payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
     
     # Group records by parent-child
