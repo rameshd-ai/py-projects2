@@ -18,16 +18,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Global custom properties for level 1 records
-# Set these to apply custom properties, or set to None/empty dict to skip
-LEVEL_1_CUSTOM_PROPERTIES = {
-    "enable-dropdown[]": ["Yes"],
-    "enable-menu-item-in-left[]": ["Yes"],
-    "enable-menu-item-in-right[]": ["Yes"]
-}
-
-# LEVEL_1_CUSTOM_PROPERTIES = {}
-
 def get_config_filepath(file_prefix: str) -> str:
     base_prefix = os.path.basename(file_prefix)
     config_filename = f"{base_prefix}_config.json"
@@ -44,7 +34,6 @@ def load_settings(file_prefix: str) -> Dict[str, Any] | None:
     except Exception as e:
         logging.error(f"Error loading config file: {e}")
         return None
-
 
 def fix_component_ids_in_payload(file_prefix: str, downloaded_component_id: int, site_id: int) -> bool:
     """
@@ -442,81 +431,20 @@ def run_menu_navigation_step(
     
     logging.info(f"Configuration loaded. API Base URL: {api_base_url}, Site ID: {site_id}")
     
+    # Load menu properties from config (already extracted during XML processing)
+    menu_component_name = settings.get("menu_component_name", "Main Menu")
+    menu_level = settings.get("menu_level", 0)
+    level_1_custom_properties = settings.get("level_1_custom_properties", {})
+    
+    logging.info(f"[CONFIG] Using menu properties from config file:")
+    logging.info(f"  - Menu Component Name: {menu_component_name}")
+    logging.info(f"  - Menu Level: {menu_level}")
+    logging.info(f"  - Custom Properties: {level_1_custom_properties if level_1_custom_properties else 'None (empty dict)'}")
+    
     try:
-        # 1. Read _util_pages.json and extract menu component name
-        util_pages_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_util_pages.json")
-        
-        if not os.path.exists(util_pages_file):
-            logging.error(f"File not found: {util_pages_file}")
-            raise FileNotFoundError(f"Could not find {util_pages_file}")
-        
-        with open(util_pages_file, 'r', encoding='utf-8') as f:
-            util_pages_data = json.load(f)
-        
-        menu_component_name = None
-        menu_level = None
         downloaded_component_id = None
         
-        for page in util_pages_data.get('pages', []):
-            page_name = page.get('text', page.get('page_name', ''))
-            if "automation guide" in page_name.strip().lower():
-                content_source = page.get('content_blocks', '') or page.get('description', '')
-                
-                decoded_content = html.unescape(content_source)
-                decoded_content = html.unescape(decoded_content)
-                decoded_content = html.unescape(decoded_content)
-                
-                main_menu_json_pattern = r'["\']?mainMenu["\']?\s*:\s*\[(.*?)\]'
-                json_match = re.search(main_menu_json_pattern, decoded_content, re.IGNORECASE | re.DOTALL)
-                
-                if json_match:
-                    try:
-                        array_content = json_match.group(1)
-                        array_content = re.sub(r'<[^>]+>', '', array_content)
-                        array_content = re.sub(r'<br\s*/?>', '', array_content, flags=re.IGNORECASE)
-                        array_content = re.sub(r'\s+', ' ', array_content)
-                        
-                        json_obj_str = '{"mainMenu": [' + array_content + ']}'
-                        try:
-                            parsed_json = json.loads(json_obj_str)
-                            if 'mainMenu' in parsed_json and isinstance(parsed_json['mainMenu'], list) and len(parsed_json['mainMenu']) > 0:
-                                menu_item = parsed_json['mainMenu'][0]
-                                menu_component_name = menu_item.get('componentName', '').strip()
-                                menu_level = menu_item.get('menuLevel')
-                                
-                                if menu_component_name:
-                                    logging.info(f"Found menu component: {menu_component_name}, menuLevel: {menu_level}")
-                                    break
-                        except json.JSONDecodeError:
-                            component_name_match = re.search(r'["\']componentName["\']\s*:\s*["\']([^"\']+)["\']', array_content, re.IGNORECASE)
-                            if component_name_match:
-                                menu_component_name = component_name_match.group(1).strip()
-                            
-                            menu_level_match = re.search(r'["\']menuLevel["\']\s*:\s*(\d+)', array_content, re.IGNORECASE)
-                            if menu_level_match:
-                                try:
-                                    menu_level = int(menu_level_match.group(1))
-                                except ValueError:
-                                    pass
-                            
-                            if menu_component_name:
-                                break
-                    except Exception as e:
-                        logging.warning(f"Error parsing JSON: {e}")
-                
-                main_menu_pattern = r'Main\s*Menu:\s*(.+)$'
-                match = re.search(main_menu_pattern, decoded_content, re.IGNORECASE | re.DOTALL)
-                if match:
-                    menu_component_name = match.group(1).strip()
-                    menu_component_name = re.sub(r'[\n\r]+', ' ', menu_component_name)
-                    menu_component_name = re.sub(r'\s+', ' ', menu_component_name).strip()
-                    break
-        
-        if not menu_component_name:
-            logging.warning("Menu component name not found. Using default.")
-            menu_component_name = "Main Menu"
-        
-        # 2. Read _simplified.json
+        # 1. Read _simplified.json to build page tree
         simplified_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_simplified.json")
         
         if not os.path.exists(simplified_file):
@@ -560,7 +488,7 @@ def run_menu_navigation_step(
         
         logging.info(f"Extracted {len(pages_tree)} main pages")
         
-        # 3. Fetch components and download menu component
+        # 2. Fetch components and download menu component
         all_components_response = GetAllVComponents(api_base_url, api_headers, page_size=1000)
         
         if all_components_response and isinstance(all_components_response, list):
@@ -661,7 +589,7 @@ def run_menu_navigation_step(
                                 add_levels_to_records(records_file_path)
                                 logging.info(f"[SUCCESS] Added level fields")
         
-        # 4. Create menu_navigation.json
+        # 3. Create menu_navigation.json
         menu_navigation_data = {
             "menu_component_name": menu_component_name,
             "menuLevel": menu_level,
@@ -676,7 +604,7 @@ def run_menu_navigation_step(
         
         logging.info(f"[SUCCESS] Menu navigation JSON saved: {output_filename}")
         
-        # 5. Map pages to records and create payloads
+        # 4. Map pages to records and create payloads
         if downloaded_component_id:
             from process_assembly import map_pages_to_records, create_save_miblock_records_payload, create_new_records_payload, call_save_miblock_records_api, call_update_miblock_records_api
             if map_pages_to_records(file_prefix, site_id, downloaded_component_id):
@@ -684,7 +612,7 @@ def run_menu_navigation_step(
                 create_save_miblock_records_payload(file_prefix, downloaded_component_id, site_id, None, None)
                 create_new_records_payload(file_prefix, downloaded_component_id, site_id, None, None)
                 
-                # 6. Update level 1 links based on sub-pages presence
+                # 5. Update level 1 links based on sub-pages presence
                 # Read menu_navigation.json to check which level 1 pages have sub_pages
                 menu_nav_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_menu_navigation.json")
                 level_1_pages_with_subpages = set()
@@ -711,9 +639,9 @@ def run_menu_navigation_step(
                     collect_level_1_with_subpages(menu_nav_data.get("pages", []))
                     logging.info(f"Found {len(level_1_pages_with_subpages)} level 1 pages with sub-pages: {list(level_1_pages_with_subpages)}")
                 
-                # 7. Apply custom properties and update links for level 1 records in payloads if configured
-                if LEVEL_1_CUSTOM_PROPERTIES:
-                    logging.info("Applying custom properties to level 1 records in payloads...")
+                # 6. Apply custom properties and update links for level 1 records in payloads if configured
+                if level_1_custom_properties:
+                    logging.info(f"Applying custom properties to level 1 records in payloads: {level_1_custom_properties}")
                     
                     # Update new_records_payload.json
                     new_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_new_records_payload.json")
@@ -752,7 +680,7 @@ def run_menu_navigation_step(
                                     has_subpages = page_name in level_1_pages_with_subpages
                                     
                                     # Add custom properties, but adjust enable-dropdown based on sub-pages
-                                    custom_props = LEVEL_1_CUSTOM_PROPERTIES.copy()
+                                    custom_props = level_1_custom_properties.copy()
                                     if not has_subpages:
                                         # No sub-pages, set enable-dropdown to No
                                         custom_props["enable-dropdown[]"] = ["No"]
@@ -859,7 +787,7 @@ def run_menu_navigation_step(
                                     has_subpages = page_name in level_1_pages_with_subpages
                                     
                                     # Add custom properties, but adjust enable-dropdown based on sub-pages
-                                    custom_props = LEVEL_1_CUSTOM_PROPERTIES.copy()
+                                    custom_props = level_1_custom_properties.copy()
                                     if not has_subpages:
                                         # No sub-pages, set enable-dropdown to No
                                         custom_props["enable-dropdown[]"] = ["No"]
@@ -1077,7 +1005,7 @@ def run_menu_navigation_step(
         
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
-        
+    
         return {
             "menu_navigation_created": True,
             "file_prefix": file_prefix,

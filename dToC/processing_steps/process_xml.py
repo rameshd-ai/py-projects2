@@ -416,6 +416,171 @@ def parse_sleekplan_xml(xml_file_path: str) -> Tuple[Dict[str, Any], Dict[str, A
     return home_sitemap_data, foot_unknown_sitemap_data, util_sitemap_data, nav_sitemap_data
 
 
+def extract_menu_properties_from_util_pages(util_data: Dict[str, Any]) -> Tuple[Optional[str], Optional[int], Dict[str, Any]]:
+    """
+    Extracts menu component name, menu level, and custom properties from the automation guide in util pages.
+    
+    Returns:
+        Tuple of (menu_component_name, menu_level, level_1_custom_properties)
+    """
+    menu_component_name = None
+    menu_level = None
+    level_1_custom_properties = {}
+    
+    # Search for automation guide in util pages
+    for page in util_data.get('pages', []):
+        page_name = page.get('text', '')
+        if "automation guide" in page_name.strip().lower():
+            content_source = page.get('content_blocks', '') or page.get('description', '')
+            
+            # Normalize whitespace and newlines first - this is critical for JSON parsing
+            # The description field often has newlines between every character/word
+            content_source = re.sub(r'\n+', ' ', content_source)  # Replace newlines with spaces
+            content_source = re.sub(r'\s+', ' ', content_source)  # Normalize multiple spaces to single space
+            
+            # Unescape HTML entities multiple times
+            decoded_content = html.unescape(content_source)
+            decoded_content = html.unescape(decoded_content)
+            decoded_content = html.unescape(decoded_content)
+            
+            print(f"[XML Processor] Searching for menu properties in automation guide...")
+            print(f"[XML Processor] Content preview: {decoded_content[:300]}...")
+            
+            # Try to find mainMenu JSON pattern
+            # Look for the pattern - we need to match the entire array, handling nested brackets
+            # First, find where mainMenu starts
+            main_menu_start_pattern = r'["\']?mainMenu["\']?\s*:\s*\['
+            start_match = re.search(main_menu_start_pattern, decoded_content, re.IGNORECASE)
+            json_match = None
+            
+            if start_match:
+                # Found the start, now find the matching closing bracket
+                start_pos = start_match.end() - 1  # Position of opening [
+                bracket_count = 0
+                end_pos = start_pos
+                
+                for i in range(start_pos, len(decoded_content)):
+                    if decoded_content[i] == '[':
+                        bracket_count += 1
+                    elif decoded_content[i] == ']':
+                        bracket_count -= 1
+                        if bracket_count == 0:
+                            end_pos = i
+                            break
+                
+                # Extract the full array content
+                if bracket_count == 0 and end_pos > start_pos:
+                    array_content_full = decoded_content[start_pos+1:end_pos]
+                    # Create a mock match object for compatibility
+                    class MockMatch:
+                        def __init__(self, content):
+                            self._content = content
+                        def group(self, idx):
+                            return self._content if idx == 1 else None
+                    json_match = MockMatch(array_content_full)
+            
+            if json_match:
+                try:
+                    array_content = json_match.group(1)
+                    # Clean up HTML tags and entities
+                    array_content = re.sub(r'<[^>]+>', '', array_content)
+                    array_content = re.sub(r'<br\s*/?>', '', array_content, flags=re.IGNORECASE)
+                    # Normalize whitespace but preserve JSON structure
+                    array_content = re.sub(r'\s+', ' ', array_content).strip()
+                    
+                    # Fix extra spaces inside quotes: " enable-dropdown[] " -> "enable-dropdown[]"
+                    # This regex finds quoted strings and removes leading/trailing spaces inside the quotes
+                    array_content = re.sub(r'"\s+([^"]+?)\s+"', r'"\1"', array_content)
+                    
+                    json_obj_str = '{"mainMenu": [' + array_content + ']}'
+                    print(f"[XML Processor] Attempting to parse JSON: {json_obj_str[:200]}...")  # Debug output
+                    try:
+                        parsed_json = json.loads(json_obj_str)
+                        if 'mainMenu' in parsed_json and isinstance(parsed_json['mainMenu'], list) and len(parsed_json['mainMenu']) > 0:
+                            menu_item = parsed_json['mainMenu'][0]
+                            menu_component_name = menu_item.get('componentName', '').strip()
+                            menu_level = menu_item.get('menuLevel')
+                            
+                            # Extract custom properties dynamically from XML
+                            if 'enable-dropdown[]' in menu_item:
+                                level_1_custom_properties['enable-dropdown[]'] = menu_item['enable-dropdown[]'] if isinstance(menu_item['enable-dropdown[]'], list) else [menu_item['enable-dropdown[]']]
+                            
+                            if 'enable-menu-item-in-left[]' in menu_item:
+                                level_1_custom_properties['enable-menu-item-in-left[]'] = menu_item['enable-menu-item-in-left[]'] if isinstance(menu_item['enable-menu-item-in-left[]'], list) else [menu_item['enable-menu-item-in-left[]']]
+                            
+                            if 'enable-menu-item-in-right[]' in menu_item:
+                                level_1_custom_properties['enable-menu-item-in-right[]'] = menu_item['enable-menu-item-in-right[]'] if isinstance(menu_item['enable-menu-item-in-right[]'], list) else [menu_item['enable-menu-item-in-right[]']]
+                            
+                            if menu_component_name:
+                                print(f"[XML Processor] Found menu component: {menu_component_name}, menuLevel: {menu_level}")
+                                if level_1_custom_properties:
+                                    print(f"[XML Processor] Extracted custom properties from XML: {level_1_custom_properties}")
+                                break
+                    except json.JSONDecodeError:
+                        # Try regex fallback
+                        component_name_match = re.search(r'["\']componentName["\']\s*:\s*["\']([^"\']+)["\']', array_content, re.IGNORECASE)
+                        if component_name_match:
+                            menu_component_name = component_name_match.group(1).strip()
+                        
+                        menu_level_match = re.search(r'["\']menuLevel["\']\s*:\s*(\d+)', array_content, re.IGNORECASE)
+                        if menu_level_match:
+                            try:
+                                menu_level = int(menu_level_match.group(1))
+                            except ValueError:
+                                pass
+                        
+                        # Try to extract custom properties using regex with more flexible patterns
+                        # Handle variations like: "enable-dropdown[]":["Yes"] or "enable-dropdown[]": ["Yes"] or 'enable-dropdown[]': ['Yes']
+                        dropdown_match = re.search(r'["\']enable-dropdown\s*\[\s*\]["\']?\s*:\s*\[([^\]]+)\]', array_content, re.IGNORECASE)
+                        if dropdown_match:
+                            values = [v.strip().strip('"\'') for v in dropdown_match.group(1).split(',')]
+                            level_1_custom_properties['enable-dropdown[]'] = [v for v in values if v]  # Filter empty values
+                            print(f"[XML Processor] Extracted enable-dropdown[]: {level_1_custom_properties['enable-dropdown[]']}")
+                        
+                        left_match = re.search(r'["\']enable-menu-item-in-left\s*\[\s*\]["\']?\s*:\s*\[([^\]]+)\]', array_content, re.IGNORECASE)
+                        if left_match:
+                            values = [v.strip().strip('"\'') for v in left_match.group(1).split(',')]
+                            level_1_custom_properties['enable-menu-item-in-left[]'] = [v for v in values if v]
+                            print(f"[XML Processor] Extracted enable-menu-item-in-left[]: {level_1_custom_properties['enable-menu-item-in-left[]']}")
+                        
+                        right_match = re.search(r'["\']enable-menu-item-in-right\s*\[\s*\]["\']?\s*:\s*\[([^\]]+)\]', array_content, re.IGNORECASE)
+                        if right_match:
+                            values = [v.strip().strip('"\'') for v in right_match.group(1).split(',')]
+                            level_1_custom_properties['enable-menu-item-in-right[]'] = [v for v in values if v]
+                            print(f"[XML Processor] Extracted enable-menu-item-in-right[]: {level_1_custom_properties['enable-menu-item-in-right[]']}")
+                        
+                        if menu_component_name:
+                            if level_1_custom_properties:
+                                print(f"[XML Processor] Extracted custom properties from XML (regex): {level_1_custom_properties}")
+                            break
+                except Exception as e:
+                    print(f"[XML Processor] Error parsing menu JSON: {e}", file=sys.stderr)
+            else:
+                print(f"[XML Processor] No mainMenu JSON pattern found in automation guide content")
+            
+            # Fallback: Try simple pattern for menu component name
+            main_menu_pattern = r'Main\s*Menu:\s*(.+)$'
+            match = re.search(main_menu_pattern, decoded_content, re.IGNORECASE | re.DOTALL)
+            if match:
+                menu_component_name = match.group(1).strip()
+                menu_component_name = re.sub(r'[\n\r]+', ' ', menu_component_name)
+                menu_component_name = re.sub(r'\s+', ' ', menu_component_name).strip()
+                break
+    
+    # Use defaults if not found
+    if not menu_component_name:
+        menu_component_name = "Main Menu"
+        print("[XML Processor] Menu component name not found in automation guide. Using default: 'Main Menu'")
+    
+    if menu_level is None:
+        menu_level = 0
+    
+    if not level_1_custom_properties:
+        print("[XML Processor] No custom properties found in XML - will use empty dict")
+    
+    return menu_component_name, menu_level, level_1_custom_properties
+
+
 def create_simplified_page_name_json(home_data, foot_unknown_data, nav_data):
     """
     Creates a simplified JSON focused on page names and extracted components from the navigation map.
@@ -507,6 +672,14 @@ def run_xml_processing_step(filepath: str, step_config: dict, previous_step_data
         with open(simplified_json_file, 'w', encoding='utf-8') as f:
             json.dump(simplified_data, f, ensure_ascii=False, indent=4)
             
+        # --- Extract menu properties from util pages and prepare for config ---
+        menu_component_name, menu_level, level_1_custom_properties = extract_menu_properties_from_util_pages(util_sitemap_data)
+        
+        print(f"[XML Processor] Menu properties extracted:")
+        print(f"  - Component Name: {menu_component_name}")
+        print(f"  - Menu Level: {menu_level}")
+        print(f"  - Custom Properties: {level_1_custom_properties if level_1_custom_properties else 'None (empty dict)'}")
+            
         # --- Prepare output file list ---
         output_filenames_list = [
             os.path.basename(home_json_file),
@@ -515,16 +688,21 @@ def run_xml_processing_step(filepath: str, step_config: dict, previous_step_data
             os.path.basename(simplified_json_file),
         ]
             
-        # --- Save file_prefix (the unique token) and all output filenames to Config for future steps ---
+        # --- Save file_prefix, output filenames, and menu properties to Config for future steps ---
         settings = load_settings(file_prefix)
         if settings is None:
             raise RuntimeError("Failed to initialize or load config storage during XML processing.")
 
         settings["file_prefix"] = file_prefix 
-        settings["output_json_filenames"] = output_filenames_list # <-- Added all output filenames
+        settings["output_json_filenames"] = output_filenames_list
+        settings["menu_component_name"] = menu_component_name
+        settings["menu_level"] = menu_level
+        settings["level_1_custom_properties"] = level_1_custom_properties if level_1_custom_properties else {}
         
         if not save_settings(file_prefix, settings):
-            raise IOError("Failed to save the file_prefix and output filenames to the configuration file.")
+            raise IOError("Failed to save the file_prefix, output filenames, and menu properties to the configuration file.")
+        
+        print(f"[XML Processor] Configuration file updated successfully with menu properties")
 
 
     except ET.ParseError as e:
