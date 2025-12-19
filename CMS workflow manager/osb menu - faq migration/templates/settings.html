@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Site Settings{% endblock %}
+
+{% set active_page = 'settings' %}
+
+{% block card_title %}Site Settings{% endblock %}
+
+{% block content %}
+    <form method="POST">
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Source Site ID</label>
+                <input type="text" class="form-control" name="source_site_id" value="{{ data.source_site_id if data }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Source Site URL</label>
+                <input type="text" class="form-control" name="source_site_url" value="{{ data.source_site_url if data }}">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Source Profile Alias</label>
+            <input type="text" class="form-control" name="source_profile_alias" value="{{ data.source_profile_alias if data }}">
+        </div>
+
+        <hr>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Destination Site ID</label>
+                <input type="text" class="form-control" name="destination_site_id" value="{{ data.destination_site_id if data }}">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Destination Site URL</label>
+                <input type="text" class="form-control" name="destination_site_url" value="{{ data.destination_site_url if data }}">
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Destination Profile Alias</label>
+            <input type="text" class="form-control" name="destination_profile_alias" value="{{ data.destination_profile_alias if data }}">
+        </div>
+
+        <button type="submit" class="btn btn-success">Save Settings</button>
+    </form>
+{% endblock %}

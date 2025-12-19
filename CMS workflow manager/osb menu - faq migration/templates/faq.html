@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}FAQ Extractor Tool{% endblock %}
+
+{% set active_page = 'faq' %}
+
+{% block card_title %}FAQ Extraction and Management{% endblock %}
+
+{% block content %}
+    
+    <div id="status-message" class="alert d-none" role="alert"></div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="list-unstyled">
+            {% for category, message in messages %}
+                <li class="alert alert-{{ category }}" role="alert">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <hr>
+
+    <h3>1. Upload Source File (Excel/CSV)</h3>
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('faq') }}">
+        <div class="input-group mb-3">
+            <input type="file" class="form-control" name="excelFile" accept=".csv,.xlsx,.xls,.txt" required>
+            <button class="btn btn-success" type="submit">Upload File</button>
+        </div>
+    </form>
+
+    <hr>
+
+    <h3>2. Manage Uploaded Source Files</h3>
+    <p class="text-muted">Files uploaded below contain the list of URLs to process. Click **Process** to begin extraction.</p>
+    <div class="file-list">
+        {% if uploaded_files %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Size (MB)</th>
+                        <th>Upload Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in uploaded_files %}
+                    <tr id="row-upload-{{ file.name | replace('.', '-') }}">
+                        <td>{{ file.name }}</td>
+                        <td>{{ "%.2f"|format(file.size) }}</td>
+                        <td>{{ file.date_time }}</td>
+                        <td class="action-btns">
+                            <button 
+                                class="btn btn-primary btn-sm process-button" 
+                                data-filename="{{ file.name }}" 
+                                onclick="processFile('{{ file.name }}', this)">
+                                Process
+                            </button>
+                            <button
+                                class="btn btn-danger btn-sm delete-button"
+                                onclick="deleteFile('uploads', '{{ file.name }}', 'row-upload-{{ file.name | replace('.', '-') }}')">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No files uploaded yet.</p>
+        {% endif %}
+    </div>
+    
+    <hr>
+
+    <h3>3. Output Files and Downloads</h3>
+    <p class="text-muted">The files below contain the aggregated FAQ data extracted from the URLs.</p>
+    <div id="output-list-container">
+        {% if output_files %}
+            <table class="table table-sm" id="output-file-table">
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Size (MB)</th>
+                        <th>Date Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in output_files %}
+                    <tr id="row-output-{{ file.name | replace('.', '-') }}">
+                        <td>{{ file.name }}</td>
+                        <td>{{ "%.2f"|format(file.size) }}</td>
+                        <td>{{ file.date_time }}</td>
+                        <td class="action-btns">
+                            <a href="{{ url_for('download_file', filename=file.name) }}" class="btn btn-warning btn-sm">
+                                Download
+                            </a>
+                            <button
+                                class="btn btn-danger btn-sm delete-button"
+                                onclick="deleteFile('output', '{{ file.name }}', 'row-output-{{ file.name | replace('.', '-') }}')">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p id="no-output-message">No output files created yet.</p>
+        {% endif %}
+    </div>
+    
+    <script>
+        function processFile(filename, buttonElement) {
+            const statusMessage = document.getElementById('status-message');
+            
+            buttonElement.disabled = true;
+            buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            
+            statusMessage.className = 'alert alert-info';
+            statusMessage.textContent = `Starting process for ${filename}... This may take a moment for browser startup.`;
+            statusMessage.classList.remove('d-none');
+
+            fetch(`/api/process_file/${filename}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                buttonElement.disabled = false;
+                
+                if (data.success) {
+                    buttonElement.textContent = 'Processed ✅';
+                    statusMessage.className = 'alert alert-success';
+                    
+                    const downloadUrl = `/downloads/${data.output_file}`;
+                    statusMessage.innerHTML = `
+                        ✅ **SUCCESS!** Processed <strong>${data.processed_count}</strong> link(s). 
+                        Output file created: <strong>${data.output_file}</strong>.
+                        <a href="${downloadUrl}" class="btn btn-warning btn-sm ms-3" target="_blank">
+                            Download ${data.output_file}
+                        </a>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.reload(); 
+                    }, 2000); 
+
+                } else {
+                    buttonElement.textContent = 'Failed ❌';
+                    statusMessage.className = 'alert alert-warning';
+                    statusMessage.innerHTML = `
+                        ⚠️ **WARNING/FAILED:** Processing completed with warnings or no data fetched. 
+                        Error: ${data.error || 'No data fetched successfully.'}
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('API Error:', error);
+                buttonElement.disabled = false;
+                buttonElement.textContent = 'Error ❌';
+                statusMessage.className = 'alert alert-danger';
+                statusMessage.innerHTML = `
+                    ❌ **FATAL ERROR!** Processing failed: ${error.message || 'Check server console for details.'}
+                `;
+            });
+        }
+        
+        function deleteFile(folder, filename, rowId) {
+            if (!confirm(`Are you sure you want to delete the file: ${filename} from the ${folder} folder?`)) {
+                return;
+            }
+
+            const statusMessage = document.getElementById('status-message');
+            
+            fetch(`/api/delete_file/${folder}/${filename}`, {
+                method: 'DELETE',
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const row = document.getElementById(rowId);
+                    if (row) {
+                        row.remove();
+                    }
+                    
+                    statusMessage.className = 'alert alert-success';
+                    statusMessage.textContent = `✅ File ${filename} successfully deleted.`;
+                    statusMessage.classList.remove('d-none');
+                } else {
+                    throw new Error(data.error || 'Deletion failed.');
+                }
+            })
+            .catch(error => {
+                console.error('Delete Error:', error);
+                statusMessage.className = 'alert alert-danger';
+                statusMessage.innerHTML = `❌ **ERROR:** Failed to delete ${filename}. ${error.message}`;
+                statusMessage.classList.remove('d-none');
+            });
+        }
+    </script>
+{% endblock %}
