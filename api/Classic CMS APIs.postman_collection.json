@@ -1,0 +1,109 @@
+{
+	"info": {
+		"_postman_id": "9f1929f6-c27a-4e73-aa2e-d25b8b4a611d",
+		"name": "Classic CMS APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "7544023"
+	},
+	"item": [
+		{
+			"name": "CreateComponentRecord",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjI3NyIsInNpdGVVUkwiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIzNDk2MiIsInVzZXJUeXBlSUQiOiIxIiwidXNlck5hbWUiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJ1c2VyRW1haWwiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJtaXhwYW5lbEtleSI6IjVjZDYzMThlNGJhMDgwNTI4YjEzNzFjNDM5OWQyMzE1IiwicG9kIjoiMTYiLCJzZXNzaW9uSUQiOiJveHFscDVmMHYzajAwaHlhbnV0NHYxZXMiLCJkYW1CYXNlVVJMIjoiaHR0cHM6Ly9kYW1hcGkubWlsZXN0b25laW50ZXJuZXQuY29tL2FwaS92Mi4wLyIsInBlcnNvbmFsaXphdGlvbkVuYWJsZWQiOiJGYWxzZSIsIm1pbVByb2ZpbGVJZCI6Ijc0OTYxIiwiaXNBZ2VuY3lVc2VyIjoiVHJ1ZSIsImlzVHJhbnNsYXRpb25FbmFibGVkIjoiRmFsc2UiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IlRydWUiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQWR2YW5jZWQgUHJvZ3JhbW1lciIsImlzTXVsdGlMb2NhdGlvbkV2ZW50Q2FsZW5kYXIiOiJGYWxzZSIsIm5iZiI6MTc1ODA4ODc5MSwiZXhwIjoxNzU4MTc1MTkxLCJpYXQiOjE3NTgwODg3OTEsImlzcyI6Imh0dHBzOi8vdGVzdC1sdXh1cnktZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyIsImF1ZCI6Imh0dHBzOi8vdGVzdC1sdXh1cnktZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.JN4Sm9sL6WeWOqvNsdIBamwNzG8xalLRxESC6YHysB4"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"componentName\": \"Menu\",\r\n  \"Scopeid\": 5,\r\n  \"ParentId\": \"144000\",\r\n  \"recordList\": [\r\n    {\r\n      \"recordJsonString\": \"\\\"{\\\\\\\"menu-title\\\\\\\": \\\\\\\"Paneer Butter Masala\\\\\\\"}\\\"\",\r\n      \"ParentRecordId\": 0,\r\n      \"ParentComponentId\": \"144000\",\r\n      \"MainParentComponentid\": 144000\r\n    }\r\n  ]\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://test-luxury-dining-template-2025.web5cms.milestoneinternet.info/api/MiblockApi/CreateComponentRecord"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMenuData",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": "https://ibc-window-test.cms.milestoneinternet.info/api/MenuDataAPI/GetMenuData"
+			},
+			"response": []
+		},
+		{
+			"name": "FAQ",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "https://ibc-window-test.cms.milestoneinternet.info/api/FAQApi/GetFAQList"
+			},
+			"response": []
+		},
+		{
+			"name": "miblockrecords",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjQ0NiIsInNpdGVVUkwiOiJodHRwczovL21lbnUtdGVzdGluZy1maW5lLWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL21lbnUtdGVzdGluZy1maW5lLWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIzNDk2MiIsInVzZXJUeXBlSUQiOiIxIiwidXNlck5hbWUiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJ1c2VyRW1haWwiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJtaXhwYW5lbEtleSI6IjVjZDYzMThlNGJhMDgwNTI4YjEzNzFjNDM5OWQyMzE1IiwicG9kIjoiMTYiLCJzZXNzaW9uSUQiOiJyejR3ZmNtNHV0cmdnYndneTJseW1wcmMiLCJkYW1CYXNlVVJMIjoiaHR0cHM6Ly9kYW1hcGkubWlsZXN0b25laW50ZXJuZXQuY29tL2FwaS92Mi4wLyIsInBlcnNvbmFsaXphdGlvbkVuYWJsZWQiOiJGYWxzZSIsIm1pbVByb2ZpbGVJZCI6IjkxNzI2IiwiaXNBZ2VuY3lVc2VyIjoiVHJ1ZSIsImlzVHJhbnNsYXRpb25FbmFibGVkIjoiRmFsc2UiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IlRydWUiLCJpc0FJRW5hYmxlZCI6IlRydWUiLCJ1c2VyVHlwZU5hbWUiOiJBZHZhbmNlZCBQcm9ncmFtbWVyIiwiaXNNdWx0aUxvY2F0aW9uRXZlbnRDYWxlbmRhciI6IkZhbHNlIiwicHJvZmlsZUFsaWFzIjoiMTAwMDIuMSIsIm5iZiI6MTc2MzM3NjgzNSwiZXhwIjoxNzYzNDYzMjM1LCJpYXQiOjE3NjMzNzY4MzUsImlzcyI6Imh0dHBzOi8vbWVudS10ZXN0aW5nLWZpbmUtZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyIsImF1ZCI6Imh0dHBzOi8vbWVudS10ZXN0aW5nLWZpbmUtZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.WclYKt6Lq4cp1hKf-zBZew9lhbQQuNdOan1QsEUk0q4"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"componentName\": \"Menu Section\",\r\n  \"Scopeid\": 5,\r\n  \"ParentId\": \"150340\",\r\n  \"recordList\": [\r\n    {\r\n      \"recordJsonString\": \"{\\\"section-name\\\": \\\"3Alcoholic Beverages\\\", \\\"section-sub-title\\\": null, \\\"section-description\\\": null, \\\"section-icon-class-name\\\": null, \\\"section-icon-image\\\": null, \\\"section-icon-image-alt-text\\\": null, \\\"section-price\\\": null, \\\"section-price-description\\\": null, \\\"section-image\\\": null, \\\"section-image-alt-text\\\": null, \\\"food-type\\\": null, \\\"displayorder\\\": 4}\",\r\n      \"Status\":false,\r\n      \"ParentRecordId\": 646751,\r\n      \"ParentComponentId\": \"150340\",\r\n      \"EnableClientEdit\": false,\r\n      \"MainParentComponentid\": 150340\r\n    }\r\n    \r\n    \r\n  ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://menu-testing-fine-dining-template-2025.web5cms.milestoneinternet.info/api/MiblockApi/CreateComponentRecord"
+			},
+			"response": []
+		},
+		{
+			"name": "pageCategories",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjYxNyIsInNpdGVVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiIyMSIsInNlc3Npb25JRCI6InV5dnZ2bjJ4c255bGlscGo1ZGNtc3J2dSIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiNzA2NjUiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQWR2YW5jZWQgUHJvZ3JhbW1lciIsImlzTXVsdGlMb2NhdGlvbkV2ZW50Q2FsZW5kYXIiOiJGYWxzZSIsInByb2ZpbGVBbGlhcyI6IjEyMy4yOCIsIm5iZiI6MTc2MzYzNjQ4NiwiZXhwIjoxNzYzNzIyODg2LCJpYXQiOjE3NjM2MzY0ODYsImlzcyI6Imh0dHBzOi8vYXV0b21hdGlvbi1uYXRpb253aWRlLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhdWQiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.BivswL5dkXpAZxTj9JGDgQs4_lr0zzHVPCiJB7eEf0c"
+					}
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"url": "https://automation-nationwide.web4cms.milestoneinternet.info/api/PageApi/GetPageCategoryList"
+			},
+			"response": []
+		}
+	]
+}

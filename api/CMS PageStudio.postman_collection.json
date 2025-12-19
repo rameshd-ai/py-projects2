@@ -1,0 +1,1134 @@
+{
+	"info": {
+		"_postman_id": "465cb181-9b37-46b3-954f-5caac6b20324",
+		"name": "CMS PageStudio",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "7544023"
+	},
+	"item": [
+		{
+			"name": "Get Page Template List API",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjYxNyIsInNpdGVVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiIyMSIsInNlc3Npb25JRCI6InV5dnZ2bjJ4c255bGlscGo1ZGNtc3J2dSIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiNzA2NjUiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQWR2YW5jZWQgUHJvZ3JhbW1lciIsImlzTXVsdGlMb2NhdGlvbkV2ZW50Q2FsZW5kYXIiOiJGYWxzZSIsInByb2ZpbGVBbGlhcyI6IjEyMy4yOCIsIm5iZiI6MTc2Mzk3MDk4OCwiZXhwIjoxNzY0MDU3Mzg4LCJpYXQiOjE3NjM5NzA5ODgsImlzcyI6Imh0dHBzOi8vYXV0b21hdGlvbi1uYXRpb253aWRlLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhdWQiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.YQ9vRLP9XVUmuWtURO8osnzFRAS0LahC3KhdNFKIghU"
+					}
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://automation-nationwide.web4cms.milestoneinternet.info/api/PageApi/GetTemplatePageList?ms_cms_clientapp=ProgrammingApp",
+					"protocol": "https",
+					"host": [
+						"automation-nationwide",
+						"web4cms",
+						"milestoneinternet",
+						"info"
+					],
+					"path": [
+						"api",
+						"PageApi",
+						"GetTemplatePageList"
+					],
+					"query": [
+						{
+							"key": "ms_cms_clientapp",
+							"value": "ProgrammingApp"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PageInfo API",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNTYyNiIsInNpdGVVUkwiOiJodHRwczovL3d3dy5tZWV0YXRzYW50ZS5jb20vIiwiYXBpVVJMIjoiaHR0cHM6Ly93d3cubWVldGF0c2FudGUuY29tL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjM0OTYyIiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiIxNiIsInNlc3Npb25JRCI6Inpjd3F1MmNsaDJ5bzJsM3N1YWJ3azRpcyIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiODQwNjQiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiVHJ1ZSIsImlzQUlFbmFibGVkIjoiRmFsc2UiLCJ1c2VyVHlwZU5hbWUiOiJBZHZhbmNlZCBQcm9ncmFtbWVyIiwiaXNNdWx0aUxvY2F0aW9uRXZlbnRDYWxlbmRhciI6IkZhbHNlIiwibmJmIjoxNzU3NDExNTg2LCJleHAiOjE3NTc0OTc5ODYsImlhdCI6MTc1NzQxMTU4NiwiaXNzIjoiaHR0cHM6Ly93d3cubWVldGF0c2FudGUuY29tLyIsImF1ZCI6Imh0dHBzOi8vd3d3Lm1lZXRhdHNhbnRlLmNvbS8ifQ.mcf53XDdMCO07tCQNvGUpK7UUC6Dvr_6xsaD0yvP-v0"
+					}
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://www.meetatsante.com/ccadmin/cms/api/PageApi/GetPageInfo?pageId=318077&isDraft=true",
+					"protocol": "https",
+					"host": [
+						"www",
+						"meetatsante",
+						"com"
+					],
+					"path": [
+						"ccadmin",
+						"cms",
+						"api",
+						"PageApi",
+						"GetPageInfo"
+					],
+					"query": [
+						{
+							"key": "pageId",
+							"value": "318077"
+						},
+						{
+							"key": "isDraft",
+							"value": "true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ActivePageList",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjI3NyIsInNpdGVVUkwiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiI0NjA5MyIsInVzZXJUeXBlSUQiOiI0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6ImZyZXlqYS5jbXNkeHRlYW1AbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjE2Iiwic2Vzc2lvbklEIjoieDFzZmRraXNpeG9pYnUwYXlzMjBwbmNkIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3NDk2MSIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IkZhbHNlIiwidXNlclRoaW5nSWQiOiI5NDQ5YTRmNy0yNDJmLWYwMTEtOGIzZC0wMDBkM2EzZjhhZDQiLCJtcGNVc2VySWQiOiIyMjI4MiIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiVHJ1ZSIsImlzQUlFbmFibGVkIjoiRmFsc2UiLCJ1c2VyVHlwZU5hbWUiOiJDbGllbnQiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTczOTA3NzAsImV4cCI6MTc1NzQ3NzE3MCwiaWF0IjoxNzU3MzkwNzcwLCJpc3MiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhdWQiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8ifQ.g-8D8L44_47HLGpCu-umYSVUAL4dzsMqIb38tMxIUjQ"
+					}
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://test-luxury-dining-template-2025.web5cms.milestoneinternet.info/ccadmin/cms/api/PageApi/GetActivePages?siteId=16277",
+					"protocol": "https",
+					"host": [
+						"test-luxury-dining-template-2025",
+						"web5cms",
+						"milestoneinternet",
+						"info"
+					],
+					"path": [
+						"ccadmin",
+						"cms",
+						"api",
+						"PageApi",
+						"GetActivePages"
+					],
+					"query": [
+						{
+							"key": "siteId",
+							"value": "16277"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Existing Page",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"let htmlContent = `<div class=\"box2\" id=\"data_page_content\"> \r",
+							"    <div id=\"pagestudio\">\r",
+							"        <div class=\"VComponent\" data-vcomponent_alias=\"9ff5e515-8491-41c6-93a3-fb4077eb18d5\">\r",
+							"            <div class=\"inlineme\" contenteditable=\"false\">%%vcomponent-9ff5e515-8491-41c6-93a3-fb4077eb18d5%%</div>\r",
+							"        </div>\r",
+							"        <div class=\"VComponent\" data-vcomponent_alias=\"9ff5e515-8491-41c6-93a3-fb4077eb18d6\">\r",
+							"            <div class=\"inlineme\" contenteditable=\"false\">%%vcomponent-9ff5e515-8491-41c6-93a3-fb4077eb18d6%%</div>\r",
+							"        </div>\r",
+							"    </div> \r",
+							"</div>`;\r",
+							"\r",
+							"// Encode to Base64\r",
+							"let encodedHtml = btoa(unescape(encodeURIComponent(htmlContent)));\r",
+							"\r",
+							"// Log the encoded value in Postman console\r",
+							"console.log(\"Encoded HTML:\", encodedHtml);\r",
+							"\r",
+							"// Store the encoded HTML in an environment variable\r",
+							"pm.environment.set(\"encodedHtml\", encodedHtml);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzAwNCIsInNpdGVVUkwiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiI5Iiwic2Vzc2lvbklEIjoiNXZ1dXdtYXNocWRidmFpZXpzdzB3YmJ2IiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJUcnVlIiwibmJmIjoxNzQxMTQ1Mjc2LCJleHAiOjE3NDEyMzE2NzYsImlhdCI6MTc0MTE0NTI3NiwiaXNzIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyIsImF1ZCI6Imh0dHBzOi8vYWwtYXV0b21hdGlvbi1kZW1vLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8ifQ.3X7Zr9BT_Y0oL1ZKiVcXvgzf79PK2kE4VKTIBgnxUs4"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \r\n\r\n    \"pageId\": 364424, \r\n    \"pageName\": \"STR3\", \r\n    \"pageAlias\": \"str3\", \r\n    \"pageContent\": \"{{encodedHtml}}\", \r\n    \"isUniqueMetaContent\": true, \r\n    \"pageMetaTitle\": \"STRIDECARE TEST PAGE\", \r\n    \"pageMetaDescription\": \"STRIDECARE TEST PAGE\", \r\n    \"pageStopSEO\": 1, \r\n    \"isPageStudioPage\": true, \r\n    \"pageUpdatedBy\": 0, \r\n    \"pageCategoryId\": 0, \r\n    \"pageProfileId\": 0, \r\n    \"tags\": \"\", \r\n    \"referenceTemplatePageId\": 0, \r\n    \"isTemplatePage\": false, \r\n    \"generateThumbnailImage\": false, \r\n    \"languageId\": 0, \r\n    \"primaryLanguagePageId\": 0 \r\n\r\n} ",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://al-automation-demo.web4cms.milestoneinternet.info/api/PageApi/SavePage?templateId=0&directPublish=false",
+					"protocol": "https",
+					"host": [
+						"al-automation-demo",
+						"web4cms",
+						"milestoneinternet",
+						"info"
+					],
+					"path": [
+						"api",
+						"PageApi",
+						"SavePage"
+					],
+					"query": [
+						{
+							"key": "templateId",
+							"value": "0"
+						},
+						{
+							"key": "directPublish",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PublishPageAPI",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Get vcompDetails_Alias",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjYxNyIsInNpdGVVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiIyMSIsInNlc3Npb25JRCI6InV5dnZ2bjJ4c255bGlscGo1ZGNtc3J2dSIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiNzA2NjUiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQWR2YW5jZWQgUHJvZ3JhbW1lciIsImlzTXVsdGlMb2NhdGlvbkV2ZW50Q2FsZW5kYXIiOiJGYWxzZSIsInByb2ZpbGVBbGlhcyI6IjEyMy4yOCIsIm5iZiI6MTc2NDA3NzU4NCwiZXhwIjoxNzY0MTYzOTg0LCJpYXQiOjE3NjQwNzc1ODQsImlzcyI6Imh0dHBzOi8vYXV0b21hdGlvbi1uYXRpb253aWRlLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhdWQiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.CjJtYQcNwokWWwGbY1z-9bXG3jPaOlbMfMrCvFXi5Zc"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"vComponentAliases\": [\r\n    \"e60fb302-8471-4511-8af7-4bcff9649cfa\"\r\n  ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://automation-nationwide.web4cms.milestoneinternet.info/api/VisualComponentsApi/GetVComponentDetailById"
+			},
+			"response": []
+		},
+		{
+			"name": "ImportMiBlockComponent",
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {
+					"content-type": true
+				}
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNTk3NyIsInNpdGVVUkwiOiJodHRwczovL3VjdXBzLTIwMjUud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyIsImFwaVVSTCI6Imh0dHBzOi8vdWN1cHMtMjAyNS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vY2NhZG1pbi9jbXMvIiwidXNlcklEIjoiMjMzNjUiLCJ1c2VyVHlwZUlEIjoiMSIsInVzZXJOYW1lIjoicmFtZXNoLmRAbWlsZXN0b25laW50ZXJuZXQuY29tIiwidXNlckVtYWlsIjoicmFtZXNoLmRAbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjkiLCJzZXNzaW9uSUQiOiJqbGFubTRmcnY1NXFkejVucWppandrdmgiLCJkYW1CYXNlVVJMIjoiaHR0cHM6Ly9kYW1hcGkubWlsZXN0b25laW50ZXJuZXQuY29tL2FwaS92Mi4wLyIsInBlcnNvbmFsaXphdGlvbkVuYWJsZWQiOiJGYWxzZSIsIm1pbVByb2ZpbGVJZCI6Ijc0OTY3IiwiaXNBZ2VuY3lVc2VyIjoiVHJ1ZSIsImlzVHJhbnNsYXRpb25FbmFibGVkIjoiRmFsc2UiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IkZhbHNlIiwiaXNBSUVuYWJsZWQiOiJGYWxzZSIsIm5iZiI6MTc0Nzg4NjUxNywiZXhwIjoxNzQ3OTcyOTE3LCJpYXQiOjE3NDc4ODY1MTcsImlzcyI6Imh0dHBzOi8vdWN1cHMtMjAyNS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly91Y3Vwcy0yMDI1LndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8ifQ.2FFqS3rtkjzNkgl1YuJLX7SxRbqkv4k1AhTIDVuT__c"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "accept",
+						"value": "application/json,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+					},
+					{
+						"key": "accept-language",
+						"value": "en-US,en;q=0.9"
+					},
+					{
+						"key": "cookie",
+						"value": "ASP.NET_SessionId=chttil1qacnwwufvqzew0p04; utype=1; changemode=; __RequestVerificationToken=; _ga=GA1.4.1985564424.1722427230; _gid=GA1.4.677368444.1722427230; mscmswt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiI4MDEyIiwic2l0ZVVSTCI6Imh0dHBzOi8vb25lbmV2YWRhLTIwMjQuY21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9vbmVuZXZhZGEtMjAyNC5jbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIxNTU2OCIsInVzZXJUeXBlSUQiOiIxIiwidXNlck5hbWUiOiJTaGl2YW0uSyIsInVzZXJFbWFpbCI6InNoaXZhbS5rQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiZGIxODA1NzkzYjYxZGZmMTg2ZTM1MTA0YjZjYmI5NTciLCJzZXNzaW9uSUQiOiJjaHR0aWwxcWFjbnd3dWZ2cXpldzBwMDQiLCJkYW1CYXNlVVJMIjoiaHR0cHM6Ly90LWRhbS1zdGFnaW5nLWFwaS5henVyZXdlYnNpdGVzLm5ldC9hcGkvdjIuMC8iLCJuYmYiOjE3MjI0Mjk1MzQsImV4cCI6MTcyMjUxNTkzNCwiaWF0IjoxNzIyNDI5NTM0LCJpc3MiOiJodHRwczovL29uZW5ldmFkYS0yMDI0LmNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyIsImF1ZCI6Imh0dHBzOi8vb25lbmV2YWRhLTIwMjQuY21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.RGMUAqTP0ee3PWz7JvFdeTBCWNKqSsGlVTWOx1x6uRU; CurrentTime=31-07-2024 18:09:05; sessionCookie=31-07-2024 13:23:15; _ga_TLFWVQ8P4W=GS1.4.1722429557.2.0.1722429557.0.0.0; _ga_G1NBP6TNJR=GS1.4.1722429557.2.0.1722429557.0.0.0"
+					},
+					{
+						"key": "priority",
+						"value": "u=0, i",
+						"disabled": true
+					},
+					{
+						"key": "referer",
+						"value": "https://dam_gingerhotels.cms.milestoneinternet.info/ccadmin/cms/pagelist.aspx",
+						"disabled": true
+					},
+					{
+						"key": "sec-ch-ua",
+						"value": "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
+						"disabled": true
+					},
+					{
+						"key": "sec-ch-ua-mobile",
+						"value": "?0",
+						"disabled": true
+					},
+					{
+						"key": "sec-ch-ua-platform",
+						"value": "\"Windows\"",
+						"disabled": true
+					},
+					{
+						"key": "sec-fetch-dest",
+						"value": "document"
+					},
+					{
+						"key": "sec-fetch-mode",
+						"value": "navigate"
+					},
+					{
+						"key": "sec-fetch-site",
+						"value": "same-origin"
+					},
+					{
+						"key": "sec-fetch-user",
+						"value": "?1"
+					},
+					{
+						"key": "upgrade-insecure-requests",
+						"value": "1"
+					},
+					{
+						"key": "user-agent",
+						"value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+					},
+					{
+						"key": "Content-Type",
+						"value": "",
+						"type": "text"
+					},
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "hn",
+							"type": "file",
+							"src": "/D:/py-projects/pagestudio-automation-app - new/json-response/mi-block-ID-398731-20250521_202427/mi-block-ID-398731-20250521_202427_backup.zip"
+						},
+						{
+							"key": "IsImportComponentConfiguration",
+							"value": "true",
+							"type": "text"
+						},
+						{
+							"key": "IsImportComponentRecords",
+							"value": "true",
+							"type": "text"
+						},
+						{
+							"key": "IsImportComponentResources",
+							"value": "true",
+							"type": "text"
+						},
+						{
+							"key": "IsImportMiBlockFormat",
+							"value": "true",
+							"type": "text"
+						}
+					]
+				},
+				"url": "https://ucups-2025.web4cms.milestoneinternet.info/cms/api/componentapi/ImportMiBlockComponent"
+			},
+			"response": []
+		},
+		{
+			"name": "ExportMiBLock",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzE0OSIsInNpdGVVUkwiOiJodHRwczovL3d3dy5kZXN0aW5hdGlvbndlZGRpbmdzLmNvbS8iLCJhcGlVUkwiOiJodHRwczovL3d3dy5kZXN0aW5hdGlvbndlZGRpbmdzLmNvbS9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIyMzM2NSIsInVzZXJUeXBlSUQiOiIxIiwidXNlck5hbWUiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJ1c2VyRW1haWwiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJtaXhwYW5lbEtleSI6IjVjZDYzMThlNGJhMDgwNTI4YjEzNzFjNDM5OWQyMzE1IiwicG9kIjoiOSIsInNlc3Npb25JRCI6ImV6ZXFoZ3llZHlrZHZsNWxncHVwMnRwNCIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiNjY3MTIiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQWR2YW5jZWQgUHJvZ3JhbW1lciIsImlzTXVsdGlMb2NhdGlvbkV2ZW50Q2FsZW5kYXIiOiJGYWxzZSIsIm5iZiI6MTc1NTUyMjA1MCwiZXhwIjoxNzU1NjA4NDUwLCJpYXQiOjE3NTU1MjIwNTAsImlzcyI6Imh0dHBzOi8vd3d3LmRlc3RpbmF0aW9ud2VkZGluZ3MuY29tLyIsImF1ZCI6Imh0dHBzOi8vd3d3LmRlc3RpbmF0aW9ud2VkZGluZ3MuY29tLyJ9.__btjuP9JTFZnDm2zAYQgTA0LXMztpwWz3qRFkWnyac"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n        \"ComponentId\": 131379,\r\n        \"SiteId\": 16012,\r\n        \"IsExportComponentConfiguration\": true,\r\n        \"IsExportComponentRecords\": true,\r\n        \"IsExportComponentResources\": true,\r\n        \"IsExportMiBlockFormat\": true\r\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://www.ucu.org/ccadmin/cms/api/ComponentApi/ExportMiBlockComponent"
+			},
+			"response": []
+		},
+		{
+			"name": "Get vcompDetails_ID",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNTk3NyIsInNpdGVVUkwiOiJodHRwczovL3VjdXBzLTIwMjUud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyIsImFwaVVSTCI6Imh0dHBzOi8vdWN1cHMtMjAyNS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vY2NhZG1pbi9jbXMvIiwidXNlcklEIjoiMjMzNjUiLCJ1c2VyVHlwZUlEIjoiMSIsInVzZXJOYW1lIjoicmFtZXNoLmRAbWlsZXN0b25laW50ZXJuZXQuY29tIiwidXNlckVtYWlsIjoicmFtZXNoLmRAbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjkiLCJzZXNzaW9uSUQiOiJqbGFubTRmcnY1NXFkejVucWppandrdmgiLCJkYW1CYXNlVVJMIjoiaHR0cHM6Ly9kYW1hcGkubWlsZXN0b25laW50ZXJuZXQuY29tL2FwaS92Mi4wLyIsInBlcnNvbmFsaXphdGlvbkVuYWJsZWQiOiJGYWxzZSIsIm1pbVByb2ZpbGVJZCI6Ijc0OTY3IiwiaXNBZ2VuY3lVc2VyIjoiVHJ1ZSIsImlzVHJhbnNsYXRpb25FbmFibGVkIjoiRmFsc2UiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IkZhbHNlIiwiaXNBSUVuYWJsZWQiOiJGYWxzZSIsIm5iZiI6MTc0OTUzNDMwNSwiZXhwIjoxNzQ5NjIwNzA1LCJpYXQiOjE3NDk1MzQzMDUsImlzcyI6Imh0dHBzOi8vdWN1cHMtMjAyNS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly91Y3Vwcy0yMDI1LndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8ifQ.oV4KG2NnwzT_3brqu7UbakhcKb4TI10ndVn5NzhYgUs"
+					}
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"vComponentIds\":[20964022],\"getBusinessLibraryData\":true} ",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://www.ucu.org/api/VisualComponentsApi/GetVComponentDetailById"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Existing Record",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzAwNCIsInNpdGVVUkwiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiI5Iiwic2Vzc2lvbklEIjoidG9lYnU1MmFwb2tzaWNqY3h5d3p6dDNvIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3MDY5NCIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IlRydWUiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IkZhbHNlIiwiaXNBSUVuYWJsZWQiOiJGYWxzZSIsInVzZXJUeXBlTmFtZSI6IkFkdmFuY2VkIFByb2dyYW1tZXIiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTQzNzIzNzgsImV4cCI6MTc1NDQ1ODc3OCwiaWF0IjoxNzU0MzcyMzc4LCJpc3MiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.1q7g7ZOyy_28sZZeiMN-I7BJVqzOnRFeMsrCcUneV7Q"
+					}
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \r\n  \"componentId\": 454181, \r\n  \"recordId\": 2343710, \r\n  \"parentRecordId\": 0, \r\n  \"recordDataJson\": \"{\\\"Id\\\":\\\"##Id##\\\",\\\"ParentId\\\":\\\"##ParentId##\\\",\\\"name\\\":\\\"TEST 3 UPDATED\\\",\\\"image\\\":[\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/destination-weddings-travel-group/siteimages/placeholder/coming-soon.jpg\\\"]}\", \r\n  \"status\": true, \r\n  \"tags\": [], \r\n  \"displayOrder\": 3, \r\n  \"updatedBy\": 25944, \r\n  \"pageSectionGuid\": \"4fbf8982-049b-49eb-93af-b95f1a56258f\" \r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://al-automation-demo.web4cms.milestoneinternet.info/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true",
+					"protocol": "https",
+					"host": [
+						"al-automation-demo",
+						"web4cms",
+						"milestoneinternet",
+						"info"
+					],
+					"path": [
+						"ccadmin",
+						"cms",
+						"api",
+						"PageApi",
+						"SaveMiblockRecord"
+					],
+					"query": [
+						{
+							"key": "isDraft",
+							"value": "true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DAMFolderCreation",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Add format",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzAwNCIsInNpdGVVUkwiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiI5Iiwic2Vzc2lvbklEIjoidmVzZHIxamF3MHNwcWoxcGE0cDR1YXZmIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3MDY5NCIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IlRydWUiLCJuYmYiOjE3NDM4MzY0MDcsImV4cCI6MTc0MzkyMjgwNywiaWF0IjoxNzQzODM2NDA3LCJpc3MiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.SDIUg-hCJ0Nr_j1BLvAwLYw6CHbXUghn4GfrNhEJUFA"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n        \"FormatId\": 0,\r\n        \"FormatName\": \"Delete\",  # Use the componentName from JSON\r\n        \"FormatKey\": component_name_from_json,  # Use the componentName from JSON\r\n        \"FormatPrefix\": \"testpr2\",\r\n        \"FormatContent\": prettified_format_content,  # Use formatted string with FORMAT-BLOCK content\r\n        \"FormatPostfix\": \"testPostfix\",\r\n        \"FormatPrefixTablet\": \"testPrefixTablet\",\r\n        \"FormatContentTablet\": \"testContentTablet\",\r\n        \"FormatPostfixTablet\": \"testPostfixTablet\",\r\n        \"FormatPrefixMobile\": \"testPrefixMobile\",\r\n        \"FormatContentMobile\": \"testContentMobile\",\r\n        \"FormatPostfixMobile\": \"testPostfixMobile\",\r\n        \"FormatPrefixAMP\": \"string\",\r\n        \"FormatContentAMP\": \"string\",\r\n        \"FormatPostfixAMP\": \"string\",\r\n        \"Status\": 1,\r\n        \"Category\": \"1\",\r\n        \"IsPublished\": True,  # Boolean value\r\n        \"IsEnablePaging\": False,  # Boolean value\r\n        \"TagMappingModels\": [\r\n            {\r\n                \"Id\": 0,\r\n                \"ModuleId\": 0,\r\n                \"TagName\": \"LTO\",\r\n                \"SiteId\": 0\r\n            }\r\n        ]\r\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://al-automation-demo.web4cms.milestoneinternet.info/ccadmin/cms/api/FormatApi/AddUpdateFormat"
+			},
+			"response": []
+		},
+		{
+			"name": "get siteid from site url",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "PageExistCheck",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "GetTemplatePageList",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "CreagtePage",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjYxNyIsInNpdGVVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiIyMSIsInNlc3Npb25JRCI6ImQyZnV0MDUzbHd6MTExZ21jNDRxaDF0diIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiNzA2NjUiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQWR2YW5jZWQgUHJvZ3JhbW1lciIsImlzTXVsdGlMb2NhdGlvbkV2ZW50Q2FsZW5kYXIiOiJGYWxzZSIsInByb2ZpbGVBbGlhcyI6IjEyMy4yOCIsIm5iZiI6MTc2NDU2MTgzOSwiZXhwIjoxNzY0NjQ4MjM5LCJpYXQiOjE3NjQ1NjE4MzksImlzcyI6Imh0dHBzOi8vYXV0b21hdGlvbi1uYXRpb253aWRlLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhdWQiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.KfRrvwmGhauQYN62AXURRyVIeE_EjosBltMxFmm1SI8"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"pageId\": 0,\r\n  \"pageName\": \"Our Story-Demo\",\r\n  \"pageAlias\": \"our-story-demo\",\r\n  \"pageContent\": \"PGRpdiBjbGFzcz0iYm94MiIgaWQ9ImRhdGFfcGFnZV9jb250ZW50Ij48ZGl2IGlkPSJwYWdlc3R1ZGlvIj4KICAgICAgICA8ZGl2IGNsYXNzPSJWQ29tcG9uZW50IiBkYXRhLWNyZWF0ZWRfYnk9InBhZ2Utc3R1ZGlvIgogICAgICAgICAgICBkYXRhLXNjb3BlPSIxIiBkYXRhLXNlY3Rpb25fZ3VpZD0iOWUxODViZTYtM2M2Ni00M2UzLThhYmYtYjI0OTg3NDM1MTcwIgogICAgICAgICAgICBkYXRhLXNlY3Rpb25fcG9zaXRpb249IjAiCiAgICAgICAgICAgIGRhdGEtdmNvbXBvbmVudF9hbGlhcz0iNGM0N2U1ZmItMmY2MS00ZmY3LThkNDEtMzMxMmM0OTc1NDkwIgogICAgICAgICAgICBkYXRhLXZlcnNpb249IjMuMCIgaXNkZWxldGVkPSJmYWxzZSI+CiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJpbmxpbmVtZSIgY29udGVudGVkaXRhYmxlPSJmYWxzZSI+CiAgICAgICAgICAgICAgICAgICAgJSV2Y29tcG9uZW50LTRjNDdlNWZiLTJmNjEtNGZmNy04ZDQxLTMzMTJjNDk3NTQ5MFtzZWN0aW9uZ3VpZDo5ZTE4NWJlNi0zYzY2LTQzZTMtOGFiZi1iMjQ5ODc0MzUxNzBdJSUKICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgIDwvZGl2PgogICAgICAgIAogICAgICAgIDxkaXYgY2xhc3M9IlZDb21wb25lbnQiIGRhdGEtY3JlYXRlZF9ieT0icGFnZS1zdHVkaW8iCiAgICAgICAgICAgIGRhdGEtc2NvcGU9IjEiIGRhdGEtc2VjdGlvbl9ndWlkPSIyMDQxZDAzOS1lZjc2LTQzNzYtYWQwMC01ODhkOTQyOTk0MjgiCiAgICAgICAgICAgIGRhdGEtc2VjdGlvbl9wb3NpdGlvbj0iMCIKICAgICAgICAgICAgZGF0YS12Y29tcG9uZW50X2FsaWFzPSJhZWIxOTIwNy04ODRiLTQyMTAtYmFmZi1kYTU5ZjdmODc1NWUiCiAgICAgICAgICAgIGRhdGEtdmVyc2lvbj0iMy4wIiBpc2RlbGV0ZWQ9ImZhbHNlIj4KICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImlubGluZW1lIiBjb250ZW50ZWRpdGFibGU9ImZhbHNlIj4KICAgICAgICAgICAgICAgICAgICAlJXZjb21wb25lbnQtYWViMTkyMDctODg0Yi00MjEwLWJhZmYtZGE1OWY3Zjg3NTVlW3NlY3Rpb25ndWlkOjIwNDFkMDM5LWVmNzYtNDM3Ni1hZDAwLTU4OGQ5NDI5OTQyOF0lJQogICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgICAgCiAgICAgICAgPGRpdiBjbGFzcz0iVkNvbXBvbmVudCIgZGF0YS1jcmVhdGVkX2J5PSJwYWdlLXN0dWRpbyIKICAgICAgICAgICAgZGF0YS1zY29wZT0iMSIgZGF0YS1zZWN0aW9uX2d1aWQ9ImE2OWMzMzAyLWM1YWEtNGJiNC1hOTM4LTM0NTlkNmU4ZTg4YSIKICAgICAgICAgICAgZGF0YS1zZWN0aW9uX3Bvc2l0aW9uPSIwIgogICAgICAgICAgICBkYXRhLXZjb21wb25lbnRfYWxpYXM9IjVlZTcyMzViLWQ4YmYtNGZiYi1iMTZmLTFiYTBkYmQyYTVkZiIKICAgICAgICAgICAgZGF0YS12ZXJzaW9uPSIzLjAiIGlzZGVsZXRlZD0iZmFsc2UiPgogICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0iaW5saW5lbWUiIGNvbnRlbnRlZGl0YWJsZT0iZmFsc2UiPgogICAgICAgICAgICAgICAgICAgICUldmNvbXBvbmVudC01ZWU3MjM1Yi1kOGJmLTRmYmItYjE2Zi0xYmEwZGJkMmE1ZGZbc2VjdGlvbmd1aWQ6YTY5YzMzMDItYzVhYS00YmI0LWE5MzgtMzQ1OWQ2ZThlODhhXSUlCiAgICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJWQ29tcG9uZW50IiBkYXRhLWNyZWF0ZWRfYnk9InBhZ2Utc3R1ZGlvIgogICAgICAgICAgICBkYXRhLXNjb3BlPSIxIiBkYXRhLXNlY3Rpb25fZ3VpZD0iMTZlNWQxZDctYzBkOC00YmQ2LTgyMDgtZWNkMTNjNmQ5ZGU3IgogICAgICAgICAgICBkYXRhLXNlY3Rpb25fcG9zaXRpb249IjAiCiAgICAgICAgICAgIGRhdGEtdmNvbXBvbmVudF9hbGlhcz0iMGQzZWNiMGUtYjg1Ny00MmMzLWIyYTItNjEyMmQ4N2JiMjE4IgogICAgICAgICAgICBkYXRhLXZlcnNpb249IjMuMCIgaXNkZWxldGVkPSJmYWxzZSI+CiAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPSJpbmxpbmVtZSIgY29udGVudGVkaXRhYmxlPSJmYWxzZSI+CiAgICAgICAgICAgICAgICAgICAgJSV2Y29tcG9uZW50LTBkM2VjYjBlLWI4NTctNDJjMy1iMmEyLTYxMjJkODdiYjIxOFtzZWN0aW9uZ3VpZDoxNmU1ZDFkNy1jMGQ4LTRiZDYtODIwOC1lY2QxM2M2ZDlkZTddJSUKICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgIDwvZGl2PgogICAgICAgIAogICAgICAgIDxkaXYgY2xhc3M9IlZDb21wb25lbnQiIGRhdGEtY3JlYXRlZF9ieT0icGFnZS1zdHVkaW8iCiAgICAgICAgICAgIGRhdGEtc2NvcGU9IjEiIGRhdGEtc2VjdGlvbl9ndWlkPSIwNDBhYmQ0YS01M2I2LTQxMjMtOWRhMy1lMmY4MmI3MmJjZjYiCiAgICAgICAgICAgIGRhdGEtc2VjdGlvbl9wb3NpdGlvbj0iMCIKICAgICAgICAgICAgZGF0YS12Y29tcG9uZW50X2FsaWFzPSJlNjBmYjMwMi04NDcxLTQ1MTEtOGFmNy00YmNmZjk2NDljZmEiCiAgICAgICAgICAgIGRhdGEtdmVyc2lvbj0iMy4wIiBpc2RlbGV0ZWQ9ImZhbHNlIj4KICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9ImlubGluZW1lIiBjb250ZW50ZWRpdGFibGU9ImZhbHNlIj4KICAgICAgICAgICAgICAgICAgICAlJXZjb21wb25lbnQtZTYwZmIzMDItODQ3MS00NTExLThhZjctNGJjZmY5NjQ5Y2ZhW3NlY3Rpb25ndWlkOjA0MGFiZDRhLTUzYjYtNDEyMy05ZGEzLWUyZjgyYjcyYmNmNl0lJQogICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+CiAgICAgICAgPC9kaXY+PC9kaXY+\",\r\n  \"isPageStudioPage\": true,\r\n  \"pageUpdatedBy\": 0,\r\n  \"isUniqueMetaContent\": true,\r\n  \"pageMetaTitle\": \"\",\r\n  \"pageMetaDescription\": \"\",\r\n  \"pageStopSEO\": 1,\r\n  \"pageCategoryId\": 150111,\r\n  \"pageProfileId\": 0,\r\n  \"tags\": \"\"\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://automation-nationwide.web4cms.milestoneinternet.info/api/PageApi/SavePage?templateId=None&directPublish=true",
+					"protocol": "https",
+					"host": [
+						"automation-nationwide",
+						"web4cms",
+						"milestoneinternet",
+						"info"
+					],
+					"path": [
+						"api",
+						"PageApi",
+						"SavePage"
+					],
+					"query": [
+						{
+							"key": "templateId",
+							"value": "None"
+						},
+						{
+							"key": "directPublish",
+							"value": "true"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CMS Bearer token generator",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtaWxlc3RvbmUuY21zIiwiaXNzIjoibWlkZ2FyZCIsImV4cCI6MjE0NzQ4Mjc5OSwic3ViIjoiMjIyODIiLCJqdGkiOiJjYjA5M2U2Ni05NDAwLTQ1MzgtOWRhYy0wOGE3ODlhMTU1OGIiLCJrZXkiOiJ0cnVlIiwiYWdlbmN5SWQiOiIxIiwiYnVzaW5lc3NJZCI6IiIsInVzZXJUaGluZ0lkIjoiOTQ0OWE0ZjctMjQyZi1mMDExLThiM2QtMDAwZDNhM2Y4YWQ0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsImlhdCI6MTc0NzA1MjQyOCwibmJmIjoxNzQ3MDUyNDI4fQ.sqwq4WJ_aFGMgYsyro2lWXqy6z4kouelKKi5TwtxtEM"
+					}
+				},
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "https://www.tabu-dubai.com/api/authapi/GenerateCMSToken?profileAlias=387121.7109",
+					"protocol": "https",
+					"host": [
+						"www",
+						"tabu-dubai",
+						"com"
+					],
+					"path": [
+						"api",
+						"authapi",
+						"GenerateCMSToken"
+					],
+					"query": [
+						{
+							"key": "profileAlias",
+							"value": "387121.7109"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "FAQ List",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyNTUwIiwianRpIjoiYWQ0MWNmNmYtMzQwZi00NzJiLThjNDUtOTIyYWE3NDIyNGUyIiwiaXNzIjoibWlkZ2FyZCIsImV4cCI6MjE0NzQ4Mjc5OSwia2V5IjoidHJ1ZSIsImFnZW5jeUlkIjoiMSIsImJ1c2luZXNzSWQiOiIiLCJuYmYiOjE1NTk3NDAwMzcsImF1ZCI6Im1pbGVzdG9uZS5hc2dhcmQifQ.oi2NBc4895VFb1k7VzKHqppciMrB59oPboO7wtDslKA"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"businessThingId\": \"8f5ac29d-759a-ee11-8926-6045bd37b018\",\r\n  \"businessId\": 4908,\r\n  \"profileIds\": [\r\n  ],\r\n  \"dataSources\": [\r\n    \"_website_ms\"\r\n  ],\r\n  \"status\": [\r\n    \"_published\"\r\n  ],\r\n  \"isLocationCountRequired\": true,\r\n  \"isPublishDetailRequired\": true,\r\n  \"isGeneratorRequest\": false,\r\n  \"siteUrls\": [\r\n    \"https://www.ucu.org/\"\r\n  ],\r\n  \"pageNumber\": 1,\r\n  \"pageSize\": 2147483647,\r\n  \"orderBy\": \"questionText\",\r\n  \"sortingOrder\": \"asc\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://api.milestoneinternet.com/api/v2.0/faq/getfaqs"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMiBlocksInfo",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjIyOSIsInNpdGVVUkwiOiJodHRwczovL2x1eHVyeS1hbmQtZmluZS1kaW5pbmctdGVtcGxhdGUtMjAyNS53ZWI1Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9sdXh1cnktYW5kLWZpbmUtZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjM0OTYyIiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiIxNiIsInNlc3Npb25JRCI6InFrcWpsZGpsdmd1cmlieTRtaWVzYWxsNCIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiOTE3MjYiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiVHJ1ZSIsImlzQUlFbmFibGVkIjoiRmFsc2UiLCJ1c2VyVHlwZU5hbWUiOiJBZHZhbmNlZCBQcm9ncmFtbWVyIiwiaXNNdWx0aUxvY2F0aW9uRXZlbnRDYWxlbmRhciI6IkZhbHNlIiwibmJmIjoxNzU4NzgxNTE4LCJleHAiOjE3NTg4Njc5MTgsImlhdCI6MTc1ODc4MTUxOCwiaXNzIjoiaHR0cHM6Ly9sdXh1cnktYW5kLWZpbmUtZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyIsImF1ZCI6Imh0dHBzOi8vbHV4dXJ5LWFuZC1maW5lLWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8ifQ.jXhk-Hrow9RmR1B2hq3ZNBymJpxFiQPteoqIMNkqqRk"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "['Menu']",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://luxury-and-fine-dining-template-2025.web5cms.milestoneinternet.info/ccadmin/cms/api/PageApi/GetMiBlocksInfo"
+			},
+			"response": []
+		},
+		{
+			"name": "VComponentCategory",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "https://portolahotel-dev-2025.cms.milestoneinternet.info/api/VisualComponentsApi/GetVComponentCategories"
+			},
+			"response": []
+		},
+		{
+			"name": "GetMiblockRecords",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzAwNCIsInNpdGVVUkwiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiI5Iiwic2Vzc2lvbklEIjoidG9lYnU1MmFwb2tzaWNqY3h5d3p6dDNvIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3MDY5NCIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IlRydWUiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IkZhbHNlIiwiaXNBSUVuYWJsZWQiOiJGYWxzZSIsInVzZXJUeXBlTmFtZSI6IkFkdmFuY2VkIFByb2dyYW1tZXIiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTQyOTk1MzYsImV4cCI6MTc1NDM4NTkzNiwiaWF0IjoxNzU0Mjk5NTM2LCJpc3MiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.oIbHuUd3Oz9eTvOGTEkoi-SpQtEKWeWxnSA5pac9Qw8"
+					}
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "https://ucups-2025.web4cms.milestoneinternet.info/api/PageApi/GetMiblockRecords?miblockId=449398&profileId=86533&languageId=0 ",
+					"protocol": "https",
+					"host": [
+						"ucups-2025",
+						"web4cms",
+						"milestoneinternet",
+						"info"
+					],
+					"path": [
+						"api",
+						"PageApi",
+						"GetMiblockRecords"
+					],
+					"query": [
+						{
+							"key": "miblockId",
+							"value": "449398"
+						},
+						{
+							"key": "profileId",
+							"value": "86533"
+						},
+						{
+							"key": "languageId",
+							"value": "0 "
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetMiblockRecord",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://www.ucu.org/api/PageApi/GetMiblockRecords?miblockId=413216&pageSectionGuid=5f8bb80c-210c-4b32-9263-049fa1dfc907&languageId=0",
+					"protocol": "https",
+					"host": [
+						"www",
+						"ucu",
+						"org"
+					],
+					"path": [
+						"api",
+						"PageApi",
+						"GetMiblockRecords"
+					],
+					"query": [
+						{
+							"key": "miblockId",
+							"value": "413216"
+						},
+						{
+							"key": "pageSectionGuid",
+							"value": "5f8bb80c-210c-4b32-9263-049fa1dfc907"
+						},
+						{
+							"key": "languageId",
+							"value": "0"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getassetidbyasseturl",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjAxMiIsInNpdGVVUkwiOiJodHRwczovL3d3dy51Y3Uub3JnLyIsImFwaVVSTCI6Imh0dHBzOi8vd3d3LnVjdS5vcmcvY2NhZG1pbi9jbXMvIiwidXNlcklEIjoiMjMzNjUiLCJ1c2VyVHlwZUlEIjoiMSIsInVzZXJOYW1lIjoicmFtZXNoLmRAbWlsZXN0b25laW50ZXJuZXQuY29tIiwidXNlckVtYWlsIjoicmFtZXNoLmRAbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjkiLCJzZXNzaW9uSUQiOiI0ZnBmMm1peHN4ZmFkZzN3bXJmNGJsMmsiLCJkYW1CYXNlVVJMIjoiaHR0cHM6Ly9kYW1hcGkubWlsZXN0b25laW50ZXJuZXQuY29tL2FwaS92Mi4wLyIsInBlcnNvbmFsaXphdGlvbkVuYWJsZWQiOiJGYWxzZSIsIm1pbVByb2ZpbGVJZCI6Ijc0OTY3IiwiaXNBZ2VuY3lVc2VyIjoiVHJ1ZSIsImlzVHJhbnNsYXRpb25FbmFibGVkIjoiRmFsc2UiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IkZhbHNlIiwiaXNBSUVuYWJsZWQiOiJGYWxzZSIsInVzZXJUeXBlTmFtZSI6IkFkdmFuY2VkIFByb2dyYW1tZXIiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTIxMjMxMDIsImV4cCI6MTc1MjIwOTUwMiwiaWF0IjoxNzUyMTIzMTAyLCJpc3MiOiJodHRwczovL3d3dy51Y3Uub3JnLyIsImF1ZCI6Imh0dHBzOi8vd3d3LnVjdS5vcmcvIn0.25FlcyQ7ptFetIwFb2pdsvT8x-tAFoAfC6IdqTfogbg"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"assetUrls\": [\r\n    \"https://assets.milestoneinternet.com/university-credit-union-ca/siteimages/04-landing-page-comp5.jpg\"\r\n  ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://api.milestoneinternet.com/api/v2.0/dam/getassetidbyasseturl"
+			},
+			"response": []
+		},
+		{
+			"name": "Update Status of Main Component Records",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzAwNCIsInNpdGVVUkwiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiI5Iiwic2Vzc2lvbklEIjoiaGZoaXUxb2k1ZzJvb2d6ZWRpZmJ1ZHhiIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3MDY5NCIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IlRydWUiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IkZhbHNlIiwiaXNBSUVuYWJsZWQiOiJGYWxzZSIsInVzZXJUeXBlTmFtZSI6IkFkdmFuY2VkIFByb2dyYW1tZXIiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTI1MTE2NDQsImV4cCI6MTc1MjU5ODA0NCwiaWF0IjoxNzUyNTExNjQ0LCJpc3MiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.0i0ETK_shPhSMTcbH31RzPcE5nH4MzqTMfxarR5qtOM"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \r\n  \"ComponentId\": 81137, \r\n  \"RecordId\": 308916, \r\n  \"SiteId\": 13004, \r\n  \"Status\": false \r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://al-automation-demo.web4cms.milestoneinternet.info/api/ComponentApi/UpdateStatusByRecordId"
+			},
+			"response": []
+		},
+		{
+			"name": "UpdatePageTemplateByPageId",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzAwNCIsInNpdGVVUkwiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjIzMzY1IiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiI5Iiwic2Vzc2lvbklEIjoiaGZoaXUxb2k1ZzJvb2d6ZWRpZmJ1ZHhiIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3MDY5NCIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IlRydWUiLCJ1c2VyVGhpbmdJZCI6IjI1MzM5MWY5LTkwMTUtZWUxMS05MDdjLTAwMjI0ODQ4ZGI4ZSIsIm1wY1VzZXJJZCI6Ijk0ODQiLCJpc0ltYWdlQXV0aG9yaXphdGlvbkVuYWJsZSI6IkZhbHNlIiwiaXNBSUVuYWJsZWQiOiJGYWxzZSIsInVzZXJUeXBlTmFtZSI6IkFkdmFuY2VkIFByb2dyYW1tZXIiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTI1MTE2NDQsImV4cCI6MTc1MjU5ODA0NCwiaWF0IjoxNzUyNTExNjQ0LCJpc3MiOiJodHRwczovL2FsLWF1dG9tYXRpb24tZGVtby53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9hbC1hdXRvbWF0aW9uLWRlbW8ud2ViNGNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.0i0ETK_shPhSMTcbH31RzPcE5nH4MzqTMfxarR5qtOM"
+					}
+				},
+				"method": "POST",
+				"header": [],
+				"url": "https://al-automation-demo.web4cms.milestoneinternet.info/api/PageApi/UpdatePageTemplateByPageId"
+			},
+			"response": []
+		},
+		{
+			"name": "CreateComponentRecord",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNDI3MSIsInNpdGVVUkwiOiJodHRwczovL2Rlc3RpbmF0aW9ud2VkZGluZ3MyLncwMDljbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL2Rlc3RpbmF0aW9ud2VkZGluZ3MyLncwMDljbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIyODUwMSIsInVzZXJUeXBlSUQiOiI0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6ImZyZXlqYS5jbXNkeHRlYW1AbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjkiLCJzZXNzaW9uSUQiOiJ2c3Fudnp5Y2dtZW9iZnV0a3h1eXNzNWIiLCJkYW1CYXNlVVJMIjoiaHR0cHM6Ly9kYW1hcGkubWlsZXN0b25laW50ZXJuZXQuY29tL2FwaS92Mi4wLyIsInBlcnNvbmFsaXphdGlvbkVuYWJsZWQiOiJGYWxzZSIsIm1pbVByb2ZpbGVJZCI6IjY2NzEyIiwiaXNBZ2VuY3lVc2VyIjoiVHJ1ZSIsImlzVHJhbnNsYXRpb25FbmFibGVkIjoiRmFsc2UiLCJ1c2VyVGhpbmdJZCI6Ijk0NDlhNGY3LTI0MmYtZjAxMS04YjNkLTAwMGQzYTNmOGFkNCIsIm1wY1VzZXJJZCI6IjIyMjgyIiwiaXNJbWFnZUF1dGhvcml6YXRpb25FbmFibGUiOiJGYWxzZSIsImlzQUlFbmFibGVkIjoiRmFsc2UiLCJ1c2VyVHlwZU5hbWUiOiJDbGllbnQiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTM4NjQ1MzIsImV4cCI6MTc1Mzk1MDkzMiwiaWF0IjoxNzUzODY0NTMyLCJpc3MiOiJodHRwczovL2Rlc3RpbmF0aW9ud2VkZGluZ3MyLncwMDljbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhdWQiOiJodHRwczovL2Rlc3RpbmF0aW9ud2VkZGluZ3MyLncwMDljbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8ifQ.k01OL768NyS1Zd-fqWDV21ASfwb9H5B_N7hWKP7_LrM"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"componentName\": \"Property-Venues-Data\",\r\n    \"Scopeid\": 3,\r\n    \"ParentId\": \"243418\",\r\n    \"recordList\": [\r\n        {\r\n            \"recordJsonString\": \"{\\\"venue-name\\\": \\\"Venue name will come here\\\", \\\"description\\\": \\\"Venue description will come here.\\\", \\\"images-alt-text\\\": \\\"Alt Text Will Come Here\\\", \\\"images\\\": [\\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/destination-weddings-travel-group/siteimages/placeholder/coming-soon-800x600.jpg\\\"], \\\"EnableClientEdit\\\": True}\",\r\n            \"ParentRecordId\": 957233,\r\n            \"ParentComponentId\": \"243418\",\r\n            \"MainParentComponentid\": 243419,\r\n            \"selectedprofiles\": \"35032\"\r\n        }\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://destinationweddings2.w009cms.milestoneinternet.info/api/MiblockApi/CreateComponentRecord"
+			},
+			"response": []
+		},
+		{
+			"name": "AddMiBLockRecord",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxMzE0OSIsInNpdGVVUkwiOiJodHRwczovL3d3dy5kZXN0aW5hdGlvbndlZGRpbmdzLmNvbS8iLCJhcGlVUkwiOiJodHRwczovL3d3dy5kZXN0aW5hdGlvbndlZGRpbmdzLmNvbS9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIyMzM2NSIsInVzZXJUeXBlSUQiOiIxIiwidXNlck5hbWUiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJ1c2VyRW1haWwiOiJyYW1lc2guZEBtaWxlc3RvbmVpbnRlcm5ldC5jb20iLCJtaXhwYW5lbEtleSI6IjVjZDYzMThlNGJhMDgwNTI4YjEzNzFjNDM5OWQyMzE1IiwicG9kIjoiOSIsInNlc3Npb25JRCI6IjBqdG9xbmNhNGNlZjVzNDVqYWZibWl4eSIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiNjY3MTIiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQWR2YW5jZWQgUHJvZ3JhbW1lciIsImlzTXVsdGlMb2NhdGlvbkV2ZW50Q2FsZW5kYXIiOiJGYWxzZSIsIm5iZiI6MTc1NzA3NTA4NSwiZXhwIjoxNzU3MTYxNDg1LCJpYXQiOjE3NTcwNzUwODUsImlzcyI6Imh0dHBzOi8vd3d3LmRlc3RpbmF0aW9ud2VkZGluZ3MuY29tLyIsImF1ZCI6Imh0dHBzOi8vd3d3LmRlc3RpbmF0aW9ud2VkZGluZ3MuY29tLyJ9.BYUBW45r19jg_uj6ov3s3AGHrfnEF0JBatqhHXMBzbU"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"componentName\": \"Property-Venue-Gallery-Items\",\r\n  \"Scopeid\": 3,\r\n  \"ParentId\": 103144,\r\n  \"recordList\": [\r\n    {\r\n      \"recordJsonString\": \"{\\n  \\\"alt-text\\\": \\\"Alt text will come here - Added by Automation\\\",\\n  \\\"venue-name\\\": \\\"Venue name will come here - Added by Automation\\\",\\n  \\\"EnableClientEdit\\\": true,\\n  \\\"image\\\": [\\n    \\\"https://assets.milestoneinternet.com/cdn-cgi/image/f=auto/destination-weddings-travel-group/siteimages/placeholder/coming-soon.jpg\\\"\\n  ]\\n}\",\r\n      \"ParentRecordId\": 508518,\r\n      \"ParentComponentId\": 103147,\r\n      \"MainParentComponentid\": 103144,\r\n      \"selectedprofiles\": \"31784\",\r\n      \"EnableClientEdit\": true\r\n    }\r\n  ]\r\n}\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://www.destinationweddings.com/api/MiblockApi/CreateComponentRecord"
+			},
+			"response": []
+		},
+		{
+			"name": "PSpublishAPI",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjI3NyIsInNpdGVVUkwiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiI0NjA5MyIsInVzZXJUeXBlSUQiOiI0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6ImZyZXlqYS5jbXNkeHRlYW1AbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjE2Iiwic2Vzc2lvbklEIjoiczFnb293YzUzdXBjZGJzb2Uydnd2NTVqIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3NDk2MSIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IkZhbHNlIiwidXNlclRoaW5nSWQiOiI5NDQ5YTRmNy0yNDJmLWYwMTEtOGIzZC0wMDBkM2EzZjhhZDQiLCJtcGNVc2VySWQiOiIyMjI4MiIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiVHJ1ZSIsImlzQUlFbmFibGVkIjoiRmFsc2UiLCJ1c2VyVHlwZU5hbWUiOiJDbGllbnQiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTcyNTU2MDMsImV4cCI6MTc1NzM0MjAwMywiaWF0IjoxNzU3MjU1NjAzLCJpc3MiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhdWQiOiJodHRwczovL3Rlc3QtbHV4dXJ5LWRpbmluZy10ZW1wbGF0ZS0yMDI1LndlYjVjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8ifQ.DJeQw7yRm97jTz1fpsPmaA6JG8jHZYymnqudIOBROqI"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"publishData\": [\r\n        {\r\n            \"id\": \"143948\",\r\n            \"type\": \"MIBLOCK\",\r\n            \"pageSectionGuid\": \"a38388a2-ecac-4460-b4a6-de7041271055\"\r\n        },\r\n        {\r\n            \"id\": \"143952\",\r\n            \"type\": \"MIBLOCK\",\r\n            \"pageSectionGuid\": \"0590d06a-fd3e-4ea4-bbc8-aef048adbb54\"\r\n        },\r\n        {\r\n            \"id\": \"143953\",\r\n            \"type\": \"MIBLOCK\",\r\n            \"pageSectionGuid\": \"d71286da-e2ec-474d-9498-cc05b7ed380a\"\r\n        },\r\n        {\r\n            \"id\": \"143958\",\r\n            \"type\": \"MIBLOCK\",\r\n            \"pageSectionGuid\": \"3b455530-3a21-4913-9a5f-b058bf38379d\"\r\n        },\r\n        {\r\n            \"id\": \"143962\",\r\n            \"type\": \"MIBLOCK\",\r\n            \"pageSectionGuid\": \"03bfc0cb-b5db-4a61-9c82-38f1942b6bd8\"\r\n        },\r\n        {\r\n            \"id\": \"143960\",\r\n            \"type\": \"MIBLOCK\",\r\n            \"pageSectionGuid\": \"1a0c84a4-47b8-49ed-87d3-5d4f5c9297e6\"\r\n        },\r\n        {\r\n            \"id\": \"143944\",\r\n            \"type\": \"MIBLOCK\",\r\n            \"pageSectionGuid\": \"a27c042c-0653-4fb6-82b3-5ce9f053ca94\"\r\n        },\r\n        {\r\n            \"id\": \"323582\",\r\n            \"type\": \"PAGE\"\r\n        }\r\n    ],\r\n    \"syncPageForTranslationRequest\": null\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://test-luxury-dining-template-2025.web5cms.milestoneinternet.info/api/PublishApi/Publish_PSV2?siteId=16277&publishNotes=Published%2520from%2520Page%2520Studio",
+					"protocol": "https",
+					"host": [
+						"test-luxury-dining-template-2025",
+						"web5cms",
+						"milestoneinternet",
+						"info"
+					],
+					"path": [
+						"api",
+						"PublishApi",
+						"Publish_PSV2"
+					],
+					"query": [
+						{
+							"key": "siteId",
+							"value": "16277"
+						},
+						{
+							"key": "publishNotes",
+							"value": "Published%2520from%2520Page%2520Studio"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetMenu",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjIyOSIsInNpdGVVUkwiOiJodHRwczovL2x1eHVyeS1hbmQtZmluZS1kaW5pbmctdGVtcGxhdGUtMjAyNS53ZWI1Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXBpVVJMIjoiaHR0cHM6Ly9sdXh1cnktYW5kLWZpbmUtZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvL2NjYWRtaW4vY21zLyIsInVzZXJJRCI6IjM0OTYyIiwidXNlclR5cGVJRCI6IjEiLCJ1c2VyTmFtZSI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6InJhbWVzaC5kQG1pbGVzdG9uZWludGVybmV0LmNvbSIsIm1peHBhbmVsS2V5IjoiNWNkNjMxOGU0YmEwODA1MjhiMTM3MWM0Mzk5ZDIzMTUiLCJwb2QiOiIxNiIsInNlc3Npb25JRCI6InFrcWpsZGpsdmd1cmlieTRtaWVzYWxsNCIsImRhbUJhc2VVUkwiOiJodHRwczovL2RhbWFwaS5taWxlc3RvbmVpbnRlcm5ldC5jb20vYXBpL3YyLjAvIiwicGVyc29uYWxpemF0aW9uRW5hYmxlZCI6IkZhbHNlIiwibWltUHJvZmlsZUlkIjoiOTE3MjYiLCJpc0FnZW5jeVVzZXIiOiJUcnVlIiwiaXNUcmFuc2xhdGlvbkVuYWJsZWQiOiJGYWxzZSIsInVzZXJUaGluZ0lkIjoiMjUzMzkxZjktOTAxNS1lZTExLTkwN2MtMDAyMjQ4NDhkYjhlIiwibXBjVXNlcklkIjoiOTQ4NCIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiVHJ1ZSIsImlzQUlFbmFibGVkIjoiVHJ1ZSIsInVzZXJUeXBlTmFtZSI6IkFkdmFuY2VkIFByb2dyYW1tZXIiLCJpc011bHRpTG9jYXRpb25FdmVudENhbGVuZGFyIjoiRmFsc2UiLCJuYmYiOjE3NTc5Mjk0MDUsImV4cCI6MTc1ODAxNTgwNSwiaWF0IjoxNzU3OTI5NDA1LCJpc3MiOiJodHRwczovL2x1eHVyeS1hbmQtZmluZS1kaW5pbmctdGVtcGxhdGUtMjAyNS53ZWI1Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9sdXh1cnktYW5kLWZpbmUtZGluaW5nLXRlbXBsYXRlLTIwMjUud2ViNWNtcy5taWxlc3RvbmVpbnRlcm5ldC5pbmZvLyJ9.JyHUnqa26yk0Cju4MJBc__FP9JR9nzdFYywusKBzyQc"
+					}
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "ms_cms_clientapp",
+						"value": "ProgrammingApp",
+						"type": "text"
+					}
+				],
+				"url": "https://luxury-and-fine-dining-template-2025.web5cms.milestoneinternet.info/api/MenuDataAPI/GetMenuData"
+			},
+			"response": [
+				{
+					"name": "New Request",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "ms_cms_clientapp",
+								"value": "ProgrammingApp",
+								"type": "text"
+							}
+						],
+						"url": "https://luxury-and-fine-dining-template-2025.web5cms.milestoneinternet.info/api/MenuDataAPI/GetMenuData"
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "Date",
+							"value": "Mon, 15 Sep 2025 09:44:10 GMT"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Content-Encoding",
+							"value": "gzip"
+						},
+						{
+							"key": "Cache-Control",
+							"value": "no-cache"
+						},
+						{
+							"key": "pragma",
+							"value": "no-cache"
+						},
+						{
+							"key": "expires",
+							"value": "-1"
+						},
+						{
+							"key": "x-trace-id",
+							"value": "7d0c25ec-f533-4c50-b387-d30ee3fca000"
+						},
+						{
+							"key": "x-frame-options",
+							"value": "SAMEORIGIN"
+						},
+						{
+							"key": "Set-Cookie",
+							"value": "ASP.NET_SessionId=ctud2pye1owuylszlloyqrbw; path=/; secure; HttpOnly"
+						},
+						{
+							"key": "request-context",
+							"value": "appId=cid-v1:2222bae7-6b65-488b-a7a8-8f50b5e55838"
+						},
+						{
+							"key": "access-control-expose-headers",
+							"value": "Request-Context"
+						},
+						{
+							"key": "cf-cache-status",
+							"value": "DYNAMIC"
+						},
+						{
+							"key": "Server",
+							"value": "cloudflare"
+						},
+						{
+							"key": "CF-RAY",
+							"value": "97f72f163968b2ac-MAA"
+						}
+					],
+					"cookie": [],
+					"body": "[\n    {\n        \"MenuId\": 80734,\n        \"Name\": \"Menu 3\",\n        \"Description\": \"Menu disclaimer goes here - Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n        \"MenuResourceId\": 0,\n        \"MenuResourceName\": null,\n        \"MenuTypeId\": 0,\n        \"MenuTypeName\": null,\n        \"ProfileId\": 34547,\n        \"ProfileHotelName\": \"NEW OSB Template - Demo\",\n        \"StartDate\": null,\n        \"EndDate\": null,\n        \"ApplicableStartTime\": null,\n        \"ApplicableEndTime\": null,\n        \"MenuOrder\": 3,\n        \"MenuStatusId\": 1,\n        \"SiteId\": 16229,\n        \"MenuLevelFormatId\": 0,\n        \"MenuLevelSectionFormatId\": 0,\n        \"MenuLevelItemFormatId\": 0,\n        \"MenuLevelAddonFormatId\": 0,\n        \"MenuLevelOptionFormatId\": 0,\n        \"MenuLevelMultiPriceFormatId\": 0,\n        \"MenuKey\": \"%%menu.category_menu10%%\",\n        \"MenuUrl\": null,\n        \"MenuLevelSectionPriceFormatId\": 0,\n        \"ScheduleStartTime\": null,\n        \"ScheduleEndTime\": null,\n        \"Price\": \"\",\n        \"PriceDescription\": \"\",\n        \"CurrencyId\": 0,\n        \"Items\": [],\n        \"Sections\": [\n            {\n                \"SectionId\": 185505,\n                \"SectionName\": \"Subcategory Name 2 Copy\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 4,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907855,\n                        \"SectionItemName\": \"Product Name Here 1 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907857,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907864,\n                        \"SectionItemName\": \"Product Name Here 9 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 10,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907861,\n                        \"SectionItemName\": \"Product Name Here 6 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 7,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907862,\n                        \"SectionItemName\": \"Product Name Here 7 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 8,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907859,\n                        \"SectionItemName\": \"Product Name Here 4 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907860,\n                        \"SectionItemName\": \"Product Name Here 5 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 6,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907856,\n                        \"SectionItemName\": \"Product Name Here 10 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907856,\n                        \"SectionItemName\": \"Product Name Here 10 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907863,\n                        \"SectionItemName\": \"Product Name Here 8 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 9,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907858,\n                        \"SectionItemName\": \"Product Name Here 3 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            },\n            {\n                \"SectionId\": 185502,\n                \"SectionName\": \"Breakfast Copy\",\n                \"SectionDescription\": \"Eggs, Etc.\\nA11 items served with a fresh cup of fruit, a choice of has browns or roasted sweet potatoes. Scrambles, eggs, and omeletts served with a choice of bread, English muffin or bagel.\\nGluten free toast available upon request.\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 1,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907843,\n                        \"SectionItemName\": \"Product Name Here 7 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 6,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907843,\n                        \"SectionItemName\": \"Product Name Here 7 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 6,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907845,\n                        \"SectionItemName\": \"Product Name Here 9 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 8,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907845,\n                        \"SectionItemName\": \"Product Name Here 9 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 8,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907843,\n                        \"SectionItemName\": \"Product Name Here 7 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 6,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907843,\n                        \"SectionItemName\": \"Product Name Here 7 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 6,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907844,\n                        \"SectionItemName\": \"Product Name Here 8 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 7,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907844,\n                        \"SectionItemName\": \"Product Name Here 8 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 7,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907846,\n                        \"SectionItemName\": \"Traditional Eggs Benedict  Copy\",\n                        \"ItemDescription\": \"Canadian bacon, English muffin, chive hollandaise.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 9,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907846,\n                        \"SectionItemName\": \"Traditional Eggs Benedict  Copy\",\n                        \"ItemDescription\": \"Canadian bacon, English muffin, chive hollandaise.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 9,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907851,\n                        \"SectionItemName\": \"Product Name Here 14 Copy\",\n                        \"ItemDescription\": \"\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 14,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907852,\n                        \"SectionItemName\": \"Product Name Here 15 Copy\",\n                        \"ItemDescription\": \"\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 15,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907839,\n                        \"SectionItemName\": \"Product Name Here 3 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907839,\n                        \"SectionItemName\": \"Product Name Here 3 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907839,\n                        \"SectionItemName\": \"Product Name Here 3 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907839,\n                        \"SectionItemName\": \"Product Name Here 3 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907839,\n                        \"SectionItemName\": \"Product Name Here 3 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907841,\n                        \"SectionItemName\": \"Product Name Here 5 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907841,\n                        \"SectionItemName\": \"Product Name Here 5 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907841,\n                        \"SectionItemName\": \"Product Name Here 5 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907838,\n                        \"SectionItemName\": \"Product Name Here 2 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907841,\n                        \"SectionItemName\": \"Product Name Here 5 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907841,\n                        \"SectionItemName\": \"Product Name Here 5 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907850,\n                        \"SectionItemName\": \"Product Name Here 13 Copy\",\n                        \"ItemDescription\": \"\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 13,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907848,\n                        \"SectionItemName\": \"Product Name Here 11 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 11,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907842,\n                        \"SectionItemName\": \"Product Name Here 6 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907842,\n                        \"SectionItemName\": \"Product Name Here 6 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907842,\n                        \"SectionItemName\": \"Product Name Here 6 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907842,\n                        \"SectionItemName\": \"Product Name Here 6 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907840,\n                        \"SectionItemName\": \"Product Name Here 4 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907840,\n                        \"SectionItemName\": \"Product Name Here 4 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907840,\n                        \"SectionItemName\": \"Product Name Here 4 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907840,\n                        \"SectionItemName\": \"Product Name Here 4 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907840,\n                        \"SectionItemName\": \"Product Name Here 4 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907847,\n                        \"SectionItemName\": \"Product Name Here 10 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 10,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907848,\n                        \"SectionItemName\": \"Product Name Here 11 Copy\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 11,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907849,\n                        \"SectionItemName\": \"Product Name Here 12 Copy\",\n                        \"ItemDescription\": \"\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 12,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            },\n            {\n                \"SectionId\": 185504,\n                \"SectionName\": \"section4 Copy\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 3,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 0,\n                        \"SectionItemName\": null,\n                        \"ItemDescription\": null,\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 0,\n                        \"MenuOptions\": null,\n                        \"ItemOrder\": 0,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            },\n            {\n                \"SectionId\": 185506,\n                \"SectionName\": \"Subcategory Name 3 Copy\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 5,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907865,\n                        \"SectionItemName\": \"Product Name Here Copy\",\n                        \"ItemDescription\": \"\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            },\n            {\n                \"SectionId\": 185503,\n                \"SectionName\": \"Lunch Copy\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": 0,\n                \"SectionOrder\": 2,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907853,\n                        \"SectionItemName\": \"Item 2 Copy\",\n                        \"ItemDescription\": \"\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907854,\n                        \"SectionItemName\": \"Item1  Copy\",\n                        \"ItemDescription\": \"\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            }\n        ],\n        \"SectionId\": 0,\n        \"SectionName\": null,\n        \"SectionDescription\": null,\n        \"PriceType\": null,\n        \"SectionResourceId\": 0,\n        \"SectionResourceName\": null,\n        \"SectionStatus\": 0,\n        \"MultiplePriceNumber\": null,\n        \"SectionOrder\": 0,\n        \"SectionLevelSectionFormatId\": 0,\n        \"SectionLevelItemFormatId\": 0,\n        \"SectionLevelAddonFormatId\": 0,\n        \"SectionLevelOptionFormatId\": 0,\n        \"SectionLevelMultiPriceFormatId\": 0,\n        \"SectionLevelSectionPriceFormatId\": 0,\n        \"ParentSectionId\": null,\n        \"ScheduleSectionStartDate\": null,\n        \"ScheduleSectionEndDate\": null,\n        \"ScheduleSectionStartTime\": null,\n        \"ScheduleSectionEndTime\": null,\n        \"SectionStartDate\": null,\n        \"ItemId\": 0,\n        \"SectionItemName\": null,\n        \"ItemDescription\": null,\n        \"ItemResourceId\": 0,\n        \"ItemResourceName\": null,\n        \"Units\": null,\n        \"Calories\": null,\n        \"Serves\": null,\n        \"ItemStatus\": 0,\n        \"MenuOptions\": null,\n        \"ItemOrder\": 0,\n        \"ItemLevelItemFormatId\": 0,\n        \"ItemLevelAddonFormatId\": 0,\n        \"ItemLevelOptionFormatId\": 0,\n        \"ItemLevelMultiPriceFormatId\": 0,\n        \"HotelMenuId\": 0,\n        \"Error\": false,\n        \"ErrorMessage\": \"\"\n    },\n    {\n        \"MenuId\": 80713,\n        \"Name\": \"Menu 1\",\n        \"Description\": \"<ul>\\r\\n<li>Friday: 10:00 am - 1:30 pm</li>\\r\\n<li>Saturday - Sunday: 9:00 am - 1:00 pm</li>\\r\\n<li>Bank Holidays: 9:00 am - 1:00 pm</li>\\r\\n</ul>\",\n        \"MenuResourceId\": 1731565,\n        \"MenuResourceName\": \"img1024by339\",\n        \"MenuTypeId\": 3,\n        \"MenuTypeName\": \"Dinner\",\n        \"ProfileId\": 34547,\n        \"ProfileHotelName\": \"NEW OSB Template - Demo\",\n        \"StartDate\": null,\n        \"EndDate\": null,\n        \"ApplicableStartTime\": \"12:00am\",\n        \"ApplicableEndTime\": \"1:00am\",\n        \"MenuOrder\": 1,\n        \"MenuStatusId\": 1,\n        \"SiteId\": 16229,\n        \"MenuLevelFormatId\": 0,\n        \"MenuLevelSectionFormatId\": 0,\n        \"MenuLevelItemFormatId\": 0,\n        \"MenuLevelAddonFormatId\": 0,\n        \"MenuLevelOptionFormatId\": 0,\n        \"MenuLevelMultiPriceFormatId\": 0,\n        \"MenuKey\": \"%%menu.category_menu1%%\",\n        \"MenuUrl\": null,\n        \"MenuLevelSectionPriceFormatId\": 0,\n        \"ScheduleStartTime\": null,\n        \"ScheduleEndTime\": null,\n        \"Price\": null,\n        \"PriceDescription\": null,\n        \"CurrencyId\": 0,\n        \"Items\": [],\n        \"Sections\": [\n            {\n                \"SectionId\": 185467,\n                \"SectionName\": \"Breakfast\",\n                \"SectionDescription\": \"Eggs, Etc.\\r\\nA11 items served with a fresh cup of fruit, a choice of has browns or roasted sweet potatoes. Scrambles, eggs, and omeletts served with a choice of bread, English muffin or bagel.\\r\\nGluten free toast available upon request.\",\n                \"PriceType\": \"2\",\n                \"SectionResourceId\": 1731081,\n                \"SectionResourceName\": \"img552by258\",\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": 0,\n                \"SectionOrder\": 4,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907691,\n                        \"SectionItemName\": \"Eggs To Order\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 1731081,\n                        \"ItemResourceName\": \"img552by258\",\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": null,\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907696,\n                        \"SectionItemName\": \"Product Name Here 8\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 6,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907696,\n                        \"SectionItemName\": \"Product Name Here 8\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 6,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907700,\n                        \"SectionItemName\": \"Product Name Here 10\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 10,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907700,\n                        \"SectionItemName\": \"Product Name Here 10\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 10,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907691,\n                        \"SectionItemName\": \"Eggs To Order\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 1731081,\n                        \"ItemResourceName\": \"img552by258\",\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": null,\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907692,\n                        \"SectionItemName\": \"Product Name Here 4\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907695,\n                        \"SectionItemName\": \"Product Name Here 7\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907693,\n                        \"SectionItemName\": \"Product Name Here 5\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907694,\n                        \"SectionItemName\": \"Product Name Here 6\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907694,\n                        \"SectionItemName\": \"Product Name Here 6\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907693,\n                        \"SectionItemName\": \"Product Name Here 5\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907701,\n                        \"SectionItemName\": \"Product Name Here 11\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 11,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907701,\n                        \"SectionItemName\": \"Product Name Here 11\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 11,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907697,\n                        \"SectionItemName\": \"Product Name Here 9\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 7,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907697,\n                        \"SectionItemName\": \"Product Name Here 9\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 7,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907695,\n                        \"SectionItemName\": \"Product Name Here 7\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907692,\n                        \"SectionItemName\": \"Product Name Here 4\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            },\n            {\n                \"SectionId\": 185470,\n                \"SectionName\": \"Subcategory Name 3\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 7,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907719,\n                        \"SectionItemName\": \"Product Name Here\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907719,\n                        \"SectionItemName\": \"Product Name Here\",\n                        \"ItemDescription\": \"Product description goes here lorem ipsum dolor site amet, consectetur adipiscing.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": null,\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            }\n        ],\n        \"SectionId\": 0,\n        \"SectionName\": null,\n        \"SectionDescription\": null,\n        \"PriceType\": null,\n        \"SectionResourceId\": 0,\n        \"SectionResourceName\": null,\n        \"SectionStatus\": 0,\n        \"MultiplePriceNumber\": null,\n        \"SectionOrder\": 0,\n        \"SectionLevelSectionFormatId\": 0,\n        \"SectionLevelItemFormatId\": 0,\n        \"SectionLevelAddonFormatId\": 0,\n        \"SectionLevelOptionFormatId\": 0,\n        \"SectionLevelMultiPriceFormatId\": 0,\n        \"SectionLevelSectionPriceFormatId\": 0,\n        \"ParentSectionId\": null,\n        \"ScheduleSectionStartDate\": null,\n        \"ScheduleSectionEndDate\": null,\n        \"ScheduleSectionStartTime\": null,\n        \"ScheduleSectionEndTime\": null,\n        \"SectionStartDate\": null,\n        \"ItemId\": 0,\n        \"SectionItemName\": null,\n        \"ItemDescription\": null,\n        \"ItemResourceId\": 0,\n        \"ItemResourceName\": null,\n        \"Units\": null,\n        \"Calories\": null,\n        \"Serves\": null,\n        \"ItemStatus\": 0,\n        \"MenuOptions\": null,\n        \"ItemOrder\": 0,\n        \"ItemLevelItemFormatId\": 0,\n        \"ItemLevelAddonFormatId\": 0,\n        \"ItemLevelOptionFormatId\": 0,\n        \"ItemLevelMultiPriceFormatId\": 0,\n        \"HotelMenuId\": 0,\n        \"Error\": false,\n        \"ErrorMessage\": \"\"\n    },\n    {\n        \"MenuId\": 82097,\n        \"Name\": \"Menu 4\",\n        \"Description\": null,\n        \"MenuResourceId\": 0,\n        \"MenuResourceName\": null,\n        \"MenuTypeId\": 0,\n        \"MenuTypeName\": null,\n        \"ProfileId\": 34547,\n        \"ProfileHotelName\": \"NEW OSB Template - Demo\",\n        \"StartDate\": null,\n        \"EndDate\": null,\n        \"ApplicableStartTime\": null,\n        \"ApplicableEndTime\": null,\n        \"MenuOrder\": 27,\n        \"MenuStatusId\": 1,\n        \"SiteId\": 16229,\n        \"MenuLevelFormatId\": 0,\n        \"MenuLevelSectionFormatId\": 0,\n        \"MenuLevelItemFormatId\": 0,\n        \"MenuLevelAddonFormatId\": 0,\n        \"MenuLevelOptionFormatId\": 0,\n        \"MenuLevelMultiPriceFormatId\": 0,\n        \"MenuKey\": \"%%menu.category_menu21%%\",\n        \"MenuUrl\": null,\n        \"MenuLevelSectionPriceFormatId\": 0,\n        \"ScheduleStartTime\": null,\n        \"ScheduleEndTime\": null,\n        \"Price\": null,\n        \"PriceDescription\": null,\n        \"CurrencyId\": 0,\n        \"Items\": [\n            {\n                \"ItemId\": 0,\n                \"SectionItemName\": null,\n                \"ItemDescription\": null,\n                \"ItemResourceId\": 0,\n                \"ItemResourceName\": null,\n                \"Price\": null,\n                \"Units\": null,\n                \"Calories\": null,\n                \"Serves\": null,\n                \"ItemStatus\": 0,\n                \"MenuOptions\": null,\n                \"ItemOrder\": 0,\n                \"ItemLevelItemFormatId\": 0,\n                \"ItemLevelAddonFormatId\": 0,\n                \"ItemLevelOptionFormatId\": 0,\n                \"ItemLevelMultiPriceFormatId\": 0,\n                \"HotelMenuId\": 0\n            }\n        ],\n        \"Sections\": [],\n        \"SectionId\": 0,\n        \"SectionName\": null,\n        \"SectionDescription\": null,\n        \"PriceType\": null,\n        \"SectionResourceId\": 0,\n        \"SectionResourceName\": null,\n        \"SectionStatus\": 0,\n        \"MultiplePriceNumber\": null,\n        \"SectionOrder\": 0,\n        \"SectionLevelSectionFormatId\": 0,\n        \"SectionLevelItemFormatId\": 0,\n        \"SectionLevelAddonFormatId\": 0,\n        \"SectionLevelOptionFormatId\": 0,\n        \"SectionLevelMultiPriceFormatId\": 0,\n        \"SectionLevelSectionPriceFormatId\": 0,\n        \"ParentSectionId\": null,\n        \"ScheduleSectionStartDate\": null,\n        \"ScheduleSectionEndDate\": null,\n        \"ScheduleSectionStartTime\": null,\n        \"ScheduleSectionEndTime\": null,\n        \"SectionStartDate\": null,\n        \"ItemId\": 0,\n        \"SectionItemName\": null,\n        \"ItemDescription\": null,\n        \"ItemResourceId\": 0,\n        \"ItemResourceName\": null,\n        \"Units\": null,\n        \"Calories\": null,\n        \"Serves\": null,\n        \"ItemStatus\": 0,\n        \"MenuOptions\": null,\n        \"ItemOrder\": 0,\n        \"ItemLevelItemFormatId\": 0,\n        \"ItemLevelAddonFormatId\": 0,\n        \"ItemLevelOptionFormatId\": 0,\n        \"ItemLevelMultiPriceFormatId\": 0,\n        \"HotelMenuId\": 0,\n        \"Error\": false,\n        \"ErrorMessage\": \"\"\n    },\n    {\n        \"MenuId\": 80733,\n        \"Name\": \"Menu 2\",\n        \"Description\": \"Menu disclaimer goes here - Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n        \"MenuResourceId\": 0,\n        \"MenuResourceName\": null,\n        \"MenuTypeId\": 0,\n        \"MenuTypeName\": null,\n        \"ProfileId\": 34547,\n        \"ProfileHotelName\": \"NEW OSB Template - Demo\",\n        \"StartDate\": null,\n        \"EndDate\": null,\n        \"ApplicableStartTime\": null,\n        \"ApplicableEndTime\": null,\n        \"MenuOrder\": 2,\n        \"MenuStatusId\": 1,\n        \"SiteId\": 16229,\n        \"MenuLevelFormatId\": 0,\n        \"MenuLevelSectionFormatId\": 0,\n        \"MenuLevelItemFormatId\": 0,\n        \"MenuLevelAddonFormatId\": 0,\n        \"MenuLevelOptionFormatId\": 0,\n        \"MenuLevelMultiPriceFormatId\": 0,\n        \"MenuKey\": \"%%menu.category_menu9%%\",\n        \"MenuUrl\": null,\n        \"MenuLevelSectionPriceFormatId\": 0,\n        \"ScheduleStartTime\": null,\n        \"ScheduleEndTime\": null,\n        \"Price\": \"\",\n        \"PriceDescription\": \"\",\n        \"CurrencyId\": 0,\n        \"Items\": [],\n        \"Sections\": [\n            {\n                \"SectionId\": 185501,\n                \"SectionName\": \"Subcategory Name 2\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 3,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907834,\n                        \"SectionItemName\": \"Product Name Here 2\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907836,\n                        \"SectionItemName\": \"Product Name Here 4\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907835,\n                        \"SectionItemName\": \"Product Name Here 3\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907837,\n                        \"SectionItemName\": \"Product Name Here 5\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907833,\n                        \"SectionItemName\": \"Product Name Here 1\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            },\n            {\n                \"SectionId\": 185499,\n                \"SectionName\": \"Subcategory Name 3\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 1,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907823,\n                        \"SectionItemName\": \"Product Name Here 1\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907825,\n                        \"SectionItemName\": \"Product Name Here 3\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907824,\n                        \"SectionItemName\": \"Product Name Here 2\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907826,\n                        \"SectionItemName\": \"Product Name Here 4\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907827,\n                        \"SectionItemName\": \"Product Name Here 5\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            },\n            {\n                \"SectionId\": 185500,\n                \"SectionName\": \"Subcategory Name\",\n                \"SectionDescription\": \"\",\n                \"PriceType\": \"0\",\n                \"SectionResourceId\": 0,\n                \"SectionResourceName\": null,\n                \"SectionStatus\": 1,\n                \"MultiplePriceNumber\": null,\n                \"SectionOrder\": 2,\n                \"SectionLevelSectionFormatId\": 0,\n                \"SectionLevelItemFormatId\": 0,\n                \"SectionLevelAddonFormatId\": 0,\n                \"SectionLevelOptionFormatId\": 0,\n                \"SectionLevelMultiPriceFormatId\": 0,\n                \"SectionLevelSectionPriceFormatId\": 0,\n                \"ParentSectionId\": null,\n                \"ScheduleSectionStartDate\": null,\n                \"ScheduleSectionEndDate\": null,\n                \"ScheduleSectionStartTime\": null,\n                \"ScheduleSectionEndTime\": null,\n                \"SectionStartDate\": null,\n                \"Items\": [\n                    {\n                        \"ItemId\": 907830,\n                        \"SectionItemName\": \"Product Name Here 3\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 3,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907832,\n                        \"SectionItemName\": \"Product Name Here 5\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 5,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907831,\n                        \"SectionItemName\": \"Product Name Here 4\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.Lorem ipsum dolor sit amet, consectetur adipisicing elit\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 4,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907829,\n                        \"SectionItemName\": \"Product Name Here 2\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 2,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    },\n                    {\n                        \"ItemId\": 907828,\n                        \"SectionItemName\": \"Product Name Here 1\",\n                        \"ItemDescription\": \"Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\",\n                        \"ItemResourceId\": 0,\n                        \"ItemResourceName\": null,\n                        \"Price\": \"\",\n                        \"Units\": null,\n                        \"Calories\": null,\n                        \"Serves\": null,\n                        \"ItemStatus\": 1,\n                        \"MenuOptions\": \"\",\n                        \"ItemOrder\": 1,\n                        \"ItemLevelItemFormatId\": 0,\n                        \"ItemLevelAddonFormatId\": 0,\n                        \"ItemLevelOptionFormatId\": 0,\n                        \"ItemLevelMultiPriceFormatId\": 0,\n                        \"HotelMenuId\": 0\n                    }\n                ]\n            }\n        ],\n        \"SectionId\": 0,\n        \"SectionName\": null,\n        \"SectionDescription\": null,\n        \"PriceType\": null,\n        \"SectionResourceId\": 0,\n        \"SectionResourceName\": null,\n        \"SectionStatus\": 0,\n        \"MultiplePriceNumber\": null,\n        \"SectionOrder\": 0,\n        \"SectionLevelSectionFormatId\": 0,\n        \"SectionLevelItemFormatId\": 0,\n        \"SectionLevelAddonFormatId\": 0,\n        \"SectionLevelOptionFormatId\": 0,\n        \"SectionLevelMultiPriceFormatId\": 0,\n        \"SectionLevelSectionPriceFormatId\": 0,\n        \"ParentSectionId\": null,\n        \"ScheduleSectionStartDate\": null,\n        \"ScheduleSectionEndDate\": null,\n        \"ScheduleSectionStartTime\": null,\n        \"ScheduleSectionEndTime\": null,\n        \"SectionStartDate\": null,\n        \"ItemId\": 0,\n        \"SectionItemName\": null,\n        \"ItemDescription\": null,\n        \"ItemResourceId\": 0,\n        \"ItemResourceName\": null,\n        \"Units\": null,\n        \"Calories\": null,\n        \"Serves\": null,\n        \"ItemStatus\": 0,\n        \"MenuOptions\": null,\n        \"ItemOrder\": 0,\n        \"ItemLevelItemFormatId\": 0,\n        \"ItemLevelAddonFormatId\": 0,\n        \"ItemLevelOptionFormatId\": 0,\n        \"ItemLevelMultiPriceFormatId\": 0,\n        \"HotelMenuId\": 0,\n        \"Error\": false,\n        \"ErrorMessage\": \"\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "GetSiteVComponents",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjcyNCIsInNpdGVVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS0yLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS0yLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIzMDI1NSIsInVzZXJUeXBlSUQiOiI0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6ImZyZXlqYS5jbXNkeHRlYW1AbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjIxIiwic2Vzc2lvbklEIjoibjF1b2xvaDNqZzVidjMwd3MzazBjY3YwIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3MDY2NSIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IkZhbHNlIiwidXNlclRoaW5nSWQiOiI5NDQ5YTRmNy0yNDJmLWYwMTEtOGIzZC0wMDBkM2EzZjhhZDQiLCJtcGNVc2VySWQiOiIyMjI4MiIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQ2xpZW50IiwiaXNNdWx0aUxvY2F0aW9uRXZlbnRDYWxlbmRhciI6IkZhbHNlIiwicHJvZmlsZUFsaWFzIjoiIiwibmJmIjoxNzY1NzkyMDk3LCJleHAiOjE3NjU4Nzg0OTcsImlhdCI6MTc2NTc5MjA5NywiaXNzIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUtMi53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUtMi53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.QijT5CdtH7JPDJl8-gbWFfgtEx-7V_EGTS1Ou0bofjg"
+					}
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": " {\r\n        \"PageNumber\": 1,\r\n        \"PageSize\": 10,\r\n        \"ShowInActiveRecords\": true,\r\n        \"HidePageStudioDerivedMiBlocks\": true,\r\n        \"ShowOnlyLibraryFormVComponents\": true,\r\n        \"searchBy\": \"name\",\r\n        \"searchByValue\": \"\",\r\n        \"showOnlyContentLibraryVComponents\": false,\r\n        \"categoryIds\": [],\r\n        \"createdByIds\": [],\r\n        \"vComponentIds\": [],\r\n        \"contentScope\": [1, 3, 5],\r\n        \"sortKey\": \"tv.createddate\",\r\n        \"sortOrder\": \"desc\"\r\n    }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://automation-nationwide-2.web4cms.milestoneinternet.info/api/VisualComponentsApi/GetSiteVComponents"
+			},
+			"response": []
+		}
+	]
+}

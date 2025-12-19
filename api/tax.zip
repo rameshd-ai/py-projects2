@@ -1,0 +1,28 @@
+{
+	"info": {
+		"_postman_id": "21d4bc51-8992-497d-9058-815f5528b2b9",
+		"name": "Branding & theme",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "7544023"
+	},
+	"item": [
+		{
+			"name": "GetThemeConfiguration",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{ \r\n  \"SiteId\": 14941\r\n} ",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "https://www.pennybluerestaurant.com/ccadmin/cms/api/ThemeApi/GetThemeConfiguration"
+			},
+			"response": []
+		}
+	]
+}
