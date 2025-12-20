@@ -1,0 +1,36 @@
+{
+  "level 0": {
+    "displayorder": "MenuOrder",
+    "menu-description": "Description",
+    "menu-image": "MenuResourceName",
+    "menu-title": "Name",
+    "menu-type": "Name",
+    "status": "MenuStatusId"
+  },
+  "level 1": {
+    "displayorder": "SectionOrder",
+    "section-description": "SectionDescription",
+    "section-image": "SectionResourceName",
+    "section-image-alt-text": "SectionResourceName",
+    "section-name": "SectionName",
+    "status": "SectionStatus"
+  },
+  "level 2": {
+    "Item Image": "ItemResourceName",
+    "Item Image alt text": "ItemResourceName",
+    "displayorder": "ItemOrder",
+    "item-description": "ItemDescription",
+    "item-name": "SectionItemName",
+    "item-price": "",
+    "item-price-description": "",
+    "status": "ItemStatus"
+  },
+  "level 3_addons": {
+    "item-add-on-name": "Name",
+    "item-add-on-price": "Price"
+  },
+  "level 3_prices": {
+    "item-price-option": "Price",
+    "item-price-option-description": "PriceDescription"
+  }
+}

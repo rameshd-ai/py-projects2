@@ -16,13 +16,10 @@ def run_modules_features_step(job_id: str, step_config: Dict, workflow_context: 
     if not site_setup.get("site_created"):
         raise ValueError("Site setup must be completed first")
     
-    # Simulate processing
-    time.sleep(step_config.get("delay", 3.5))
-    
     # Process modules
     module_mapping = {
         "socialFeed": "Social Feed (Zuicer)",
-        "htmlMenu": "HTML Menu: Inner Pages",
+        "htmlMenu": "Dine Menu: Inner Pages",
         "faqManager": "FAQ Manager Migration",
         "ltoMigration": "LTO Migration: CMS to MiBlock",
         "rfpForm": "RFP Form Migration (Db)",
@@ -30,13 +27,47 @@ def run_modules_features_step(job_id: str, step_config: Dict, workflow_context: 
     }
     
     selected_modules = []
+    module_results = {}
+    
+    # Process Dine Menu if selected
+    if job_config.get("htmlMenu", False):
+        try:
+            from processing_steps.html_menu import run_html_menu_step
+            menu_result = run_html_menu_step(job_id, step_config, workflow_context)
+            module_results["htmlMenu"] = menu_result
+            selected_modules.append("Dine Menu: Inner Pages")
+        except Exception as e:
+            module_results["htmlMenu"] = {
+                "success": False,
+                "error": str(e)
+            }
+            raise Exception(f"Dine Menu migration failed: {e}")
+    
+    # Process FAQ Manager if selected
+    if job_config.get("faqManager", False):
+        try:
+            from processing_steps.faq_manager import run_faq_manager_step
+            faq_result = run_faq_manager_step(job_id, step_config, workflow_context)
+            module_results["faqManager"] = faq_result
+            selected_modules.append("FAQ Manager Migration")
+        except Exception as e:
+            module_results["faqManager"] = {
+                "success": False,
+                "error": str(e)
+            }
+            raise Exception(f"FAQ Manager migration failed: {e}")
+    
+    # Process other modules (simulated for now)
     for module_key, module_name in module_mapping.items():
-        if job_config.get(module_key, False):
+        if module_key not in ["htmlMenu", "faqManager"] and job_config.get(module_key, False):
             selected_modules.append(module_name)
+    
+    time.sleep(step_config.get("delay", 3.5))
     
     return {
         "modules_selected": len(selected_modules),
         "installed_modules": selected_modules,
+        "module_results": module_results,
         "all_modules_installed": True,
         "message": f"Installed {len(selected_modules)} modules successfully" if selected_modules else "No additional modules selected"
     }

@@ -1,0 +1,139 @@
+{
+  "level 0": {
+    "ParentId": "",
+    "Scopeid": "",
+    "componentName": "Menu",
+    "recordList": [
+      {
+        "MainParentComponentid": "",
+        "ParentComponentId": "",
+        "ParentRecordId": "",
+        "recordJsonString": {
+          "displayorder": "",
+          "enable-menu-time": "",
+          "menu-booking-url": "",
+          "menu-currency": "",
+          "menu-description": "",
+          "menu-disclaimer": "",
+          "menu-icon-class-name": "",
+          "menu-icon-image": "",
+          "menu-icon-image-alt-text": "",
+          "menu-image": "",
+          "menu-image-alt-text": "",
+          "menu-price": "",
+          "menu-price-description": "",
+          "menu-sub-title": "",
+          "menu-time-from-ampm": "",
+          "menu-time-from-hour": "",
+          "menu-time-from-minutes": "",
+          "menu-time-to-ampm": "",
+          "menu-time-to-hour": "",
+          "menu-time-to-minutes": "",
+          "menu-title": "",
+          "menu-type": "",
+          "menu-url": "",
+          "status": ""
+        },
+        "status": ""
+      }
+    ]
+  },
+  "level 1": {
+    "ParentId": "",
+    "Scopeid": "",
+    "componentName": "Menu Section",
+    "recordList": [
+      {
+        "MainParentComponentid": "",
+        "ParentComponentId": "",
+        "ParentRecordId": "",
+        "recordJsonString": {
+          "displayorder": "",
+          "food-type": "",
+          "section-description": "",
+          "section-icon-class-name": "",
+          "section-icon-image": "",
+          "section-icon-image-alt-text": "",
+          "section-image": "",
+          "section-image-alt-text": "",
+          "section-name": "",
+          "section-price": "",
+          "section-price-description": "",
+          "section-sub-title": "",
+          "status": ""
+        },
+        "status": ""
+      }
+    ]
+  },
+  "level 2": {
+    "ParentId": "",
+    "Scopeid": "",
+    "componentName": "Menu Section Item",
+    "recordList": [
+      {
+        "MainParentComponentid": "",
+        "ParentComponentId": "",
+        "ParentRecordId": "",
+        "recordJsonString": {
+          "calories": "",
+          "displayorder": "",
+          "item-description": "",
+          "item-icon-class-name": "",
+          "item-icon-image": "",
+          "item-icon-image-alt-text": "",
+          "item-image": "",
+          "item-image-alt-text": "",
+          "item-name": "",
+          "item-price": "",
+          "item-price-description": "",
+          "item-sub-title": "",
+          "no-of-units": "",
+          "serves": "",
+          "status": ""
+        },
+        "status": ""
+      }
+    ]
+  },
+  "level 3_addons": {
+    "ParentId": "",
+    "Scopeid": "",
+    "componentName": "Menu Section Item Addons",
+    "recordList": [
+      {
+        "MainParentComponentid": "",
+        "ParentComponentId": "",
+        "ParentRecordId": "",
+        "recordJsonString": {
+          "item-add-on-description": "",
+          "item-add-on-icon-class-name": "",
+          "item-add-on-icon-image": "",
+          "item-add-on-icon-image-alt-text": "",
+          "item-add-on-image": "",
+          "item-add-on-image-alt-text": "",
+          "item-add-on-name": "",
+          "item-add-on-price": "",
+          "item-add-on-price-description": "",
+          "item-add-on-sub-title": ""
+        }
+      }
+    ]
+  },
+  "level 3_prices": {
+    "ParentId": "",
+    "Scopeid": "",
+    "componentName": "Menu Section Item Price Options",
+    "recordList": [
+      {
+        "MainParentComponentid": "",
+        "ParentComponentId": "",
+        "ParentRecordId": "",
+        "recordJsonString": {
+          "item-price-option": "",
+          "item-price-option-description": ""
+        }
+      }
+    ]
+  }
+}

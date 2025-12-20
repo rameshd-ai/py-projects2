@@ -17,13 +17,59 @@ logging.basicConfig(level=logging.INFO)
 
 @app.route('/')
 def index():
-    return render_template('index.html', steps=PROCESSING_STEPS)
+    """Main wizard page - can accept job_id query parameter to resume a job"""
+    job_id = request.args.get('job_id')
+    return render_template('index.html', steps=PROCESSING_STEPS, job_id=job_id)
 
 
 @app.route('/jobs')
 def jobs_list():
     """Display list of all jobs"""
     return render_template('jobs_list.html')
+
+
+@app.route('/api/job-config/<job_id>', methods=['GET'])
+def get_job_config(job_id):
+    """Get job configuration for resuming"""
+    try:
+        from utils import load_job_config
+        
+        job_config = load_job_config(job_id)
+        if not job_config:
+            return jsonify({"success": False, "error": "Job configuration not found"}), 404
+        
+        return jsonify({
+            "success": True,
+            "config": job_config
+        })
+    except Exception as e:
+        logging.error(f"Error loading job config: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/job-results/<job_id>', methods=['GET'])
+def get_job_results(job_id):
+    """Get full job results including step results"""
+    try:
+        from utils import get_job_folder, ensure_job_folders
+        
+        ensure_job_folders(job_id)
+        results_file = os.path.join(get_job_folder(job_id), "results.json")
+        
+        if os.path.exists(results_file):
+            with open(results_file, 'r', encoding='utf-8') as f:
+                results = json.load(f)
+                return jsonify({
+                    "success": True,
+                    "results": results
+                })
+        else:
+            return jsonify({
+                "success": True,
+                "results": {}
+            })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/api/job-status/<job_id>', methods=['GET'])
@@ -292,6 +338,61 @@ def mark_step_complete():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/api/skip-step', methods=['POST'])
+def skip_step():
+    """Mark a step as skipped (without executing it) and persist status."""
+    try:
+        data = request.get_json()
+        if not data or 'job_id' not in data or 'step_number' not in data:
+            return jsonify({"success": False, "error": "job_id and step_number are required"}), 400
+
+        job_id = data['job_id']
+        step_number = data['step_number']
+
+        from utils import get_job_folder, ensure_job_folders
+
+        ensure_job_folders(job_id)
+        results_file = os.path.join(get_job_folder(job_id), "results.json")
+
+        # Load existing results
+        if os.path.exists(results_file):
+            with open(results_file, 'r', encoding='utf-8') as f:
+                all_results = json.load(f)
+        else:
+            all_results = {}
+
+        # Resolve step id from config
+        step_id = PROCESSING_STEPS[step_number - 1]["id"]
+
+        # Add or update step result as skipped
+        all_results[step_id] = {
+            "status": "skipped",
+            "message": "Step skipped by user from UI"
+        }
+
+        # Ensure completed_steps includes this step
+        all_results["completed_steps"] = all_results.get("completed_steps", [])
+        if step_id not in all_results["completed_steps"]:
+            all_results["completed_steps"].append(step_id)
+
+        # Track skip timestamp
+        if "step_completion_times" not in all_results:
+            all_results["step_completion_times"] = {}
+        all_results["step_completion_times"][step_id] = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Save updated results
+        with open(results_file, 'w', encoding='utf-8') as f:
+            json.dump(all_results, f, indent=4, ensure_ascii=False)
+
+        return jsonify({
+            "success": True,
+            "message": f"Step {step_number} ({step_id}) marked as skipped",
+            "step_id": step_id
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route('/api/jobs/<job_id>', methods=['DELETE'])
 def delete_job(job_id):
     """Delete a job and all its associated files"""
@@ -340,6 +441,178 @@ def download_file(job_id, filename):
         return send_from_directory(job_output_folder, filename, as_attachment=True)
     except FileNotFoundError:
         return jsonify({"success": False, "error": "File not found"}), 404
+
+
+@app.route('/api/menu-config/<config_type>', methods=['GET'])
+def get_menu_config(config_type):
+    """Get menu configuration file (template or mapper)"""
+    try:
+        from config import BASE_DIR
+        resource_dir = os.path.join(BASE_DIR, "resource")
+        
+        if config_type == 'template':
+            file_path = os.path.join(resource_dir, "menu_payload_template.json")
+        elif config_type == 'mapper':
+            file_path = os.path.join(resource_dir, "menu_field_mapper.json")
+        else:
+            return jsonify({"success": False, "error": "Invalid config type"}), 400
+        
+        if not os.path.exists(file_path):
+            return jsonify({"success": False, "error": "Configuration file not found"}), 404
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        return jsonify({
+            "success": True,
+            "data": data
+        })
+    except Exception as e:
+        logging.error(f"Error loading menu config: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/menu-config/<config_type>', methods=['POST'])
+def save_menu_config(config_type):
+    """Save menu configuration file (template or mapper)"""
+    try:
+        from config import BASE_DIR
+        resource_dir = os.path.join(BASE_DIR, "resource")
+        
+        if config_type == 'template':
+            file_path = os.path.join(resource_dir, "menu_payload_template.json")
+        elif config_type == 'mapper':
+            file_path = os.path.join(resource_dir, "menu_field_mapper.json")
+        else:
+            return jsonify({"success": False, "error": "Invalid config type"}), 400
+        
+        data = request.get_json()
+        if not data or 'data' not in data:
+            return jsonify({"success": False, "error": "Missing data in request"}), 400
+        
+        # Ensure resource directory exists
+        os.makedirs(resource_dir, exist_ok=True)
+        
+        # Save the configuration
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data['data'], f, indent=2, ensure_ascii=False)
+        
+        logging.info(f"Menu {config_type} configuration saved successfully")
+        return jsonify({
+            "success": True,
+            "message": f"{config_type} configuration saved successfully"
+        })
+    except json.JSONDecodeError as e:
+        return jsonify({"success": False, "error": f"Invalid JSON: {str(e)}"}), 400
+    except Exception as e:
+        logging.error(f"Error saving menu config: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/process-sub-process', methods=['POST'])
+def process_sub_process():
+    """
+    Process a specific sub-process module (e.g., FAQ Manager, Dine Menu)
+    """
+    try:
+        from utils import load_job_config
+        
+        data = request.get_json()
+        if not data or 'job_id' not in data or 'module_id' not in data:
+            return jsonify({"success": False, "error": "job_id and module_id are required"}), 400
+        
+        job_id = data['job_id']
+        module_id = data['module_id']
+        form_data = data.get('form_data', {})
+        
+        # Load job configuration (or use form_data as fallback)
+        job_config = load_job_config(job_id)
+        
+        # If job config doesn't exist or is empty, use form_data
+        if not job_config:
+            job_config = form_data.copy() if form_data else {}
+        
+        # Merge form_data into job_config to ensure latest values
+        if form_data:
+            job_config.update(form_data)
+        
+        # Ensure job_id is set
+        job_config['job_id'] = job_id
+        
+        # Save the configuration if it was updated
+        if form_data:
+            from utils import save_job_config
+            save_job_config(job_id, job_config)
+        
+        # Create workflow context
+        workflow_context = {
+            "job_config": job_config,
+            "job_id": job_id
+        }
+        
+        # Process based on module_id
+        result = None
+        if module_id == 'htmlMenu':
+            from processing_steps.html_menu import run_html_menu_step
+            step_config = {"delay": 1}
+            result = run_html_menu_step(job_id, step_config, workflow_context)
+        elif module_id == 'faqManager':
+            # Get source link from request
+            source_link = data.get('source_link')
+            if not source_link:
+                return jsonify({"success": False, "error": "source_link is required for FAQ processing"}), 400
+            
+            from processing_steps.faq_manager import process_faq_from_source_link
+            # Add source_link to workflow context
+            workflow_context["source_link"] = source_link
+            result = process_faq_from_source_link(job_id, source_link)
+        else:
+            return jsonify({"success": False, "error": f"Unknown module_id: {module_id}"}), 400
+        
+        if result and result.get("success", True):
+            return jsonify({
+                "success": True,
+                "module_id": module_id,
+                "result": result
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result.get("error", "Processing failed") if result else "Processing failed"
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Error processing sub-process: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/download-faq-file', methods=['GET'])
+def download_faq_file():
+    """
+    Download FAQ output file
+    """
+    try:
+        from utils import get_job_output_folder
+        from flask import send_file
+        
+        job_id = request.args.get('job_id')
+        file_name = request.args.get('file_name')  # Just the filename
+        
+        if not job_id or not file_name:
+            return jsonify({"success": False, "error": "job_id and file_name are required"}), 400
+        
+        # Get the file path from job output folder
+        output_dir = get_job_output_folder(job_id)
+        file_path = os.path.join(output_dir, file_name)
+        
+        if not os.path.exists(file_path):
+            return jsonify({"success": False, "error": "File not found"}), 404
+        
+        return send_file(file_path, as_attachment=True, download_name=file_name)
+        
+    except Exception as e:
+        logging.error(f"Error downloading FAQ file: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == '__main__':

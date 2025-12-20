@@ -6,6 +6,12 @@ itsdangerous==2.2.0
 click==8.3.1
 blinker==1.9.0
 
+# Data processing - Excel file creation
+openpyxl==3.1.2
+
+# HTTP requests
+requests==2.31.0
+
 # Production server (optional)
 gunicorn==23.0.0
 
