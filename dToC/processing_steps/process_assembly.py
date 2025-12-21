@@ -549,7 +549,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
         
         # Check for the specific success string (Your original success logic)
         if api_response_data == "Page Content Mappings updated successfully.":
-            print(f"\n🚀 **SUCCESS:** Page mapping updated successfully for Page ID {page_id}.")
+            print(f"\n[SUCCESS] Page mapping updated successfully for Page ID {page_id}.")
             print(f"API Response: {api_response_data}")
             
         else:
@@ -701,7 +701,7 @@ def CreatePage(base_url, headers, payload,template_id):
     # 1. Construct the final API endpoint URL with query parameters
     api_url = f"{base_url}/api/PageApi/SavePage?templateId={template_id}&directPublish={direct_publish_str}"
 
-    print(f"\n📡 Attempting POST to: {api_url}")
+    print(f"\n[API] Attempting POST to: {api_url}")
     
     try:
         # 2. Send the POST request with the JSON payload
@@ -2371,7 +2371,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                     file_path = os.path.join(save_folder, filename)
                                     
                                     logging.info(f"Saving zip file to: {file_path}")
-                                    print(f"💾 Saving zip file...")
+                                    print(f"[SAVE] Saving zip file...")
                                     with open(file_path, "wb") as file:
                                         file.write(response_content)
 
@@ -2773,6 +2773,13 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                 matched_record_with_page_info["matched_page_level"] = page_level
                 matched_record_with_page_info["matched_records_level"] = records_level
                 matched_record_with_page_info["parent_page_name"] = parent_page_name
+                
+                # Get page status from page_node (based on ShowInNavigation: Yes/No)
+                # If not present, use existing record status
+                page_status = page_node.get("page_status")
+                if page_status is not None:
+                    matched_record_with_page_info["page_status"] = page_status
+                    logging.debug(f"  Page '{page_name}' status from ShowInNavigation: {page_status}")
                 
                 # Add extracted name and link as top-level keys for easy access
                 if name_key and name_value is not None:
@@ -3418,13 +3425,18 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 else:
                     parent_component_id = level_1_component_id  # Level 2 parent is level 1 component
                 
+                # Get page status from page_node (based on ShowInNavigation: Yes/No)
+                # Default to True if not specified
+                page_status = page_node.get("page_status", True)
+                logging.debug(f"Page '{page_name}' status: {page_status}")
+                
                 new_record = {
                     "componentId": record_component_id,
                     "recordId": 0,
                     "parentRecordId": parent_record_id,
                     "parentComponentId": parent_component_id,
                     "recordDataJson": json.dumps(record_data),
-                    "status": True,
+                    "status": page_status,  # Use page_status from ShowInNavigation
                     "tags": [],
                     "displayOrder": display_order,
                     "updatedBy": 0,
@@ -3606,7 +3618,16 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             original_record_id = record.get("Id", 0)
             original_parent_id = record.get("ParentId", 0)
             record_json_string = record.get("RecordJsonString", "")
-            status = record.get("Status", True)
+            
+            # Get status from page_status (from ShowInNavigation) if available, otherwise use existing Status
+            page_status = record.get("page_status")
+            if page_status is not None:
+                status = page_status
+                logging.debug(f"Using page_status from ShowInNavigation for '{record.get('matched_page_name')}': {status}")
+            else:
+                status = record.get("Status", True)
+                logging.debug(f"Using existing Status for '{record.get('matched_page_name')}': {status}")
+            
             display_order = record.get("DisplayOrder", 0)
             updated_by = record.get("UpdatedBy", 0)
             matched_page_level = record.get("matched_page_level", 1)
@@ -3663,7 +3684,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                 
                 record_json_string = json.dumps(record_data, ensure_ascii=False)
             except Exception as e:
-                logging.warning(f"Error fixing keys in record {record_id}: {e}")
+                logging.warning(f"Error fixing keys in record {original_record_id}: {e}")
             
             # Determine parentComponentId based on level
             if matched_page_level == 1:

@@ -171,9 +171,19 @@ def extract_meta_info(raw_html_content: str) -> Dict[str, Any]:
     # Split the content at the marker
     parts = unescaped_content.split('PageInfoBlock', 1)
     if len(parts) < 2:
-        return meta_info
-
-    meta_block = parts[1]
+        # PageInfoBlock marker not found, but we still need to ensure ShowInNavigation exists in meta_info
+        # Try to extract ShowInNavigation from the full content
+        meta_block = unescaped_content
+    else:
+        meta_block = parts[1]
+    
+    # Debug: Check if ShowInNavigation exists in meta_block
+    if 'ShowInNavigation' in meta_block:
+        print(f"[DEBUG] ShowInNavigation found in meta_block (length: {len(meta_block)})")
+    else:
+        print(f"[DEBUG] ShowInNavigation NOT found in meta_block. Checking full content...")
+        if 'ShowInNavigation' in unescaped_content:
+            print(f"[DEBUG] ShowInNavigation found in full unescaped_content, but not in meta_block after split")
     
     target_keys = {
         "PageTemplateName": "PageTemplateName",
@@ -182,27 +192,85 @@ def extract_meta_info(raw_html_content: str) -> Dict[str, Any]:
         "Header1":"Header1",
         "Header2":"Header2",
         "Footer1":"Footer1",
-        "Footer2":"Footer2"
+        "Footer2":"Footer2",
+        "ShowInNavigation": "ShowInNavigation"  # Extract ShowInNavigation (appears after Footer2)
     }
 
     for xml_key, dict_key in target_keys.items():
-        # Regex to find text following the key until the next key or end of block
-        # This looks for the key followed by a colon, optional whitespace, 
-        # then captures anything until the next < (start of next key) or end of block
-        pattern = re.compile(r'(?<=' + re.escape(xml_key) + r':)\s*(.*?)(?=<|$)', re.IGNORECASE | re.DOTALL)
+        # Handle multiple formats:
+        # Format 1: Standard format: "FieldName: Value"
+        # Format 2: HTML span format: "FieldName</span><span ...>: Value</span>"
+        # Format 3: HTML span format with escaped entities: "FieldName&lt;/span&gt;&lt;span ...&gt;: Value&lt;/span&gt;"
         
-        match = pattern.search(meta_block)
+        # Pattern 1: Standard format: "FieldName: Value" (no HTML tags)
+        # Updated to handle newlines/spaces between fields
+        # Note: Using non-lookbehind pattern to avoid fixed-width requirement
+        pattern1 = re.compile(re.escape(xml_key) + r'\s*:\s*([^\n<]+?)(?=\s*(?:PageTemplateName|Default\s+Title|Default\s+Description|Header1|Header2|Footer1|Footer2|ShowInNavigation)\s*:|<|$)', re.IGNORECASE | re.DOTALL)
+        
+        # Pattern 2: HTML span format: "FieldName</span><span ...>: Value</span>"
+        # Matches FieldName, optional closing/opening tags, colon, then value until closing tag
+        pattern2 = re.compile(re.escape(xml_key) + r'(?:</span>|<[^>]*>)*\s*:\s*([^<]+?)(?=</span>|<(?:span|/span|div|/div|p|/p)|$)', re.IGNORECASE | re.DOTALL)
+        
+        # Pattern 3: More flexible - handles escaped HTML entities and complex span structures
+        # Matches FieldName followed by any HTML/escaped content, colon, then value
+        pattern3 = re.compile(re.escape(xml_key) + r'(?:&lt;/span&gt;|</span>|&lt;[^&]+&gt;|<[^>]*>)*\s*:\s*([^<&]+?)(?=&lt;/span&gt;|</span>|&lt;[^&]+&gt;|<(?:span|/span|div|/div|p|/p)|$)', re.IGNORECASE | re.DOTALL)
+        
+        # Pattern 4: Very permissive - for ShowInNavigation in complex nested spans
+        # Matches FieldName, any characters (including tags), colon, then captures value
+        pattern4 = re.compile(re.escape(xml_key) + r'[^:]*:\s*([A-Za-z]+)', re.IGNORECASE)
+        
+        # Pattern 5: Special case for ShowInNavigation where field name and value are in separate spans
+        # Format: <span>ShowInNavigation</span><span>: Yes</span>
+        # Also handles case where there's whitespace/newlines between Footer2 and ShowInNavigation
+        if xml_key == "ShowInNavigation":
+            # Very simple pattern: ShowInNavigation, then ANY characters (including all HTML, newlines, spaces), then :, then capture Yes/No
+            # This handles ALL cases:
+            # - Footer2: ShowInNavigation: Yes (space after colon)
+            # - Footer2:ShowInNavigation: Yes (no space)
+            # - Footer2:\nShowInNavigation: Yes (newline)
+            # - Footer2:</p><p>ShowInNavigation: Yes (separate paragraphs)
+            # The pattern [\s\S]*? matches any character (including spaces, newlines, HTML tags)
+            # The \s* after : makes space after colon optional
+            pattern5 = re.compile(re.escape(xml_key) + r'[\s\S]*?:\s*([A-Za-z]+)', re.IGNORECASE)
+            print(f"[DEBUG] Searching for ShowInNavigation in meta_block (length: {len(meta_block)}, first 500 chars: {meta_block[:500]})")
+        else:
+            pattern5 = None
+        
+        match = pattern1.search(meta_block) or pattern2.search(meta_block) or pattern3.search(meta_block) or pattern4.search(meta_block) or (pattern5.search(meta_block) if pattern5 else None)
+        
+        if xml_key == "ShowInNavigation" and not match:
+            print(f"[DEBUG] ShowInNavigation NOT matched. Tried all patterns. meta_block contains 'ShowInNavigation': {'ShowInNavigation' in meta_block}")
         
         if match:
             # Get the captured value and strip leading/trailing whitespace
             value = match.group(1).strip()
             
+            # Remove any remaining HTML tags from the value
+            value = re.sub(r'<[^>]+>', '', value)
+            
             # Normalize internal whitespace (replace newlines/tabs/spaces with a single space)
             value = re.sub(r'[\r\n\s]+', ' ', value).strip()
+            
+            # Additional unescape for ShowInNavigation to handle any HTML entities
+            if dict_key == "ShowInNavigation":
+                value = html.unescape(value)
+                value = value.strip()
             
             # [PROCESSING] CHANGE: Now we add the key to the dictionary if the marker was found.
             # The value will be "" if it was blank in the source.
             meta_info[dict_key] = value
+            # Debug logging for ShowInNavigation
+            if dict_key == "ShowInNavigation":
+                print(f"[DEBUG XML Extraction] Extracted ShowInNavigation: '{value}'")
+    
+    # Always ensure ShowInNavigation exists in meta_info (even if empty)
+    # This ensures it appears in the JSON output
+    if "ShowInNavigation" not in meta_info:
+        meta_info["ShowInNavigation"] = ""
+        print(f"[DEBUG XML Extraction] ShowInNavigation not found, defaulting to empty string")
+    
+    # Debug: Print all keys in meta_info to verify
+    print(f"[DEBUG XML Extraction] Final meta_info keys: {list(meta_info.keys())}, ShowInNavigation='{meta_info.get('ShowInNavigation', 'NOT FOUND')}'")
                 
     return meta_info
 

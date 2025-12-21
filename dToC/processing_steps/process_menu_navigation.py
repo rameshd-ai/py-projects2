@@ -465,9 +465,35 @@ def run_menu_navigation_step(
             if not meta_info or meta_info == {}:
                 return None
             
+            # Extract ShowInNavigation value and convert to boolean for status
+            # If ShowInNavigation is "Yes", status = True
+            # If ShowInNavigation is "No", status = False
+            # If ShowInNavigation is missing/empty, default to True (active)
+            show_in_navigation_raw = meta_info.get("ShowInNavigation", "")
+            # Handle both string and other types, normalize to string
+            if show_in_navigation_raw is None:
+                show_in_navigation_raw = ""
+            else:
+                show_in_navigation_raw = str(show_in_navigation_raw)
+            
+            show_in_navigation_value = show_in_navigation_raw.strip().lower()
+            # Check if value is "yes" (case-insensitive, handles "yes", "Yes", "YES", etc.)
+            # Default to True (active) if empty or not "no"
+            if show_in_navigation_value == "yes":
+                page_status = True
+            elif show_in_navigation_value == "no":
+                page_status = False
+            else:
+                # Default to True (active) if ShowInNavigation is missing or empty
+                page_status = True
+            
+            # Log for debugging
+            logging.debug(f"Page '{page_name}': ShowInNavigation='{show_in_navigation_raw}' -> normalized='{show_in_navigation_value}' -> status={page_status}")
+            
             page_tree = {
                 "page_name": page_name,
-                "level": level
+                "level": level,
+                "page_status": page_status  # Status based on ShowInNavigation (defaults to True/active if not specified)
             }
             
             sub_pages = page_node.get("sub_pages", [])
@@ -1005,7 +1031,7 @@ def run_menu_navigation_step(
         
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
-    
+        exit()
         return {
             "menu_navigation_created": True,
             "file_prefix": file_prefix,

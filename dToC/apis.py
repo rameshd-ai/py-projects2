@@ -525,7 +525,7 @@ def CreateComponentRecord(base_url, headers, payload):
     # 1. Construct the final API endpoint URL
     api_url = f"{base_url}/api/MiblockApi/CreateComponentRecord"
 
-    print(f"📡 Attempting POST to: {api_url}")
+    print(f"[API] Attempting POST to: {api_url}")
     
     try:
         # 2. Send the POST request with the JSON payload
@@ -588,9 +588,9 @@ def CreatePage(base_url, headers, payload,template_id):
     # 1. Construct the final API endpoint URL with query parameters
     api_url = f"{base_url}/api/PageApi/SavePage?templateId={template_id}&directPublish={direct_publish_str}"
 
-    print(f"\n📡 Attempting CreatePage: {api_url} ============================================?>>>>>>>>>>>>>>>>>>>")
+    print(f"\n[API] Attempting CreatePage: {api_url} ============================================?>>>>>>>>>>>>>>>>>>>")
     print(payload)
-    print(f"\n📡 Attempting ) ============================================?>>>>>>>>>>>>>>>>>>>")
+    print(f"\n[API] Attempting ) ============================================?>>>>>>>>>>>>>>>>>>>")
     try:
         # 2. Send the POST request with the JSON payload
         response = requests.post(
@@ -644,7 +644,7 @@ def GetPageCategoryList(base_url, headers):
     # 1. Build the full API URL
     api_url = f"{base_url}/api/PageApi/GetPageCategoryList"
 
-    print(f"\n📡 Attempting GET to: {api_url}")
+    print(f"\n[API] Attempting GET to: {api_url}")
 
     try:
         # 2. Send GET request
