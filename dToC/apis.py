@@ -194,7 +194,8 @@ def getComponentDetailsUsingVcompAlias(vcompalias, base_url, headers):
 
 
 def addUpdateRecordsToCMS(base_url, headers, payload):
-    time.sleep(5)
+    # Reduced sleep time since we're using bulk processing for most cases
+    time.sleep(0.5)
     # print("Updated")
     # return True
     """
@@ -235,6 +236,90 @@ def addUpdateRecordsToCMS(base_url, headers, payload):
         return False, f"Failed to update records via API: {e}"
     except Exception as e:
         return False, f"An unexpected error occurred in API call: {e}"
+
+
+def addUpdateRecordsToCMS_bulk(base_url, headers, records_list):
+    """
+    Bulk version: Sends multiple records to the CMS API in parallel using threading.
+    This significantly reduces API call time when processing many records.
+
+    Args:
+        base_url (str): The base URL for the API.
+        headers (dict): The authorization headers for the API request.
+        records_list (list): List of record dictionaries to be saved.
+
+    Returns:
+        tuple: (bool, dict or str): A boolean indicating success or failure,
+               and a dictionary mapping record_id -> new_record_id, or an error message.
+    """
+    import concurrent.futures
+    import threading
+    
+    api_url = f"{base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
+    responses = {}
+    errors = []
+    lock = threading.Lock()
+    
+    def process_record(record, index):
+        """Process a single record and store the response."""
+        try:
+            original_record_id = record.get('recordId', 0)  # Original recordId from payload
+            response = requests.post(api_url, headers=headers, json=record, timeout=30)
+            response.raise_for_status()
+            result = response.json()
+            
+            if result.get("result"):
+                new_record_id = result.get('result')
+                with lock:
+                    # Map by original recordId (for compatibility) and by index (for bulk processing)
+                    responses[original_record_id] = new_record_id
+                    responses[index] = new_record_id  # Also map by index for easy lookup
+                return True, original_record_id, new_record_id
+            else:
+                with lock:
+                    errors.append(f"API response indicates failure for record {original_record_id}: {result}")
+                return False, original_record_id, None
+        except Exception as e:
+            with lock:
+                errors.append(f"Error processing record {record.get('recordId', index)}: {e}")
+            return False, record.get('recordId', index), None
+    
+    try:
+        # Use ThreadPoolExecutor to process records in parallel
+        # Limit to 10 concurrent requests to avoid overwhelming the API
+        max_workers = min(10, len(records_list))
+        
+        logging.info(f"[BULK API] Processing {len(records_list)} records with {max_workers} parallel workers...")
+        start_time = time.time()
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(process_record, record, idx) for idx, record in enumerate(records_list)]
+            
+            # Wait for all futures to complete
+            for future in concurrent.futures.as_completed(futures):
+                success, record_id, new_id = future.result()
+                if not success:
+                    logging.warning(f"[BULK API] Failed to process record {record_id}")
+        
+        elapsed_time = time.time() - start_time
+        logging.info(f"[BULK API] Completed {len(records_list)} records in {elapsed_time:.2f} seconds (avg {elapsed_time/len(records_list):.2f}s per record)")
+        
+        if errors:
+            logging.warning(f"[BULK API] {len(errors)} errors occurred during bulk processing")
+            for error in errors[:5]:  # Log first 5 errors
+                logging.warning(f"  - {error}")
+        
+        if len(responses) == len(records_list):
+            time.sleep(1)  # Small delay after bulk operations
+            return True, responses
+        elif len(responses) > 0:
+            logging.warning(f"[BULK API] Partial success: {len(responses)}/{len(records_list)} records processed")
+            return True, responses  # Return partial success
+        else:
+            return False, f"All records failed. Errors: {errors[:3]}"
+            
+    except Exception as e:
+        return False, f"An unexpected error occurred in bulk API call: {e}"
     
 
 
@@ -367,6 +452,7 @@ def psMappingApi(base_url, headers, payload):
 def psPublishApi(base_url, headers, site_id, payload):
     """
     Calls the Publish API to publish pages and miBlocks.
+    Includes delay to prevent API blocking/rate limiting.
 
     Args:
         base_url (str): The base URL for the API.
@@ -376,14 +462,40 @@ def psPublishApi(base_url, headers, site_id, payload):
     """
     api_url = f"{base_url}/api/PublishApi/Publish_PSV2?siteId={site_id}&publishNotes=Published%2520from%2520Page%2520Studio"
     
+    # Add delay before API call to prevent blocking/rate limiting
+    # Publish API can get blocked if called too frequently
+    logging.info("[TIMING] Waiting 2 seconds before Publish API call to avoid rate limiting...")
+    time.sleep(2)
+    
     try:
         logging.info("Calling Publish API...")
-        response = requests.post(api_url, headers=headers, data=json.dumps(payload))
+        api_start = time.time()
+        response = requests.post(api_url, headers=headers, data=json.dumps(payload), timeout=60)
+        api_duration = time.time() - api_start
         response.raise_for_status()
-        logging.info(f"[SUCCESS] Publish API call successful. Status: {response.status_code}")
+        logging.info(f"[SUCCESS] Publish API call successful. Status: {response.status_code}, Duration: {api_duration:.2f} seconds")
         return response.json()
+    except requests.exceptions.HTTPError as http_err:
+        status_code = response.status_code if 'response' in locals() else 'N/A'
+        response_text = response.text if 'response' in locals() else 'No response'
+        
+        # Special handling for 500 Internal Server Error with retry suggestion
+        if status_code == 500:
+            logging.error(f"[ERROR] 500 Internal Server Error in psPublishApi")
+            logging.error(f"[ERROR] Response text: {response_text[:500]}")
+            logging.warning(f"[WARNING] 500 error may be temporary. Consider retrying after a delay.")
+            return {"status": "error", "message": "500 Internal Server Error", "status_code": 500, "retry_suggested": True}
+        
+        logging.error(f"[ERROR] HTTP error in psPublishApi: {http_err} (Status Code: {status_code})")
+        if status_code >= 500:
+            logging.error(f"[ERROR] Server error response: {response_text[:500]}")
+        return {"status": "error", "message": str(http_err), "status_code": status_code}
+    except requests.exceptions.Timeout as e:
+        logging.error(f"[ERROR] Publish API call timed out after 60 seconds: {e}")
+        return {"status": "error", "message": "Request timeout"}
     except requests.exceptions.RequestException as e:
         logging.error(f"[ERROR] Publish API call failed: {e}")
+        logging.exception("Full traceback:")
         return {"status": "error", "message": str(e)}
     
 
@@ -609,7 +721,17 @@ def CreatePage(base_url, headers, payload,template_id):
     except requests.exceptions.HTTPError as http_err:
         # Check if response object exists and has status code
         status_code = response.status_code if 'response' in locals() else 'N/A'
+        response_text = response.text if 'response' in locals() else 'No response'
+        
+        # Special handling for 500 Internal Server Error
+        if status_code == 500:
+            logging.error(f"[ERROR] 500 Internal Server Error in CreatePage: {http_err}")
+            logging.error(f"[ERROR] Response text: {response_text[:500]}")  # Log first 500 chars
+            return {"error": "500 Internal Server Error", "details": f"Server error: {str(http_err)}", "status_code": 500, "response_text": response_text[:200]}
+        
         print(f"[ERROR] HTTP error occurred: {http_err} (Status Code: {status_code})")
+        if status_code >= 500:
+            logging.error(f"[ERROR] Server error ({status_code}): {response_text[:500]}")
         return {"error": "HTTP Error", "details": str(http_err), "status_code": status_code}
     except requests.exceptions.ConnectionError as conn_err:
         print(f"[ERROR] Connection error occurred: {conn_err}")

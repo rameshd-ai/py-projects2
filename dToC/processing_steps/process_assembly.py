@@ -13,7 +13,7 @@ import zipfile # <-- Required for handling exported component files
 import html # <-- Required for HTML entity decoding
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
-from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName
+from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,addUpdateRecordsToCMS_bulk,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName
 # ================= CONFIG/UTILITY DEFINITIONS (BASED ON USER PATTERN) =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
@@ -52,7 +52,17 @@ def find_processed_json_filepath(file_prefix: str) -> str | None:
 # ======================================================================================
 
 # --- 1. GLOBAL STATUS TRACKER ---
-ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = [] 
+ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = []
+
+# --- 2. GLOBAL TIMING TRACKER ---
+TIMING_TRACKER: Dict[str, List[float]] = {}  # Function name -> list of execution times
+
+# --- 3. GLOBAL GUID TRACKER (for verification) ---
+COMPONENT_GUID_TRACKER: Dict[str, str] = {}  # component_id -> pageSectionGuid (for verification)
+
+# --- 4. GLOBAL PAGE PUBLISH QUEUE ---
+# Each entry: {"page_id": int, "page_name": str, "header_footer_details": Dict[str, Any]}
+PAGES_TO_PUBLISH: List[Dict[str, Any]] = []
 
 # ================= Helper Functions =================
 
@@ -198,13 +208,13 @@ def add_levels_to_records(records_file_path: str) -> bool:
             current_level = next_level
         
         # Check for any remaining unclassified records (orphaned records)
-        unclassified_count = sum(1 for r in component_records if r.get("level") == -1)
-        if unclassified_count > 0:
-            logging.warning(f"Found {unclassified_count} unclassified records (orphaned or circular references)")
+        # More efficient: only iterate once to find and fix orphaned records
+        orphaned_records = [r for r in component_records if r.get("level") == -1]
+        if orphaned_records:
+            logging.warning(f"Found {len(orphaned_records)} unclassified records (orphaned or circular references)")
             # Set orphaned records to a high level to avoid breaking the structure
-            for record in component_records:
-                if record.get("level") == -1:
-                    record["level"] = 999
+            for record in orphaned_records:
+                record["level"] = 999
         
         # Save the updated records back to the file
         with open(records_file_path, 'w', encoding='utf-8') as f:
@@ -248,121 +258,140 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
         
         # print(f"  [INFO] Component ID: {component_id_unpacked}")
         # print(f"  [INFO] Component component_alias: {component_alias_unpacked}")
-        pageSectionGuid = str(uuid.uuid4()) 
-
-        # Call the API function from apis.py
-        response_content, content_disposition = export_mi_block_component(base_url, component_id_unpacked, site_id, headers)
+        # Generate unique pageSectionGuid for each component
+        pageSectionGuid = str(uuid.uuid4())
         
+        # Verify uniqueness: Check if this component already has a GUID (shouldn't happen, but verify)
+        component_key = f"{component_id_unpacked}_{page_name}"
+        if component_key in COMPONENT_GUID_TRACKER:
+            existing_guid = COMPONENT_GUID_TRACKER[component_key]
+            if existing_guid != pageSectionGuid:
+                logging.warning(f"[GUID WARNING] Component '{component_alias_unpacked}' (ID: {component_id_unpacked}) on page '{page_name}' already has a different GUID: {existing_guid}")
+            else:
+                logging.info(f"[GUID] Component '{component_alias_unpacked}' (ID: {component_id_unpacked}) reusing existing GUID: {pageSectionGuid}")
+        else:
+            COMPONENT_GUID_TRACKER[component_key] = pageSectionGuid
+            logging.info(f"[GUID] Generated unique pageSectionGuid for component '{component_alias_unpacked}' (ID: {component_id_unpacked}) on page '{page_name}': {pageSectionGuid}") 
+
         miBlockId = component_id_unpacked
         mi_block_folder = f"mi-block-ID-{miBlockId}"
         # Output directory is relative to the current working directory, not UPLOAD_FOLDER
         output_dir = os.path.join("output", str(site_id)) 
         save_folder = os.path.join(output_dir, mi_block_folder)
-        # payload_file_path is defined but not used in the provided logic snippet.
-        # payload_file_path = os.path.join(output_dir, "api_response_final.json") 
         os.makedirs(save_folder, exist_ok=True)
         
-        try:
-            # 1. Save and Unzip the exported file
-            if response_content:
-                filename = (
-                    content_disposition.split('filename=')[1].strip('"')
-                    if content_disposition and 'filename=' in content_disposition
-                    else f"site_{site_id}.zip"
-                )
-                file_path = os.path.join(save_folder, filename)
-
-                with open(file_path, "wb") as file:
-                    file.write(response_content)
-
-                if zipfile.is_zipfile(file_path):
-    
-                    with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                        zip_ref.extractall(save_folder)
-                    os.remove(file_path)
-                else:
-                    print(f"  [WARNING] Exported file {filename} is not a zip file.")
-            else:
-                logging.info("Skipping file save/unzip as export_mi_block_component returned no content.")
-            
-            # Give OS a moment to finish file operations after unzipping/deleting the zip.
-            time.sleep(2) 
-
-            # 2. Convert .txt files to .json (if they exist)
-            logging.info("[PROCESSING] Starting TXT to JSON conversion...")
-            txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
-            logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
-            
-            converted_count = 0
-            for extracted_file in os.listdir(save_folder):
-                extracted_file_path = os.path.join(save_folder, extracted_file)
-                if extracted_file.endswith('.txt'):
-                    new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
-                    try:
-                        logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
-                        # Read and process content inside the 'with' block
-                        with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
-                            content = txt_file.read()
-                            json_content = json.loads(content)
-                        
-                        # Write to new file inside its own 'with' block
-                        with open(new_file_path, 'w', encoding="utf-8") as json_file:
-                            json.dump(json_content, json_file, indent=4)
-                        
-                        # Add a micro-sleep to help OS release the file handle before deletion
-                        time.sleep(0.05) 
-                        
-                        os.remove(extracted_file_path)
-                        converted_count += 1
-                        logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
-                    except (json.JSONDecodeError, OSError) as e:
-                        # Log the error but continue to the next file
-                        logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
-            
-            logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
-
-            # 3. Add level fields to MiBlockComponentRecords.json
-            records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
-            if os.path.exists(records_file_path):
-                try:
-                    add_levels_to_records(records_file_path)
-                    logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
-                except Exception as e:
-                    logging.error(f"[ERROR] Error adding levels to records: {e}")
-
-            # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
-            config_file_name = "MiBlockComponentConfig.json"
-            config_file_path = os.path.join(save_folder, config_file_name)
-            
-            MAX_WAIT_SECONDS = 120 # 2 minutes max wait
-            POLL_INTERVAL = 5      # Check every 5 seconds
-            start_time = time.time()
-            file_ready = False
-
-            # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
-
-            while time.time() - start_time < MAX_WAIT_SECONDS:
-                if os.path.exists(config_file_path):
-                    # Try to open the file to check if it's locked
-                    try:
-                        with open(config_file_path, 'r') as f:
-                            f.read(1) # Read a byte to confirm accessibility
-                        file_ready = True
-                        break
-                    except IOError:
-                        print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
-                else:
-                    print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
-                
-                time.sleep(POLL_INTERVAL)
-
-            if not file_ready:
-                raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
-            # --- END POLLING LOGIC ---
+        # Check if component is already downloaded
+        records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+        config_file_path = os.path.join(save_folder, "MiBlockComponentConfig.json")
+        component_already_downloaded = os.path.exists(records_file_path) and os.path.exists(config_file_path)
         
-        except FileNotFoundError as e:
-            logging.error(f"[ERROR] File Polling Failed: {e}")
-            raise # Re-raise the error to halt assembly for this component/page
+        if component_already_downloaded:
+            logging.info(f"Component ID {component_id_unpacked} already downloaded. Skipping download and unzip.")
+            print(f"  [INFO] Component already exists at: {save_folder}")
+        else:
+            # Call the API function from apis.py
+            response_content, content_disposition = export_mi_block_component(base_url, component_id_unpacked, site_id, headers)
+            
+            try:
+                # 1. Save and Unzip the exported file
+                if response_content:
+                    filename = (
+                        content_disposition.split('filename=')[1].strip('"')
+                        if content_disposition and 'filename=' in content_disposition
+                        else f"site_{site_id}.zip"
+                    )
+                    file_path = os.path.join(save_folder, filename)
+
+                    with open(file_path, "wb") as file:
+                        file.write(response_content)
+
+                    if zipfile.is_zipfile(file_path):
+                        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                            zip_ref.extractall(save_folder)
+                        os.remove(file_path)
+                    else:
+                        print(f"  [WARNING] Exported file {filename} is not a zip file.")
+                else:
+                    logging.info("Skipping file save/unzip as export_mi_block_component returned no content.")
+            
+                # Give OS a moment to finish file operations after unzipping/deleting the zip.
+                time.sleep(2) 
+
+                # 2. Convert .txt files to .json (if they exist)
+                logging.info("[PROCESSING] Starting TXT to JSON conversion...")
+                txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
+                logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
+                
+                converted_count = 0
+                for extracted_file in os.listdir(save_folder):
+                    extracted_file_path = os.path.join(save_folder, extracted_file)
+                    if extracted_file.endswith('.txt'):
+                        new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
+                        try:
+                            logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
+                            # Read and process content inside the 'with' block
+                            with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
+                                content = txt_file.read()
+                                json_content = json.loads(content)
+                            
+                            # Write to new file inside its own 'with' block
+                            with open(new_file_path, 'w', encoding="utf-8") as json_file:
+                                json.dump(json_content, json_file, indent=4)
+                            
+                            # Add a micro-sleep to help OS release the file handle before deletion
+                            time.sleep(0.05) 
+                            
+                            os.remove(extracted_file_path)
+                            converted_count += 1
+                            logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
+                        except (json.JSONDecodeError, OSError) as e:
+                            # Log the error but continue to the next file
+                            logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
+                
+                logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
+
+                # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
+                config_file_name = "MiBlockComponentConfig.json"
+                config_file_path = os.path.join(save_folder, config_file_name)
+                
+                MAX_WAIT_SECONDS = 120 # 2 minutes max wait
+                POLL_INTERVAL = 5      # Check every 5 seconds
+                start_time = time.time()
+                file_ready = False
+
+                # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
+
+                while time.time() - start_time < MAX_WAIT_SECONDS:
+                    if os.path.exists(config_file_path):
+                        # Try to open the file to check if it's locked
+                        try:
+                            with open(config_file_path, 'r') as f:
+                                f.read(1) # Read a byte to confirm accessibility
+                            file_ready = True
+                            break
+                        except IOError:
+                            print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
+                    else:
+                        print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
+                    
+                    time.sleep(POLL_INTERVAL)
+
+                if not file_ready:
+                    raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
+                # --- END POLLING LOGIC ---
+            
+            except FileNotFoundError as e:
+                logging.error(f"[ERROR] File Polling Failed: {e}")
+                raise # Re-raise the error to halt assembly for this component/page
+        
+        # 3. Add level fields to MiBlockComponentRecords.json (for both downloaded and existing components)
+        records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+        if os.path.exists(records_file_path):
+            try:
+                add_levels_to_records(records_file_path)
+                logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
+            except Exception as e:
+                logging.error(f"[ERROR] Error adding levels to records: {e}")
 
         createPayloadJson(site_id,miBlockId) #this is only to create ComponentHierarchy.json 
         createRecordsPayload(site_id,miBlockId) #this will fetch and create a single set of records for dummy data creates file ComponentRecordsTree.json
@@ -424,22 +453,67 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     print("before")
     print(page_template_id)
 
+    logging.info(f"[TIMING] Starting CreatePage for page '{page_name}'...")
+    create_start_time = time.time()
     data = CreatePage(base_url, headers, payload,page_template_id)
-    # print(data)
+    create_time = time.time() - create_start_time
+    logging.info(f"[TIMING] CreatePage completed in {create_time:.2f} seconds")
+    
+    # Track timing
+    if "CreatePage" not in TIMING_TRACKER:
+        TIMING_TRACKER["CreatePage"] = []
+    TIMING_TRACKER["CreatePage"].append(create_time)
+    
+    # Check if CreatePage returned an error
+    if isinstance(data, dict) and "error" in data:
+        error_msg = data.get("details", "Unknown error")
+        status_code = data.get("status_code", "N/A")
+        logging.error(f"[ERROR] Page creation failed for '{page_name}': {error_msg} (Status: {status_code})")
+        logging.error(f"[ERROR] Skipping page '{page_name}' - cannot proceed without PageId")
+        return data  # Return early, don't proceed with mapping/publishing
 
     # Access the 'pageId' key and print its value
     page_id = data.get("PageId")
 
     if page_id is not None:
+        logging.info(f"[SUCCESS] Page '{page_name}' created successfully with Page ID: {page_id}")
         print(f"The Page ID is: {page_id}")
     else:
+        logging.error(f"[ERROR] 'PageId' key not found in the returned data for page '{page_name}'")
+        logging.error(f"[ERROR] Response data: {data}")
         print("Error: 'pageId' key not found in the returned data.")
+        return data  # Return early, don't proceed with mapping/publishing
 
-
-    updatePageMapping(base_url, headers,page_id,site_id,header_footer_details)
-    publishPage(base_url, headers,page_id,site_id,header_footer_details)
-
+    # Add delay before mapping to avoid API blocking
+    logging.info(f"[TIMING] Starting updatePageMapping for page '{page_name}' (ID: {page_id})")
+    start_time = time.time()
+    try:
+        updatePageMapping(base_url, headers,page_id,site_id,header_footer_details)
+        mapping_time = time.time() - start_time
+        logging.info(f"[TIMING] updatePageMapping completed in {mapping_time:.2f} seconds")
+        
+        # Track timing
+        if "updatePageMapping" not in TIMING_TRACKER:
+            TIMING_TRACKER["updatePageMapping"] = []
+        TIMING_TRACKER["updatePageMapping"].append(mapping_time)
+    except Exception as e:
+        logging.error(f"[ERROR] updatePageMapping failed for page '{page_name}' (ID: {page_id}): {e}")
+        logging.exception("Full traceback:")
+        # Even if mapping fails, we still queue the page for potential publish
     
+    # Instead of publishing immediately, queue this page for publish at the end
+    try:
+        PAGES_TO_PUBLISH.append({
+            "page_id": page_id,
+            "page_name": page_name,
+            "header_footer_details": header_footer_details
+        })
+        logging.info(f"[PUBLISH QUEUE] Queued page '{page_name}' (ID: {page_id}) for publish at end of assembly.")
+    except Exception as e:
+        logging.error(f"[ERROR] Failed to queue page '{page_name}' (ID: {page_id}) for publish: {e}")
+        logging.exception("Full traceback:")
+    
+    # No immediate publish here; publish will be handled in a separate final step
     return data
 
 
@@ -544,8 +618,34 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
     # print("-----------------------------")
 
     try:
+        # Add small delay before mapping API to avoid rate limiting
+        time.sleep(1)
         # Call the API to update the page mapping
+        logging.info(f"[TIMING] Calling psMappingApi with {len(new_api_payload)} mappings...")
+        mapping_api_start = time.time()
         api_response_data = psMappingApi(base_url, headers, new_api_payload)
+        mapping_api_time = time.time() - mapping_api_start
+        logging.info(f"[TIMING] psMappingApi completed in {mapping_api_time:.2f} seconds")
+        
+        # Track timing
+        if "psMappingApi" not in TIMING_TRACKER:
+            TIMING_TRACKER["psMappingApi"] = []
+        TIMING_TRACKER["psMappingApi"].append(mapping_api_time)
+        
+        # Check for 500 error response
+        if isinstance(api_response_data, dict) and api_response_data.get("status_code") == 500:
+            logging.error(f"[ERROR] 500 Internal Server Error during page mapping for Page ID {page_id}")
+            logging.warning(f"[WARNING] Retrying mapping after 5 second delay...")
+            time.sleep(5)
+            # Retry once
+            try:
+                api_response_data = psMappingApi(base_url, headers, new_api_payload)
+                if api_response_data == "Page Content Mappings updated successfully.":
+                    logging.info(f"[SUCCESS] Page mapping retry successful for Page ID {page_id}")
+                else:
+                    logging.error(f"[ERROR] Page mapping retry failed for Page ID {page_id}")
+            except Exception as retry_err:
+                logging.error(f"[ERROR] Page mapping retry exception: {retry_err}")
         
         # Check for the specific success string (Your original success logic)
         if api_response_data == "Page Content Mappings updated successfully.":
@@ -672,12 +772,93 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
     # print("---------------------------------")
     
     # Pass the final DICTIONARY payload to your publishing API function
+    # Add delay before API call to avoid blocking (publish API can get rate-limited)
+    logging.info(f"[TIMING] Waiting 2 seconds before calling psPublishApi to avoid rate limiting...")
+    time.sleep(2)
+    
     try:
-        psPublishApi(base_url, headers, site_id, final_api_payload)
+        logging.info(f"[TIMING] Calling psPublishApi with {len(publish_payload)} items...")
+        api_start_time = time.time()
+        api_result = psPublishApi(base_url, headers, site_id, final_api_payload)
+        api_time = time.time() - api_start_time
+        logging.info(f"[TIMING] psPublishApi completed in {api_time:.2f} seconds")
+        
+        # Track timing
+        if "psPublishApi" not in TIMING_TRACKER:
+            TIMING_TRACKER["psPublishApi"] = []
+        TIMING_TRACKER["psPublishApi"].append(api_time)
+        
+        # Check for 500 error and retry
+        if isinstance(api_result, dict) and api_result.get("status_code") == 500:
+            logging.error(f"[ERROR] 500 Internal Server Error during publish for Page ID {page_id}")
+            logging.warning(f"[WARNING] Retrying publish after 5 second delay...")
+            time.sleep(5)
+            # Retry once
+            try:
+                api_result = psPublishApi(base_url, headers, site_id, final_api_payload)
+                if isinstance(api_result, dict) and api_result.get("status") == "error":
+                    logging.error(f"[ERROR] Publish retry failed for Page ID {page_id}")
+                else:
+                    logging.info(f"[SUCCESS] Publish retry successful for Page ID {page_id}")
+            except Exception as retry_err:
+                logging.error(f"[ERROR] Publish retry exception: {retry_err}")
+                
     except Exception as e:
-        print(f"\n[ERROR] **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+        logging.error(f"\n[ERROR] **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
+        logging.exception("Full traceback:")
 
     return len(publish_payload)
+
+
+def publish_queued_pages(base_url: str, headers: Dict[str, str], site_id: int) -> int:
+    """
+    Publishes all pages that were queued during assembly.
+    This function is called once at the end of the assembly step to avoid
+    calling publish APIs in the middle of the main page loop.
+    """
+    if not PAGES_TO_PUBLISH:
+        logging.info("[PUBLISH] No pages queued for publish. Skipping final publish step.")
+        return 0
+    
+    logging.info("\n========================================================")
+    logging.info("STEP 6: PUBLISHING QUEUED PAGES")
+    logging.info("========================================================")
+    
+    total_pages = len(PAGES_TO_PUBLISH)
+    success_count = 0
+    
+    for idx, entry in enumerate(PAGES_TO_PUBLISH, 1):
+        page_id = entry.get("page_id")
+        page_name = entry.get("page_name", f"Page-{page_id}")
+        header_footer_details = entry.get("header_footer_details", {})
+        
+        if not page_id:
+            logging.warning(f"[PUBLISH] Skipping queued entry {idx}/{total_pages}: missing page_id.")
+            continue
+        
+        # Add delay before publish to avoid API blocking (publish API can get blocked)
+        logging.info(f"[TIMING] Waiting 3 seconds before publish of queued page '{page_name}' (ID: {page_id}) to avoid API blocking...")
+        time.sleep(3)
+        
+        logging.info(f"[TIMING] Starting publishPage for queued page '{page_name}' (ID: {page_id}) [{idx}/{total_pages}]")
+        start_time = time.time()
+        try:
+            publishPage(base_url, headers, page_id, site_id, header_footer_details)
+            publish_time = time.time() - start_time
+            logging.info(f"[TIMING] publishPage for '{page_name}' completed in {publish_time:.2f} seconds")
+            
+            # Track timing
+            if "publishPage" not in TIMING_TRACKER:
+                TIMING_TRACKER["publishPage"] = []
+            TIMING_TRACKER["publishPage"].append(publish_time)
+            
+            success_count += 1
+        except Exception as e:
+            logging.error(f"[ERROR] publishPage failed for queued page '{page_name}' (ID: {page_id}): {e}")
+            logging.exception("Full traceback:")
+    
+    logging.info(f"[PUBLISH] Queued publish complete: {success_count}/{total_pages} pages processed.")
+    return success_count
 
 def CreatePage(base_url, headers, payload,template_id):
     """
@@ -792,8 +973,10 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
 
     print(f"    [INFO] Found {len(records_to_migrate)} {level_name} component(s) to process.")
     
+    # PHASE 2: COLLECT ALL RECORDS FOR BULK PROCESSING
+    records_payload_list = []
+    record_index_map = {}  # Map record index to record object for later processing
     
-    # PHASE 2: MIGRATE AND TAG CHILDREN (NEXT LEVEL)
     for index, record in enumerate(records_to_migrate): 
         
         old_component_id = record.get("ComponentId") 
@@ -822,43 +1005,77 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
             "tags": tags_value,
             "displayOrder": record.get("DisplayOrder", 0), 
             "updatedBy": record.get("UpdatedBy", 0),
-            "pageSectionGuid": pageSectionGuid # GUID is still required here for the API call
+            "pageSectionGuid": pageSectionGuid  # Unique GUID per component instance (same as main component for this component)
         }
-        api_payload = {"main_record_set": [single_record]}
-
-        # Call the API to create the record
-        resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
         
-        # --- Extract New Record ID ---
-        new_record_id = None
-        if resp_success and isinstance(resp_data, dict) and (0 in resp_data or "0" in resp_data):
-            new_record_id = (resp_data.get(0) or resp_data.get("0")) + index + 1
+        # Store record and its metadata for bulk processing
+        records_payload_list.append(single_record)
+        record_index_map[index] = {
+            "record": record,
+            "old_id": current_record_old_id,
+            "index": index
+        }
+    
+    # PHASE 3: BULK PROCESS ALL RECORDS AT THIS LEVEL
+    if records_payload_list:
+        logging.info(f"[BULK] Processing {len(records_payload_list)} {level_name} records in bulk...")
+        resp_success, resp_data = addUpdateRecordsToCMS_bulk(base_url, headers, records_payload_list)
         
-        if new_record_id:
-            migrated_count += 1
-            # print(f"    [SUCCESS] CMS Record Created. Old Record ID: {current_record_old_id} -> New RecordId: {new_record_id}")
-            
-            # A. Update the current record with its own new ID and mark as migrated
-            record["isMigrated"] = True
-            record["new_record_id"] = new_record_id
-            # REMOVED: record["sectionGuid"] = pageSectionGuid
-            
-            # B. Tag next-level children (N+1)
-            updated_children_count = 0
-            for child in records:
-                # Use the child's 'ParentId' (which links to the current record's 'Id')
-                if isinstance(child, dict) and child.get("ParentId") == current_record_old_id:
-                    child["parent_new_record_id"] = new_record_id
-                    # REMOVED: child["sectionGuid"] = pageSectionGuid 
-                    updated_children_count += 1
-            
-            if updated_children_count > 0:
-                print(f"    [TAGGED] Linked {updated_children_count} Level {level+1} record(s) to new parent ID {new_record_id}.")
-            
+        if resp_success and isinstance(resp_data, dict):
+            # PHASE 4: UPDATE RECORDS WITH NEW IDs AND TAG CHILDREN
+            for index, record_info in record_index_map.items():
+                record = record_info["record"]
+                current_record_old_id = record_info["old_id"]
+                record_index = record_info["index"]
+                
+                # Get the new record ID from response (using index as key)
+                new_record_id = resp_data.get(record_index) or resp_data.get(str(record_index))
+                
+                if new_record_id:
+                    migrated_count += 1
+                    
+                    # A. Update the current record with its own new ID and mark as migrated
+                    record["isMigrated"] = True
+                    record["new_record_id"] = new_record_id
+                    
+                    # B. Tag next-level children (N+1)
+                    updated_children_count = 0
+                    for child in records:
+                        # Use the child's 'ParentId' (which links to the current record's 'Id')
+                        if isinstance(child, dict) and child.get("ParentId") == current_record_old_id:
+                            child["parent_new_record_id"] = new_record_id
+                            updated_children_count += 1
+                    
+                    if updated_children_count > 0:
+                        print(f"    [TAGGED] Linked {updated_children_count} Level {level+1} record(s) to new parent ID {new_record_id}.")
+                else:
+                    print(f"    [WARNING] Failed to get new record ID for {level_name} record ID {current_record_old_id}.")
         else:
-            print(f"    [WARNING] Failed to update CMS record for {level_name} ID {current_record_old_id}. Response: {resp_data}")
+            logging.error(f"[BULK] Failed to process {level_name} records in bulk: {resp_data}")
+            # Fallback to individual processing if bulk fails
+            logging.warning(f"[FALLBACK] Attempting individual record processing for {level_name}...")
+            for index, record_info in record_index_map.items():
+                record = record_info["record"]
+                current_record_old_id = record_info["old_id"]
+                single_record = records_payload_list[index]
+                api_payload = {"main_record_set": [single_record]}
+                resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
+                
+                new_record_id = None
+                if resp_success and isinstance(resp_data, dict) and (0 in resp_data or "0" in resp_data):
+                    new_record_id = resp_data.get(0) or resp_data.get("0")
+                
+                if new_record_id:
+                    migrated_count += 1
+                    record["isMigrated"] = True
+                    record["new_record_id"] = new_record_id
+                    
+                    # Tag children
+                    for child in records:
+                        if isinstance(child, dict) and child.get("ParentId") == current_record_old_id:
+                            child["parent_new_record_id"] = new_record_id
 
-    # PHASE 3: WRITE UPDATES BACK TO FILE (Persistence)
+    # PHASE 5: WRITE UPDATES BACK TO FILE (Persistence)
     if migrated_count > 0:
         try:
             with open(records_file_path, 'w', encoding='utf-8') as wf:
@@ -932,12 +1149,13 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                     "status": record.get("Status", True), "tags": tags_value,
                     "displayOrder": record.get("DisplayOrder", 0), 
                     "updatedBy": record.get("UpdatedBy", 0),
-                    "pageSectionGuid": pageSectionGuid 
+                    "pageSectionGuid": pageSectionGuid  # Unique GUID per component instance
                 }
+                logging.debug(f"[GUID] MainComponent record using pageSectionGuid: {pageSectionGuid} for component {component_id} (alias: {component_alias})")
 
                 api_payload = {"main_record_set": [single_record]}
 
-                # Call the API to create the record
+                # Call the API to create the record (using bulk API for potential future batching)
                 # NOTE: The implementation above will return True, {0: 2981622}
                 resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
                 
@@ -1789,6 +2007,8 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         return
 
     # --- ACCUMULATION PHASE: Component Loop (NOW APPLIES TO ALL PAGES) ---
+    # IMPORTANT: Process components in the exact order they appear in simplified.json
+    # Do NOT sort or reorder - maintain sequence as defined in JSON
     for component_name in components:
         status_entry = {
             "page": page_name, "component": component_name, "level": page_level,
@@ -1811,8 +2031,17 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             # 🛑 CONDITION CHECK REMOVED 🛑
             try:
                 logging.info(f"Attempting content retrieval for page: {page_name}")
+                logging.info(f"[TIMING] Starting add_records_for_page for '{page_name}' with component '{component_name}'...")
+                records_start_time = time.time()
                 # Call function to get section payload (HTML snippet) and add records
                 section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+                records_time = time.time() - records_start_time
+                logging.info(f"[TIMING] add_records_for_page completed in {records_time:.2f} seconds")
+                
+                # Track timing
+                if "add_records_for_page" not in TIMING_TRACKER:
+                    TIMING_TRACKER["add_records_for_page"] = []
+                TIMING_TRACKER["add_records_for_page"].append(records_time)
                 status_entry["status"] = "SUCCESS: Content retrieved and records added to assembly queue."
             except Exception as e:
                 logging.error(f"Content retrieval failed for {page_name}/{component_name}: {e}")
@@ -1831,7 +2060,12 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
     # --- FINALIZATION PHASE (NOW APPLIES TO ALL PAGES) ---
     
     # Check if any sections were successfully retrieved and contain data
-    if page_sections_html and any(page_sections_html): 
+    # Also check if sections contain non-empty strings (not just empty strings)
+    has_content = page_sections_html and any(section and section.strip() for section in page_sections_html if section)
+    
+    logging.info(f"[DEBUG] Page '{page_name}': page_sections_html count={len(page_sections_html) if page_sections_html else 0}, has_content={has_content}")
+    
+    if has_content: 
         
         # Concatenate all component HTML sections in order
         all_sections_concatenated = "".join(page_sections_html)
@@ -1890,11 +2124,28 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         # 🛑 CONDITION CHECK REMOVED 🛑
         logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
         # 🌟 STEP 3: Pass the page_template_id to pageAction
-        pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details)
+        try:
+            result = pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details)
+            
+            # Check if pageAction returned an error
+            if isinstance(result, dict) and "error" in result:
+                logging.error(f"[ERROR] pageAction returned error for page '{page_name}': {result.get('details', 'Unknown error')}")
+            else:
+                page_id = result.get("PageId") if isinstance(result, dict) else None
+                if page_id:
+                    logging.info(f"[SUCCESS] Page '{page_name}' processed successfully (PageId: {page_id})")
+                else:
+                    logging.warning(f"[WARNING] pageAction completed for '{page_name}' but PageId not found in response")
+        except Exception as e:
+            logging.error(f"[ERROR] pageAction failed for page '{page_name}': {e}")
+            logging.exception("Full traceback:")
+            # Continue processing other pages even if this one fails
             
     else:
         # Adjusted logging for general page failure
         logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved/assembled to proceed to pageAction. Skipping pageAction.")
+        logging.warning(f"[SKIP] Page '{page_name}' will not be created - no HTML content available")
+        logging.info(f"[DEBUG] page_sections_html length: {len(page_sections_html) if page_sections_html else 0}")
         return
         
 # --- TRAVERSAL FUNCTIONS TO PASS CACHE AND NEW PARAMS ---
@@ -2110,6 +2361,8 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         new_hierarchy = initial_hierarchy + [current_page_name]
         parent_page_name = current_page_name
         # Go to sub-pages (level2)
+        # IMPORTANT: Process sub_pages in the exact order they appear in simplified.json
+        # Do NOT sort or reorder - maintain sequence as defined in JSON
         for sub_page_data in top_level_page.get("sub_pages", []):
             assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers,parent_page_name)
         # else:
@@ -2345,91 +2598,143 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                             
                             if component_id:
                                 downloaded_component_id = component_id  # Store for later use
-                                logging.info(f"Downloading component with ID: {component_id}")
-                                print(f"\n{'='*80}")
-                                print(f"Downloading component: {menu_component_name} (ID: {component_id})")
-                                print(f"{'='*80}\n")
                                 
-                                # Call export API to download zip
-                                response_content, content_disposition = export_mi_block_component(
-                                    api_base_url, component_id, site_id, api_headers
-                                )
+                                # Check if component is already downloaded
+                                mi_block_folder = f"mi-block-ID-{component_id}"
+                                output_dir = os.path.join("output", str(site_id))
+                                save_folder = os.path.join(output_dir, mi_block_folder)
+                                records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+                                config_file_path = os.path.join(save_folder, "MiBlockComponentConfig.json")
+                                component_already_downloaded = os.path.exists(records_file_path) and os.path.exists(config_file_path)
                                 
-                                if response_content:
-                                    # Set up export folder structure
-                                    mi_block_folder = f"mi-block-ID-{component_id}"
-                                    output_dir = os.path.join("output", str(site_id))
-                                    save_folder = os.path.join(output_dir, mi_block_folder)
-                                    os.makedirs(save_folder, exist_ok=True)
-                                    
-                                    # Save the zip file
-                                    filename = (
-                                        content_disposition.split('filename=')[1].strip('"')
-                                        if content_disposition and 'filename=' in content_disposition
-                                        else f"component_{component_id}.zip"
-                                    )
-                                    file_path = os.path.join(save_folder, filename)
-                                    
-                                    logging.info(f"Saving zip file to: {file_path}")
-                                    print(f"[SAVE] Saving zip file...")
-                                    with open(file_path, "wb") as file:
-                                        file.write(response_content)
-
-                                    if zipfile.is_zipfile(file_path):
-                                        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                                            zip_ref.extractall(save_folder)
-                                        os.remove(file_path)
-                                    else:
-                                        print(f"  [WARNING] Exported file {filename} is not a zip file.")
-                                    
-                                    file_size = len(response_content)
-                                    logging.info(f"[SUCCESS] Zip file saved successfully! Size: {file_size} bytes")
-                                    print(f"[SUCCESS] Zip file saved successfully!")
-                                    print(f"   File: {filename}")
-                                    print(f"   Size: {file_size} bytes")
-                                    print(f"   Location: {file_path}")
+                                if component_already_downloaded:
+                                    logging.info(f"Component ID {component_id} already downloaded. Skipping download and unzip.")
+                                    print(f"\n{'='*80}")
+                                    print(f"Component already exists: {menu_component_name} (ID: {component_id})")
+                                    print(f"Location: {save_folder}")
                                     print(f"{'='*80}\n")
                                 else:
-                                    logging.warning(f"[WARNING] Component export returned no content for component ID: {component_id}")
-                                    print(f"[WARNING] Component export returned no content")
+                                    logging.info(f"Downloading component with ID: {component_id}")
+                                    print(f"\n{'='*80}")
+                                    print(f"Downloading component: {menu_component_name} (ID: {component_id})")
+                                    print(f"{'='*80}\n")
+                                    
+                                    # Call export API to download zip
+                                    response_content, content_disposition = export_mi_block_component(
+                                        api_base_url, component_id, site_id, api_headers
+                                    )
+                                    
+                                    if response_content:
+                                        # Set up export folder structure
+                                        os.makedirs(save_folder, exist_ok=True)
+                                        
+                                        # Save the zip file
+                                        filename = (
+                                            content_disposition.split('filename=')[1].strip('"')
+                                            if content_disposition and 'filename=' in content_disposition
+                                            else f"component_{component_id}.zip"
+                                        )
+                                        file_path = os.path.join(save_folder, filename)
+                                        
+                                        logging.info(f"Saving zip file to: {file_path}")
+                                        print(f"[SAVE] Saving zip file...")
+                                        with open(file_path, "wb") as file:
+                                            file.write(response_content)
+
+                                        if zipfile.is_zipfile(file_path):
+                                            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                                                zip_ref.extractall(save_folder)
+                                            os.remove(file_path)
+                                        else:
+                                            print(f"  [WARNING] Exported file {filename} is not a zip file.")
+                                        
+                                        file_size = len(response_content)
+                                        logging.info(f"[SUCCESS] Zip file saved successfully! Size: {file_size} bytes")
+                                        print(f"[SUCCESS] Zip file saved successfully!")
+                                        print(f"   File: {filename}")
+                                        print(f"   Size: {file_size} bytes")
+                                        print(f"   Location: {file_path}")
+                                        print(f"{'='*80}\n")
+                                    else:
+                                        logging.warning(f"[WARNING] Component export returned no content for component ID: {component_id}")
+                                        print(f"[WARNING] Component export returned no content")
+                                
+                                # 2. Convert .txt files to .json (if they exist) - only if component was downloaded
+                                if not component_already_downloaded:
+                                    logging.info("[PROCESSING] Starting TXT to JSON conversion...")
+                                    txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
+                                    logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
+                                    
+                                    converted_count = 0
+                                    for extracted_file in os.listdir(save_folder):
+                                        extracted_file_path = os.path.join(save_folder, extracted_file)
+                                        if extracted_file.endswith('.txt'):
+                                            new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
+                                            try:
+                                                logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
+                                                # Read and process content inside the 'with' block
+                                                with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
+                                                    content = txt_file.read()
+                                                    json_content = json.loads(content)
+                                                
+                                                # Write to new file inside its own 'with' block
+                                                with open(new_file_path, 'w', encoding="utf-8") as json_file:
+                                                    json.dump(json_content, json_file, indent=4)
+                                                
+                                                # Add a micro-sleep to help OS release the file handle before deletion
+                                                time.sleep(0.05) 
+                                                
+                                                os.remove(extracted_file_path)
+                                                converted_count += 1
+                                                logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
+                                            except (json.JSONDecodeError, OSError) as e:
+                                                # Log the error but continue to the next file
+                                                logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
+                                    
+                                    logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
+
+                                    # 3. Add level fields to MiBlockComponentRecords.json
+                                    records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+                                    if os.path.exists(records_file_path):
+                                        try:
+                                            add_levels_to_records(records_file_path)
+                                            logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
+                                        except Exception as e:
+                                            logging.error(f"[ERROR] Error adding levels to records: {e}")
 
                                     
-                                time.sleep(2) 
-                                
-                                # 2. Convert .txt files to .json (if they exist)
-                                logging.info("[PROCESSING] Starting TXT to JSON conversion...")
-                                txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
-                                logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
-                                
-                                converted_count = 0
-                                for extracted_file in os.listdir(save_folder):
-                                    extracted_file_path = os.path.join(save_folder, extracted_file)
-                                    if extracted_file.endswith('.txt'):
-                                        new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
-                                        try:
-                                            logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
-                                            # Read and process content inside the 'with' block
-                                            with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
-                                                content = txt_file.read()
-                                                json_content = json.loads(content)
-                                            
-                                            # Write to new file inside its own 'with' block
-                                            with open(new_file_path, 'w', encoding="utf-8") as json_file:
-                                                json.dump(json_content, json_file, indent=4)
-                                            
-                                            # Add a micro-sleep to help OS release the file handle before deletion
-                                            time.sleep(0.05) 
-                                            
-                                            os.remove(extracted_file_path)
-                                            converted_count += 1
-                                            logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
-                                        except (json.JSONDecodeError, OSError) as e:
-                                            # Log the error but continue to the next file
-                                            logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
-                                
-                                logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
+                                    # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
+                                    config_file_name = "MiBlockComponentConfig.json"
+                                    config_file_path = os.path.join(save_folder, config_file_name)
+                                    
+                                    MAX_WAIT_SECONDS = 120 # 2 minutes max wait
+                                    POLL_INTERVAL = 5      # Check every 5 seconds
+                                    start_time = time.time()
+                                    file_ready = False
 
-                                # 3. Add level fields to MiBlockComponentRecords.json
+                                    # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
+
+                                    while time.time() - start_time < MAX_WAIT_SECONDS:
+                                        if os.path.exists(config_file_path):
+                                            # Try to open the file to check if it's locked
+                                            try:
+                                                with open(config_file_path, 'r') as f:
+                                                    f.read(1) # Read a byte to confirm accessibility
+                                                file_ready = True
+                                                break
+                                            except IOError:
+                                                print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
+                                        else:
+                                            print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
+                                        
+                                        time.sleep(POLL_INTERVAL)
+
+                                    if not file_ready:
+                                        raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
+                                    # --- END POLLING LOGIC ---
+                                
+                                # Continue with processing regardless of whether component was downloaded or already existed
+                                # 3. Add level fields to MiBlockComponentRecords.json (if not already done)
                                 records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
                                 if os.path.exists(records_file_path):
                                     try:
@@ -2437,37 +2742,6 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                         logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
                                     except Exception as e:
                                         logging.error(f"[ERROR] Error adding levels to records: {e}")
-
-                                
-                                # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
-                                config_file_name = "MiBlockComponentConfig.json"
-                                config_file_path = os.path.join(save_folder, config_file_name)
-                                
-                                MAX_WAIT_SECONDS = 120 # 2 minutes max wait
-                                POLL_INTERVAL = 5      # Check every 5 seconds
-                                start_time = time.time()
-                                file_ready = False
-
-                                # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
-
-                                while time.time() - start_time < MAX_WAIT_SECONDS:
-                                    if os.path.exists(config_file_path):
-                                        # Try to open the file to check if it's locked
-                                        try:
-                                            with open(config_file_path, 'r') as f:
-                                                f.read(1) # Read a byte to confirm accessibility
-                                            file_ready = True
-                                            break
-                                        except IOError:
-                                            print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
-                                    else:
-                                        print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
-                                    
-                                    time.sleep(POLL_INTERVAL)
-
-                                if not file_ready:
-                                    raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
-                                # --- END POLLING LOGIC ---
 
 
 
@@ -2904,13 +3178,15 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
 def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str, payload_filename: str) -> Dict[str, int]:
     """
     Updates existing records in CMS using their actual record IDs.
+    Uses bulk processing for better performance.
     """
-    logging.info(f"Calling API to UPDATE {len(records)} existing records...")
+    logging.info(f"Calling API to UPDATE {len(records)} existing records using bulk processing...")
     
-    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
     payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
     
-    updated_records = {}
+    # Prepare all records for bulk API call
+    records_payload_list = []
+    record_index_map = {}  # Map index to record for response mapping
     
     for idx, record in enumerate(records):
         page_name = record.get("matched_page_name", f"Record {idx}")
@@ -2927,22 +3203,63 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
             "updatedBy": record["updatedBy"]
         }
         
-        try:
-            logging.info(f"  [UPDATE {idx+1}/{len(records)}] '{page_name}' (recordId={record_id})")
-            response = requests.post(api_url, headers=api_headers, json=api_record, timeout=30)
-            response.raise_for_status()
+        records_payload_list.append(api_record)
+        record_index_map[idx] = {
+            "record": record,
+            "page_name": page_name,
+            "original_record_id": record_id
+        }
+    
+    # Use bulk API to process all records in parallel
+    logging.info(f"[BULK] Processing {len(records_payload_list)} menu records in bulk...")
+    resp_success, resp_data = addUpdateRecordsToCMS_bulk(api_base_url, api_headers, records_payload_list)
+    
+    updated_records = {}
+    
+    if resp_success and isinstance(resp_data, dict):
+        # Map responses back to records
+        for idx, record_info in record_index_map.items():
+            record = record_info["record"]
+            page_name = record_info["page_name"]
+            original_record_id = record_info["original_record_id"]
             
-            result = response.json()
-            result_id = result.get("result")
+            # Get the new record ID from response (using original recordId as key, or index)
+            result_id = resp_data.get(original_record_id) or resp_data.get(idx) or resp_data.get(str(idx))
             
             if result_id:
                 updated_records[page_name] = result_id
                 record["updated_recordId"] = result_id
-                logging.info(f"    [SUCCESS] Updated. Result ID: {result_id}")
+                logging.debug(f"    [SUCCESS] Updated '{page_name}'. Result ID: {result_id}")
             else:
-                logging.warning(f"    [WARNING] No result ID returned: {result}")
-        except Exception as e:
-            logging.error(f"    [ERROR] Failed to update '{page_name}': {e}")
+                logging.warning(f"    [WARNING] No result ID returned for '{page_name}' (recordId={original_record_id})")
+    else:
+        logging.error(f"[BULK] Failed to process menu records in bulk: {resp_data}")
+        # Fallback to individual processing if bulk fails
+        logging.warning(f"[FALLBACK] Attempting individual record processing...")
+        api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
+        
+        for idx, record_info in record_index_map.items():
+            record = record_info["record"]
+            page_name = record_info["page_name"]
+            original_record_id = record_info["original_record_id"]
+            api_record = records_payload_list[idx]
+            
+            try:
+                logging.info(f"  [UPDATE {idx+1}/{len(records)}] '{page_name}' (recordId={original_record_id})")
+                response = requests.post(api_url, headers=api_headers, json=api_record, timeout=30)
+                response.raise_for_status()
+                
+                result = response.json()
+                result_id = result.get("result")
+                
+                if result_id:
+                    updated_records[page_name] = result_id
+                    record["updated_recordId"] = result_id
+                    logging.info(f"    [SUCCESS] Updated. Result ID: {result_id}")
+                else:
+                    logging.warning(f"    [WARNING] No result ID returned: {result}")
+            except Exception as e:
+                logging.error(f"    [ERROR] Failed to update '{page_name}': {e}")
     
     # Save updated payload
     with open(payload_filepath, 'r', encoding='utf-8') as f:
@@ -2956,7 +3273,7 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
     with open(payload_filepath, 'w', encoding='utf-8') as f:
         json.dump(payload_data, f, indent=4, ensure_ascii=False)
     
-    logging.info(f"[SUCCESS] Successfully updated {len(updated_records)} records in CMS")
+    logging.info(f"[SUCCESS] Successfully updated {len(updated_records)}/{len(records)} records in CMS")
     return updated_records
 
 
@@ -2970,8 +3287,12 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
     
     # Group records by parent-child
-    # First, sort records by level to ensure parents come before children
-    records_sorted = sorted(records, key=lambda r: r.get("level") or r.get("matched_page_level", 0))
+    # IMPORTANT: Maintain order from simplified.json - only sort by level, then preserve original order within each level
+    # Sort by level first to ensure parents come before children, but maintain displayOrder within each level
+    records_sorted = sorted(records, key=lambda r: (
+        r.get("level") or r.get("matched_page_level", 0),  # Primary: level
+        r.get("displayOrder", 999)  # Secondary: displayOrder to maintain menu sequence
+    ))
     
     parent_child_groups = {}
     record_order = []
@@ -3011,7 +3332,9 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             
             if parent_name in parent_child_groups:
                 parent_child_groups[parent_name]["children"].append(r)
-                logging.info(f"[SUCCESS] Added level {rec_level} record '{page_name}' to parent group '{parent_name}'")
+                # Sort children by displayOrder to maintain sequence from simplified.json
+                parent_child_groups[parent_name]["children"].sort(key=lambda c: c.get("displayOrder", 999))
+                logging.info(f"[SUCCESS] Added level {rec_level} record '{page_name}' to parent group '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
             else:
                 # Parent is matched (not in new_records), child needs to be saved separately
                 # We'll need to get the parent's record ID from matched_records
@@ -3092,7 +3415,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     
     saved_records = {}
     
-    # Process each group: parent → children
+    # Process each group: parent → children (sequential, preserves hierarchy)
     for group_idx, group_name in enumerate(record_order):
         group = parent_child_groups[group_name]
         parent_rec = group["parent"]
@@ -3195,7 +3518,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                     else:
                         logging.error(f"    [ERROR] No result ID")
                 except Exception as e:
-                    logging.error(f"    [ERROR] Failed: {e}")
+                    logging.error(f"    [ERROR] Failed to save child '{child_name}': {e}")
         
         except Exception as e:
             logging.error(f"  [ERROR] Failed to save parent '{group_name}': {e}")
@@ -3732,8 +4055,11 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         if api_base_url and api_headers:
             logging.info("Calling API to UPDATE matched records in CMS...")
             
-            # Sort by level to ensure level 1 is updated before level 2
-            api_payloads.sort(key=lambda r: r.get("matched_page_level", 0))
+            # Sort by level first, then by displayOrder to maintain menu sequence from simplified.json
+            api_payloads.sort(key=lambda r: (
+                r.get("matched_page_level", 0),  # Primary: level
+                r.get("displayOrder", 999)  # Secondary: displayOrder to maintain menu sequence
+            ))
             
             # Call update API (uses existing record IDs)
             call_update_miblock_records_api(api_base_url, api_headers, api_payloads, file_prefix, output_filename)
@@ -3767,9 +4093,253 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         return False
 
 
+# ================= Pre-download All Components Function =================
+
+def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]]) -> List[Tuple[int, str, str]]:
+    """
+    Collects all unique component IDs that will be needed during assembly.
+    Returns a list of tuples: (componentId, component_name, cms_component_name)
+    """
+    component_ids = set()  # Use set to avoid duplicates
+    component_info_list = []
+    
+    def traverse_pages(page_node: Dict[str, Any]):
+        """Recursively traverse all pages to collect component names."""
+        components = page_node.get('components', [])
+        for component_name in components:
+            # Check if component is available in cache
+            api_result = check_component_availability(component_name, component_cache)
+            if api_result:
+                vComponentId, alias, componentId, cms_component_name = api_result
+                # Add to set if not already present
+                if componentId not in component_ids:
+                    component_ids.add(componentId)
+                    component_info_list.append((componentId, component_name, cms_component_name))
+        
+        # Recursively process sub_pages
+        for sub_page in page_node.get('sub_pages', []):
+            traverse_pages(sub_page)
+    
+    # Traverse all top-level pages
+    pages = processed_json.get('pages', [])
+    for page in pages:
+        traverse_pages(page)
+    
+    logging.info(f"Collected {len(component_info_list)} unique components to pre-download")
+    return component_info_list
+
+
+def pre_download_all_components(
+    processed_json: Dict[str, Any],
+    component_cache: List[Dict[str, Any]],
+    api_base_url: str,
+    site_id: int,
+    api_headers: Dict[str, str]
+) -> Dict[int, bool]:
+    """
+    Pre-downloads all components that will be needed during assembly.
+    Downloads all components, then unzips all, then converts all TXT to JSON.
+    
+    Returns:
+        Dict mapping componentId -> success status (True/False)
+    """
+    logging.info("\n========================================================")
+    logging.info("PRE-DOWNLOAD: Collecting all component IDs...")
+    logging.info("========================================================")
+    
+    # Step 1: Collect all component IDs
+    component_info_list = collect_all_component_ids(processed_json, component_cache)
+    
+    if not component_info_list:
+        logging.info("No components found to pre-download.")
+        return {}
+    
+    logging.info(f"\nFound {len(component_info_list)} unique components to download:")
+    for comp_id, comp_name, cms_name in component_info_list:
+        logging.info(f"  - {comp_name} (ID: {comp_id}, CMS: {cms_name})")
+    
+    # Step 2: Download all components (override if already exists)
+    logging.info("\n========================================================")
+    logging.info("PRE-DOWNLOAD: Phase 1 - Downloading all components...")
+    logging.info("========================================================")
+    
+    download_results = {}  # componentId -> (success, save_folder)
+    output_dir = os.path.join("output", str(site_id))
+    
+    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
+        mi_block_folder = f"mi-block-ID-{component_id}"
+        save_folder = os.path.join(output_dir, mi_block_folder)
+        os.makedirs(save_folder, exist_ok=True)
+        
+        try:
+            logging.info(f"[{idx}/{len(component_info_list)}] Downloading component {component_id} ({component_name})...")
+            response_content, content_disposition = export_mi_block_component(
+                api_base_url, component_id, site_id, api_headers
+            )
+            
+            if response_content:
+                os.makedirs(save_folder, exist_ok=True)
+                
+                filename = (
+                    content_disposition.split('filename=')[1].strip('"')
+                    if content_disposition and 'filename=' in content_disposition
+                    else f"component_{component_id}.zip"
+                )
+                file_path = os.path.join(save_folder, filename)
+                
+                # Save zip file
+                with open(file_path, "wb") as file:
+                    file.write(response_content)
+                
+                download_results[component_id] = (True, save_folder)
+                logging.info(f"  [SUCCESS] Downloaded {component_id} ({len(response_content)} bytes)")
+            else:
+                download_results[component_id] = (False, save_folder)
+                logging.warning(f"  [WARNING] No content returned for component {component_id}")
+        except Exception as e:
+            download_results[component_id] = (False, save_folder)
+            logging.error(f"  [ERROR] Failed to download component {component_id}: {e}")
+    
+    # Step 3: Unzip all downloaded components
+    logging.info("\n========================================================")
+    logging.info("PRE-DOWNLOAD: Phase 2 - Unzipping all components...")
+    logging.info("========================================================")
+    
+    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get(component_id, (False, None))
+        if not success or not save_folder:
+            continue
+        
+        # Find zip file in save_folder
+        zip_files = [f for f in os.listdir(save_folder) if f.endswith('.zip')] if os.path.exists(save_folder) else []
+        
+        for zip_file in zip_files:
+            zip_path = os.path.join(save_folder, zip_file)
+            try:
+                if zipfile.is_zipfile(zip_path):
+                    logging.info(f"[{idx}/{len(component_info_list)}] Unzipping {component_id} ({component_name})...")
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(save_folder)
+                    os.remove(zip_path)
+                    logging.info(f"  [SUCCESS] Unzipped {component_id}")
+                else:
+                    logging.warning(f"  [WARNING] {zip_file} is not a valid zip file")
+            except Exception as e:
+                logging.error(f"  [ERROR] Failed to unzip {component_id}: {e}")
+    
+    # Give OS time to finish file operations
+    time.sleep(2)
+    
+    # Step 4: Convert all TXT files to JSON
+    logging.info("\n========================================================")
+    logging.info("PRE-DOWNLOAD: Phase 3 - Converting TXT to JSON...")
+    logging.info("========================================================")
+    
+    total_converted = 0
+    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get(component_id, (False, None))
+        if not success or not save_folder or not os.path.exists(save_folder):
+            continue
+        
+        txt_files = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
+        if not txt_files:
+            continue
+        
+        logging.info(f"[{idx}/{len(component_info_list)}] Converting TXT files for {component_id} ({component_name})...")
+        converted_count = 0
+        
+        for txt_file in txt_files:
+            txt_path = os.path.join(save_folder, txt_file)
+            json_path = os.path.splitext(txt_path)[0] + '.json'
+            
+            try:
+                with open(txt_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    json_content = json.loads(content)
+                
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(json_content, f, indent=4)
+                
+                os.remove(txt_path)
+                converted_count += 1
+                total_converted += 1
+            except Exception as e:
+                logging.error(f"  [ERROR] Failed to convert {txt_file} for {component_id}: {e}")
+        
+        if converted_count > 0:
+            logging.info(f"  [SUCCESS] Converted {converted_count} file(s) for {component_id}")
+    
+    logging.info(f"\n[SUCCESS] Total files converted: {total_converted}")
+    
+    # Step 5: Add level fields to all MiBlockComponentRecords.json files
+    logging.info("\n========================================================")
+    logging.info("PRE-DOWNLOAD: Phase 4 - Adding level fields to records...")
+    logging.info("========================================================")
+    
+    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get(component_id, (False, None))
+        if not success or not save_folder:
+            continue
+        
+        records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+        if os.path.exists(records_file_path):
+            try:
+                add_levels_to_records(records_file_path)
+                logging.info(f"[{idx}/{len(component_info_list)}] [SUCCESS] Added level fields for {component_id}")
+            except Exception as e:
+                logging.error(f"[{idx}/{len(component_info_list)}] [ERROR] Failed to add levels for {component_id}: {e}")
+    
+    # Step 6: Verify config files are accessible (quick check, no polling needed after unzip)
+    logging.info("\n========================================================")
+    logging.info("PRE-DOWNLOAD: Phase 5 - Verifying config files are accessible...")
+    logging.info("========================================================")
+    
+    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get(component_id, (False, None))
+        if not success or not save_folder:
+            continue
+        
+        config_file_path = os.path.join(save_folder, "MiBlockComponentConfig.json")
+        
+        # Quick check - files should already be ready after unzip
+        if os.path.exists(config_file_path):
+            try:
+                # Try to open and read a byte to verify accessibility
+                with open(config_file_path, 'r') as f:
+                    f.read(1)
+                logging.info(f"[{idx}/{len(component_info_list)}] [SUCCESS] Config file accessible for {component_id}")
+            except IOError as e:
+                logging.warning(f"[{idx}/{len(component_info_list)}] [WARNING] Config file locked for {component_id}: {e}")
+        else:
+            logging.warning(f"[{idx}/{len(component_info_list)}] [WARNING] Config file not found for {component_id}")
+    
+    # Return success status for each component
+    result_status = {comp_id: success for comp_id, (success, _) in download_results.items()}
+    
+    logging.info("\n========================================================")
+    logging.info(f"PRE-DOWNLOAD: Complete! {sum(1 for s in result_status.values() if s)}/{len(result_status)} components ready")
+    logging.info("========================================================")
+    
+    return result_status
+
+
 # ================= Main Entry Function (Uses Dynamic Config) =================
 
 def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *args, **kwargs) -> Dict[str, Any]:
+    """
+    Main assembly step.
+
+    Responsibilities:
+    - Load dynamic configuration and API details for the current file prefix.
+    - Load the processed page tree (pages, components, menu info) from previous steps.
+    - Pre-download all required components (MiBlocks), unzip, convert TXT→JSON, and add level metadata.
+    - Assemble HTML for each page by stitching all component sections plus headers/footers.
+    - Create pages in CMS, update page–MiBlock mappings, and queue pages for final publish.
+    - At the end, publish all queued pages, write an assembly status CSV, and emit timing statistics.
+
+    Returns:
+    - Dict with high-level assembly status, file_prefix, report filename, and timing summary.
+    """
     logging.info("========================================================")
     logging.info("Started Assembly")
     # --- 1. Setup/File Extraction ---
@@ -3843,7 +4413,16 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     
     # The import check is removed since it's confirmed to be in apis.py
     try:
+        logging.info("[TIMING] Starting GetAllVComponents...")
+        cache_start_time = time.time()
         vcomponent_cache = GetAllVComponents(api_base_url, api_headers, page_size=1000)
+        cache_time = time.time() - cache_start_time
+        logging.info(f"[TIMING] GetAllVComponents completed in {cache_time:.2f} seconds")
+        
+        # Track timing
+        if "GetAllVComponents" not in TIMING_TRACKER:
+            TIMING_TRACKER["GetAllVComponents"] = []
+        TIMING_TRACKER["GetAllVComponents"].append(cache_time)
     except Exception as e:
         logging.error(f"FATAL: Exception during V-Component list retrieval: {e}")
         logging.exception("Full exception traceback:")
@@ -3866,10 +4445,60 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
 
     logging.info(f"Successfully loaded {len(vcomponent_cache)} components into cache for fast lookup.")
 
+    # --- 4.5. PRE-DOWNLOAD ALL COMPONENTS (NEW OPTIMIZATION) ---
+    logging.info("\n========================================================")
+    logging.info("STEP 4.5: PRE-DOWNLOADING ALL COMPONENTS")
+    logging.info("========================================================")
+    
+    try:
+        logging.info("[TIMING] Starting pre_download_all_components...")
+        pre_download_start_time = time.time()
+        pre_download_results = pre_download_all_components(
+            full_payload,
+            vcomponent_cache,
+            api_base_url,
+            site_id,
+            api_headers
+        )
+        pre_download_time = time.time() - pre_download_start_time
+        logging.info(f"[TIMING] pre_download_all_components completed in {pre_download_time:.2f} seconds")
+        
+        # Track timing
+        if "pre_download_all_components" not in TIMING_TRACKER:
+            TIMING_TRACKER["pre_download_all_components"] = []
+        TIMING_TRACKER["pre_download_all_components"].append(pre_download_time)
+        
+        successful_downloads = sum(1 for success in pre_download_results.values() if success)
+        logging.info(f"Pre-download complete: {successful_downloads}/{len(pre_download_results)} components ready")
+    except Exception as e:
+        logging.error(f"Error during pre-download phase: {e}")
+        logging.warning("Continuing with assembly - components will be downloaded on-demand if needed")
+        logging.exception("Full traceback:")
+
     # --- 5. Assembly Execution (PASSES CACHE and NEW PARAMS) ---
+    logging.info("[TIMING] Starting assemble_page_templates_level1...")
+    assembly_start_time = time.time()
     assemble_page_templates_level1(full_payload, vcomponent_cache, api_base_url, site_id, api_headers)
+    assembly_time = time.time() - assembly_start_time
+    logging.info(f"[TIMING] assemble_page_templates_level1 completed in {assembly_time:.2f} seconds")
+    
+    # Track timing
+    if "assemble_page_templates_level1" not in TIMING_TRACKER:
+        TIMING_TRACKER["assemble_page_templates_level1"] = []
+    TIMING_TRACKER["assemble_page_templates_level1"].append(assembly_time)
     
     # Menu navigation is now a separate processing step before this one
+
+    # --- 5.5. FINAL PAGE PUBLISH (DEFERRED) ---
+    try:
+        logging.info("\n========================================================")
+        logging.info("STEP 5.5: PUBLISHING ALL QUEUED PAGES")
+        logging.info("========================================================")
+        published_count = publish_queued_pages(api_base_url, api_headers, site_id)
+        logging.info(f"[PUBLISH] Completed publishing of {published_count} queued pages.")
+    except Exception as e:
+        logging.error(f"[ERROR] Deferred publish step failed: {e}")
+        logging.exception("Full traceback:")
 
     # --- 6. SAVE THE STATUS FILE AS CSV ---
     STATUS_SUFFIX = "_assembly_report.csv" 
@@ -3889,12 +4518,70 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     except IOError as e:
         logging.error(f"Failed to write CSV status file {status_filename}: {e}")
 
-    # --- 7. Prepare Final Output ---
+    # --- 7. Print Timing Summary ---
+    timing_summary = []
+    if TIMING_TRACKER:
+        logging.info("\n" + "="*80)
+        logging.info("TIMING SUMMARY - Function Performance Analysis")
+        logging.info("="*80)
+        
+        # Calculate statistics for each function
+        for func_name, times in TIMING_TRACKER.items():
+            if times:
+                total_time = sum(times)
+                avg_time = total_time / len(times)
+                max_time = max(times)
+                min_time = min(times)
+                timing_summary.append({
+                    "function": func_name,
+                    "count": len(times),
+                    "total_seconds": total_time,
+                    "total_minutes": total_time / 60.0,
+                    "average_seconds": avg_time,
+                    "average_minutes": avg_time / 60.0,
+                    "max_seconds": max_time,
+                    "max_minutes": max_time / 60.0,
+                    "min_seconds": min_time,
+                    "min_minutes": min_time / 60.0
+                })
+        
+        # Sort by total time (descending) to show slowest functions first
+        timing_summary.sort(key=lambda x: x["total_seconds"], reverse=True)
+        
+        logging.info(f"{'Function':<35} {'Count':<8} {'Total (min)':<15} {'Avg (min)':<15} {'Max (min)':<15} {'Min (min)':<15}")
+        logging.info("-"*100)
+        
+        for stat in timing_summary:
+            logging.info(f"{stat['function']:<35} {stat['count']:<8} {stat['total_minutes']:<15.2f} {stat['average_minutes']:<15.2f} {stat['max_minutes']:<15.2f} {stat['min_minutes']:<15.2f}")
+        
+        # Identify the slowest function
+        if timing_summary:
+            slowest = timing_summary[0]
+            logging.info(f"\n[SLOWEST FUNCTION] {slowest['function']}: Total={slowest['total_minutes']:.2f} min ({slowest['total_seconds']:.2f}s), Avg={slowest['average_minutes']:.2f} min, Called {slowest['count']} times")
+        
+        logging.info("="*80 + "\n")
+        
+        # Save timing summary to JSON file for easy analysis
+        try:
+            timing_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_timing_summary.json")
+            with open(timing_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    "file_prefix": file_prefix,
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "timing_summary": timing_summary
+                }, f, indent=4, ensure_ascii=False)
+            logging.info(f"[SUCCESS] Timing summary saved to: {timing_file}")
+        except Exception as e:
+            logging.error(f"[ERROR] Failed to save timing summary: {e}")
+    
+    # --- 8. Prepare Final Output ---
     final_output = {
         "assembly_status": "SUCCESS: Pages and components processed.",
         "file_prefix": file_prefix, 
-        "report_filename": status_filename, 
+        "report_filename": status_filename,
+        "timing_summary": timing_summary
     }
 
-    ASSEMBLY_STATUS_LOG.clear() 
+    ASSEMBLY_STATUS_LOG.clear()
+    TIMING_TRACKER.clear()  # Clear for next run
     return final_output

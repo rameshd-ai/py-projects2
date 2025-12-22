@@ -1031,7 +1031,6 @@ def run_menu_navigation_step(
         
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
-        exit()
         return {
             "menu_navigation_created": True,
             "file_prefix": file_prefix,
