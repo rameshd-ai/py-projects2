@@ -1,0 +1,3 @@
+{"section": "find_processed_json_filepath", "data": {"file_prefix": "fd6564b7-b07d-4d06-916f-370f4478a9e4", "chosen_file": "D:\\GItHIbProjects\\py-projects2\\dToC\\processing_steps\\..\\uploads\\fd6564b7-b07d-4d06-916f-370f4478a9e4_simplified.json"}, "timestamp": "2025-12-23 22:35:37"}
+{"section": "assembly_start", "data": {"file_prefix": "fd6564b7-b07d-4d06-916f-370f4478a9e4", "simplified_json_path": "D:\\GItHIbProjects\\py-projects2\\dToC\\processing_steps\\..\\uploads\\fd6564b7-b07d-4d06-916f-370f4478a9e4_simplified.json"}, "timestamp": "2025-12-23 22:35:37"}
+{"section": "level1_page_start", "data": {"page_name": "Our Property", "components": [], "source": "_simplified.json"}, "timestamp": "2025-12-23 22:37:41"}

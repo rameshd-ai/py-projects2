@@ -682,6 +682,51 @@ def create_simplified_page_name_json(home_data, foot_unknown_data, nav_data):
     return simplified_data
 
 
+def create_home_simplified_page_name_json(home_data: dict) -> dict:
+    """
+    Creates a simplified JSON structure specifically for the home page.
+    This extracts only the home page from home_data and sets it as level 0.
+    """
+    simplified_data = {
+        "title": home_data.get("title") or "Home Page",
+        "pages": []
+    }
+
+    def simplify_home_page(page_dict):
+        """Simplifies a single home page entry."""
+        # Extract components using the dedicated function
+        components = extract_component_names(page_dict.get("content_blocks", ""))
+
+        simplified_page = {
+            "page_name": page_dict.get("text", "Home Page"),
+            "level": 0,  # Home page is always level 0
+            "components": components,
+            "meta_info": page_dict.get("meta_info", {}),
+            "sub_pages": []  # Home page sub-pages are handled separately in inner pages
+        }
+
+        return simplified_page
+
+    # Process only the first page from home_data (should be the home page)
+    home_pages = home_data.get("pages", [])
+    if home_pages:
+        # Take the first page as the home page
+        home_page = home_pages[0]
+        simplified_data["pages"].append(simplify_home_page(home_page))
+    else:
+        # If no pages found, create a default home page structure
+        print("[XML Processor] WARNING: No pages found in home_data, creating default home page structure")
+        simplified_data["pages"].append({
+            "page_name": "Home Page",
+            "level": 0,
+            "components": [],
+            "meta_info": {},
+            "sub_pages": []
+        })
+
+    return simplified_data
+
+
 # ------------------------------------------------------------------
 # 🏃 Main Step Function (Name MUST match the 'module' key in config.py)
 # ------------------------------------------------------------------
@@ -715,6 +760,7 @@ def run_xml_processing_step(filepath: str, step_config: dict, previous_step_data
     foot_unk_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_footer_unknown_pages.json")
     util_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_util_pages.json")
     simplified_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_simplified.json")
+    home_simplified_json_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_home_simplified.json")
     
     # --- Execute Core Logic ---
     try:
@@ -733,12 +779,18 @@ def run_xml_processing_step(filepath: str, step_config: dict, previous_step_data
         with open(util_json_file, 'w', encoding='utf-8') as f:
             json.dump(util_sitemap_data, f, ensure_ascii=False, indent=4)
 
-        # Create and save the simplified data
+        # Create and save the simplified data for inner pages
         simplified_data = create_simplified_page_name_json(
             home_sitemap_data, foot_unknown_sitemap_data, nav_sitemap_data
         )
         with open(simplified_json_file, 'w', encoding='utf-8') as f:
             json.dump(simplified_data, f, ensure_ascii=False, indent=4)
+        
+        # Create and save the simplified data specifically for the home page
+        home_simplified_data = create_home_simplified_page_name_json(home_sitemap_data)
+        with open(home_simplified_json_file, 'w', encoding='utf-8') as f:
+            json.dump(home_simplified_data, f, ensure_ascii=False, indent=4)
+        print(f"[XML Processor] Created home page simplified JSON: {os.path.basename(home_simplified_json_file)}")
             
         # --- Extract menu properties from util pages and prepare for config ---
         menu_component_name, menu_level, level_1_custom_properties = extract_menu_properties_from_util_pages(util_sitemap_data)

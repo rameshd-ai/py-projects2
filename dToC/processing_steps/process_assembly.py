@@ -39,15 +39,40 @@ def load_settings(file_prefix: str) -> Dict[str, Any] | None:
         return None
         
 def find_processed_json_filepath(file_prefix: str) -> str | None:
-    """Dynamically finds the processed JSON file based on the unique prefix."""
+    """
+    DYNAMically finds the processed JSON file for INNER PAGES based on the unique prefix.
+
+    IMPORTANT:
+        - Must return ONLY the main `<prefix>_simplified.json`
+        - MUST NOT return `<prefix>_home_simplified.json`
+    """
     base_prefix = os.path.basename(file_prefix)
     if not os.path.isdir(UPLOAD_FOLDER):
         return None
+
+    chosen_path: Optional[str] = None
     for filename in os.listdir(UPLOAD_FOLDER):
-        if filename.startswith(base_prefix) and filename.endswith("_simplified.json"):
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
-            return filepath
-    return None
+        # We only want "<prefix>_simplified.json", not "<prefix>_home_simplified.json"
+        if (
+            filename.startswith(base_prefix)
+            and filename.endswith("_simplified.json")
+            and not filename.endswith("_home_simplified.json")
+        ):
+            chosen_path = os.path.join(UPLOAD_FOLDER, filename)
+            break
+
+    if chosen_path:
+        append_debug_log(
+            "find_processed_json_filepath",
+            {"file_prefix": file_prefix, "chosen_file": chosen_path},
+        )
+    else:
+        append_debug_log(
+            "find_processed_json_filepath",
+            {"file_prefix": file_prefix, "chosen_file": None},
+        )
+
+    return chosen_path
 
 # ======================================================================================
 
@@ -63,6 +88,27 @@ COMPONENT_GUID_TRACKER: Dict[str, str] = {}  # component_id -> pageSectionGuid (
 # --- 4. GLOBAL PAGE PUBLISH QUEUE ---
 # Each entry: {"page_id": int, "page_name": str, "header_footer_details": Dict[str, Any]}
 PAGES_TO_PUBLISH: List[Dict[str, Any]] = []
+
+# --- 5. DEBUG LOG FILE (for deep investigation) ---
+DEBUG_LOG_FILE = os.path.join(UPLOAD_FOLDER, "assembly_debug.log")
+
+def append_debug_log(section: str, data: Dict[str, Any]) -> None:
+    """
+    Writes structured debug information to a separate log file.
+    This is used only for deep debugging (e.g., page/component flows).
+    """
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        entry = {
+            "section": section,
+            "data": data,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        with open(DEBUG_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        # Never let debug logging break the main flow
+        pass
 
 # ================= Helper Functions =================
 
@@ -208,13 +254,32 @@ def add_levels_to_records(records_file_path: str) -> bool:
             current_level = next_level
         
         # Check for any remaining unclassified records (orphaned records)
-        # More efficient: only iterate once to find and fix orphaned records
+        # Try to resolve via ParentComponentId; fallback to level 1 to avoid 999
         orphaned_records = [r for r in component_records if r.get("level") == -1]
         if orphaned_records:
-            logging.warning(f"Found {len(orphaned_records)} unclassified records (orphaned or circular references)")
-            # Set orphaned records to a high level to avoid breaking the structure
+            logging.warning(f"Found {len(orphaned_records)} unclassified records (orphaned or circular references). Attempting fix via ParentComponentId.")
+
+            # Map ComponentId -> first record with a resolved level for that component
+            component_level_map: Dict[Any, int] = {}
+            for rec in component_records:
+                comp_id = rec.get("ComponentId")
+                if comp_id is not None and rec.get("level", -1) >= 0 and comp_id not in component_level_map:
+                    component_level_map[comp_id] = rec.get("level")
+
+            fixed_count = 0
             for record in orphaned_records:
-                record["level"] = 999
+                parent_component_id = record.get("ParentComponentId")
+                if parent_component_id in component_level_map:
+                    record["level"] = component_level_map[parent_component_id] + 1
+                    fixed_count += 1
+
+            still_orphaned = [r for r in component_records if r.get("level") == -1]
+            if still_orphaned:
+                logging.warning(f"{len(still_orphaned)} records still orphaned after ParentComponentId pass; setting them to level 1 (fallback).")
+                for record in still_orphaned:
+                    record["level"] = 1
+
+            logging.info(f"[LEVEL FIX] Orphaned resolved via ParentComponentId: {fixed_count}, fallback-to-level1: {len(still_orphaned)}")
         
         # Save the updated records back to the file
         with open(records_file_path, 'w', encoding='utf-8') as f:
@@ -2338,8 +2403,18 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
+
+        # Debug log into separate file so we can see exactly which pages/components are being processed
+        append_debug_log(
+            "level1_page_start",
+            {
+                "page_name": current_page_name,
+                "components": top_level_page.get("components", []),
+                "source": "_simplified.json",
+            },
+        )
+
         print(current_page_name)
-        # if current_page_name == "Our Property":
         logging.info(f"\n--- Level {initial_level} Page: {current_page_name} ---")
 
         # Default category ID
@@ -4394,6 +4469,13 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
         raise FileNotFoundError(f"Input file not found for prefix {file_prefix}.")
     
     logging.info(f"Attempting to read full payload from: **{file_path}**")
+    append_debug_log(
+        "assembly_start",
+        {
+            "file_prefix": file_prefix,
+            "simplified_json_path": file_path,
+        },
+    )
     try:
         if not os.path.exists(UPLOAD_FOLDER):
              os.makedirs(UPLOAD_FOLDER, exist_ok=True)

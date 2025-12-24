@@ -123,4 +123,3 @@ def generate_progress_stream(filename: str) -> Generator[str, None, None]:
         # Guarantee cleanup: delete the original uploaded file regardless of success/fail
         if os.path.exists(filepath):
             os.remove(filepath)
-        yield format_sse({"status": "close"}, event='update')

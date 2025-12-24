@@ -49,12 +49,19 @@ PROCESSING_STEPS: List[Dict[str, Any]] = [
         "error_chance": 0.00
     },
     {
-        "id": "process_assembly",
-        "name": "Assembling CMS Pages and Publishing",
-        "module": "run_assembly_processing_step",
+        "id": "process_home_page",
+        "name": "Processing Home Page Templates",
+        "module": "run_homepage_processing_step",
         "delay": 3.0,
         "error_chance": 0.00
     },
+    # {
+    #     "id": "process_assembly",
+    #     "name": "Assembling CMS Pages and Publishing",
+    #     "module": "run_assembly_processing_step",
+    #     "delay": 3.0,
+    #     "error_chance": 0.00
+    # },
     {
         "id": "cleanup", 
         "name": "Final Cleanup and Resource Release", 
