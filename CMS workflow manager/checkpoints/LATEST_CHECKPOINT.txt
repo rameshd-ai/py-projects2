@@ -1,0 +1,12 @@
+checkpoint_20251224_161008
+
+This file indicates the latest checkpoint name.
+Update this file when creating new checkpoints.
+
+Created: 2025-12-24 16:10:08
+Description: 
+- All emojis replaced with Font Awesome icons (templates) and text labels (Python files)
+- Bulk delete functionality added to jobs list
+- UTF-8 encoding enforced for Windows console
+- Theme API calls removed from Step 1 (site_setup.py)
+
