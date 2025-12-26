@@ -238,19 +238,41 @@ def get_jobs_list():
                     results_path = os.path.join(get_job_folder(job_id), "results.json")
                     report_path = os.path.join(get_job_output_folder(job_id), "report.json")
                     
+                    # Validate job folder structure - skip if config.json doesn't exist
+                    if not os.path.exists(config_path):
+                        logging.warning(f"Skipping job {job_id}: config.json not found (incomplete/junk record)")
+                        continue
+                    
                     # Get job config
                     job_config = {}
-                    if os.path.exists(config_path):
+                    try:
                         with open(config_path, 'r', encoding='utf-8') as f:
                             job_config = json.load(f)
+                    except (json.JSONDecodeError, IOError) as e:
+                        logging.warning(f"Skipping job {job_id}: Invalid or corrupted config.json - {e}")
+                        continue
+                    
+                    # Validate job_id format - should match pattern job_timestamp_randomstring
+                    if not job_id or len(job_id) < 20 or not job_id.startswith('job_'):
+                        logging.warning(f"Skipping job {job_id}: Invalid job_id format")
+                        continue
+                    
+                    # Validate that config has at least job_id field (basic validation)
+                    if not isinstance(job_config, dict):
+                        logging.warning(f"Skipping job {job_id}: config.json is not a valid dictionary")
+                        continue
                     
                     # Get results to check completion status
                     completed_steps = []
                     has_results = os.path.exists(results_path)
                     if has_results:
-                        with open(results_path, 'r', encoding='utf-8') as f:
-                            results = json.load(f)
-                            completed_steps = results.get("completed_steps", [])
+                        try:
+                            with open(results_path, 'r', encoding='utf-8') as f:
+                                results = json.load(f)
+                                completed_steps = results.get("completed_steps", [])
+                        except (json.JSONDecodeError, IOError):
+                            # If results.json is corrupted, just use empty list
+                            completed_steps = []
                     
                     # Get file modification time
                     folder_path = get_job_folder(job_id)
@@ -287,6 +309,69 @@ def get_jobs_list():
         jobs.sort(key=lambda x: x.get("created_date", ""), reverse=True)
         
         return jsonify({"success": True, "jobs": jobs})
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/jobs/cleanup', methods=['POST'])
+def cleanup_junk_jobs():
+    """Remove invalid/junk job folders that don't have proper config.json"""
+    try:
+        from utils import get_job_folder
+        import shutil
+        
+        if not os.path.exists(UPLOAD_FOLDER):
+            return jsonify({"success": True, "cleaned": 0, "message": "No uploads folder found"})
+        
+        job_folders = [d for d in os.listdir(UPLOAD_FOLDER) 
+                      if os.path.isdir(os.path.join(UPLOAD_FOLDER, d)) and d.startswith('job_')]
+        
+        cleaned_count = 0
+        cleaned_jobs = []
+        
+        for job_id in job_folders:
+            try:
+                config_path = os.path.join(get_job_folder(job_id), "config.json")
+                folder_path = get_job_folder(job_id)
+                
+                # Check if config.json exists and is valid
+                is_junk = False
+                if not os.path.exists(config_path):
+                    is_junk = True
+                else:
+                    try:
+                        with open(config_path, 'r', encoding='utf-8') as f:
+                            job_config = json.load(f)
+                        # Check if config is empty or invalid
+                        if not isinstance(job_config, dict) or len(job_config) == 0:
+                            is_junk = True
+                        # Check job_id format
+                        if not job_id or len(job_id) < 20 or not job_id.startswith('job_'):
+                            is_junk = True
+                    except (json.JSONDecodeError, IOError):
+                        is_junk = True
+                
+                if is_junk:
+                    try:
+                        shutil.rmtree(folder_path)
+                        cleaned_count += 1
+                        cleaned_jobs.append(job_id)
+                        logging.info(f"Cleaned up junk job folder: {job_id}")
+                    except Exception as e:
+                        logging.error(f"Failed to delete junk job folder {job_id}: {e}")
+            except Exception as e:
+                logging.error(f"Error checking job {job_id} for cleanup: {e}")
+                continue
+        
+        return jsonify({
+            "success": True,
+            "cleaned": cleaned_count,
+            "cleaned_jobs": cleaned_jobs,
+            "message": f"Cleaned up {cleaned_count} junk job(s)"
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

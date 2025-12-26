@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import sys
+import re
 from datetime import datetime
 import logging
 from typing import Dict, Any, List, Union
@@ -41,18 +42,63 @@ Example response from API:
 # Configure logging for this module
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def remove_language_suffix(url: str) -> str:
+    """
+    Removes language suffix from URL (e.g., /en, /fr, /es) for token generation.
+    Token generation requires the base URL without language suffix.
+    
+    Args:
+        url (str): The URL that may contain a language suffix.
+        
+    Returns:
+        str: The URL with language suffix removed, or original URL if no suffix found.
+    
+    Examples:
+        https://example.com/en -> https://example.com
+        https://example.com/fr -> https://example.com
+        https://example.com -> https://example.com
+    """
+    if not url:
+        return url
+    
+    # Remove trailing slash if present
+    url = url.rstrip('/')
+    
+    # Common language codes (2-3 characters)
+    # Pattern: /xx or /xxx at the end of the path
+    # Match language suffix pattern: /en, /fr, /es, /de, /zh, /ja, etc.
+    # This matches 2-3 letter language codes at the end of the URL path
+    language_pattern = r'/[a-z]{2,3}$'
+    
+    # Check if URL ends with a language suffix
+    if re.search(language_pattern, url, re.IGNORECASE):
+        # Remove the language suffix
+        url = re.sub(language_pattern, '', url, flags=re.IGNORECASE)
+    
+    return url
+
 def generate_cms_token(url, profile_alias):
     """
     Makes an API call to generate a CMS token using a static bearer token.
     
+    Note: This function automatically removes language suffixes (e.g., /en, /fr) 
+    from the URL before generating the token, as token generation requires the base URL.
+    The original URL with language suffix should be used for all other API calls.
+    
     Args:
-        url (str): The base URL of the destination site.
+        url (str): The base URL of the destination site (may include language suffix like /en).
         profile_alias (str): The profile alias required for token generation.
         
     Returns:
         dict: The JSON response data from the API, or None if the request fails.
     """
-    token_url = f"{url}/api/authapi/GenerateCMSToken?profileAlias={profile_alias}"
+    # Remove language suffix for token generation (token API requires base URL)
+    cleaned_url = remove_language_suffix(url)
+    token_url = f"{cleaned_url}/api/authapi/GenerateCMSToken?profileAlias={profile_alias}"
+    
+    # Log if URL was modified
+    if cleaned_url != url:
+        logging.info(f"[INFO] Removed language suffix from URL for token generation: {url} -> {cleaned_url}")
     
     # This static bearer token is used to authenticate the token generation request
     static_bearer = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJtaWxlc3RvbmUuY21zIiwiaXNzIjoibWlkZ2FyZCIsImV4cCI6MjE0NzQ4Mjc5OSwic3ViIjoiMjIyODIiLCJqdGkiOiJjYjA5M2U2Ni05NDAwLTQ1MzgtOWRhYy0wOGE3ODlhMTU1OGIiLCJrZXkiOiJ0cnVlIiwiYWdlbmN5SWQiOiIxIiwiYnVzaW5lc3NJZCI6IiIsInVzZXJUaGluZ0lkIjoiOTQ0OWE0ZjctMjQyZi1mMDExLThiM2QtMDAwZDNhM2Y4YWQ0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsImlhdCI6MTc0NzA1MjQyOCwibmJmIjoxNzQ3MDUyNDI4fQ.sqwq4WJ_aFGMgYsyro2lWXqy6z4kouelKKi5TwtxtEM"
@@ -201,17 +247,16 @@ def getComponentDetailsUsingVcompAlias(vcompalias, base_url, headers):
     
 
 
-def addUpdateRecordsToCMS(base_url, headers, payload):
-    time.sleep(5)
-    # print("Updated")
-    # return True
+def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
     """
     Calls the CMS API to save/update miBlock records using the provided payload.
+    Now supports batch processing to improve performance.
 
     Args:
         base_url (str): The base URL for the API.
         headers (dict): The authorization headers for the API request.
         payload (dict): The entire cleaned payload dictionary containing records to be saved.
+        batch_size (int): Number of records to process in each batch (default: 10).
 
     Returns:
         tuple: (bool, dict or str): A boolean indicating success or failure,
@@ -220,29 +265,61 @@ def addUpdateRecordsToCMS(base_url, headers, payload):
     api_url = f"{base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
     
     responses = {}
+    all_records = []
+    
+    # Collect all records from payload
+    for record_set_id, records in payload.items():
+        for record in records:
+            all_records.append((record_set_id, record))
+    
+    if not all_records:
+        return True, {}
+    
+    total_records = len(all_records)
+    print(f"[BATCH] Processing {total_records} records in batches of {batch_size}", flush=True)
+    
     try:
-        for record_set_id, records in payload.items():
-            for record in records:
-                # print(api_url)
-                # print(record)
-                
-                response = requests.post(api_url, headers=headers, json=record, timeout=30)
-                response.raise_for_status()
-                # print(response)
-                # print("============================================================")
-                result = response.json()
-                record_id = record.get('recordId')
-                if result.get("result"):
-                    responses[record_id] = result.get('result')
-                else:
-                    return False, f"API response indicates failure for record: {record}"
-        time.sleep(2)
+        # Process records in batches
+        for batch_start in range(0, total_records, batch_size):
+            batch_end = min(batch_start + batch_size, total_records)
+            batch_records = all_records[batch_start:batch_end]
+            batch_num = (batch_start // batch_size) + 1
+            total_batches = (total_records + batch_size - 1) // batch_size
+            
+            print(f"[BATCH] Processing batch {batch_num}/{total_batches} ({len(batch_records)} records)...", flush=True)
+            
+            # Process each record in the batch
+            for record_set_id, record in batch_records:
+                try:
+                    response = requests.post(api_url, headers=headers, json=record, timeout=30)
+                    response.raise_for_status()
+                    result = response.json()
+                    record_id = record.get('recordId')
+                    
+                    if result.get("result"):
+                        responses[record_id] = result.get('result')
+                    else:
+                        error_msg = f"API response indicates failure for record: {record}"
+                        print(f"[ERROR] {error_msg}", flush=True)
+                        return False, error_msg
+                except requests.RequestException as e:
+                    error_msg = f"Failed to update record via API: {e}"
+                    print(f"[ERROR] {error_msg}", flush=True)
+                    return False, error_msg
+                except Exception as e:
+                    error_msg = f"Unexpected error processing record: {e}"
+                    print(f"[ERROR] {error_msg}", flush=True)
+                    return False, error_msg
+            
+            # Small delay between batches (reduced from per-record delay)
+            if batch_end < total_records:
+                time.sleep(1)  # Reduced from 5 seconds before and 2 seconds after
+        
+        print(f"[SUCCESS] All {total_records} records processed successfully", flush=True)
         return True, responses
 
-    except requests.RequestException as e:
-        return False, f"Failed to update records via API: {e}"
     except Exception as e:
-        return False, f"An unexpected error occurred in API call: {e}"
+        return False, f"An unexpected error occurred in batch processing: {e}"
     
 
 

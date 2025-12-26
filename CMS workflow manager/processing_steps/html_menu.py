@@ -601,10 +601,15 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     
     # ========== LEVEL 0: Process Menus ==========
     print("\n" + "="*80, flush=True)
-    print(f"[LEVEL 0] PROCESSING MENU RECORDS", flush=True)
+    print(f"[LEVEL 0] PROCESSING MENU RECORDS (BATCH MODE)", flush=True)
     print("="*80, flush=True)
     logger.info("Processing Level 0: Menu records...")
-    for menu_record in final_payload:
+    
+    # Collect all Level 0 records first
+    l0_records = []
+    l0_menu_mapping = []  # Track which menu_record each payload belongs to
+    
+    for idx, menu_record in enumerate(final_payload):
         menu_payload, _ = process_menu_level_0_only(menu_record)
         record_data_dict = menu_payload.get("recordJsonString", {}).copy()
         
@@ -630,38 +635,52 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
             "displayOrder": display_order,
             "updatedBy": 0,
         }
-        api_payload = {f"{l0_component_id}_L0": [single_record_payload]}
+        l0_records.append(single_record_payload)
+        l0_menu_mapping.append((idx, menu_record))
+    
+    # Send all Level 0 records in batches
+    if l0_records:
+        print(f"[BATCH] Sending {len(l0_records)} Level 0 records in batches...", flush=True)
+        api_payload = {f"{l0_component_id}_L0": l0_records}
+        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
         
-        # Call API
-        created_record_id = None
-        print(f"\n[API] Calling addUpdateRecordsToCMS for Level 0 (Menu)...", flush=True)
-        print(f"[API] Component ID: {l0_component_id}, Display Order: {display_order}", flush=True)
-        logger.info(f"Calling addUpdateRecordsToCMS for Level 0 menu record")
-        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload)
         if success:
-            result_body = responseData.get(0)
-            if isinstance(result_body, int) and result_body > 0:
-                created_record_id = result_body
-                print(f"[SUCCESS] Level 0 Menu created with Record ID: {created_record_id}", flush=True)
-                logger.info(f"Level 0 Menu created successfully with Record ID: {created_record_id}")
-            elif isinstance(result_body, dict) and result_body.get('recordId'):
-                created_record_id = result_body['recordId']
-                print(f"[SUCCESS] Level 0 Menu created with Record ID: {created_record_id}", flush=True)
-                logger.info(f"Level 0 Menu created successfully with Record ID: {created_record_id}")
-            else:
-                logger.error(f"L0 API call succeeded but returned unexpected body: {result_body}")
-                print(f"[ERROR] L0 API returned unexpected response: {result_body}", flush=True)
+            # Map responses back to menu records
+            for idx, (menu_idx, menu_record) in enumerate(l0_menu_mapping):
+                created_record_id = None
+                result_body = responseData.get(0) if idx == 0 else responseData.get(idx)
+                
+                # Try to get the actual record ID from response
+                if isinstance(result_body, int) and result_body > 0:
+                    created_record_id = result_body
+                elif isinstance(result_body, dict):
+                    created_record_id = result_body.get('recordId')
+                elif isinstance(responseData, dict):
+                    # Response might be keyed by recordId
+                    for resp_key, resp_val in responseData.items():
+                        if isinstance(resp_val, int) and resp_val > 0:
+                            created_record_id = resp_val
+                            break
+                        elif isinstance(resp_val, dict) and resp_val.get('recordId'):
+                            created_record_id = resp_val.get('recordId')
+                            break
+                
+                if created_record_id and created_record_id > 0:
+                    print(f"[SUCCESS] Level 0 Menu {idx+1} created with Record ID: {created_record_id}", flush=True)
+                    logger.info(f"Level 0 Menu {idx+1} created successfully with Record ID: {created_record_id}")
+                    
+                    # Update payload with created ID for children
+                    if isinstance(menu_record, dict) and 'MenuSections' in menu_record:
+                        for section in menu_record['MenuSections']:
+                            section['ParentRecordId'] = created_record_id
+                            section['ParentComponentId'] = str(l1_component_id)
+                            section['MainParentComponentid'] = l0_main_parent_id
+                else:
+                    logger.warning(f"L0 Menu {idx+1} API call succeeded but couldn't extract record ID from: {result_body}")
         else:
-            logger.error(f"L0 API call failed for menu record. Response: {responseData}")
-            print(f"[ERROR] L0 API call failed. Response: {responseData}", flush=True)
-        
-        # Update payload with created ID for children
-        if created_record_id and created_record_id > 0:
-            if isinstance(menu_record, dict) and 'MenuSections' in menu_record:
-                for section in menu_record['MenuSections']:
-                    section['ParentRecordId'] = created_record_id
-                    section['ParentComponentId'] = str(l1_component_id)
-                    section['MainParentComponentid'] = l0_main_parent_id
+            logger.error(f"L0 batch API call failed. Response: {responseData}")
+            print(f"[ERROR] L0 batch API call failed. Response: {responseData}", flush=True)
+            return False
     
     # Save updated payload
     try:
@@ -675,7 +694,15 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     time.sleep(1)
     
     # ========== LEVEL 1: Process Sections ==========
+    print("\n" + "="*80, flush=True)
+    print(f"[LEVEL 1] PROCESSING MENU SECTION RECORDS (BATCH MODE)", flush=True)
+    print("="*80, flush=True)
     logger.info("Processing Level 1: Menu Section records...")
+    
+    # Collect all Level 1 records first
+    l1_records = []
+    l1_section_mapping = []  # Track which section_record each payload belongs to
+    
     for menu_record in final_payload:
         _, menu_sections_list = process_menu_level_0_only(menu_record)
         
@@ -710,38 +737,53 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                 "displayOrder": display_order,
                 "updatedBy": 0,
             }
-            api_payload = {f"{l1_component_id}_L1": [single_record_payload]}
-            
-            # Call API
-            created_record_id = None
-            print(f"[API] Calling addUpdateRecordsToCMS for Level 1 (Section)...", flush=True)
-            logger.info(f"Calling addUpdateRecordsToCMS for Level 1 section record, Parent Record ID: {parent_record_id}")
-            success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload)
-            if success:
-                result_body = responseData.get(0)
+            l1_records.append(single_record_payload)
+            l1_section_mapping.append(section_record)
+    
+    # Send all Level 1 records in batches
+    if l1_records:
+        print(f"[BATCH] Sending {len(l1_records)} Level 1 records in batches...", flush=True)
+        api_payload = {f"{l1_component_id}_L1": l1_records}
+        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
+        
+        if success:
+            # Map responses back to section records
+            for idx, section_record in enumerate(l1_section_mapping):
+                created_record_id = None
+                result_body = responseData.get(0) if idx == 0 else responseData.get(idx)
+                
+                # Try to get the actual record ID from response
                 if isinstance(result_body, int) and result_body > 0:
                     created_record_id = result_body
-                    print(f"[SUCCESS] Level 1 Section created with Record ID: {created_record_id}", flush=True)
-                    logger.info(f"Level 1 Section created successfully with Record ID: {created_record_id}")
-                elif isinstance(result_body, dict) and result_body.get('recordId'):
-                    created_record_id = result_body['recordId']
-                    print(f"[SUCCESS] Level 1 Section created with Record ID: {created_record_id}", flush=True)
-                    logger.info(f"Level 1 Section created successfully with Record ID: {created_record_id}")
+                elif isinstance(result_body, dict):
+                    created_record_id = result_body.get('recordId')
+                elif isinstance(responseData, dict):
+                    # Response might be keyed by recordId
+                    for resp_key, resp_val in responseData.items():
+                        if isinstance(resp_val, int) and resp_val > 0:
+                            created_record_id = resp_val
+                            break
+                        elif isinstance(resp_val, dict) and resp_val.get('recordId'):
+                            created_record_id = resp_val.get('recordId')
+                            break
+                
+                if created_record_id and created_record_id > 0:
+                    print(f"[SUCCESS] Level 1 Section {idx+1} created with Record ID: {created_record_id}", flush=True)
+                    logger.info(f"Level 1 Section {idx+1} created successfully with Record ID: {created_record_id}")
+                    
+                    # Update payload with created ID for children
+                    section_record['NewRecordId_L1'] = created_record_id
+                    if 'MenuItems' in section_record and section_record['MenuItems'] is not None:
+                        for item in section_record['MenuItems']:
+                            item['ParentRecordId'] = created_record_id
+                            item['ParentComponentId'] = str(l2_component_id)
+                            item['MainParentComponentid'] = l0_main_parent_id
                 else:
-                    logger.error(f"L1 API call succeeded but returned unexpected body: {result_body}")
-                    print(f"[ERROR] L1 API returned unexpected response: {result_body}", flush=True)
-            else:
-                logger.error(f"L1 API call failed for section record. Response: {responseData}")
-                print(f"[ERROR] L1 API call failed. Response: {responseData}", flush=True)
-            
-            # Update payload with created ID for children
-            if created_record_id and created_record_id > 0:
-                section_record['NewRecordId_L1'] = created_record_id
-                if 'MenuItems' in section_record and section_record['MenuItems'] is not None:
-                    for item in section_record['MenuItems']:
-                        item['ParentRecordId'] = created_record_id
-                        item['ParentComponentId'] = str(l2_component_id)
-                        item['MainParentComponentid'] = l0_main_parent_id
+                    logger.warning(f"L1 Section {idx+1} API call succeeded but couldn't extract record ID from: {result_body}")
+        else:
+            logger.error(f"L1 batch API call failed. Response: {responseData}")
+            print(f"[ERROR] L1 batch API call failed. Response: {responseData}", flush=True)
+            return False
     
     # Save updated payload
     try:
@@ -755,7 +797,15 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     time.sleep(1)
     
     # ========== LEVEL 2: Process Items ==========
+    print("\n" + "="*80, flush=True)
+    print(f"[LEVEL 2] PROCESSING MENU ITEM RECORDS (BATCH MODE)", flush=True)
+    print("="*80, flush=True)
     logger.info("Processing Level 2: Menu Item records...")
+    
+    # Collect all Level 2 records first
+    l2_records = []
+    l2_item_mapping = []  # Track which item_record each payload belongs to
+    
     for menu_record in final_payload:
         _, menu_sections_list = process_menu_level_0_only(menu_record)
         all_item_lists = process_menu_sections_level_1_only(menu_sections_list)
@@ -796,32 +846,41 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                     "displayOrder": display_order,
                     "updatedBy": 0,
                 }
-                api_payload = {f"{l2_component_id}_L2": [single_record_payload]}
-                
-                # Call API
+                l2_records.append(single_record_payload)
+                l2_item_mapping.append((item_record, l3_prices, l3_addons))
+    
+    # Send all Level 2 records in batches
+    if l2_records:
+        print(f"[BATCH] Sending {len(l2_records)} Level 2 records in batches...", flush=True)
+        api_payload = {f"{l2_component_id}_L2": l2_records}
+        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
+        
+        if success:
+            # Map responses back to item records
+            for idx, (item_record, l3_prices, l3_addons) in enumerate(l2_item_mapping):
                 created_record_id = None
-                print(f"[API] Calling addUpdateRecordsToCMS for Level 2 (Item)...", flush=True)
-                logger.info(f"Calling addUpdateRecordsToCMS for Level 2 item record, Parent Record ID: {parent_record_id}")
-                success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload)
-                if success:
-                    result_body = responseData.get(0)
-                    if isinstance(result_body, int) and result_body > 0:
-                        created_record_id = result_body
-                        print(f"[SUCCESS] Level 2 Item created with Record ID: {created_record_id}", flush=True)
-                        logger.info(f"Level 2 Item created successfully with Record ID: {created_record_id}")
-                    elif isinstance(result_body, dict) and result_body.get('recordId'):
-                        created_record_id = result_body['recordId']
-                        print(f"[SUCCESS] Level 2 Item created with Record ID: {created_record_id}", flush=True)
-                        logger.info(f"Level 2 Item created successfully with Record ID: {created_record_id}")
-                    else:
-                        logger.error(f"L2 API call succeeded but returned unexpected body: {result_body}")
-                        print(f"[ERROR] L2 API returned unexpected response: {result_body}", flush=True)
-                else:
-                    logger.error(f"L2 API call failed for item record. Response: {responseData}")
-                    print(f"[ERROR] L2 API call failed. Response: {responseData}", flush=True)
+                result_body = responseData.get(0) if idx == 0 else responseData.get(idx)
                 
-                # Update L3 children with the new L2 ID
+                # Try to get the actual record ID from response
+                if isinstance(result_body, int) and result_body > 0:
+                    created_record_id = result_body
+                elif isinstance(result_body, dict):
+                    created_record_id = result_body.get('recordId')
+                elif isinstance(responseData, dict):
+                    # Response might be keyed by recordId
+                    for resp_key, resp_val in responseData.items():
+                        if isinstance(resp_val, int) and resp_val > 0:
+                            created_record_id = resp_val
+                            break
+                        elif isinstance(resp_val, dict) and resp_val.get('recordId'):
+                            created_record_id = resp_val.get('recordId')
+                            break
+                
                 if created_record_id and created_record_id > 0:
+                    print(f"[SUCCESS] Level 2 Item {idx+1} created with Record ID: {created_record_id}", flush=True)
+                    logger.info(f"Level 2 Item {idx+1} created successfully with Record ID: {created_record_id}")
+                    
+                    # Update L3 children with the new L2 ID
                     item_record['NewRecordId_L2'] = created_record_id
                     if l3_prices:
                         for price in l3_prices:
@@ -833,6 +892,12 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                             addon['ParentRecordId'] = created_record_id
                             addon['ParentComponentId'] = str(l3_addon_component_id)
                             addon['MainParentComponentid'] = l0_main_parent_id
+                else:
+                    logger.warning(f"L2 Item {idx+1} API call succeeded but couldn't extract record ID from: {result_body}")
+        else:
+            logger.error(f"L2 batch API call failed. Response: {responseData}")
+            print(f"[ERROR] L2 batch API call failed. Response: {responseData}", flush=True)
+            return False
     
     # Save updated payload
     try:
