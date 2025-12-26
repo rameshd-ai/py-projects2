@@ -2259,6 +2259,15 @@
                 formData.step_number = 4;
                 formData.module_id = moduleId;
                 
+                // Ensure the module is enabled in form_data for processing
+                // This is critical - the backend checks htmlMenu flag to decide if processing should run
+                if (moduleId === 'htmlMenu') {
+                    formData.htmlMenu = true;
+                } else if (moduleId === 'faqManager') {
+                    formData.faqManager = true;
+                }
+                // Add other modules as needed
+                
                 // Process the sub-process
                 const response = await fetch('/api/process-sub-process', {
                     method: 'POST',
@@ -2383,13 +2392,8 @@
                 return;
             }
             
-            // First save the config
-            try {
-                await saveAllMenuConfigs();
-            } catch (error) {
-                console.error('Error saving config:', error);
-                // Continue anyway
-            }
+            // NOTE: Do NOT save mapper files here - "Save All" button handles that
+            // "Process" button should ONLY process the menu, not save mapper files
             
             // Disable button and show processing
             if (processBtn) {
@@ -2398,7 +2402,7 @@
                 processBtn.style.background = '#6b7280';
             }
             
-            // Then process the Dine Menu sub-process
+            // Process the Dine Menu sub-process (this will call APIs)
             try {
                 await processSubProcessDirectly('htmlMenu');
                 // Close the modal after successful processing

@@ -213,23 +213,60 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                 # Now update the mapper files with API response data
                                 print(f"\n[SYNC] Updating mapper files with API data...", flush=True)
                                 
-                                # Build a lookup dictionary from group_record_response
-                                variable_lookup = {}
+                                # Build separate lookup dictionaries for color and font variables
+                                color_variable_lookup = {}
+                                font_variable_lookup = {}
+                                
                                 if group_record_response and 'groupsRecordDetails' in group_record_response:
                                     for group_detail in group_record_response['groupsRecordDetails']:
+                                        group_type = group_detail.get('grouptype', 0)
                                         group_variables = group_detail.get('groupVariables', [])
-                                        for var in group_variables:
-                                            var_alias = var.get('variableAlias', '').strip()
-                                            var_value = var.get('variableValue', '').strip()
-                                            var_name = var.get('variableName', '').strip()
-                                            
-                                            # Store by alias if available, otherwise by name
-                                            if var_alias:
-                                                variable_lookup[var_alias] = var_value
-                                            if var_name:
-                                                variable_lookup[var_name] = var_value
+                                        
+                                        # Select the appropriate lookup based on group type
+                                        # 1 = Color, 2 = Font
+                                        target_lookup = color_variable_lookup if group_type == 1 else font_variable_lookup if group_type == 2 else None
+                                        
+                                        if target_lookup is not None:
+                                            for var in group_variables:
+                                                var_alias = var.get('variableAlias', '').strip()
+                                                var_value = var.get('variableValue', '').strip()
+                                                var_name = var.get('variableName', '').strip()
+                                                
+                                                # Store by alias (prefer alias over name, but don't overwrite if already exists)
+                                                if var_alias and var_value:
+                                                    # Convert to lowercase for case-insensitive matching
+                                                    alias_key = var_alias.lower()
+                                                    if alias_key not in target_lookup or not target_lookup[alias_key]:
+                                                        target_lookup[alias_key] = var_value
+                                                        # Also store with original case for exact matches
+                                                        target_lookup[var_alias] = var_value
+                                                
+                                                # Store by name (only if no alias or as fallback)
+                                                if var_name and var_value:
+                                                    # Convert to lowercase for case-insensitive matching
+                                                    name_key = var_name.lower()
+                                                    if name_key not in target_lookup or not target_lookup[name_key]:
+                                                        target_lookup[name_key] = var_value
+                                                        # Also store with original case for exact matches
+                                                        target_lookup[var_name] = var_value
                                 
-                                print(f"[INFO] Built lookup with {len(variable_lookup)} variables", flush=True)
+                                print(f"[INFO] Built color lookup with {len(color_variable_lookup)} variables", flush=True)
+                                print(f"[INFO] Built font lookup with {len(font_variable_lookup)} variables", flush=True)
+                                
+                                # Debug: Print all available color variable keys
+                                if color_variable_lookup:
+                                    color_keys = list(color_variable_lookup.keys())
+                                    print(f"[DEBUG] Available color variable keys ({len(color_keys)}): {color_keys[:10]}...", flush=True)
+                                    print(f"[DEBUG] Sample color variables: {list(color_variable_lookup.items())[:5]}", flush=True)
+                                else:
+                                    print(f"[WARNING] No color variables found in source API response!", flush=True)
+                                
+                                # Debug: Print all available font variable keys
+                                if font_variable_lookup:
+                                    font_keys = list(font_variable_lookup.keys())
+                                    print(f"[DEBUG] Available font variable keys ({len(font_keys)}): {font_keys[:10]}...", flush=True)
+                                else:
+                                    print(f"[WARNING] No font variables found in source API response!", flush=True)
                                 
                                 # Update font_mapper.json
                                 print(f"\n[UPDATE] Updating font_mapper.json...", flush=True)
@@ -243,12 +280,39 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                     current_value = entry.get('value', '').strip()
                                     
                                     # Only update if value is empty/blank
-                                    if not current_value and old_key:
-                                        # Search for old_key in variable_lookup
-                                        if old_key in variable_lookup:
-                                            entry['value'] = variable_lookup[old_key]
+                                    if not current_value:
+                                        found_value = None
+                                        match_type = None
+                                        
+                                        # Try exact match first (case-sensitive)
+                                        if old_key and old_key in font_variable_lookup:
+                                            found_value = font_variable_lookup[old_key]
+                                            match_type = f"exact old_key '{old_key}'"
+                                        # Try case-insensitive match
+                                        elif old_key:
+                                            old_key_lower = old_key.lower()
+                                            if old_key_lower in font_variable_lookup:
+                                                found_value = font_variable_lookup[old_key_lower]
+                                                match_type = f"case-insensitive old_key '{old_key}'"
+                                        # Try new_key as fallback
+                                        if not found_value and new_key:
+                                            if new_key in font_variable_lookup:
+                                                found_value = font_variable_lookup[new_key]
+                                                match_type = f"new_key '{new_key}'"
+                                            else:
+                                                new_key_lower = new_key.lower()
+                                                if new_key_lower in font_variable_lookup:
+                                                    found_value = font_variable_lookup[new_key_lower]
+                                                    match_type = f"case-insensitive new_key '{new_key}'"
+                                        
+                                        if found_value:
+                                            entry['value'] = found_value
                                             updated_font_count += 1
-                                            print(f"  [OK] Updated '{new_key}' (from old_key '{old_key}') = '{variable_lookup[old_key]}'", flush=True)
+                                            print(f"  [OK] Updated '{new_key}' (matched via {match_type}) = '{found_value}'", flush=True)
+                                        else:
+                                            # Debug: show what we're looking for
+                                            if old_key:
+                                                print(f"  [DEBUG] No match for old_key '{old_key}' in font lookup", flush=True)
                                 
                                 # Save updated font_mapper
                                 with open(font_mapper_dest, 'w', encoding='utf-8') as f:
@@ -265,22 +329,63 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                 for entry in color_mapper:
                                     old_key = entry.get('old_key', '').strip()
                                     new_key = entry.get('new_key', '').strip()
+                                    current_value = entry.get('value', '').strip()
                                     
-                                    # Try to find value by old_key first, then new_key
-                                    if old_key and old_key in variable_lookup:
-                                        entry['value'] = variable_lookup[old_key]
-                                        updated_color_count += 1
-                                        print(f"  ✓ Updated '{new_key}' (from old_key '{old_key}') = '{variable_lookup[old_key]}'", flush=True)
-                                    elif new_key and new_key in variable_lookup:
-                                        entry['value'] = variable_lookup[new_key]
-                                        updated_color_count += 1
-                                        print(f"  ✓ Updated '{new_key}' = '{variable_lookup[new_key]}'", flush=True)
+                                    # Only update if value is empty/blank (same logic as font_mapper)
+                                    if not current_value:
+                                        found_value = None
+                                        match_type = None
+                                        
+                                        # Try exact match first (case-sensitive)
+                                        if old_key and old_key in color_variable_lookup:
+                                            found_value = color_variable_lookup[old_key]
+                                            match_type = f"exact old_key '{old_key}'"
+                                        # Try case-insensitive match
+                                        elif old_key:
+                                            old_key_lower = old_key.lower()
+                                            if old_key_lower in color_variable_lookup:
+                                                found_value = color_variable_lookup[old_key_lower]
+                                                match_type = f"case-insensitive old_key '{old_key}'"
+                                        # Try new_key as fallback
+                                        if not found_value and new_key:
+                                            if new_key in color_variable_lookup:
+                                                found_value = color_variable_lookup[new_key]
+                                                match_type = f"new_key '{new_key}'"
+                                            else:
+                                                new_key_lower = new_key.lower()
+                                                if new_key_lower in color_variable_lookup:
+                                                    found_value = color_variable_lookup[new_key_lower]
+                                                    match_type = f"case-insensitive new_key '{new_key}'"
+                                        
+                                        if found_value:
+                                            entry['value'] = found_value
+                                            updated_color_count += 1
+                                            print(f"  [OK] Updated '{new_key}' (matched via {match_type}) = '{found_value}'", flush=True)
+                                        else:
+                                            # Debug: show what we're looking for
+                                            if old_key:
+                                                print(f"  [DEBUG] No match for old_key '{old_key}' in color lookup", flush=True)
                                 
                                 # Save updated color_mapper
                                 with open(color_mapper_dest, 'w', encoding='utf-8') as f:
                                     json.dump(color_mapper, f, indent=2, ensure_ascii=False)
                                 
                                 print(f"[OK] Updated {updated_color_count} entries in color_mapper.json", flush=True)
+                                
+                                if updated_color_count == 0:
+                                    print(f"[WARNING] No color variables were updated! Check if variable names/aliases match.", flush=True)
+                                    print(f"[DEBUG] Available color variable keys ({len(color_variable_lookup)}): {list(color_variable_lookup.keys())}", flush=True)
+                                    print(f"[DEBUG] Color mapper old_keys being searched: {[e.get('old_key') for e in color_mapper[:10]]}", flush=True)
+                                    
+                                    # Show which old_keys don't have matches
+                                    unmatched_keys = []
+                                    for entry in color_mapper:
+                                        old_key = entry.get('old_key', '').strip()
+                                        if old_key and old_key not in color_variable_lookup and old_key.lower() not in color_variable_lookup:
+                                            unmatched_keys.append(old_key)
+                                    if unmatched_keys:
+                                        print(f"[DEBUG] Unmatched old_keys: {set(unmatched_keys)}", flush=True)
+                                
                                 print(f"\n[SUCCESS] All mapper files updated successfully!", flush=True)
                                 
                             except Exception as copy_error:
@@ -400,24 +505,49 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                                     
                                                     print(f"[OK] Loaded {len(color_variables)} color variables", flush=True)
                                                 
+                                                # Validate that we have variables before proceeding
+                                                if len(color_variables) == 0 and len(font_variables) == 0:
+                                                    print(f"\n[ERROR] Both color and font variables are empty! Cannot create theme groups.", flush=True)
+                                                    print(f"[ERROR] Color variables: {len(color_variables)}, Font variables: {len(font_variables)}", flush=True)
+                                                    logger.error(f"[{job_id}] Cannot create theme groups - both color and font variables are empty")
+                                                    raise ValueError("Both color and font variables are empty. Cannot create theme groups.")
+                                                
+                                                # Build groups list - only include groups with variables
+                                                groups_list = []
+                                                
+                                                if len(color_variables) > 0:
+                                                    groups_list.append({
+                                                        "Groupid": 0,  # 0 for new group (add operation)
+                                                        "GroupName": color_group_name,
+                                                        "GroupType": 1,  # 1 for color
+                                                        "themeVariables": json.dumps(color_variables)
+                                                    })
+                                                    print(f"[OK] Color group will be created with {len(color_variables)} variables", flush=True)
+                                                else:
+                                                    print(f"[WARNING] Color variables are empty - skipping color group creation", flush=True)
+                                                    logger.warning(f"[{job_id}] Color variables are empty - skipping color group")
+                                                
+                                                if len(font_variables) > 0:
+                                                    groups_list.append({
+                                                        "Groupid": 0,  # 0 for new group (add operation)
+                                                        "GroupName": font_group_name,
+                                                        "GroupType": 2,  # 2 for font
+                                                        "themeVariables": json.dumps(font_variables)
+                                                    })
+                                                    print(f"[OK] Font group will be created with {len(font_variables)} variables", flush=True)
+                                                else:
+                                                    print(f"[WARNING] Font variables are empty - skipping font group creation", flush=True)
+                                                    logger.warning(f"[{job_id}] Font variables are empty - skipping font group")
+                                                
+                                                if len(groups_list) == 0:
+                                                    print(f"\n[ERROR] No groups to create! Both color and font variables are empty.", flush=True)
+                                                    raise ValueError("No groups to create - both color and font variables are empty.")
+                                                
                                                 # Create final payload
                                                 final_payload = {
                                                     "siteId": int(destination_site_id),
                                                     "themeId": dest_theme_id,
-                                                    "groups": [
-                                                        {
-                                                            "Groupid": 0,  # 0 for new group (add operation)
-                                                            "GroupName": color_group_name,
-                                                            "GroupType": 1,  # 1 for color
-                                                            "themeVariables": json.dumps(color_variables)
-                                                        },
-                                                        {
-                                                            "Groupid": 0,  # 0 for new group (add operation)
-                                                            "GroupName": font_group_name,
-                                                            "GroupType": 2,  # 2 for font
-                                                            "themeVariables": json.dumps(font_variables)
-                                                        }
-                                                    ]
+                                                    "groups": groups_list
                                                 }
                                                 
                                                 # Save final payload to file
@@ -430,8 +560,10 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                                 print(f"  Site ID: {final_payload['siteId']}", flush=True)
                                                 print(f"  Theme ID: {final_payload['themeId']}", flush=True)
                                                 print(f"  Groups: {len(final_payload['groups'])}", flush=True)
-                                                print(f"    - Color Group: {color_group_name} ({len(color_variables)} variables)", flush=True)
-                                                print(f"    - Font Group: {font_group_name} ({len(font_variables)} variables)", flush=True)
+                                                if len(color_variables) > 0:
+                                                    print(f"    - Color Group: {color_group_name} ({len(color_variables)} variables)", flush=True)
+                                                if len(font_variables) > 0:
+                                                    print(f"    - Font Group: {font_group_name} ({len(font_variables)} variables)", flush=True)
                                                 print(f"\n[SUCCESS] Final payload created and saved successfully!", flush=True)
                                                 
                                                 logger.info(f"[{job_id}] Created final update payload with {len(color_variables)} color and {len(font_variables)} font variables")
@@ -467,13 +599,6 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                                         print(f"Message: {update_response.get('message', 'N/A')}", flush=True)
                                                         
                                                         updated_groups = update_response.get('data', [])
-                                                        if updated_groups:
-                                                            print(f"\n[OK] Updated Groups:", flush=True)
-                                                            for group in updated_groups:
-                                                                group_id = group.get('GroupId')
-                                                                group_type = group.get('GroupType')
-                                                                group_type_name = "Color" if group_type == 1 else "Font" if group_type == 2 else "Unknown"
-                                                                print(f"  - Group ID: {group_id} (Type: {group_type_name})", flush=True)
                                                         
                                                         print(f"\nFull Response:", flush=True)
                                                         print(json.dumps(update_response, indent=2), flush=True)
@@ -484,77 +609,108 @@ def run_brand_theme_step(job_id: str, step_config: Dict, workflow_context: Dict)
                                                             json.dump(update_response, f, indent=4, ensure_ascii=False)
                                                         
                                                         print(f"\n[SAVED] Theme variables response saved to: {update_response_file}", flush=True)
-                                                        print(f"\n[SUCCESS] DESTINATION SITE THEME VARIABLES UPDATED SUCCESSFULLY!", flush=True)
-                                                        logger.info(f"[{job_id}] Successfully updated destination site theme variables")
                                                         
-                                                        # Now call UpdateThemeConfiguration to finalize the theme update
-                                                        print(f"\n" + "="*80, flush=True)
-                                                        print(f"[PROCESS] FINALIZING THEME CONFIGURATION", flush=True)
-                                                        print(f"="*80, flush=True)
-                                                        
-                                                        try:
-                                                            # Build groups list from update response
-                                                            config_groups = []
+                                                        if updated_groups and len(updated_groups) > 0:
+                                                            print(f"\n[OK] Updated Groups ({len(updated_groups)}):", flush=True)
                                                             for group in updated_groups:
                                                                 group_id = group.get('GroupId')
-                                                                if group_id:
-                                                                    config_groups.append({"groupId": group_id})
+                                                                group_type = group.get('GroupType')
+                                                                group_type_name = "Color" if group_type == 1 else "Font" if group_type == 2 else "Unknown"
+                                                                print(f"  - Group ID: {group_id} (Type: {group_type_name})", flush=True)
                                                             
-                                                            # Build payload for theme configuration update
-                                                            config_payload = {
-                                                                "siteId": int(destination_site_id),
-                                                                "themeId": dest_theme_id,
-                                                                "groups": config_groups
-                                                            }
+                                                            print(f"\n[SUCCESS] DESTINATION SITE THEME VARIABLES UPDATED SUCCESSFULLY!", flush=True)
+                                                            logger.info(f"[{job_id}] Successfully updated destination site theme variables - {len(updated_groups)} groups created")
                                                             
-                                                            # Save configuration payload to file
-                                                            config_payload_file = os.path.join(job_folder, "update_theme_configuration_payload.json")
-                                                            with open(config_payload_file, 'w', encoding='utf-8') as f:
-                                                                json.dump(config_payload, f, indent=4, ensure_ascii=False)
+                                                            # Now call UpdateThemeConfiguration to finalize the theme update
+                                                            print(f"\n" + "="*80, flush=True)
+                                                            print(f"[PROCESS] FINALIZING THEME CONFIGURATION", flush=True)
+                                                            print(f"="*80, flush=True)
                                                             
-                                                            print(f"\n[SAVED] Theme configuration payload saved to: {config_payload_file}", flush=True)
-                                                            
-                                                            print(f"\n[SEND] Updating theme configuration...", flush=True)
-                                                            print(f"  Site ID: {destination_site_id}", flush=True)
-                                                            print(f"  Theme ID: {dest_theme_id}", flush=True)
-                                                            print(f"  Groups: {config_groups}", flush=True)
-                                                            
-                                                            config_response = update_theme_configuration(
-                                                                base_url=destination_url,
-                                                                payload=config_payload,
-                                                                headers=update_headers
-                                                            )
-                                                            
-                                                            print(f"\n[API] THEME CONFIGURATION RESPONSE", flush=True)
-                                                            print("="*80, flush=True)
-                                                            
-                                                            if config_response:
-                                                                print(f"Success: {config_response.get('success', False)}", flush=True)
-                                                                print(f"Message: {config_response.get('message', 'N/A')}", flush=True)
+                                                            try:
+                                                                # Build groups list from update response
+                                                                config_groups = []
+                                                                for group in updated_groups:
+                                                                    group_id = group.get('GroupId')
+                                                                    if group_id:
+                                                                        config_groups.append({"groupId": group_id})
                                                                 
-                                                                print(f"\nFull Response:", flush=True)
-                                                                print(json.dumps(config_response, indent=2), flush=True)
+                                                                if len(config_groups) == 0:
+                                                                    print(f"[ERROR] No valid group IDs found in update response!", flush=True)
+                                                                    logger.error(f"[{job_id}] No valid group IDs found in update response")
+                                                                    raise ValueError("No valid group IDs found in update response")
                                                                 
-                                                                # Save configuration response to file
-                                                                config_response_file = os.path.join(job_folder, "update_theme_configuration_response.json")
-                                                                with open(config_response_file, 'w', encoding='utf-8') as f:
-                                                                    json.dump(config_response, f, indent=4, ensure_ascii=False)
+                                                                # Build payload for theme configuration update
+                                                                config_payload = {
+                                                                    "siteId": int(destination_site_id),
+                                                                    "themeId": dest_theme_id,
+                                                                    "groups": config_groups
+                                                                }
                                                                 
-                                                                print(f"\n[SAVED] Theme configuration response saved to: {config_response_file}", flush=True)
-                                                                print(f"\n[OK] THEME CONFIGURATION FINALIZED SUCCESSFULLY!", flush=True)
-                                                                logger.info(f"[{job_id}] Successfully finalized theme configuration")
-                                                            else:
-                                                                print("[ERROR] Theme configuration API returned None", flush=True)
-                                                                logger.error(f"[{job_id}] Update theme configuration API returned None")
-                                                            
-                                                            print("="*80 + "\n", flush=True)
-                                                            
-                                                        except Exception as config_error:
-                                                            print(f"[ERROR] Error updating theme configuration: {config_error}", flush=True)
-                                                            logger.error(f"[{job_id}] Failed to update theme configuration: {config_error}")
+                                                                # Save configuration payload to file
+                                                                config_payload_file = os.path.join(job_folder, "update_theme_configuration_payload.json")
+                                                                with open(config_payload_file, 'w', encoding='utf-8') as f:
+                                                                    json.dump(config_payload, f, indent=4, ensure_ascii=False)
+                                                                
+                                                                print(f"\n[SAVED] Theme configuration payload saved to: {config_payload_file}", flush=True)
+                                                                
+                                                                print(f"\n[SEND] Updating theme configuration...", flush=True)
+                                                                print(f"  Site ID: {destination_site_id}", flush=True)
+                                                                print(f"  Theme ID: {dest_theme_id}", flush=True)
+                                                                print(f"  Groups: {config_groups}", flush=True)
+                                                                
+                                                                config_response = update_theme_configuration(
+                                                                    base_url=destination_url,
+                                                                    payload=config_payload,
+                                                                    headers=update_headers
+                                                                )
+                                                                
+                                                                print(f"\n[API] THEME CONFIGURATION RESPONSE", flush=True)
+                                                                print("="*80, flush=True)
+                                                                
+                                                                if config_response:
+                                                                    print(f"Success: {config_response.get('success', False)}", flush=True)
+                                                                    print(f"Message: {config_response.get('message', 'N/A')}", flush=True)
+                                                                    
+                                                                    print(f"\nFull Response:", flush=True)
+                                                                    print(json.dumps(config_response, indent=2), flush=True)
+                                                                    
+                                                                    # Save configuration response to file
+                                                                    config_response_file = os.path.join(job_folder, "update_theme_configuration_response.json")
+                                                                    with open(config_response_file, 'w', encoding='utf-8') as f:
+                                                                        json.dump(config_response, f, indent=4, ensure_ascii=False)
+                                                                    
+                                                                    print(f"\n[SAVED] Theme configuration response saved to: {config_response_file}", flush=True)
+                                                                    
+                                                                    if config_response.get('success', False):
+                                                                        print(f"\n[OK] THEME CONFIGURATION FINALIZED SUCCESSFULLY!", flush=True)
+                                                                        logger.info(f"[{job_id}] Successfully finalized theme configuration")
+                                                                    else:
+                                                                        error_msg = config_response.get('message', 'Unknown error')
+                                                                        print(f"\n[ERROR] Theme configuration update failed: {error_msg}", flush=True)
+                                                                        logger.error(f"[{job_id}] Theme configuration update failed: {error_msg}")
+                                                                else:
+                                                                    print("[ERROR] Theme configuration API returned None", flush=True)
+                                                                    logger.error(f"[{job_id}] Update theme configuration API returned None")
+                                                                
+                                                                print("="*80 + "\n", flush=True)
+                                                                
+                                                            except Exception as config_error:
+                                                                print(f"[ERROR] Error updating theme configuration: {config_error}", flush=True)
+                                                                logger.error(f"[{job_id}] Failed to update theme configuration: {config_error}")
+                                                                import traceback
+                                                                print(f"[ERROR] Traceback: {traceback.format_exc()}", flush=True)
+                                                        else:
+                                                            print(f"\n[WARNING] Update API returned success but no groups were created!", flush=True)
+                                                            print(f"[WARNING] Response data: {updated_groups}", flush=True)
+                                                            logger.warning(f"[{job_id}] Update API returned success but no groups in response")
+                                                            if not update_response.get('success', False):
+                                                                error_msg = update_response.get('message', 'Unknown error')
+                                                                print(f"[ERROR] API returned success=false: {error_msg}", flush=True)
+                                                                logger.error(f"[{job_id}] Update theme variables API failed: {error_msg}")
                                                     else:
                                                         print("[ERROR] Update API returned None - check error logs", flush=True)
                                                         logger.error(f"[{job_id}] Update theme variables API returned None")
+                                                        print("[ERROR] This usually means the API call failed. Check network connection and API endpoint.", flush=True)
                                                     
                                                     print("="*80 + "\n", flush=True)
                                                     

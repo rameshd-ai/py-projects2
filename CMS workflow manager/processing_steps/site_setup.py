@@ -1,7 +1,7 @@
 import time
 import logging
 from typing import Dict, Any
-from apis import generate_cms_token, get_theme_configuration, get_group_record
+from apis import generate_cms_token
 
 logger = logging.getLogger(__name__)
 
@@ -96,136 +96,8 @@ def run_site_setup_step(job_id: str, step_config: Dict, workflow_context: Dict) 
     else:
         logger.info(f"[{job_id}] Skipping destination token generation - missing URL or Profile Alias")
     
-    # Call get_theme_configuration for source site if we have the token
-    theme_config_response = None
-    print(f"\n[DEBUG] source_token exists: {bool(source_token)}", flush=True)
-    print(f"[DEBUG] source_site_id: {source_site_id}", flush=True)
-    print(f"[DEBUG] Will call theme API: {bool(source_token and source_site_id)}\n", flush=True)
-    
-    if source_token and source_site_id:
-        try:
-            logger.info(f"[{job_id}] Calling get_theme_configuration for source site...")
-            print("\n" + "="*80, flush=True)
-            print(f"[API] CALLING GET_THEME_CONFIGURATION API", flush=True)
-            print("="*80, flush=True)
-            print(f"Base URL: {source_url}", flush=True)
-            print(f"Site ID: {source_site_id}", flush=True)
-            print("="*80, flush=True)
-            
-            # Build headers with the generated token
-            headers = {
-                'Authorization': f'Bearer {source_token}',
-                'Content-Type': 'application/json'
-            }
-            
-            theme_config_response = get_theme_configuration(source_url, int(source_site_id), headers)
-            
-            print("\n" + "="*80, flush=True)
-            print(f"[API] GET_THEME_CONFIGURATION API RESPONSE", flush=True)
-            print("="*80, flush=True)
-            if theme_config_response:
-                print(f"Success: {theme_config_response.get('success', False)}", flush=True)
-                print(f"Error Message: {theme_config_response.get('errorMessage', 'None')}", flush=True)
-                
-                theme_mapping = theme_config_response.get('websiteThemeMappping', {})
-                if theme_mapping:
-                    print(f"\nTheme Name: {theme_mapping.get('themeName', 'N/A')}")
-                    print(f"Theme ID: {theme_mapping.get('themeId', 'N/A')}")
-                    
-                    group_mapping = theme_mapping.get('groupMapping', [])
-                    print(f"\nGroup Mappings ({len(group_mapping)} groups):")
-                    for group in group_mapping:
-                        print(f"  - Group ID: {group.get('groupId')}")
-                        print(f"    Name: {group.get('groupName')}")
-                        print(f"    Type: {group.get('groupType')}")
-                        print()
-                
-                print("\nFull Response:")
-                import json
-                print(json.dumps(theme_config_response, indent=2))
-            else:
-                print("[ERROR] API returned None (check error logs above)")
-            print("="*80 + "\n")
-            
-            logger.info(f"[{job_id}] Theme configuration API call completed")
-            
-            # Call get_group_record if theme configuration was successful
-            if theme_config_response and theme_config_response.get('success'):
-                try:
-                    theme_mapping = theme_config_response.get('websiteThemeMappping', {})
-                    theme_id = theme_mapping.get('themeId')
-                    group_mapping = theme_mapping.get('groupMapping', [])
-                    
-                    if theme_id and group_mapping:
-                        # Build groups list for API call
-                        groups = []
-                        for group in group_mapping:
-                            groups.append({
-                                "themeId": theme_id,
-                                "groupId": group.get('groupId')
-                            })
-                        
-                        logger.info(f"[{job_id}] Calling get_group_record with {len(groups)} groups...")
-                        print("\n" + "="*80, flush=True)
-                        print(f"[PROCESS] CALLING GET_GROUP_RECORD API", flush=True)
-                        print("="*80, flush=True)
-                        print(f"Base URL: {source_url}", flush=True)
-                        print(f"Site ID: {source_site_id}", flush=True)
-                        print(f"Theme ID: {theme_id}", flush=True)
-                        print(f"Groups: {groups}", flush=True)
-                        print("="*80, flush=True)
-                        
-                        # Build headers with the source token
-                        headers = {
-                            'Authorization': f'Bearer {source_token}',
-                            'Content-Type': 'application/json'
-                        }
-                        
-                        group_record_response = get_group_record(source_url, int(source_site_id), groups, headers)
-                        
-                        print("\n" + "="*80, flush=True)
-                        print(f"[API] GET_GROUP_RECORD API RESPONSE", flush=True)
-                        print("="*80, flush=True)
-                        if group_record_response:
-                            print(f"Success: {group_record_response.get('success', False)}", flush=True)
-                            print(f"Error Message: {group_record_response.get('errorMessage', 'None')}", flush=True)
-                            
-                            group_details = group_record_response.get('groupsRecordDetails', [])
-                            print(f"\nGroup Records ({len(group_details)} groups):")
-                            
-                            for group_detail in group_details:
-                                print(f"\n  Theme ID: {group_detail.get('themeId')}")
-                                print(f"  Theme Name: {group_detail.get('themeName')}")
-                                print(f"  Group ID: {group_detail.get('groupId')}")
-                                print(f"  Group Name: {group_detail.get('groupName')}")
-                                print(f"  Group Type: {group_detail.get('grouptype')}")
-                                
-                                variables = group_detail.get('groupVariables', [])
-                                print(f"  Variables ({len(variables)}):")
-                                for var in variables:
-                                    print(f"    - Name: {var.get('variableName')}")
-                                    print(f"      Type: {var.get('variableType')}")
-                                    print(f"      Value: {var.get('variableValue')}")
-                                    print(f"      Alias: {var.get('variableAlias')}")
-                            
-                            print("\nFull Response:")
-                            import json
-                            print(json.dumps(group_record_response, indent=2))
-                        else:
-                            print("[ERROR] API returned None (check error logs above)")
-                        print("="*80 + "\n")
-                        
-                        logger.info(f"[{job_id}] Group record API call completed")
-                    else:
-                        logger.warning(f"[{job_id}] Missing theme ID or group mappings, skipping get_group_record")
-                except Exception as e:
-                    logger.error(f"[{job_id}] Error calling get_group_record: {e}")
-                    print(f"[ERROR] Error calling group record API: {e}")
-        except Exception as e:
-            logger.error(f"[{job_id}] Error calling get_theme_configuration: {e}")
-            print(f"[ERROR] Error calling theme configuration API: {e}")
-    else:
-        logger.info(f"[{job_id}] Skipping theme configuration API - missing token or site ID")
+    # NOTE: Theme API calls (get_theme_configuration, get_group_record) are handled in Step 2 (brand_theme.py)
+    # They should NOT be called here in Step 1 (site_setup.py)
     
     # Simulate processing
     time.sleep(step_config.get("delay", 2.0))

@@ -608,6 +608,20 @@ def process_sub_process():
             "job_id": job_id
         }
         
+        # Load previous step results (including site_setup, brand_theme, etc.)
+        # This is needed for menu processing which requires site_setup data
+        from utils import get_job_folder
+        import os
+        results_file = os.path.join(get_job_folder(job_id), "results.json")
+        if os.path.exists(results_file):
+            try:
+                with open(results_file, 'r', encoding='utf-8') as f:
+                    previous_results = json.load(f)
+                    workflow_context.update(previous_results)
+                logging.info(f"Loaded previous step results for job {job_id}")
+            except Exception as e:
+                logging.warning(f"Could not load previous results for job {job_id}: {e}")
+        
         # Process based on module_id
         result = None
         if module_id == 'htmlMenu':
