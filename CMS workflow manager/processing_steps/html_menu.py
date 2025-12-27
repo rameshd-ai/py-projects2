@@ -645,27 +645,19 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
         
         if success:
-            # Map responses back to menu records
+            # Map responses back to menu records (responseData is now a list indexed by order)
             for idx, (menu_idx, menu_record) in enumerate(l0_menu_mapping):
                 created_record_id = None
-                result_body = responseData.get(0) if idx == 0 else responseData.get(idx)
                 
-                # Try to get the actual record ID from response
-                if isinstance(result_body, int) and result_body > 0:
-                    created_record_id = result_body
-                elif isinstance(result_body, dict):
-                    created_record_id = result_body.get('recordId')
+                # Get response by index (responses are in same order as requests)
+                if isinstance(responseData, list) and idx < len(responseData):
+                    created_record_id = responseData[idx]
                 elif isinstance(responseData, dict):
-                    # Response might be keyed by recordId
-                    for resp_key, resp_val in responseData.items():
-                        if isinstance(resp_val, int) and resp_val > 0:
-                            created_record_id = resp_val
-                            break
-                        elif isinstance(resp_val, dict) and resp_val.get('recordId'):
-                            created_record_id = resp_val.get('recordId')
-                            break
+                    # Fallback: try to get by index key
+                    created_record_id = responseData.get(idx) or responseData.get(str(idx))
                 
-                if created_record_id and created_record_id > 0:
+                # Validate the record ID
+                if created_record_id and isinstance(created_record_id, int) and created_record_id > 0:
                     print(f"[SUCCESS] Level 0 Menu {idx+1} created with Record ID: {created_record_id}", flush=True)
                     logger.info(f"Level 0 Menu {idx+1} created successfully with Record ID: {created_record_id}")
                     
@@ -676,7 +668,8 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                             section['ParentComponentId'] = str(l1_component_id)
                             section['MainParentComponentid'] = l0_main_parent_id
                 else:
-                    logger.warning(f"L0 Menu {idx+1} API call succeeded but couldn't extract record ID from: {result_body}")
+                    logger.warning(f"L0 Menu {idx+1} API call succeeded but couldn't extract record ID. Response: {created_record_id}, Type: {type(created_record_id)}")
+                    print(f"[WARNING] L0 Menu {idx+1} - Invalid record ID: {created_record_id}", flush=True)
         else:
             logger.error(f"L0 batch API call failed. Response: {responseData}")
             print(f"[ERROR] L0 batch API call failed. Response: {responseData}", flush=True)
@@ -747,27 +740,19 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
         
         if success:
-            # Map responses back to section records
+            # Map responses back to section records (responseData is now a list indexed by order)
             for idx, section_record in enumerate(l1_section_mapping):
                 created_record_id = None
-                result_body = responseData.get(0) if idx == 0 else responseData.get(idx)
                 
-                # Try to get the actual record ID from response
-                if isinstance(result_body, int) and result_body > 0:
-                    created_record_id = result_body
-                elif isinstance(result_body, dict):
-                    created_record_id = result_body.get('recordId')
+                # Get response by index (responses are in same order as requests)
+                if isinstance(responseData, list) and idx < len(responseData):
+                    created_record_id = responseData[idx]
                 elif isinstance(responseData, dict):
-                    # Response might be keyed by recordId
-                    for resp_key, resp_val in responseData.items():
-                        if isinstance(resp_val, int) and resp_val > 0:
-                            created_record_id = resp_val
-                            break
-                        elif isinstance(resp_val, dict) and resp_val.get('recordId'):
-                            created_record_id = resp_val.get('recordId')
-                            break
+                    # Fallback: try to get by index key
+                    created_record_id = responseData.get(idx) or responseData.get(str(idx))
                 
-                if created_record_id and created_record_id > 0:
+                # Validate the record ID
+                if created_record_id and isinstance(created_record_id, int) and created_record_id > 0:
                     print(f"[SUCCESS] Level 1 Section {idx+1} created with Record ID: {created_record_id}", flush=True)
                     logger.info(f"Level 1 Section {idx+1} created successfully with Record ID: {created_record_id}")
                     
@@ -779,7 +764,8 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                             item['ParentComponentId'] = str(l2_component_id)
                             item['MainParentComponentid'] = l0_main_parent_id
                 else:
-                    logger.warning(f"L1 Section {idx+1} API call succeeded but couldn't extract record ID from: {result_body}")
+                    logger.warning(f"L1 Section {idx+1} API call succeeded but couldn't extract record ID. Response: {created_record_id}, Type: {type(created_record_id)}")
+                    print(f"[WARNING] L1 Section {idx+1} - Invalid record ID: {created_record_id}", flush=True)
         else:
             logger.error(f"L1 batch API call failed. Response: {responseData}")
             print(f"[ERROR] L1 batch API call failed. Response: {responseData}", flush=True)
@@ -856,27 +842,19 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
         
         if success:
-            # Map responses back to item records
+            # Map responses back to item records (responseData is now a list indexed by order)
             for idx, (item_record, l3_prices, l3_addons) in enumerate(l2_item_mapping):
                 created_record_id = None
-                result_body = responseData.get(0) if idx == 0 else responseData.get(idx)
                 
-                # Try to get the actual record ID from response
-                if isinstance(result_body, int) and result_body > 0:
-                    created_record_id = result_body
-                elif isinstance(result_body, dict):
-                    created_record_id = result_body.get('recordId')
+                # Get response by index (responses are in same order as requests)
+                if isinstance(responseData, list) and idx < len(responseData):
+                    created_record_id = responseData[idx]
                 elif isinstance(responseData, dict):
-                    # Response might be keyed by recordId
-                    for resp_key, resp_val in responseData.items():
-                        if isinstance(resp_val, int) and resp_val > 0:
-                            created_record_id = resp_val
-                            break
-                        elif isinstance(resp_val, dict) and resp_val.get('recordId'):
-                            created_record_id = resp_val.get('recordId')
-                            break
+                    # Fallback: try to get by index key
+                    created_record_id = responseData.get(idx) or responseData.get(str(idx))
                 
-                if created_record_id and created_record_id > 0:
+                # Validate the record ID
+                if created_record_id and isinstance(created_record_id, int) and created_record_id > 0:
                     print(f"[SUCCESS] Level 2 Item {idx+1} created with Record ID: {created_record_id}", flush=True)
                     logger.info(f"Level 2 Item {idx+1} created successfully with Record ID: {created_record_id}")
                     
@@ -893,7 +871,8 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                             addon['ParentComponentId'] = str(l3_addon_component_id)
                             addon['MainParentComponentid'] = l0_main_parent_id
                 else:
-                    logger.warning(f"L2 Item {idx+1} API call succeeded but couldn't extract record ID from: {result_body}")
+                    logger.warning(f"L2 Item {idx+1} API call succeeded but couldn't extract record ID. Response: {created_record_id}, Type: {type(created_record_id)}")
+                    print(f"[WARNING] L2 Item {idx+1} - Invalid record ID: {created_record_id}", flush=True)
         else:
             logger.error(f"L2 batch API call failed. Response: {responseData}")
             print(f"[ERROR] L2 batch API call failed. Response: {responseData}", flush=True)

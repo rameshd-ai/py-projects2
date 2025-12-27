@@ -727,6 +727,15 @@ def process_sub_process():
             return jsonify({"success": False, "error": f"Unknown module_id: {module_id}"}), 400
         
         if result and result.get("success", True):
+            # Mark module as processed in job config
+            from utils import save_job_config
+            if 'processed_modules' not in job_config:
+                job_config['processed_modules'] = {}
+            job_config['processed_modules'][module_id] = True
+            job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            save_job_config(job_id, job_config)
+            logging.info(f"Marked {module_id} as processed for job {job_id}")
+            
             return jsonify({
                 "success": True,
                 "module_id": module_id,

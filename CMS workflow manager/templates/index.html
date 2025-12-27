@@ -2082,6 +2082,44 @@
             if (!jobId) return;
             
             try {
+                // First check job config for processed_modules (persistent state)
+                const configResponse = await fetch(`/api/job-config/${jobId}`);
+                const configData = await configResponse.json();
+                
+                if (configData.success && configData.config) {
+                    const processedModules = configData.config.processed_modules || {};
+                    
+                    // Check each module and mark as processed if found
+                    ['htmlMenu', 'faqManager', 'socialFeed', 'ltoMigration', 'rfpForm', 'damMigration'].forEach(moduleId => {
+                        if (processedModules[moduleId]) {
+                            const moduleItem = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
+                            if (moduleItem && !moduleItem.classList.contains('disabled')) {
+                                moduleItem.classList.add('processed');
+                                processedSubProcesses[moduleId] = true;
+                                const btn = moduleItem.querySelector('.sub-process-btn');
+                                if (btn) {
+                                    btn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                                    btn.style.background = '#10b981';
+                                    btn.disabled = false; // Allow reprocessing
+                                    btn.onclick = moduleId === 'htmlMenu' ? () => showMenuConfigModal() : () => reprocessModule(moduleId);
+                                    btn.title = 'Click to reprocess';
+                                    
+                                    // Add reprocess button next to processed button
+                                    if (!moduleItem.querySelector('.reprocess-btn')) {
+                                        const reprocessBtn = document.createElement('button');
+                                        reprocessBtn.className = 'reprocess-btn';
+                                        reprocessBtn.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
+                                        reprocessBtn.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                                        reprocessBtn.onclick = () => reprocessModule(moduleId);
+                                        btn.parentNode.appendChild(reprocessBtn);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Also check results.json as fallback
                 const response = await fetch(`/api/job-status/${jobId}`);
                 const result = await response.json();
                 
@@ -2099,8 +2137,8 @@
                                 const modulesResult = stepResults.modules_features || {};
                                 const moduleResults = modulesResult.module_results || {};
                                 
-                                // Mark HTML Menu as processed if it was processed
-                                if (moduleResults.htmlMenu) {
+                                // Mark HTML Menu as processed if it was processed (fallback)
+                                if (moduleResults.htmlMenu && !processedSubProcesses['htmlMenu']) {
                                     const htmlMenuItem = document.querySelector('.sub-process-item[data-module="htmlMenu"]');
                                     if (htmlMenuItem && !htmlMenuItem.classList.contains('disabled')) {
                                         htmlMenuItem.classList.add('processed');
@@ -2108,13 +2146,15 @@
                                         const btn = htmlMenuItem.querySelector('.sub-process-btn');
                                         if (btn) {
                                             btn.innerHTML = '<i class="fas fa-check"></i> Processed';
-                                            btn.disabled = true;
+                                            btn.style.background = '#10b981';
+                                            btn.disabled = false;
+                                            btn.onclick = () => showMenuConfigModal();
                                         }
                                     }
                                 }
                                 
-                                // Mark FAQ Manager as processed if it was processed
-                                if (moduleResults.faqManager) {
+                                // Mark FAQ Manager as processed if it was processed (fallback)
+                                if (moduleResults.faqManager && !processedSubProcesses['faqManager']) {
                                     const faqItem = document.querySelector('.sub-process-item[data-module="faqManager"]');
                                     if (faqItem && !faqItem.classList.contains('disabled')) {
                                         faqItem.classList.add('processed');
@@ -2122,7 +2162,9 @@
                                         const btn = faqItem.querySelector('.sub-process-btn');
                                         if (btn) {
                                             btn.innerHTML = '<i class="fas fa-check"></i> Processed';
-                                            btn.disabled = true;
+                                            btn.style.background = '#10b981';
+                                            btn.disabled = false;
+                                            btn.onclick = () => reprocessModule('faqManager');
                                         }
                                     }
                                 }
@@ -2135,6 +2177,36 @@
                 }
             } catch (error) {
                 console.error('Error checking sub-process status:', error);
+            }
+        }
+        
+        async function reprocessModule(moduleId) {
+            if (!confirm(`Are you sure you want to reprocess ${moduleId}? This will run the processing again.`)) {
+                return;
+            }
+            
+            // Reset processed state
+            processedSubProcesses[moduleId] = false;
+            const moduleItem = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
+            if (moduleItem) {
+                moduleItem.classList.remove('processed');
+                const btn = moduleItem.querySelector('.sub-process-btn');
+                const reprocessBtn = moduleItem.querySelector('.reprocess-btn');
+                if (reprocessBtn) {
+                    reprocessBtn.remove();
+                }
+                if (btn) {
+                    btn.innerHTML = 'Process';
+                    btn.style.background = '#10b981';
+                    btn.onclick = moduleId === 'htmlMenu' ? () => showMenuConfigModal() : () => processSubProcess(moduleId);
+                }
+            }
+            
+            // Process the module
+            if (moduleId === 'htmlMenu') {
+                await processSubProcessDirectly('htmlMenu');
+            } else {
+                await processSubProcessDirectly(moduleId);
             }
         }
 
@@ -2244,8 +2316,21 @@
             const subProcess = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
             const processBtn = subProcess?.querySelector('.sub-process-btn');
             
-            if (!subProcess || subProcess.classList.contains('disabled') || processedSubProcesses[moduleId]) {
+            // Allow reprocessing if already processed
+            if (!subProcess || subProcess.classList.contains('disabled')) {
                 return;
+            }
+            
+            // If already processed, reset state for reprocessing
+            if (processedSubProcesses[moduleId]) {
+                processedSubProcesses[moduleId] = false;
+                subProcess.classList.remove('processed');
+                const reprocessBtn = subProcess.querySelector('.reprocess-btn');
+                if (reprocessBtn) reprocessBtn.remove();
+                if (processBtn) {
+                    processBtn.innerHTML = 'Process';
+                    processBtn.style.background = '#10b981';
+                }
             }
             
             // Set processing state
@@ -2282,12 +2367,35 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Mark as processed
+                    // Mark as processed (state is saved on backend)
                     processedSubProcesses[moduleId] = true;
                     subProcess.classList.remove('processing');
                     subProcess.classList.add('processed');
                     processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
-                    processBtn.disabled = true;
+                    processBtn.style.background = '#10b981';
+                    processBtn.disabled = false; // Allow reprocessing
+                    processBtn.onclick = moduleId === 'htmlMenu' ? () => showMenuConfigModal() : () => reprocessModule(moduleId);
+                    processBtn.title = 'Click to reprocess';
+                    
+                    // Add reprocess button
+                    if (!subProcess.querySelector('.reprocess-btn')) {
+                        const reprocessBtn = document.createElement('button');
+                        reprocessBtn.className = 'reprocess-btn';
+                        reprocessBtn.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
+                        reprocessBtn.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                        reprocessBtn.onclick = () => reprocessModule(moduleId);
+                        processBtn.parentNode.appendChild(reprocessBtn);
+                    }
+                    
+                    // For htmlMenu, also update modal button
+                    if (moduleId === 'htmlMenu') {
+                        const modalProcessBtn = document.getElementById('processDineMenuBtn');
+                        if (modalProcessBtn) {
+                            modalProcessBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                            modalProcessBtn.style.background = '#10b981';
+                            modalProcessBtn.disabled = false;
+                        }
+                    }
                     
                     // Check if all sub-processes are done
                     checkStep4Completion();
@@ -2376,20 +2484,22 @@
             // Update Process button state if already processed
             const processBtn = document.getElementById('processDineMenuBtn');
             if (processBtn && processedSubProcesses['htmlMenu']) {
-                processBtn.disabled = true;
-                processBtn.textContent = '✓ Processed';
+                processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
                 processBtn.style.background = '#10b981';
-                processBtn.style.cursor = 'default';
+                processBtn.disabled = false; // Allow reprocessing
             }
         }
 
         async function processDineMenuFromModal() {
             const processBtn = document.getElementById('processDineMenuBtn');
             
-            // Check if already processed
+            // If already processed, ask for confirmation to reprocess
             if (processedSubProcesses['htmlMenu']) {
-                alert('Dine Menu has already been processed.');
-                return;
+                if (!confirm('Dine Menu has already been processed. Do you want to reprocess it?')) {
+                    return;
+                }
+                // Reset processed state for reprocessing
+                processedSubProcesses['htmlMenu'] = false;
             }
             
             // NOTE: Do NOT save mapper files here - "Save All" button handles that

@@ -264,16 +264,16 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
     """
     api_url = f"{base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
     
-    responses = {}
+    responses = []
     all_records = []
     
-    # Collect all records from payload
+    # Collect all records from payload with index tracking
     for record_set_id, records in payload.items():
-        for record in records:
-            all_records.append((record_set_id, record))
+        for idx, record in enumerate(records):
+            all_records.append((record_set_id, record, len(all_records)))  # Add index for tracking
     
     if not all_records:
-        return True, {}
+        return True, []
     
     total_records = len(all_records)
     print(f"[BATCH] Processing {total_records} records in batches of {batch_size}", flush=True)
@@ -289,15 +289,30 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
             print(f"[BATCH] Processing batch {batch_num}/{total_batches} ({len(batch_records)} records)...", flush=True)
             
             # Process each record in the batch
-            for record_set_id, record in batch_records:
+            for record_set_id, record, record_index in batch_records:
                 try:
                     response = requests.post(api_url, headers=headers, json=record, timeout=30)
                     response.raise_for_status()
                     result = response.json()
-                    record_id = record.get('recordId')
                     
                     if result.get("result"):
-                        responses[record_id] = result.get('result')
+                        # Extract the created record ID from response
+                        created_id = result.get('result')
+                        # Handle different response formats
+                        if isinstance(created_id, int):
+                            record_id = created_id
+                        elif isinstance(created_id, dict):
+                            record_id = created_id.get('recordId', created_id.get('id', 0))
+                        else:
+                            record_id = created_id
+                        
+                        # Store response by index to maintain order
+                        # Pad with None if needed to maintain index alignment
+                        while len(responses) <= record_index:
+                            responses.append(None)
+                        responses[record_index] = record_id
+                        
+                        print(f"[OK] Record {record_index + 1} created with ID: {record_id}", flush=True)
                     else:
                         error_msg = f"API response indicates failure for record: {record}"
                         print(f"[ERROR] {error_msg}", flush=True)
