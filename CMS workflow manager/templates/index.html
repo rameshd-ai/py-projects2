@@ -2101,8 +2101,24 @@
                                     btn.innerHTML = '<i class="fas fa-check"></i> Processed';
                                     btn.style.background = '#10b981';
                                     btn.disabled = false; // Allow reprocessing
-                                    btn.onclick = moduleId === 'htmlMenu' ? () => showMenuConfigModal() : () => reprocessModule(moduleId);
+                                    if (moduleId === 'htmlMenu') {
+                                        btn.onclick = () => showMenuConfigModal();
+                                    } else if (moduleId === 'faqManager') {
+                                        btn.onclick = () => handleFaqManagerClick();
+                                    } else {
+                                        btn.onclick = () => reprocessModule(moduleId);
+                                    }
                                     btn.title = 'Click to reprocess';
+                                    
+                                    // Add download button for FAQ
+                                    if (moduleId === 'faqManager' && !moduleItem.querySelector('.download-faq-btn')) {
+                                        const downloadBtn = document.createElement('button');
+                                        downloadBtn.className = 'download-faq-btn';
+                                        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                                        downloadBtn.style.cssText = 'padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                                        downloadBtn.onclick = () => downloadFaqFile();
+                                        btn.parentNode.appendChild(downloadBtn);
+                                    }
                                     
                                     // Add reprocess button next to processed button
                                     if (!moduleItem.querySelector('.reprocess-btn')) {
@@ -2192,19 +2208,32 @@
                 moduleItem.classList.remove('processed');
                 const btn = moduleItem.querySelector('.sub-process-btn');
                 const reprocessBtn = moduleItem.querySelector('.reprocess-btn');
+                const downloadBtn = moduleItem.querySelector('.download-faq-btn');
+                
                 if (reprocessBtn) {
                     reprocessBtn.remove();
+                }
+                if (downloadBtn) {
+                    downloadBtn.remove();
                 }
                 if (btn) {
                     btn.innerHTML = 'Process';
                     btn.style.background = '#10b981';
-                    btn.onclick = moduleId === 'htmlMenu' ? () => showMenuConfigModal() : () => processSubProcess(moduleId);
+                    if (moduleId === 'htmlMenu') {
+                        btn.onclick = () => showMenuConfigModal();
+                    } else if (moduleId === 'faqManager') {
+                        btn.onclick = () => handleFaqManagerClick();
+                    } else {
+                        btn.onclick = () => processSubProcess(moduleId);
+                    }
                 }
             }
             
             // Process the module
             if (moduleId === 'htmlMenu') {
                 await processSubProcessDirectly('htmlMenu');
+            } else if (moduleId === 'faqManager') {
+                showFaqManagerModal();
             } else {
                 await processSubProcessDirectly(moduleId);
             }
@@ -2374,8 +2403,24 @@
                     processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
                     processBtn.style.background = '#10b981';
                     processBtn.disabled = false; // Allow reprocessing
-                    processBtn.onclick = moduleId === 'htmlMenu' ? () => showMenuConfigModal() : () => reprocessModule(moduleId);
+                    if (moduleId === 'htmlMenu') {
+                        processBtn.onclick = () => showMenuConfigModal();
+                    } else if (moduleId === 'faqManager') {
+                        processBtn.onclick = () => handleFaqManagerClick();
+                    } else {
+                        processBtn.onclick = () => reprocessModule(moduleId);
+                    }
                     processBtn.title = 'Click to reprocess';
+                    
+                    // Add download button for FAQ
+                    if (moduleId === 'faqManager' && !subProcess.querySelector('.download-faq-btn')) {
+                        const downloadBtn = document.createElement('button');
+                        downloadBtn.className = 'download-faq-btn';
+                        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                        downloadBtn.style.cssText = 'padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                        downloadBtn.onclick = () => downloadFaqFile();
+                        processBtn.parentNode.appendChild(downloadBtn);
+                    }
                     
                     // Add reprocess button
                     if (!subProcess.querySelector('.reprocess-btn')) {
@@ -2736,7 +2781,25 @@
         // FAQ Manager Modal Functions
         function handleFaqManagerClick() {
             const subProcess = document.querySelector('.sub-process-item[data-module="faqManager"]');
-            if (subProcess && !subProcess.classList.contains('disabled') && !processedSubProcesses['faqManager']) {
+            if (subProcess && !subProcess.classList.contains('disabled')) {
+                // If already processed, ask for confirmation to reprocess
+                if (processedSubProcesses['faqManager']) {
+                    if (!confirm('FAQ has already been processed. Do you want to reprocess it?')) {
+                        return;
+                    }
+                    // Reset processed state for reprocessing
+                    processedSubProcesses['faqManager'] = false;
+                    const btn = subProcess.querySelector('.sub-process-btn');
+                    const reprocessBtn = subProcess.querySelector('.reprocess-btn');
+                    const downloadBtn = subProcess.querySelector('.download-faq-btn');
+                    if (reprocessBtn) reprocessBtn.remove();
+                    if (downloadBtn) downloadBtn.remove();
+                    if (btn) {
+                        btn.innerHTML = 'Process';
+                        btn.style.background = '#10b981';
+                    }
+                    subProcess.classList.remove('processed');
+                }
                 showFaqManagerModal();
             }
         }
@@ -2858,7 +2921,7 @@
                     // Mark as processed
                     processedSubProcesses['faqManager'] = true;
                     
-                    // Update UI
+                    // Update UI in card
                     const subProcess = document.querySelector('.sub-process-item[data-module="faqManager"]');
                     const processBtnInCard = subProcess?.querySelector('.sub-process-btn');
                     if (subProcess) {
@@ -2867,10 +2930,33 @@
                     }
                     if (processBtnInCard) {
                         processBtnInCard.innerHTML = '<i class="fas fa-check"></i> Processed';
-                        processBtnInCard.disabled = true;
+                        processBtnInCard.style.background = '#10b981';
+                        processBtnInCard.disabled = false; // Allow reprocessing
+                        processBtnInCard.onclick = () => handleFaqManagerClick();
+                        processBtnInCard.title = 'Click to reprocess';
+                        
+                        // Add download button next to process button
+                        if (!subProcess.querySelector('.download-faq-btn')) {
+                            const downloadBtn = document.createElement('button');
+                            downloadBtn.className = 'download-faq-btn';
+                            downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                            downloadBtn.style.cssText = 'padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                            downloadBtn.onclick = () => downloadFaqFile();
+                            processBtnInCard.parentNode.appendChild(downloadBtn);
+                        }
+                        
+                        // Add reprocess button next to process button
+                        if (!subProcess.querySelector('.reprocess-btn')) {
+                            const reprocessBtn = document.createElement('button');
+                            reprocessBtn.className = 'reprocess-btn';
+                            reprocessBtn.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
+                            reprocessBtn.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                            reprocessBtn.onclick = () => reprocessModule('faqManager');
+                            processBtnInCard.parentNode.appendChild(reprocessBtn);
+                        }
                     }
                     
-                    // Show download section
+                    // Show download section in modal
                     if (statusMessage) {
                         statusMessage.textContent = 'FAQ processing completed successfully!';
                     }
@@ -2878,13 +2964,25 @@
                         downloadSection.style.display = 'block';
                     }
                     if (processBtn) {
-                        processBtn.disabled = true;
+                        processBtn.disabled = false;
                         processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
                         processBtn.style.background = '#10b981';
+                        processBtn.onclick = () => {
+                            if (confirm('FAQ has already been processed. Do you want to reprocess it?')) {
+                                processedSubProcesses['faqManager'] = false;
+                                processFaqFromModal();
+                            }
+                        };
                     }
                     
                     // Store download file name
-                    window.faqDownloadFileName = result.result?.output_file || result.result?.file_name;
+                    window.faqDownloadFileName = result.result?.output_file || result.result?.file_name || `faq_processed_${jobId}.xlsx`;
+                    
+                    // Update download button if it exists
+                    const downloadBtn = subProcess?.querySelector('.download-faq-btn');
+                    if (downloadBtn) {
+                        downloadBtn.onclick = () => downloadFaqFile();
+                    }
                     
                     // Check if all sub-processes are done
                     checkStep4Completion();
@@ -2908,13 +3006,10 @@
         }
 
         function downloadFaqFile() {
-            if (window.faqDownloadFileName) {
-                // Create download link
-                const downloadUrl = `/api/download-faq-file?job_id=${jobId}&file_name=${encodeURIComponent(window.faqDownloadFileName)}`;
-                window.open(downloadUrl, '_blank');
-            } else {
-                alert('Download file not available');
-            }
+            // Try to get file name from window variable or construct from job ID
+            const fileName = window.faqDownloadFileName || `faq_processed_${jobId}.xlsx`;
+            const downloadUrl = `/api/download-faq-file?job_id=${jobId}&file_name=${encodeURIComponent(fileName)}`;
+            window.open(downloadUrl, '_blank');
         }
 
         function closeFaqManagerModal() {
