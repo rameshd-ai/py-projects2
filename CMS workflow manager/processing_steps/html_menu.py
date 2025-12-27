@@ -874,9 +874,21 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                     logger.warning(f"L2 Item {idx+1} API call succeeded but couldn't extract record ID. Response: {created_record_id}, Type: {type(created_record_id)}")
                     print(f"[WARNING] L2 Item {idx+1} - Invalid record ID: {created_record_id}", flush=True)
         else:
-            logger.error(f"L2 batch API call failed. Response: {responseData}")
-            print(f"[ERROR] L2 batch API call failed. Response: {responseData}", flush=True)
-            return False
+            # Check if we got partial success (some records succeeded)
+            if isinstance(responseData, list):
+                success_count = sum(1 for r in responseData if r is not None and isinstance(r, int) and r > 0)
+                if success_count > 0:
+                    logger.warning(f"L2 batch API call partially failed. {success_count}/{len(l2_item_mapping)} records succeeded")
+                    print(f"[WARNING] L2 batch API call partially failed. {success_count}/{len(l2_item_mapping)} records succeeded. Continuing...", flush=True)
+                    # Continue processing with successful records
+                else:
+                    logger.error(f"L2 batch API call failed completely. Response: {responseData}")
+                    print(f"[ERROR] L2 batch API call failed completely. Response: {responseData}", flush=True)
+                    return False
+            else:
+                logger.error(f"L2 batch API call failed. Response: {responseData}")
+                print(f"[ERROR] L2 batch API call failed. Response: {responseData}", flush=True)
+                return False
     
     # Save updated payload
     try:

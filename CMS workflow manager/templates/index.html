@@ -1259,12 +1259,46 @@
                 
                 if (result.success) {
                     const completedSteps = result.completed_steps || [];
+                    const stepResults = result.step_results || {};
                     const stepIds = ['site_setup', 'brand_theme', 'content_plugin', 'modules_features', 'finalize'];
                     
                     completedSteps.forEach(stepId => {
                         const stepIndex = stepIds.indexOf(stepId);
                         if (stepIndex >= 0) {
-                            stepStatus[stepIndex + 1] = 'success';
+                            const stepResult = stepResults[stepId] || {};
+                            const stepStatusValue = stepResult.status || 'success';
+                            const stepMessage = (stepResult.result?.message || stepResult.message || '').toLowerCase();
+                            
+                            // Check if step was skipped
+                            const isSkipped = stepStatusValue === 'skipped' || 
+                                             stepMessage.includes('skipped') || 
+                                             stepMessage.includes('not enabled') ||
+                                             stepMessage.includes('not selected') ||
+                                             stepMessage.includes('no modules');
+                            
+                            if (isSkipped) {
+                                stepStatus[stepIndex + 1] = 'skipped';
+                                // Update UI to show skipped (orange)
+                                const stepItem = document.querySelector(`.step-item[data-step="${stepIndex + 1}"]`);
+                                const stepIcon = stepItem?.querySelector('.step-icon');
+                                if (stepIcon) {
+                                    stepIcon.innerHTML = '<i class="fas fa-minus"></i>';
+                                    stepIcon.style.background = '#f59e0b';
+                                    stepIcon.classList.add('skipped');
+                                    stepIcon.classList.remove('completed', 'active', 'pending');
+                                }
+                            } else {
+                                stepStatus[stepIndex + 1] = 'success';
+                                // Update UI to show success (green) if not already set
+                                const stepItem = document.querySelector(`.step-item[data-step="${stepIndex + 1}"]`);
+                                const stepIcon = stepItem?.querySelector('.step-icon');
+                                if (stepIcon && !stepIcon.classList.contains('skipped')) {
+                                    stepIcon.innerHTML = '<i class="fas fa-check"></i>';
+                                    stepIcon.style.background = '#10b981';
+                                    stepIcon.classList.add('completed');
+                                    stepIcon.classList.remove('skipped', 'active', 'pending');
+                                }
+                            }
                         }
                     });
                 }
@@ -1282,23 +1316,30 @@
                 item.classList.remove('active');
                 icon.classList.remove('active', 'completed', 'pending', 'failed', 'skipped');
                 
-                // Check step status
+                // Apply status from stepStatus object if it exists
                 const status = stepStatus[stepNum];
                 
                 if (status === 'failed') {
-                    icon.classList.add('failed');
                     icon.innerHTML = '<i class="fas fa-times"></i>';
+                    icon.style.background = '#ef4444';
+                    icon.classList.add('failed');
                 } else if (status === 'skipped') {
-                    icon.classList.add('skipped');
                     icon.innerHTML = '<i class="fas fa-minus"></i>';
-                } else if (status === 'success') {
-                    // Step is marked as completed in JSON
-                    icon.classList.add('completed');
+                    icon.style.background = '#f59e0b'; // Orange color
+                    icon.classList.add('skipped');
+                } else if (status === 'success' || status === 'completed') {
                     icon.innerHTML = '<i class="fas fa-check"></i>';
+                    icon.style.background = '#10b981';
+                    icon.classList.add('completed');
+                } else if (status === 'processing' || status === 'active') {
+                    icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    icon.style.background = '#2563eb';
+                    icon.classList.add('active');
                 } else if (stepNum < currentStep) {
                     // Step was processed but not yet marked complete
-                    icon.classList.add('completed');
                     icon.innerHTML = '<i class="fas fa-check"></i>';
+                    icon.style.background = '#10b981';
+                    icon.classList.add('completed');
                 } else if (stepNum === currentStep) {
                     item.classList.add('active');
                     icon.classList.add('active');
@@ -2091,45 +2132,60 @@
                     
                     // Check each module and mark as processed if found
                     ['htmlMenu', 'faqManager', 'socialFeed', 'ltoMigration', 'rfpForm', 'damMigration'].forEach(moduleId => {
-                        if (processedModules[moduleId]) {
-                            const moduleItem = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
-                            if (moduleItem && !moduleItem.classList.contains('disabled')) {
-                                moduleItem.classList.add('processed');
-                                processedSubProcesses[moduleId] = true;
-                                const btn = moduleItem.querySelector('.sub-process-btn');
-                                if (btn) {
-                                    btn.innerHTML = '<i class="fas fa-check"></i> Processed';
-                                    btn.style.background = '#10b981';
-                                    btn.disabled = false; // Allow reprocessing
-                                    if (moduleId === 'htmlMenu') {
-                                        btn.onclick = () => showMenuConfigModal();
-                                    } else if (moduleId === 'faqManager') {
-                                        btn.onclick = () => handleFaqManagerClick();
-                                    } else {
-                                        btn.onclick = () => reprocessModule(moduleId);
-                                    }
-                                    btn.title = 'Click to reprocess';
-                                    
-                                    // Add download button for FAQ
-                                    if (moduleId === 'faqManager' && !moduleItem.querySelector('.download-faq-btn')) {
-                                        const downloadBtn = document.createElement('button');
-                                        downloadBtn.className = 'download-faq-btn';
-                                        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
-                                        downloadBtn.style.cssText = 'padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
-                                        downloadBtn.onclick = () => downloadFaqFile();
-                                        btn.parentNode.appendChild(downloadBtn);
-                                    }
-                                    
-                                    // Add reprocess button next to processed button
-                                    if (!moduleItem.querySelector('.reprocess-btn')) {
-                                        const reprocessBtn = document.createElement('button');
-                                        reprocessBtn.className = 'reprocess-btn';
-                                        reprocessBtn.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
-                                        reprocessBtn.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
-                                        reprocessBtn.onclick = () => reprocessModule(moduleId);
-                                        btn.parentNode.appendChild(reprocessBtn);
-                                    }
+                        const moduleItem = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
+                        if (!moduleItem) return;
+                        
+                        const isDisabled = moduleItem.classList.contains('disabled');
+                        const isProcessed = processedModules[moduleId] === true;
+                        const hasTimestamp = processedModules[`${moduleId}_timestamp`] !== undefined;
+                        
+                        // Only mark as processed (green) if it was actually executed (has timestamp)
+                        if (isProcessed && hasTimestamp && !isDisabled) {
+                            moduleItem.classList.add('processed');
+                            processedSubProcesses[moduleId] = true;
+                            const btn = moduleItem.querySelector('.sub-process-btn');
+                            if (btn) {
+                                btn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                                btn.style.background = '#10b981';
+                                btn.disabled = false; // Allow reprocessing
+                                if (moduleId === 'htmlMenu') {
+                                    btn.onclick = () => showMenuConfigModal();
+                                } else if (moduleId === 'faqManager') {
+                                    btn.onclick = () => handleFaqManagerClick();
+                                } else {
+                                    btn.onclick = () => reprocessModule(moduleId);
                                 }
+                                btn.title = 'Click to reprocess';
+                                
+                                // Add download button for FAQ
+                                if (moduleId === 'faqManager' && !moduleItem.querySelector('.download-faq-btn')) {
+                                    const downloadBtn = document.createElement('button');
+                                    downloadBtn.className = 'download-faq-btn';
+                                    downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download';
+                                    downloadBtn.style.cssText = 'padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                                    downloadBtn.onclick = () => downloadFaqFile();
+                                    btn.parentNode.appendChild(downloadBtn);
+                                }
+                                
+                                // Add reprocess button next to processed button
+                                if (!moduleItem.querySelector('.reprocess-btn')) {
+                                    const reprocessBtn = document.createElement('button');
+                                    reprocessBtn.className = 'reprocess-btn';
+                                    reprocessBtn.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
+                                    reprocessBtn.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                                    reprocessBtn.onclick = () => reprocessModule(moduleId);
+                                    btn.parentNode.appendChild(reprocessBtn);
+                                }
+                            }
+                        } else if (isDisabled || (!isProcessed && !hasTimestamp)) {
+                            // Mark as skipped (orange) if disabled or not processed
+                            moduleItem.classList.add('skipped');
+                            const btn = moduleItem.querySelector('.sub-process-btn');
+                            if (btn && !btn.disabled) {
+                                btn.innerHTML = '<i class="fas fa-minus"></i> Skipped';
+                                btn.style.background = '#f59e0b';
+                                btn.disabled = true;
+                                btn.title = isDisabled ? 'Module is disabled' : 'Module not executed';
                             }
                         }
                     });

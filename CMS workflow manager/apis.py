@@ -290,41 +290,89 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
             
             # Process each record in the batch
             for record_set_id, record, record_index in batch_records:
-                try:
-                    response = requests.post(api_url, headers=headers, json=record, timeout=30)
-                    response.raise_for_status()
-                    result = response.json()
-                    
-                    if result.get("result"):
-                        # Extract the created record ID from response
-                        created_id = result.get('result')
-                        # Handle different response formats
-                        if isinstance(created_id, int):
-                            record_id = created_id
-                        elif isinstance(created_id, dict):
-                            record_id = created_id.get('recordId', created_id.get('id', 0))
+                max_retries = 3
+                retry_delay = 5  # seconds
+                success = False
+                
+                for attempt in range(max_retries):
+                    try:
+                        # Increase timeout for menu records (60 seconds)
+                        timeout_value = 60
+                        response = requests.post(api_url, headers=headers, json=record, timeout=timeout_value)
+                        response.raise_for_status()
+                        result = response.json()
+                        
+                        if result.get("result"):
+                            # Extract the created record ID from response
+                            created_id = result.get('result')
+                            # Handle different response formats
+                            if isinstance(created_id, int):
+                                record_id = created_id
+                            elif isinstance(created_id, dict):
+                                record_id = created_id.get('recordId', created_id.get('id', 0))
+                            else:
+                                record_id = created_id
+                            
+                            # Store response by index to maintain order
+                            # Pad with None if needed to maintain index alignment
+                            while len(responses) <= record_index:
+                                responses.append(None)
+                            responses[record_index] = record_id
+                            
+                            print(f"[OK] Record {record_index + 1} created with ID: {record_id}", flush=True)
+                            success = True
+                            break  # Success, exit retry loop
                         else:
-                            record_id = created_id
-                        
-                        # Store response by index to maintain order
-                        # Pad with None if needed to maintain index alignment
-                        while len(responses) <= record_index:
-                            responses.append(None)
-                        responses[record_index] = record_id
-                        
-                        print(f"[OK] Record {record_index + 1} created with ID: {record_id}", flush=True)
-                    else:
-                        error_msg = f"API response indicates failure for record: {record}"
+                            error_msg = f"API response indicates failure for record: {record}"
+                            print(f"[ERROR] {error_msg}", flush=True)
+                            if attempt < max_retries - 1:
+                                print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
+                                time.sleep(retry_delay)
+                            else:
+                                return False, error_msg
+                    except requests.exceptions.Timeout as e:
+                        error_msg = f"Timeout error for record {record_index + 1} (attempt {attempt + 1}/{max_retries}): {e}"
+                        print(f"[TIMEOUT] {error_msg}", flush=True)
+                        if attempt < max_retries - 1:
+                            print(f"[RETRY] Retrying record {record_index + 1} after {retry_delay} seconds...", flush=True)
+                            time.sleep(retry_delay)
+                        else:
+                            # On final attempt failure, store None and continue with next record
+                            while len(responses) <= record_index:
+                                responses.append(None)
+                            responses[record_index] = None
+                            print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts, continuing with next record...", flush=True)
+                            logger.warning(f"Record {record_index + 1} failed after {max_retries} timeout attempts")
+                    except requests.RequestException as e:
+                        error_msg = f"Request error for record {record_index + 1}: {e}"
                         print(f"[ERROR] {error_msg}", flush=True)
-                        return False, error_msg
-                except requests.RequestException as e:
-                    error_msg = f"Failed to update record via API: {e}"
-                    print(f"[ERROR] {error_msg}", flush=True)
-                    return False, error_msg
-                except Exception as e:
-                    error_msg = f"Unexpected error processing record: {e}"
-                    print(f"[ERROR] {error_msg}", flush=True)
-                    return False, error_msg
+                        if attempt < max_retries - 1:
+                            print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
+                            time.sleep(retry_delay)
+                        else:
+                            # On final attempt failure, store None and continue
+                            while len(responses) <= record_index:
+                                responses.append(None)
+                            responses[record_index] = None
+                            print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts, continuing with next record...", flush=True)
+                            logger.warning(f"Record {record_index + 1} failed after {max_retries} request error attempts")
+                    except Exception as e:
+                        error_msg = f"Unexpected error processing record {record_index + 1}: {e}"
+                        print(f"[ERROR] {error_msg}", flush=True)
+                        if attempt < max_retries - 1:
+                            print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
+                            time.sleep(retry_delay)
+                        else:
+                            # On final attempt failure, store None and continue
+                            while len(responses) <= record_index:
+                                responses.append(None)
+                            responses[record_index] = None
+                            print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts, continuing with next record...", flush=True)
+                            logger.warning(f"Record {record_index + 1} failed after {max_retries} attempts due to unexpected error")
+                
+                # Small delay between records to avoid overwhelming the server
+                if record_index < len(all_records) - 1:
+                    time.sleep(0.5)
             
             # Small delay between batches (reduced from per-record delay)
             if batch_end < total_records:

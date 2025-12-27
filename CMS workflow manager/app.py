@@ -74,7 +74,7 @@ def get_job_results(job_id):
 
 @app.route('/api/job-status/<job_id>', methods=['GET'])
 def get_job_status(job_id):
-    """Get current status of a job including completed steps"""
+    """Get current status of a job including completed steps and step results"""
     try:
         from utils import get_job_folder, ensure_job_folders
         
@@ -87,16 +87,39 @@ def get_job_status(job_id):
                 completed_steps = results.get("completed_steps", [])
                 step_completion_times = results.get("step_completion_times", {})
                 
+                # Extract step results with status information
+                step_results = {}
+                step_ids = ['site_setup', 'brand_theme', 'content_plugin', 'modules_features', 'finalize']
+                for step_id in step_ids:
+                    if step_id in results:
+                        step_data = results[step_id]
+                        # Check if step was skipped
+                        step_status = step_data.get("status", "success")
+                        step_message = ""
+                        if isinstance(step_data, dict):
+                            if "result" in step_data and isinstance(step_data["result"], dict):
+                                step_message = step_data["result"].get("message", "")
+                            elif "message" in step_data:
+                                step_message = step_data["message"]
+                        
+                        step_results[step_id] = {
+                            "status": step_status,
+                            "message": step_message,
+                            "result": step_data.get("result", {}) if isinstance(step_data, dict) else {}
+                        }
+                
                 return jsonify({
                     "success": True,
                     "completed_steps": completed_steps,
-                    "step_completion_times": step_completion_times
+                    "step_completion_times": step_completion_times,
+                    "step_results": step_results
                 })
         else:
             return jsonify({
                 "success": True,
                 "completed_steps": [],
-                "step_completion_times": {}
+                "step_completion_times": {},
+                "step_results": {}
             })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
