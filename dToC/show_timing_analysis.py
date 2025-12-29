@@ -60,3 +60,5 @@ print(f"3. Combined, these two functions account for {(timing_data[0]['total_sec
 print(f"4. Publishing operations (publishPage + psPublishApi) take {(timing_data[2]['total_seconds'] + timing_data[3]['total_seconds'])/60:.2f} min total")
 print("="*110 + "\n")
 
+
+
