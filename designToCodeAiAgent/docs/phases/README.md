@@ -25,7 +25,7 @@ Complete phase-by-phase documentation for the Figma to MiBlock CMS Component Gen
 ## Phase 0: Prerequisites
 
 **Status**: ✅ **COMPLETED** (December 29, 2025)  
-**Document**: [PHASE_0_PREREQUISITES.md](../PHASE_0_PREREQUISITES.md)
+**Document**: [PHASE_0_PREREQUISITES.md](./PHASE_0_PREREQUISITES.md)
 
 ### What Was Done
 
@@ -268,7 +268,7 @@ Complete phase-by-phase documentation for the Figma to MiBlock CMS Component Gen
 ## 🎯 Quick Navigation
 
 ### By Status
-- **Completed**: [Phase 0](../PHASE_0_PREREQUISITES.md)
+- **Completed**: [Phase 0](./PHASE_0_PREREQUISITES.md)
 - **In Progress**: [Phase 1](./PHASE_1_FOUNDATION.md)
 - **Next Up**: [Phase 2](./PHASE_2_LIBRARY_INGESTION.md)
 - **All Pending**: Phases 2-8

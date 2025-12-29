@@ -26,7 +26,7 @@ This application uses Claude AI and visual embeddings to:
 
 ### Phase 0: Prerequisites (First Time Only)
 
-Before starting, complete the environment setup. **See detailed guide:** [docs/PHASE_0_PREREQUISITES.md](docs/PHASE_0_PREREQUISITES.md)
+Before starting, complete the environment setup. **See detailed guide:** [docs/phases/PHASE_0_PREREQUISITES.md](docs/phases/PHASE_0_PREREQUISITES.md)
 
 **Quick Summary:**
 
@@ -271,10 +271,10 @@ CLIP_SIMILARITY_THRESHOLD=0.90
 - **mi-block-ID-560183/** - Sample MiBlock component structure
 
 ### Phase-by-Phase Documentation
-Detailed documentation for each implementation phase in `docs/`:
+Detailed documentation for each implementation phase in `docs/phases/`:
 
 - **[docs/phases/README.md](docs/phases/README.md)** - Phase documentation index
-- **[Phase 0: Prerequisites](docs/PHASE_0_PREREQUISITES.md)** - ✅ COMPLETED
+- **[Phase 0: Prerequisites](docs/phases/PHASE_0_PREREQUISITES.md)** - ✅ COMPLETED
   - PostgreSQL installation
   - Database setup
   - Virtual environment creation
