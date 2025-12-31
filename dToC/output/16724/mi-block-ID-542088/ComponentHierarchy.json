@@ -1,0 +1,17 @@
+[
+    {
+        "componentId": 542088,
+        "type": "MainComponent",
+        "componentName": "Feature-left-image-with-awards"
+    },
+    {
+        "componentId": 542089,
+        "type": "Level1Child",
+        "componentName": "Feature-Image-2-Items"
+    },
+    {
+        "componentId": 542090,
+        "type": "Level2Child",
+        "componentName": "feature-award-section"
+    }
+]

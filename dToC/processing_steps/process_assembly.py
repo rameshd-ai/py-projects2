@@ -77,7 +77,7 @@ def find_processed_json_filepath(file_prefix: str) -> str | None:
 # ======================================================================================
 
 # --- 1. GLOBAL STATUS TRACKER ---
-ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = []
+ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = [] 
 
 # --- 2. GLOBAL TIMING TRACKER ---
 TIMING_TRACKER: Dict[str, List[float]] = {}  # Function name -> list of execution times
@@ -324,8 +324,8 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
         # print(f"  [INFO] Component ID: {component_id_unpacked}")
         # print(f"  [INFO] Component component_alias: {component_alias_unpacked}")
         # Generate unique pageSectionGuid for each component
-        pageSectionGuid = str(uuid.uuid4())
-        
+        pageSectionGuid = str(uuid.uuid4()) 
+
         # Verify uniqueness: Check if this component already has a GUID (shouldn't happen, but verify)
         component_key = f"{component_id_unpacked}_{page_name}"
         if component_key in COMPONENT_GUID_TRACKER:
@@ -337,7 +337,7 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
         else:
             COMPONENT_GUID_TRACKER[component_key] = pageSectionGuid
             logging.info(f"[GUID] Generated unique pageSectionGuid for component '{component_alias_unpacked}' (ID: {component_id_unpacked}) on page '{page_name}': {pageSectionGuid}") 
-
+        
         miBlockId = component_id_unpacked
         mi_block_folder = f"mi-block-ID-{miBlockId}"
         # Output directory is relative to the current working directory, not UPLOAD_FOLDER
@@ -350,104 +350,108 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
         config_file_path = os.path.join(save_folder, "MiBlockComponentConfig.json")
         component_already_downloaded = os.path.exists(records_file_path) and os.path.exists(config_file_path)
         
+        # Initialize variables to avoid NameError
+        response_content = None
+        content_disposition = None
+        
         if component_already_downloaded:
             logging.info(f"Component ID {component_id_unpacked} already downloaded. Skipping download and unzip.")
             print(f"  [INFO] Component already exists at: {save_folder}")
         else:
             # Call the API function from apis.py
             response_content, content_disposition = export_mi_block_component(base_url, component_id_unpacked, site_id, headers)
-            
-            try:
-                # 1. Save and Unzip the exported file
-                if response_content:
-                    filename = (
-                        content_disposition.split('filename=')[1].strip('"')
-                        if content_disposition and 'filename=' in content_disposition
-                        else f"site_{site_id}.zip"
-                    )
-                    file_path = os.path.join(save_folder, filename)
+        
+        try:
+            # 1. Save and Unzip the exported file
+            if response_content:
+                filename = (
+                    content_disposition.split('filename=')[1].strip('"')
+                    if content_disposition and 'filename=' in content_disposition
+                    else f"site_{site_id}.zip"
+                )
+                file_path = os.path.join(save_folder, filename)
 
-                    with open(file_path, "wb") as file:
-                        file.write(response_content)
+                with open(file_path, "wb") as file:
+                    file.write(response_content)
 
-                    if zipfile.is_zipfile(file_path):
-                        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                            zip_ref.extractall(save_folder)
-                        os.remove(file_path)
-                    else:
-                        print(f"  [WARNING] Exported file {filename} is not a zip file.")
+                if zipfile.is_zipfile(file_path):
+                    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                        zip_ref.extractall(save_folder)
+                    os.remove(file_path)
                 else:
-                    logging.info("Skipping file save/unzip as export_mi_block_component returned no content.")
+                    print(f"  [WARNING] Exported file {filename} is not a zip file.")
+            else:
+                logging.info("Skipping file save/unzip as export_mi_block_component returned no content.")
             
-                # Give OS a moment to finish file operations after unzipping/deleting the zip.
-                time.sleep(2) 
+            # Give OS a moment to finish file operations after unzipping/deleting the zip.
+            time.sleep(2) 
 
-                # 2. Convert .txt files to .json (if they exist)
-                logging.info("[PROCESSING] Starting TXT to JSON conversion...")
-                txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
-                logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
-                
-                converted_count = 0
-                for extracted_file in os.listdir(save_folder):
-                    extracted_file_path = os.path.join(save_folder, extracted_file)
-                    if extracted_file.endswith('.txt'):
-                        new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
-                        try:
-                            logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
-                            # Read and process content inside the 'with' block
-                            with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
-                                content = txt_file.read()
-                                json_content = json.loads(content)
-                            
-                            # Write to new file inside its own 'with' block
-                            with open(new_file_path, 'w', encoding="utf-8") as json_file:
-                                json.dump(json_content, json_file, indent=4)
-                            
-                            # Add a micro-sleep to help OS release the file handle before deletion
-                            time.sleep(0.05) 
-                            
-                            os.remove(extracted_file_path)
-                            converted_count += 1
-                            logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
-                        except (json.JSONDecodeError, OSError) as e:
-                            # Log the error but continue to the next file
-                            logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
-                
-                logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
-
-                # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
-                config_file_name = "MiBlockComponentConfig.json"
-                config_file_path = os.path.join(save_folder, config_file_name)
-                
-                MAX_WAIT_SECONDS = 120 # 2 minutes max wait
-                POLL_INTERVAL = 5      # Check every 5 seconds
-                start_time = time.time()
-                file_ready = False
-
-                # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
-
-                while time.time() - start_time < MAX_WAIT_SECONDS:
-                    if os.path.exists(config_file_path):
-                        # Try to open the file to check if it's locked
-                        try:
-                            with open(config_file_path, 'r') as f:
-                                f.read(1) # Read a byte to confirm accessibility
-                            file_ready = True
-                            break
-                        except IOError:
-                            print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
-                    else:
-                        print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
-                    
-                    time.sleep(POLL_INTERVAL)
-
-                if not file_ready:
-                    raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
-                # --- END POLLING LOGIC ---
+            # 2. Convert .txt files to .json (if they exist)
+            logging.info("[PROCESSING] Starting TXT to JSON conversion...")
+            txt_files_found = [f for f in os.listdir(save_folder) if f.endswith('.txt')]
+            logging.info(f"   Found {len(txt_files_found)} .txt files to convert: {txt_files_found}")
             
-            except FileNotFoundError as e:
-                logging.error(f"[ERROR] File Polling Failed: {e}")
-                raise # Re-raise the error to halt assembly for this component/page
+            converted_count = 0
+            for extracted_file in os.listdir(save_folder):
+                extracted_file_path = os.path.join(save_folder, extracted_file)
+                if extracted_file.endswith('.txt'):
+                    new_file_path = os.path.splitext(extracted_file_path)[0] + '.json'
+                    try:
+                        logging.info(f"   Converting: {extracted_file} -> {os.path.basename(new_file_path)}")
+                        # Read and process content inside the 'with' block
+                        with open(extracted_file_path, 'r', encoding="utf-8") as txt_file:
+                            content = txt_file.read()
+                            json_content = json.loads(content)
+                        
+                        # Write to new file inside its own 'with' block
+                        with open(new_file_path, 'w', encoding="utf-8") as json_file:
+                            json.dump(json_content, json_file, indent=4)
+                        
+                        # Add a micro-sleep to help OS release the file handle before deletion
+                        time.sleep(0.05) 
+                        
+                        os.remove(extracted_file_path)
+                        converted_count += 1
+                        logging.info(f"   [SUCCESS] Successfully converted: {extracted_file}")
+                    except (json.JSONDecodeError, OSError) as e:
+                        # Log the error but continue to the next file
+                        logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
+            
+            logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
+
+            # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
+            config_file_name = "MiBlockComponentConfig.json"
+            config_file_path = os.path.join(save_folder, config_file_name)
+            
+            MAX_WAIT_SECONDS = 120 # 2 minutes max wait
+            POLL_INTERVAL = 5      # Check every 5 seconds
+            start_time = time.time()
+            file_ready = False
+
+            # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
+
+            while time.time() - start_time < MAX_WAIT_SECONDS:
+                if os.path.exists(config_file_path):
+                    # Try to open the file to check if it's locked
+                    try:
+                        with open(config_file_path, 'r') as f:
+                            f.read(1) # Read a byte to confirm accessibility
+                        file_ready = True
+                        break
+                    except IOError:
+                        print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
+                else:
+                    print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
+                
+                time.sleep(POLL_INTERVAL)
+
+            if not file_ready:
+                raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
+            # --- END POLLING LOGIC ---
+        
+        except FileNotFoundError as e:
+            logging.error(f"[ERROR] File Polling Failed: {e}")
+            raise # Re-raise the error to halt assembly for this component/page
         
         # 3. Add level fields to MiBlockComponentRecords.json (for both downloaded and existing components)
         records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
@@ -493,7 +497,7 @@ def publish_page_immediately(page_name: str):
 
 
 
-def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id,header_footer_details):
+def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id,header_footer_details, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None):
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
@@ -552,8 +556,9 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     # Add delay before mapping to avoid API blocking
     logging.info(f"[TIMING] Starting updatePageMapping for page '{page_name}' (ID: {page_id})")
     start_time = time.time()
+    mapping_payload = None
     try:
-        updatePageMapping(base_url, headers,page_id,site_id,header_footer_details)
+        _, mapping_payload = updatePageMapping(base_url, headers,page_id,site_id,header_footer_details, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
         mapping_time = time.time() - start_time
         logging.info(f"[TIMING] updatePageMapping completed in {mapping_time:.2f} seconds")
         
@@ -571,7 +576,8 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         PAGES_TO_PUBLISH.append({
             "page_id": page_id,
             "page_name": page_name,
-            "header_footer_details": header_footer_details
+            "header_footer_details": header_footer_details,
+            "mapping_payload": mapping_payload
         })
         logging.info(f"[PUBLISH QUEUE] Queued page '{page_name}' (ID: {page_id}) for publish at end of assembly.")
     except Exception as e:
@@ -583,12 +589,36 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
 
 
 
-def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any]):
+def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any], home_debug_log_callback=None, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None):
     """
     Creates and sends the page mapping payload using data from all
     ComponentRecordsTree.json files found in the migration output folders, 
     AND the explicit header/footer components.
+    
+    Args:
+        home_debug_log_callback: Optional callback function to log payload to home_debug.log
+        page_component_ids: Optional set of component IDs that belong to this page (for filtering)
+        page_component_names: Optional list of component names from simplified.json (for filtering)
+        component_cache: Optional component cache to look up component IDs by name
     """
+    
+    # Build a set of valid component IDs from component names if provided
+    valid_component_ids_from_names: set = set()
+    if page_component_names and component_cache:
+        from processing_steps.process_assembly import check_component_availability
+        for comp_name in page_component_names:
+            api_result = check_component_availability(comp_name, component_cache)
+            if api_result:
+                _, _, componentId, _ = api_result
+                valid_component_ids_from_names.add(str(componentId))
+        logging.info(f"[MAPPING] Built component ID set from {len(page_component_names)} component names: {len(valid_component_ids_from_names)} IDs found")
+    
+    # Combine both sets if both are provided
+    if page_component_ids:
+        valid_component_ids_from_names.update(page_component_ids)
+    
+    # Use the combined set for filtering
+    final_valid_component_ids = valid_component_ids_from_names if valid_component_ids_from_names else page_component_ids
 
     
     # --- PHASE 1: COLLECT BODY COMPONENT MAPPING DATA ---
@@ -613,6 +643,18 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
             )
 
             if main_component_record:
+                # Extract component ID from folder name or record
+                component_id_from_file = None
+                folder_name = os.path.basename(os.path.dirname(file_path))
+                if folder_name.startswith("mi-block-ID-"):
+                    component_id_from_file = folder_name.replace("mi-block-ID-", "")
+                
+                # CRITICAL: Only include components that belong to THIS page
+                if final_valid_component_ids and component_id_from_file:
+                    if component_id_from_file not in final_valid_component_ids:
+                        # This component doesn't belong to this page, skip it
+                        continue
+                
                 # Extract the required fields from the main component record
                 mapping_data = {
                     "pageId": page_id,
@@ -678,9 +720,17 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
 
     new_api_payload = all_mappings
     
-    # print("\n--- 📑 FINAL API PAYLOAD ---")
-    # print(json.dumps(new_api_payload, indent=2))
-    # print("-----------------------------")
+    # Log the complete mapping payload for debugging (console + debug log)
+    logging.info(f"\n--- 📑 MAPPING API PAYLOAD (Page ID: {page_id}) ---")
+    payload_str = json.dumps(new_api_payload, indent=2)
+    logging.info(payload_str)
+    logging.info("---------------------------------------------")
+    # Also save to debug log file for easy access
+    append_debug_log("mapping_payload", {"page_id": page_id, "payload": new_api_payload})
+    
+    # If homepage callback provided, also log to home_debug.log
+    if home_debug_log_callback:
+        home_debug_log_callback("mapping_payload", {"page_id": page_id, "payload": new_api_payload})
 
     try:
         # Add small delay before mapping API to avoid rate limiting
@@ -727,19 +777,62 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
         # and prints the error message directly.
         print(f"\n[ERROR] **CRITICAL API ERROR:** An exception occurred during the API call: {e}")
 
-    return len(new_api_payload)
+    return len(new_api_payload), new_api_payload  # Return both count and payload
 
 
 
-def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any]):
+def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any], home_debug_log_callback=None, mapping_payload: Optional[List[Dict[str, Any]]] = None):
     """
     Constructs the necessary payload to publish all migrated components (MiBlocks, 
     Headers, Footers) and the page itself, then calls the publishing API.
+    
+    Args:
+        home_debug_log_callback: Optional callback function to log payload to home_debug.log
+        mapping_payload: Optional mapping payload from updatePageMapping to check contentEntityType
     """
     
+    # --- PHASE 0: BUILD MAPPING LOOKUP FROM MAPPING PAYLOAD ---
+    # Create a lookup: sectionGuid -> contentEntityType
+    # This helps us determine if components should be MIBLOCK based on contentEntityType: 2
+    # Also create a set of valid sectionGuids for this page (to filter components)
+    section_guid_to_content_type: Dict[str, int] = {}
+    valid_section_guids_for_page: set = set()  # Only components with these sectionGuids belong to this page
+    if mapping_payload:
+        for mapping_entry in mapping_payload:
+            section_guid = mapping_entry.get("pageSectionGuid")
+            content_entity_type = mapping_entry.get("contentEntityType")
+            if section_guid and content_entity_type is not None:
+                section_guid_to_content_type[section_guid] = content_entity_type
+                valid_section_guids_for_page.add(section_guid)  # Track valid sectionGuids for this page
+    
+    # --- PHASE 0.5: BUILD MAPPING LOOKUP FROM COMPONENTRECORDSTREE FILES ---
+    # Create a lookup: sectionGuid -> (componentId, should_be_miblock)
+    # This helps us determine if components should be MIBLOCK even if they're in header_footer_details
+    section_guid_to_component: Dict[str, Tuple[str, bool]] = {}
+    search_path_mapping = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
+    for file_path in glob.glob(search_path_mapping):
+        try:
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+                records = data.get("componentRecordsTree", [])
+                main_component_record = next(
+                    (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+                    None
+                )
+                if main_component_record:
+                    component_id = str(main_component_record.get("ComponentId"))
+                    section_guid = main_component_record.get("sectionGuid")
+                    if component_id and section_guid:
+                        section_guid_to_component[section_guid] = (component_id, True)  # True = should be MIBLOCK
+        except Exception:
+            pass  # Ignore errors in lookup construction
     
     # --- PHASE 1: COLLECT MIBLOCK PUBLISHING DATA ---
     publish_payload: List[Dict[str, Any]] = []
+    # Track which component IDs we've already added (to avoid duplicates)
+    added_component_ids: set = set()
+    # Track which section GUIDs we've already added as MIBLOCK
+    added_section_guids: set = set()
     
     # Construct the base path to search: output/site_id/mi-block-ID-*
     search_path = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
@@ -762,20 +855,54 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
                 component_id = str(main_component_record.get("ComponentId"))
                 section_guid = main_component_record.get("sectionGuid")
                 
-                # Simple validation before adding
+                # CRITICAL: Only add components that are mapped to THIS page
+                # Check if this sectionGuid is in the mapping payload for this page
                 if component_id and section_guid:
+                    # If mapping_payload exists, only include components that are mapped to this page
+                    if mapping_payload and valid_section_guids_for_page:
+                        if section_guid not in valid_section_guids_for_page:
+                            # This component belongs to a different page, skip it
+                            continue
+                    
                     miblock_entry = {
                         "id": component_id,
                         "type": "MIBLOCK",
                         "pageSectionGuid": section_guid
                     }
                     publish_payload.append(miblock_entry)
+                    added_component_ids.add(component_id)  # Track that we added this component
+                    added_section_guids.add(section_guid)  # Track section GUID as MIBLOCK
                     # print(f"  [SUCCESS] Added MiBlock {component_id} for publishing.")
                 else:
                     print(f"  [WARNING] Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
 
         except Exception as e:
             print(f"  [ERROR] Error processing file {file_path}: {e}")
+    
+    # --- PHASE 1.5: ADD MISSING MIBLOCKS (components with folders but no ComponentRecordsTree.json) ---
+    # Some components might have output folders but missing ComponentRecordsTree.json
+    # Check all mi-block-ID-* folders and add any missing ones as MIBLOCK
+    # NOTE: This phase is now mostly redundant since we filter by mapping payload in Phase 1
+    # But keeping it for edge cases where ComponentRecordsTree.json is missing
+    output_base = os.path.join("output", str(site_id))
+    if os.path.exists(output_base):
+        for folder_name in os.listdir(output_base):
+            if folder_name.startswith("mi-block-ID-"):
+                try:
+                    # Extract component ID from folder name (e.g., "mi-block-ID-542061" -> "542061")
+                    component_id_from_folder = folder_name.replace("mi-block-ID-", "")
+                    # Check if we already added this component
+                    if component_id_from_folder not in added_component_ids:
+                        # Check if ComponentRecordsTree.json exists
+                        tree_file = os.path.join(output_base, folder_name, "ComponentRecordsTree.json")
+                        if not os.path.exists(tree_file):
+                            # Component folder exists but no ComponentRecordsTree.json
+                            # Try to find sectionGuid from other files or use a default approach
+                            # For now, we'll skip these and handle them in header/footer section
+                            # if they have sectionGuid from header_footer_details
+                            logging.warning(f"[WARNING] Component {component_id_from_folder} has folder but no ComponentRecordsTree.json")
+                except Exception as e:
+                    logging.warning(f"[WARNING] Error processing folder {folder_name}: {e}")
 
     # --- PHASE 2: ADD HEADER/FOOTER PUBLISHING DATA ---
     
@@ -790,13 +917,92 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
 
         # Check if we successfully retrieved both ID and GUID when processing the page metadata
         if component_id and section_guid:
+            component_id_str = str(component_id)
+            
+            # IMPORTANT: Check if this component has a mi-block-ID-* folder in output
+            # If it does, it's a body component and should be MIBLOCK, not COMPONENT
+            component_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id_str}")
+            if os.path.exists(component_folder):
+                # This component has an output folder, so it's a body component (MIBLOCK)
+                # Check if we already added it
+                if component_id_str in added_component_ids or section_guid in added_section_guids:
+                    print(f"  [INFO] Skipping {hf_key} Component ID {component_id_str}: Already added as MIBLOCK (has output folder).")
+                    return
+                else:
+                    # Component folder exists but wasn't added as MIBLOCK (missing ComponentRecordsTree.json)
+                    # Add it as MIBLOCK instead of COMPONENT
+                    miblock_entry = {
+                        "id": component_id_str,
+                        "type": "MIBLOCK",
+                        "pageSectionGuid": section_guid
+                    }
+                    publish_payload.append(miblock_entry)
+                    added_component_ids.add(component_id_str)
+                    added_section_guids.add(section_guid)
+                    print(f"  [SUCCESS] Added Component ID {component_id_str} as MIBLOCK (has output folder but missing ComponentRecordsTree.json).")
+                    return
+            
+            # IMPORTANT: Check if this sectionGuid should be MIBLOCK based on mapping payload (contentEntityType: 2)
+            # This is the PRIMARY check - if contentEntityType is 2, it's a body component and should be MIBLOCK
+            if section_guid in section_guid_to_content_type:
+                content_entity_type = section_guid_to_content_type[section_guid]
+                if content_entity_type == 2:  # Body component
+                    # Check if we already added it
+                    if component_id_str in added_component_ids or section_guid in added_section_guids:
+                        print(f"  [INFO] Skipping {hf_key} Component ID {component_id_str}: Already added as MIBLOCK (contentEntityType: 2).")
+                        return
+                    else:
+                        # This component has contentEntityType: 2, so it's a body component (MIBLOCK)
+                        miblock_entry = {
+                            "id": component_id_str,
+                            "type": "MIBLOCK",
+                            "pageSectionGuid": section_guid
+                        }
+                        publish_payload.append(miblock_entry)
+                        added_component_ids.add(component_id_str)
+                        added_section_guids.add(section_guid)
+                        print(f"  [SUCCESS] Added {hf_key} Component ID {component_id_str} as MIBLOCK (contentEntityType: 2 in mapping payload).")
+                        return
+            
+            # IMPORTANT: Check if this sectionGuid should be MIBLOCK (from ComponentRecordsTree.json)
+            # If the sectionGuid is in our lookup, it means this is a body component, not a header/footer
+            if section_guid in section_guid_to_component:
+                mapped_component_id, should_be_miblock = section_guid_to_component[section_guid]
+                # If it should be MIBLOCK, check if we already added it
+                if should_be_miblock:
+                    if mapped_component_id in added_component_ids or section_guid in added_section_guids:
+                        print(f"  [INFO] Skipping {hf_key} Component ID {component_id_str}: Already added as MIBLOCK (sectionGuid: {section_guid}).")
+                        return
+                    else:
+                        # This component should be MIBLOCK but wasn't found in ComponentRecordsTree.json
+                        # Add it as MIBLOCK instead of COMPONENT
+                        miblock_entry = {
+                            "id": mapped_component_id if mapped_component_id == component_id_str else component_id_str,
+                            "type": "MIBLOCK",
+                            "pageSectionGuid": section_guid
+                        }
+                        publish_payload.append(miblock_entry)
+                        added_component_ids.add(mapped_component_id if mapped_component_id == component_id_str else component_id_str)
+                        added_section_guids.add(section_guid)
+                        print(f"  [SUCCESS] Added {hf_key} Component ID {component_id_str} as MIBLOCK (was in mapping as body component).")
+                        return
+            
+            # IMPORTANT: If this component was already added as MIBLOCK, skip it
+            # (to avoid duplicates and ensure body components are MIBLOCK, not COMPONENT)
+            if component_id_str in added_component_ids or section_guid in added_section_guids:
+                print(f"  [INFO] Skipping {hf_key} Component ID {component_id_str}: Already added as MIBLOCK.")
+                return
+            
+            # Only add as COMPONENT if it's truly a header/footer (no output folder, not in mapping as body component)
+            # Headers/Footers are treated as standard components
             component_entry = {
-                "id": str(component_id),
+                "id": component_id_str,
                 "type": "COMPONENT", # Headers/Footers are treated as standard components
                 "pageSectionGuid": section_guid
             }
             publish_payload.append(component_entry)
-            print(f"  [SUCCESS] Added {hf_key} Component ID {component_id} for publishing.")
+            added_component_ids.add(component_id_str)  # Track that we added this component
+            print(f"  [SUCCESS] Added {hf_key} Component ID {component_id_str} for publishing.")
         elif component_name and component_name != "N/A":
              # This means the component name was in the metadata but fetching its ID/GUID failed earlier
              print(f"  [WARNING] Skipping {hf_key} ('{component_name}'): Component ID or GUID was missing for publishing.")
@@ -832,9 +1038,17 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
         "syncPageForTranslationRequest": None
     }
     
-    # print("\n--- 📑 FINAL PUBLISH PAYLOAD ---")
-    # print(json.dumps(final_api_payload, indent=2))
-    # print("---------------------------------")
+    # Log the complete publish payload for debugging (console + debug log)
+    logging.info(f"\n--- 📑 PUBLISH API PAYLOAD (Page ID: {page_id}) ---")
+    payload_str = json.dumps(final_api_payload, indent=2)
+    logging.info(payload_str)
+    logging.info("---------------------------------------------")
+    # Also save to debug log file for easy access
+    append_debug_log("publish_payload", {"page_id": page_id, "payload": final_api_payload})
+    
+    # If homepage callback provided, also log to home_debug.log
+    if home_debug_log_callback:
+        home_debug_log_callback("publish_payload", {"page_id": page_id, "payload": final_api_payload})
     
     # Pass the final DICTIONARY payload to your publishing API function
     # Add delay before API call to avoid blocking (publish API can get rate-limited)
@@ -896,6 +1110,7 @@ def publish_queued_pages(base_url: str, headers: Dict[str, str], site_id: int) -
         page_id = entry.get("page_id")
         page_name = entry.get("page_name", f"Page-{page_id}")
         header_footer_details = entry.get("header_footer_details", {})
+        mapping_payload = entry.get("mapping_payload")
         
         if not page_id:
             logging.warning(f"[PUBLISH] Skipping queued entry {idx}/{total_pages}: missing page_id.")
@@ -908,7 +1123,7 @@ def publish_queued_pages(base_url: str, headers: Dict[str, str], site_id: int) -
         logging.info(f"[TIMING] Starting publishPage for queued page '{page_name}' (ID: {page_id}) [{idx}/{total_pages}]")
         start_time = time.time()
         try:
-            publishPage(base_url, headers, page_id, site_id, header_footer_details)
+            publishPage(base_url, headers, page_id, site_id, header_footer_details, mapping_payload=mapping_payload)
             publish_time = time.time() - start_time
             logging.info(f"[TIMING] publishPage for '{page_name}' completed in {publish_time:.2f} seconds")
             
@@ -1095,7 +1310,7 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
                 
                 # Get the new record ID from response (using index as key)
                 new_record_id = resp_data.get(record_index) or resp_data.get(str(record_index))
-                
+        
                 if new_record_id:
                     migrated_count += 1
                     
@@ -2024,7 +2239,7 @@ def getHeaderFooter_html(base_url: str, headers: Dict[str, str], headerFooterCom
 #         return
 
 
-def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], category_id: int):
+def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], category_id: int, component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None):
     
     page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     components = page_data.get('components', [])
@@ -2059,6 +2274,8 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
 
     # Initialize a list to hold the HTML sections for this page
     page_sections_html = []
+    # Track component IDs that belong to this page
+    page_component_ids: set = set()
 
     if not components:
         status_entry = {
@@ -2092,6 +2309,9 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             
             status_entry["available"] = True
             status_entry["cms_component_name"] = cms_component_name
+            
+            # Track this component ID as belonging to this page
+            page_component_ids.add(str(componentId))
             
             # 🛑 CONDITION CHECK REMOVED 🛑
             try:
@@ -2154,6 +2374,16 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         Footer1_vComponentId, Footer1_component_alias, Footer1_component_id, Footer1_section_html,Footer1_pageSectionGuid = _fetch_optional_component(Footer1)
         Footer2_vComponentId, Footer2_component_alias, Footer2_component_id, Footer2_section_html,Footer2_pageSectionGuid = _fetch_optional_component(Footer2)
         
+        # Track header/footer component IDs if they exist
+        if Header1_component_id:
+            page_component_ids.add(str(Header1_component_id))
+        if Header2_component_id:
+            page_component_ids.add(str(Header2_component_id))
+        if Footer1_component_id:
+            page_component_ids.add(str(Footer1_component_id))
+        if Footer2_component_id:
+            page_component_ids.add(str(Footer2_component_id))
+        
         header_footer_details = {
             "Header1": {
                 "name": Header1, "vId": Header1_vComponentId, "alias": Header1_component_alias, 
@@ -2188,9 +2418,10 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         
         # 🛑 CONDITION CHECK REMOVED 🛑
         logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
-        # 🌟 STEP 3: Pass the page_template_id to pageAction
+        # 🌟 STEP 3: Pass the page_template_id, page_component_ids, and component names from simplified.json to pageAction
+        page_component_names = components  # Component names from simplified.json
         try:
-            result = pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details)
+            result = pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details, page_component_ids, page_component_names, component_cache_for_mapping or component_cache)
             
             # Check if pageAction returned an error
             if isinstance(result, dict) and "error" in result:
@@ -2215,11 +2446,11 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         
 # --- TRAVERSAL FUNCTIONS TO PASS CACHE AND NEW PARAMS ---
 
-def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
+def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,category_id = 0)
+    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, category_id=0, component_cache_for_mapping=component_cache_for_mapping or component_cache)
 
-def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str],parent_page_name: str):
+def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], parent_page_name: str, component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
@@ -2253,12 +2484,12 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
         logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
         # matched_category_id remains 0, as initialized above.
     
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers,matched_category_id)
+    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
     
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
     for sub_page_data in page_data.get("sub_pages", []):
-        assemble_page_templates_level4(sub_page_data, new_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers)
+        assemble_page_templates_level4(sub_page_data, new_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers, component_cache_for_mapping=component_cache_for_mapping or component_cache)
 
 
 def assemble_page_templates_level2(
@@ -2269,7 +2500,8 @@ def assemble_page_templates_level2(
     api_base_url: str, 
     site_id: int, 
     api_headers: Dict[str, str],
-    parent_page_name: str
+    parent_page_name: str,
+    component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None
 ):
     # Initialize the ID variable at the start. Default to 0 if no match is found.
     matched_category_id = 0
@@ -2313,7 +2545,8 @@ def assemble_page_templates_level2(
         api_base_url, 
         site_id, 
         api_headers,
-        category_id=matched_category_id # <-- CORRECTED
+        category_id=matched_category_id, # <-- CORRECTED
+        component_cache_for_mapping=component_cache_for_mapping or component_cache
     )
     
     # --- Recursive Call Setup ---
@@ -2329,7 +2562,8 @@ def assemble_page_templates_level2(
             api_base_url, 
             site_id, 
             api_headers,
-            parent_page_name
+            parent_page_name,
+            component_cache_for_mapping=component_cache_for_mapping or component_cache
         )
 
 def normalize_page_name(name: str) -> str:
@@ -2429,7 +2663,8 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
             api_base_url,
             site_id,
             api_headers,
-            category_id  # passing resolved category id
+            category_id,  # passing resolved category id
+            component_cache_for_mapping=component_cache  # Pass component cache for mapping
         )
 
         next_level = initial_level + 1
@@ -2439,7 +2674,7 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         # IMPORTANT: Process sub_pages in the exact order they appear in simplified.json
         # Do NOT sort or reorder - maintain sequence as defined in JSON
         for sub_page_data in top_level_page.get("sub_pages", []):
-            assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers,parent_page_name)
+            assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers, parent_page_name, component_cache_for_mapping=component_cache)
         # else:
         #     pass
 
@@ -2733,7 +2968,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                     else:
                                         logging.warning(f"[WARNING] Component export returned no content for component ID: {component_id}")
                                         print(f"[WARNING] Component export returned no content")
-                                
+
                                 # 2. Convert .txt files to .json (if they exist) - only if component was downloaded
                                 if not component_already_downloaded:
                                     logging.info("[PROCESSING] Starting TXT to JSON conversion...")
@@ -2765,48 +3000,48 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                             except (json.JSONDecodeError, OSError) as e:
                                                 # Log the error but continue to the next file
                                                 logging.error(f"[ERROR] Error processing file {extracted_file_path}: {e}")
-                                    
-                                    logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
+                                
+                                logging.info(f"[SUCCESS] TXT to JSON conversion complete: {converted_count}/{len(txt_files_found)} files converted successfully")
 
-                                    # 3. Add level fields to MiBlockComponentRecords.json
-                                    records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
-                                    if os.path.exists(records_file_path):
+                                # 3. Add level fields to MiBlockComponentRecords.json
+                                records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+                                if os.path.exists(records_file_path):
+                                    try:
+                                        add_levels_to_records(records_file_path)
+                                        logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
+                                    except Exception as e:
+                                        logging.error(f"[ERROR] Error adding levels to records: {e}")
+
+                                
+                                # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
+                                config_file_name = "MiBlockComponentConfig.json"
+                                config_file_path = os.path.join(save_folder, config_file_name)
+                                
+                                MAX_WAIT_SECONDS = 120 # 2 minutes max wait
+                                POLL_INTERVAL = 5      # Check every 5 seconds
+                                start_time = time.time()
+                                file_ready = False
+
+                                # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
+
+                                while time.time() - start_time < MAX_WAIT_SECONDS:
+                                    if os.path.exists(config_file_path):
+                                        # Try to open the file to check if it's locked
                                         try:
-                                            add_levels_to_records(records_file_path)
-                                            logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
-                                        except Exception as e:
-                                            logging.error(f"[ERROR] Error adding levels to records: {e}")
-
+                                            with open(config_file_path, 'r') as f:
+                                                f.read(1) # Read a byte to confirm accessibility
+                                            file_ready = True
+                                            break
+                                        except IOError:
+                                            print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
+                                    else:
+                                        print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
                                     
-                                    # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
-                                    config_file_name = "MiBlockComponentConfig.json"
-                                    config_file_path = os.path.join(save_folder, config_file_name)
-                                    
-                                    MAX_WAIT_SECONDS = 120 # 2 minutes max wait
-                                    POLL_INTERVAL = 5      # Check every 5 seconds
-                                    start_time = time.time()
-                                    file_ready = False
+                                    time.sleep(POLL_INTERVAL)
 
-                                    # print(f"Waiting up to {MAX_WAIT_SECONDS} seconds for {config_file_name} to be available...")
-
-                                    while time.time() - start_time < MAX_WAIT_SECONDS:
-                                        if os.path.exists(config_file_path):
-                                            # Try to open the file to check if it's locked
-                                            try:
-                                                with open(config_file_path, 'r') as f:
-                                                    f.read(1) # Read a byte to confirm accessibility
-                                                file_ready = True
-                                                break
-                                            except IOError:
-                                                print(f"File {config_file_name} exists but is locked. Retrying in {POLL_INTERVAL}s...")
-                                        else:
-                                            print(f"File {config_file_name} not found yet. Retrying in {POLL_INTERVAL}s...")
-                                        
-                                        time.sleep(POLL_INTERVAL)
-
-                                    if not file_ready:
-                                        raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
-                                    # --- END POLLING LOGIC ---
+                                if not file_ready:
+                                    raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
+                                # --- END POLLING LOGIC ---
                                 
                                 # Continue with processing regardless of whether component was downloaded or already existed
                                 # 3. Add level fields to MiBlockComponentRecords.json (if not already done)
@@ -4660,10 +4895,10 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     final_output = {
         "assembly_status": "SUCCESS: Pages and components processed.",
         "file_prefix": file_prefix, 
-        "report_filename": status_filename,
+        "report_filename": status_filename, 
         "timing_summary": timing_summary
     }
 
-    ASSEMBLY_STATUS_LOG.clear()
+    ASSEMBLY_STATUS_LOG.clear() 
     TIMING_TRACKER.clear()  # Clear for next run
     return final_output

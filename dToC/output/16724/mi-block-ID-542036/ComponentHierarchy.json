@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 542036,
+        "type": "MainComponent",
+        "componentName": "Mahogany-Feature-Benefits"
+    },
+    {
+        "componentId": 542037,
+        "type": "Level1Child",
+        "componentName": "Mahogany-Feature-Benefits-Icon-Text"
+    }
+]

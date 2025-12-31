@@ -1,0 +1,176 @@
+{
+    "menu_component_name": "Custom Header",
+    "menuLevel": 1,
+    "pages": [
+        {
+            "page_name": "Our Property",
+            "level": 1,
+            "page_status": true,
+            "sub_pages": [
+                {
+                    "page_name": "Our Story",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Gallery",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Location",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Contact",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Property Map",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Reviews",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Blogs",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "FAQs",
+                    "level": 2,
+                    "page_status": false,
+                    "matchFound": true
+                }
+            ],
+            "matchFound": true
+        },
+        {
+            "page_name": "Weddings",
+            "level": 1,
+            "page_status": true,
+            "sub_pages": [
+                {
+                    "page_name": "Our Spaces",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Wedding Celebrations",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Wedding Packages",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Meet the Team",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Plan your Wedding",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                }
+            ],
+            "matchFound": true
+        },
+        {
+            "page_name": "Meetings and Events",
+            "level": 1,
+            "page_status": true,
+            "sub_pages": [
+                {
+                    "page_name": "Event and Expo Spaces",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Meeting Services",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Special Occasions",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Meeting Packages",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Plan your Meeting",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                }
+            ],
+            "matchFound": true
+        },
+        {
+            "page_name": "Guest Rooms",
+            "level": 1,
+            "page_status": true,
+            "sub_pages": [
+                {
+                    "page_name": "Room Packages",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                },
+                {
+                    "page_name": "Group Block",
+                    "level": 2,
+                    "page_status": true,
+                    "matchFound": true
+                }
+            ],
+            "matchFound": true
+        },
+        {
+            "page_name": "Amenities",
+            "level": 1,
+            "page_status": true,
+            "matchFound": true
+        },
+        {
+            "page_name": "Dining",
+            "level": 1,
+            "page_status": true,
+            "matchFound": true
+        },
+        {
+            "page_name": "Explore Ohio",
+            "level": 1,
+            "page_status": true,
+            "matchFound": true
+        }
+    ]
+}

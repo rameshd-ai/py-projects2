@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 309847,
+            "ResourceTypeName": "Meeting Wedding",
+            "ResourceTypeFolderName": "meeting-wedding",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 0,
+            "ResourceWidth": 500,
+            "ResourceHeight": 302,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 1,
+            "TabletResourceWidth": 394,
+            "TabletResourceHeight": 238,
+            "MobileResourceWidth": 394,
+            "MobileResourceHeight": 238,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 80,
+            "MobileImageQuality": 80,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

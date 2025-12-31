@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 874413,
+            "FormatName": "LT A12 Banner Widget",
+            "FormatKey": "lt-a12-banner-widget",
+            "FormatPrefix": "",
+            "FormatContent": "<!-- Layout A12 Starts -->\n<div class=\"lt-a12-widget\">\n  <div class=\"lt-a12-widget-banner snippet-grid\">\n    {{#each ComponentRecordJson.lt-a12-banner-widget}}\n    <div class=\"lt-a12-widget-banner__box\">\n      <div class=\"lt-a12-widget-banner__media\">\n        <img src=\"{{data.image.0.OriginalImagePath}}\" alt=\"{{data.image-alt}}\" width=\"{{data.image.0.ResourceWidth}}\" height=\"{{data.image.0.ResourceHeight}}\" tabindex=\"0\" />\n      </div>\n      <div class=\"lt-a12-widget-banner__content dynamiccomponenteditenable\" %%componentRecordEditable%%>\n        {{IfCond data.sub-title 'notempty' ''}}           \n        <div class=\"small-title\" tabindex=\"0\">{{data.sub-title}}</div>\n        {{/IfCond}}\n        <h3 class=\"snippet-grid__title\" tabindex=\"0\">{{data.title}}</h3>\n        \n        {{IfCond data.snippet-description 'notempty' ''}}                 \n        <div class=\"snippet__desc text-editor\" tabindex=\"0\">                        \n          {{{data.snippet-description}}}                          \n        </div>\n        {{/IfCond}}\n        {{IfCond data.primary-button-text 'notempty' '' 'and' data.primary-button-link 'notempty' ''}}\n        <div class=\"snippet-grid__actions\">\n          {{IfCond data.primary-button-text 'notempty' '' 'and' data.primary-button-link 'notempty' ''}}\n          <a href=\"{{data.primary-button-link}}\" class=\"uk-button uk-button-secondary\">\n            <span aria-hidden=\"true\"> {{data.primary-button-text}} </span>            \n            <span class=\"sr-only\">{{data.primary-button-text}} - {{data.title}}</span>\n          </a>\n          {{/IfCond}}\n\n        </div>\n        {{/IfCond}}\n      </div>\n    </div>\n    {{/each}}\n  </div>\n</div>\n<!-- Layout A12 Ends -->\n",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

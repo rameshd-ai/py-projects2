@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 542071,
+        "type": "MainComponent",
+        "componentName": "Social-Feed"
+    },
+    {
+        "componentId": 542072,
+        "type": "Level1Child",
+        "componentName": "Feed List"
+    }
+]

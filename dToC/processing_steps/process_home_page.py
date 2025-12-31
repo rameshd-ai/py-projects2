@@ -3,7 +3,8 @@ import time
 import json
 import logging
 import uuid
-from typing import Dict, Any, List, Tuple, Optional, Union
+import re
+from typing import Dict, Any, List, Tuple, Optional, Union, Set
 
 from apis import (
     GetAllVComponents,
@@ -15,6 +16,7 @@ from apis import (
     psMappingApi,
     psPublishApi,
     CustomGetComponentAliasByName,
+    GetPageCategoryList,
 )
 
 # Import the proven inner-page component handler so home uses EXACTLY the same logic
@@ -314,6 +316,37 @@ def ensure_home_component_files(
         },
     )
     return exists
+
+
+def normalize_page_name(name: str) -> str:
+    """
+    Normalizes a page or category name for robust, case-insensitive, and 
+    symbol-agnostic fuzzy matching.
+
+    Steps:
+    1. Converts to lowercase.
+    2. Strips leading/trailing whitespace.
+    3. Removes all non-alphanumeric characters (keeps letters and numbers only).
+
+    Args:
+        name (str): The original page or category name string.
+
+    Returns:
+        str: The normalized string, suitable for dictionary keys or comparison.
+    """
+    if not name:
+        return ""
+    
+    # 1. Strip whitespace and convert to lowercase
+    normalized = name.strip().lower()
+    
+    # 2. Remove all characters that are NOT alphanumeric (a-z, 0-9)
+    # This turns "Meetings & Events" into "meetingsandevents"
+    normalized = re.sub(r'[^a-z0-9]', '', normalized)
+    
+    return normalized
+
+
 def add_records_for_home_page(
     page_name: str,
     vComponentId: int,
@@ -363,6 +396,10 @@ def pageAction_home(
     DefaultDescription: Optional[str],
     site_id: int,
     header_footer_details: Dict[str, Any],
+    category_id: int = 0,
+    page_component_ids: Optional[Set[str]] = None,
+    page_component_names: Optional[List[str]] = None,
+    component_cache: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Homepage-local variant of pageAction: create page, map MiBlocks, and queue for publish.
@@ -372,11 +409,11 @@ def pageAction_home(
 
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
 
-    # Align payload with main assembly (pageAction) to avoid 400s
+    # Align payload EXACTLY with main assembly (pageAction) - homepage should be identical to level 1 pages
     payload = {
         "pageId": 0,
         "pageName": page_name,
-        "pageAlias": page_name.lower().replace(" ", "-"),
+        "pageAlias": page_name.lower().replace(" ", "-"),  # Same as level 1 pages
         "pageContent": base64_encoded_content,
         "isPageStudioPage": True,
         "pageUpdatedBy": 0,
@@ -384,7 +421,7 @@ def pageAction_home(
         "pageMetaTitle": DefaultTitle,
         "pageMetaDescription": DefaultDescription,
         "pageStopSEO": 1,
-        "pageCategoryId": 0,
+        "pageCategoryId": category_id,
         "pageProfileId": 0,
         "tags": "",
     }
@@ -396,13 +433,14 @@ def pageAction_home(
         page_template_id = 0
         logging.warning(f"[HOME] Template ID was None, defaulting to 0 for page '{page_name}'")
 
-    logging.info(f"[HOME] Creating page '{page_name}' for site {site_id} (templateId={page_template_id})")
+    logging.info(f"[HOME] Creating page '{page_name}' for site {site_id} (templateId={page_template_id}, categoryId={category_id})")
     # Debug: capture request details
     append_home_debug_log(
         "create_page_request",
         {
             "page_name": page_name,
             "page_template_id": page_template_id,
+            "page_category_id": category_id,
             "payload": payload,
             "api_url": f"{base_url}/api/PageApi/SavePage?templateId={page_template_id}&directPublish=true",
         },
@@ -436,16 +474,25 @@ def pageAction_home(
 
     logging.info(f"[HOME][SUCCESS] Page '{page_name}' created successfully with Page ID: {page_id}")
 
-    # Update mapping + queue for publish using existing homepage queues
+    # Update mapping using the same function as inner pages (exactly like pageAction does)
+    logging.info(f"[HOME][TIMING] Starting updatePageMapping for page '{page_name}' (ID: {page_id})")
+    start_time = time.time()
+    mapping_payload = None
     try:
-        from apis import updatePageMapping as updatePageMappingApi  # if exists
-
-        updatePageMappingApi(base_url, headers, page_id, site_id, header_footer_details)
+        from processing_steps.process_assembly import updatePageMapping
+        # Pass home_debug_log_callback to also log to home_debug.log
+        # Pass page_component_ids, page_component_names, and component_cache to filter mapping to only components for this page
+        _, mapping_payload = updatePageMapping(base_url, headers, page_id, site_id, header_footer_details, home_debug_log_callback=append_home_debug_log, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
+        mapping_time = time.time() - start_time
+        logging.info(f"[HOME][TIMING] updatePageMapping completed in {mapping_time:.2f} seconds")
+        logging.info(f"[HOME][SUCCESS] updatePageMapping completed for page '{page_name}' (ID: {page_id})")
     except Exception as e:
         logging.error(f"[HOME][ERROR] updatePageMapping failed for '{page_name}' (ID: {page_id}): {e}")
+        logging.exception("Full traceback:")
+        # Even if mapping fails, we still queue the page for potential publish
 
     HOMEPAGE_PAGES_TO_PUBLISH.append(
-        {"page_id": page_id, "page_name": page_name, "header_footer_details": header_footer_details}
+        {"page_id": page_id, "page_name": page_name, "header_footer_details": header_footer_details, "mapping_payload": mapping_payload}
     )
 
     return data
@@ -453,7 +500,7 @@ def pageAction_home(
 
 def publish_queued_home_pages(base_url: str, headers: Dict[str, str], site_id: int) -> int:
     """
-    Homepage-local variant of publish_queued_pages.
+    Homepage-local variant of publish_queued_pages - uses same logic as inner pages (publishPage).
     """
     if not HOMEPAGE_PAGES_TO_PUBLISH:
         logging.info("[HOME][PUBLISH] No homepage pages queued for publish.")
@@ -474,12 +521,34 @@ def publish_queued_home_pages(base_url: str, headers: Dict[str, str], site_id: i
     for entry in HOMEPAGE_PAGES_TO_PUBLISH:
         page_id = entry.get("page_id")
         page_name = entry.get("page_name")
+        header_footer_details = entry.get("header_footer_details", {})
+        mapping_payload = entry.get("mapping_payload")
         try:
-            logging.info(f"[HOME][PUBLISH] Publishing page '{page_name}' (ID: {page_id})")
-            psPublishApi(base_url, headers, page_id, site_id)
+            logging.info(f"[HOME][PUBLISH] Publishing page '{page_name}' (ID: {page_id}) using same logic as inner pages")
+            # Use the same publishPage function as inner pages to ensure identical behavior
+            # Pass home_debug_log_callback to also log to home_debug.log
+            # Pass mapping_payload to check contentEntityType for correct MIBLOCK vs COMPONENT classification
+            from processing_steps.process_assembly import publishPage
+            publishPage(base_url, headers, page_id, site_id, header_footer_details, home_debug_log_callback=append_home_debug_log, mapping_payload=mapping_payload)
             success_count += 1
+            append_home_debug_log(
+                "publish_success",
+                {
+                    "page_id": page_id,
+                    "page_name": page_name,
+                },
+            )
         except Exception as e:
             logging.error(f"[HOME][PUBLISH ERROR] Failed to publish page '{page_name}' (ID: {page_id}): {e}")
+            logging.exception("Full traceback:")
+            append_home_debug_log(
+                "publish_error",
+                {
+                    "page_id": page_id,
+                    "page_name": page_name,
+                    "error": str(e),
+                },
+            )
 
     logging.info(f"[HOME][PUBLISH] Completed publishing of {success_count}/{len(HOMEPAGE_PAGES_TO_PUBLISH)} pages.")
     HOMEPAGE_PAGES_TO_PUBLISH.clear()
@@ -522,7 +591,61 @@ def _process_home_page_components(
             logging.error(f"[HOME] Failed to retrieve page template ID for '{page_template_name}': {e}. Using default template ID 0.")
             page_template_id = 0
 
+    # Fetch category ID by matching page name with categories (same logic as inner pages)
+    matched_category_id = 0
+    try:
+        categories = GetPageCategoryList(api_base_url, api_headers)
+        logging.info(f"[HOME] API categories loaded: {categories}")
+        
+        # Check for API errors
+        if isinstance(categories, dict) and categories.get("error"):
+            logging.error(f"[HOME][ERROR] Unable to load page categories. Error: {categories.get('details')}. Using default CategoryId = 0")
+        else:
+            # Category Matching Logic - match page name to category name
+            normalized_page_name = normalize_page_name(page_name)
+            logging.info(f"[HOME] Matching page name '{page_name}' (normalized: '{normalized_page_name}') against categories...")
+            
+            # Search category ID by normalized name for robust matching
+            for cat in categories:
+                cat_name = cat.get("CategoryName")
+                if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+                    matched_category_id = cat.get("CategoryId", 0)
+                    logging.info(f"[HOME][SUCCESS] MATCHED Category '{page_name}' → CategoryId = {matched_category_id}")
+                    append_home_debug_log(
+                        "category_matched",
+                        {
+                            "page_name": page_name,
+                            "category_name": cat_name,
+                            "category_id": matched_category_id,
+                        },
+                    )
+                    break
+            else:
+                # This executes only if the loop completes without finding a match
+                logging.warning(f"[HOME][WARNING] No matching category found for page '{page_name}', using CategoryId = 0")
+                append_home_debug_log(
+                    "category_not_matched",
+                    {
+                        "page_name": page_name,
+                        "normalized_page_name": normalized_page_name,
+                        "available_categories": [cat.get("CategoryName") for cat in categories[:10]],  # Log first 10 for debugging
+                    },
+                )
+    except Exception as e:
+        logging.error(f"[HOME][ERROR] Failed to fetch or match categories for '{page_name}': {e}. Using default CategoryId = 0")
+        append_home_debug_log(
+            "category_match_error",
+            {
+                "page_name": page_name,
+                "error": str(e),
+            },
+        )
+
     page_sections_html: List[str] = []
+    # Track component IDs that belong to this page
+    page_component_ids: set = set()
+    # Track component names from simplified.json for this page
+    page_component_names: List[str] = page_data.get('components', [])
 
     if not components:
         logging.warning("[HOME] Home page has no components to process.")
@@ -543,6 +666,10 @@ def _process_home_page_components(
                 f"[HOME][SUCCESS] Component '{component_name}' available as '{cms_component_name}'. "
                 f"Starting content retrieval (inner-page logic: add_records_for_page)."
             )
+            
+            # Track this component ID as belonging to this page
+            page_component_ids.add(str(componentId))
+            
             append_home_debug_log(
                 "component_available",
                 {
@@ -658,6 +785,16 @@ def _process_home_page_components(
         api_base_url, api_headers, Footer2 or ""
     )
 
+    # Track header/footer component IDs if they exist
+    if Header1_id:
+        page_component_ids.add(str(Header1_id))
+    if Header2_id:
+        page_component_ids.add(str(Header2_id))
+    if Footer1_id:
+        page_component_ids.add(str(Footer1_id))
+    if Footer2_id:
+        page_component_ids.add(str(Footer2_id))
+
     header_footer_details: Dict[str, Any] = {
         "Header1": {"name": Header1, "vId": Header1_vId, "alias": Header1_alias, "id": Header1_id, "guid": Header1_guid},
         "Header2": {"name": Header2, "vId": Header2_vId, "alias": Header2_alias, "id": Header2_id, "guid": Header2_guid},
@@ -686,6 +823,10 @@ def _process_home_page_components(
         DefaultDescription,
         site_id,
         header_footer_details,
+        matched_category_id,
+        page_component_ids,
+        page_component_names,
+        component_cache,
     )
 
 

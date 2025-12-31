@@ -50,7 +50,7 @@
   { "old_key": "", "new_key": "footer-font-size", "value": "15px" },
   { "old_key": "", "new_key": "footer-font-line-height", "value": "180%" },
   { "old_key": "", "new_key": "footer-font-weight", "value": "400" },
-  { "old_key": "", "new_key": "icon-fonts", "value": "template-icon', sans-serif" },
+  { "old_key": "", "new_key": "icon-fonts", "value": "'template-icon', sans-serif" },
   { "old_key": "", "new_key": "mob-h1-font-size", "value": "65px" },
   { "old_key": "", "new_key": "mob-h1-font-line-height", "value": "100%" },
   { "old_key": "", "new_key": "mob-h2-font-size", "value": "55px" },

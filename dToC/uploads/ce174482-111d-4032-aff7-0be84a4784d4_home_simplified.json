@@ -1,0 +1,32 @@
+{
+    "title": "394279 Nationwide Hotel & Conference Center",
+    "pages": [
+        {
+            "page_name": "Home Page",
+            "level": 0,
+            "components": [
+                "M1-Inside Hero",
+                "H1-Home Overview Section",
+                "H2-Home Meeting Wedding",
+                "H3-Home Room and Suites",
+                "H4-Home Dining Section",
+                "H5-Home Explore",
+                "H6-Home Social Feed"
+            ],
+            "meta_info": {
+                "PageTemplateName": "Base Layout Page",
+                "DefaultTitle": "Home Page",
+                "DefaultDescription": "Home Page",
+                "Header1": "Custom Header",
+                "Footer1": "Custom Footer",
+                "ShowInNavigation": "No"
+            },
+            "sub_pages": [],
+            "category_info": {
+                "CategoryId": 151615,
+                "CategoryName": "Home Page",
+                "match_type": "fuzzy_name_match"
+            }
+        }
+    ]
+}

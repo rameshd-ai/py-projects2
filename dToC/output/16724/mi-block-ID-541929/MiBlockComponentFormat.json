@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 874320,
+            "FormatName": "Hero-banner-with-title",
+            "FormatKey": "hero-banner-with-title",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each ComponentRecordJson.hero-banner-with-title}}\n<!-- Header 30 Starts -->\n<section class=\"hr30-widget {{IfCond data.center-content-vertically[].0 '=' 'Yes'}} hr30-widget--middle {{/IfCond}} {{IfCond data.wrap-banner-in-container[].0 '=' 'Yes'}} hr30-widget--contained {{/IfCond}}\">\n  <div class=\"hr30-widget__media\">\n    <img src=\"{{data.banner-image.0.OriginalImagePath}}\" width=\"{{data.banner-image.0.ResourceWidth}}\" height=\"{{data.banner-image.0.ResourceHeight}}\" alt=\"{{data.banner-image-alt-text}}\" tabindex=\"0\" data-nodeferimage=\"true\" loading=\"lazy\">\n  </div>\n  <div class=\"hr30-widget__content {{IfCond data.use-a-larger-container-for-content[].0 '=' 'Yes'}} hr30-widget__content--bigger {{/IfCond}}\">\n\n    {{IfCond data.tagline 'notempty' ''}}\n    <div class=\"title title--tagline hr30-widget__tagline dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">{{data.tagline}}</div>\n    {{/IfCond}}\n\n    <div class=\"title title--xxxl hr30-widget__title dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">{{{data.title}}}</div>\n  </div>\n</section>\n<!-- Header 30 Ends -->\n{{/each}}",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

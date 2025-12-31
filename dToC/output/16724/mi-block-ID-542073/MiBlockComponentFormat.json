@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 874407,
+            "FormatName": "Home Guest Room",
+            "FormatKey": "home-guest-room",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each ComponentRecordJson.home-guest-room}}\n<div class=\"home-room-sections\">\n  <div class=\"uk-container \" >\n    <div class=\"home__room-overview uk-margin-auto\" data-uk-scrollspy=\"cls: uk-animation-slide-bottom; target: .home-room__heading; delay: 200;\">\n      <div class=\"small-title home-room__tagline\" tabindex=\"0\">{{data.small-title}}</div>\n      <h2 class=\"home-room__heading dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">{{data.title}}</h2>\n\n      {{IfCond data.description 'notempty' ''}}\n      <div class=\"home-room__description\" tabindex=\"0\">\n        {{{data.description}}}\n      </div>\n      {{/IfCond}}\n\n      {{IfCond data.main-cta-text 'notempty' ''}}\n      <div class=\"home-room__action\">\n        <a href=\"{{data.main-cta-link}}\" class=\"uk-button uk-button-secondary home-room__link\" role=\"button\">\n          {{data.main-cta-text}}\n          <span class=\"sr-only\">{{data.title}}</span>\n        </a>\n      </div>\n      {{/IfCond}}\n    </div>\n    <div class=\"uk-grid uk-flex-middle uk-child-width-1-2\" data-uk-grid>\n      <div class=\"home-room__imageleft\">\n        <img src=\"{{data.badge.0.OriginalImagePath}}\" alt=\"{{data.badge-alt}}\" class=\"home-room__badge\" width=\"104\" height=\"124\" tabindex=\"0\">\n        <img src=\"{{data.image.0.OriginalImagePath}}\" alt=\"{{data.image-alt}}\" class=\"home-room__image\" width=\"{{data.image.0.ResourceWidth}}\" height=\"{{data.image.0.ResourceHeight}}\" tabindex=\"0\" data-uk-scrollspy=\"cls: uk-animation-fade uk-animation-15; delay: 500\">\n      </div>\n      <div class=\"home-room__imageright\">\n        <img src=\"{{data.image-small.0.OriginalImagePath}}\" alt=\"{{data.image-small-alt}}\"\n             class=\"home-room__image-small\" width=\"{{data.image-small.0.ResourceWidth}}\"\n             height=\"{{data.image-small.0.ResourceHeight}}\" tabindex=\"0\" data-uk-parallax=\"y: -150\">\n      </div>\n    </div>\n  </div>\n</div>\n{{/each}}",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}
