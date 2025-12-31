@@ -413,7 +413,7 @@ def pageAction_home(
     payload = {
         "pageId": 0,
         "pageName": page_name,
-        "pageAlias": page_name.lower().replace(" ", "-"),  # Same as level 1 pages
+        "pageAlias": page_name.lower().replace(' ', '-'),  # Same as level 1 pages
         "pageContent": base64_encoded_content,
         "isPageStudioPage": True,
         "pageUpdatedBy": 0,
@@ -591,55 +591,16 @@ def _process_home_page_components(
             logging.error(f"[HOME] Failed to retrieve page template ID for '{page_template_name}': {e}. Using default template ID 0.")
             page_template_id = 0
 
-    # Fetch category ID by matching page name with categories (same logic as inner pages)
+    # Don't pass module ID for homepage - use 0
     matched_category_id = 0
-    try:
-        categories = GetPageCategoryList(api_base_url, api_headers)
-        logging.info(f"[HOME] API categories loaded: {categories}")
-        
-        # Check for API errors
-        if isinstance(categories, dict) and categories.get("error"):
-            logging.error(f"[HOME][ERROR] Unable to load page categories. Error: {categories.get('details')}. Using default CategoryId = 0")
-        else:
-            # Category Matching Logic - match page name to category name
-            normalized_page_name = normalize_page_name(page_name)
-            logging.info(f"[HOME] Matching page name '{page_name}' (normalized: '{normalized_page_name}') against categories...")
-            
-            # Search category ID by normalized name for robust matching
-            for cat in categories:
-                cat_name = cat.get("CategoryName")
-                if cat_name and normalize_page_name(cat_name) == normalized_page_name:
-                    matched_category_id = cat.get("CategoryId", 0)
-                    logging.info(f"[HOME][SUCCESS] MATCHED Category '{page_name}' → CategoryId = {matched_category_id}")
-                    append_home_debug_log(
-                        "category_matched",
-                        {
-                            "page_name": page_name,
-                            "category_name": cat_name,
-                            "category_id": matched_category_id,
-                        },
-                    )
-                    break
-            else:
-                # This executes only if the loop completes without finding a match
-                logging.warning(f"[HOME][WARNING] No matching category found for page '{page_name}', using CategoryId = 0")
-                append_home_debug_log(
-                    "category_not_matched",
-                    {
-                        "page_name": page_name,
-                        "normalized_page_name": normalized_page_name,
-                        "available_categories": [cat.get("CategoryName") for cat in categories[:10]],  # Log first 10 for debugging
-                    },
-                )
-    except Exception as e:
-        logging.error(f"[HOME][ERROR] Failed to fetch or match categories for '{page_name}': {e}. Using default CategoryId = 0")
-        append_home_debug_log(
-            "category_match_error",
-            {
-                "page_name": page_name,
-                "error": str(e),
-            },
-        )
+    logging.info(f"[HOME] Using CategoryId = 0 (no module/category) for homepage")
+    append_home_debug_log(
+        "category_skipped",
+        {
+            "page_name": page_name,
+            "category_id": matched_category_id,
+        },
+    )
 
     page_sections_html: List[str] = []
     # Track component IDs that belong to this page

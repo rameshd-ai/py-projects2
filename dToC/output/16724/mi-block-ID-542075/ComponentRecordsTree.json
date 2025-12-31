@@ -44,7 +44,7 @@
             "level": 0,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "e5644425-5c6a-447f-b1a7-1687007139ad",
+            "sectionGuid": "a1a4cbab-754b-47f7-8bca-eb2c6080c4aa",
             "component_alias": "4cf09990-701e-4b1a-981c-6dd692d8a6bf",
             "vComponentId": 21000323
         },
@@ -91,9 +91,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279558
+            "new_record_id": 3279902
         },
         {
             "Id": 3075486,
@@ -138,9 +138,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279561
+            "new_record_id": 3279899
         },
         {
             "Id": 3075482,
@@ -185,9 +185,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279555
+            "new_record_id": 3279901
         },
         {
             "Id": 3075483,
@@ -232,9 +232,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279558
+            "new_record_id": 3279898
         },
         {
             "Id": 3075475,
@@ -279,9 +279,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279559
+            "new_record_id": 3279902
         },
         {
             "Id": 3075474,
@@ -326,9 +326,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279562
+            "new_record_id": 3279895
         },
         {
             "Id": 3075484,
@@ -373,9 +373,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279556
+            "new_record_id": 3279900
         },
         {
             "Id": 3075485,
@@ -420,9 +420,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279554,
+            "parent_new_record_id": 3279894,
             "isMigrated": true,
-            "new_record_id": 3279557
+            "new_record_id": 3279897
         }
     ]
 }
