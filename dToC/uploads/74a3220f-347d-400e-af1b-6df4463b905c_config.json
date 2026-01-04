@@ -1,0 +1,26 @@
+{
+    "target_site_url": "https://automation-nationwide-2.web4cms.milestoneinternet.info",
+    "site_id": "16724",
+    "profile_alias": "123.28",
+    "file_prefix": "74a3220f-347d-400e-af1b-6df4463b905c",
+    "output_json_filenames": [
+        "74a3220f-347d-400e-af1b-6df4463b905c_home_pages.json",
+        "74a3220f-347d-400e-af1b-6df4463b905c_footer_unknown_pages.json",
+        "74a3220f-347d-400e-af1b-6df4463b905c_util_pages.json",
+        "74a3220f-347d-400e-af1b-6df4463b905c_simplified.json"
+    ],
+    "menu_component_name": "Custom Header",
+    "menu_level": 1,
+    "level_1_custom_properties": {
+        "enable-dropdown[]": [
+            "Yes"
+        ],
+        "enable-menu-item-in-left[]": [
+            "Yes"
+        ],
+        "enable-menu-item-in-right[]": [
+            "Yes"
+        ]
+    },
+    "cms_login_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjcyNCIsInNpdGVVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS0yLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL2F1dG9tYXRpb24tbmF0aW9ud2lkZS0yLndlYjRjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIzMDI1NSIsInVzZXJUeXBlSUQiOiI0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6ImZyZXlqYS5jbXNkeHRlYW1AbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjIxIiwic2Vzc2lvbklEIjoieWUxb24wYm9paW55d3V0cnoyaGNpcGp1IiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiI3MDY2NSIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IkZhbHNlIiwidXNlclRoaW5nSWQiOiI5NDQ5YTRmNy0yNDJmLWYwMTEtOGIzZC0wMDBkM2EzZjhhZDQiLCJtcGNVc2VySWQiOiIyMjI4MiIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQ2xpZW50IiwiaXNNdWx0aUxvY2F0aW9uRXZlbnRDYWxlbmRhciI6IkZhbHNlIiwicHJvZmlsZUFsaWFzIjoiIiwidXNlck1haW5UeXBlSWQiOiI0IiwibmJmIjoxNzY3NTI3NzM4LCJleHAiOjE3Njc2MTQxMzgsImlhdCI6MTc2NzUyNzczOCwiaXNzIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUtMi53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9hdXRvbWF0aW9uLW5hdGlvbndpZGUtMi53ZWI0Y21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.hFB3Dt3TjVX8zbb9rYOBVOFxsj24Dj1gJizd3XSDMk0"
+}

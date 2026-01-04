@@ -1,5 +1,5 @@
 {
-    "title": "394279 Nationwide Hotel & Conference Center",
+    "title": "",
     "pages": [
         {
             "page_name": "Our Property",
@@ -158,7 +158,12 @@
                     },
                     "sub_pages": []
                 }
-            ]
+            ],
+            "category_info": {
+                "CategoryId": 150629,
+                "CategoryName": "Our Property",
+                "match_type": "fuzzy_name_match"
+            }
         },
         {
             "page_name": "Weddings",
@@ -345,7 +350,12 @@
                         }
                     ]
                 }
-            ]
+            ],
+            "category_info": {
+                "CategoryId": 150626,
+                "CategoryName": "Weddings",
+                "match_type": "fuzzy_name_match"
+            }
         },
         {
             "page_name": "Meetings and Events",
@@ -625,7 +635,12 @@
                         }
                     ]
                 }
-            ]
+            ],
+            "category_info": {
+                "CategoryId": 150620,
+                "CategoryName": "Guest Rooms",
+                "match_type": "fuzzy_name_match"
+            }
         },
         {
             "page_name": "Amenities",
@@ -647,7 +662,12 @@
                 "Footer1": "Custom Footer",
                 "ShowInNavigation": "Yes"
             },
-            "sub_pages": []
+            "sub_pages": [],
+            "category_info": {
+                "CategoryId": 150630,
+                "CategoryName": "Amenities",
+                "match_type": "fuzzy_name_match"
+            }
         },
         {
             "page_name": "Dining",
@@ -684,7 +704,12 @@
                     "meta_info": {},
                     "sub_pages": []
                 }
-            ]
+            ],
+            "category_info": {
+                "CategoryId": 150621,
+                "CategoryName": "Dining",
+                "match_type": "fuzzy_name_match"
+            }
         },
         {
             "page_name": "Explore Ohio",
