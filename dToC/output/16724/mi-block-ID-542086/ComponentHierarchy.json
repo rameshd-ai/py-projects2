@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 542086,
+        "type": "MainComponent",
+        "componentName": "Multi-Image-slider-with-content"
+    },
+    {
+        "componentId": 542087,
+        "type": "Level1Child",
+        "componentName": "Multi-Image-slider-with-content-data"
+    }
+]

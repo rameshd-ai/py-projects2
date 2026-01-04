@@ -610,8 +610,12 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
             api_result = check_component_availability(comp_name, component_cache)
             if api_result:
                 _, _, componentId, _ = api_result
-                valid_component_ids_from_names.add(str(componentId))
-        logging.info(f"[MAPPING] Built component ID set from {len(page_component_names)} component names: {len(valid_component_ids_from_names)} IDs found")
+                component_id_str = str(componentId)
+                valid_component_ids_from_names.add(component_id_str)
+                logging.info(f"[MAPPING] Found component '{comp_name}' -> ID: {component_id_str}")
+            else:
+                logging.warning(f"[MAPPING] Component '{comp_name}' not found in component_cache")
+        logging.info(f"[MAPPING] Built component ID set from {len(page_component_names)} component names: {len(valid_component_ids_from_names)} IDs found: {sorted(valid_component_ids_from_names)}")
     
     # Combine both sets if both are provided
     if page_component_ids:
@@ -653,7 +657,10 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
                 if final_valid_component_ids and component_id_from_file:
                     if component_id_from_file not in final_valid_component_ids:
                         # This component doesn't belong to this page, skip it
+                        logging.info(f"[MAPPING] Skipping component {component_id_from_file}: Not in valid_component_ids set. Valid IDs: {sorted(final_valid_component_ids)}")
                         continue
+                    else:
+                        logging.info(f"[MAPPING] Including component {component_id_from_file} in mapping (found in valid_component_ids)")
                 
                 # Extract the required fields from the main component record
                 mapping_data = {
@@ -667,9 +674,9 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
                 # Simple validation before adding
                 if mapping_data["vComponentAlias"] and mapping_data["pageSectionGuid"]:
                     all_mappings.append(mapping_data)
-                    # print(f"  [SUCCESS] Extracted mapping for alias: {mapping_data['vComponentAlias']}")
+                    logging.info(f"[MAPPING] Added mapping for component {component_id_from_file}: alias={mapping_data['vComponentAlias'][:20]}..., sectionGuid={mapping_data['pageSectionGuid']}")
                 else:
-                    print(f"  [WARNING] Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_alias' or 'sectionGuid'.")
+                    logging.warning(f"[MAPPING] Skipping component {component_id_from_file}: Missing 'component_alias' ({mapping_data['vComponentAlias']}) or 'sectionGuid' ({mapping_data['pageSectionGuid']})")
 
         except Exception as e:
             print(f"  [ERROR] Error processing file {file_path}: {e}")
@@ -862,6 +869,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
                     if mapping_payload and valid_section_guids_for_page:
                         if section_guid not in valid_section_guids_for_page:
                             # This component belongs to a different page, skip it
+                            logging.warning(f"[PUBLISH] Skipping component {component_id} (sectionGuid: {section_guid}): Not found in mapping payload for page {page_id}. This may cause publish failure if component is in page HTML.")
                             continue
                     
                     miblock_entry = {
@@ -1247,10 +1255,13 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
            not r.get("isMigrated")
     ]
     
+    # PHASE 1.5: Record limit check removed - CMS limits have been increased
+    # All components can now migrate their records without limit restrictions
+    
     if not records_to_migrate:
         print(f"    [INFO] No {level_name} components found ready for migration.")
         return 0
-
+    
     print(f"    [INFO] Found {len(records_to_migrate)} {level_name} component(s) to process.")
     
     # PHASE 2: COLLECT ALL RECORDS FOR BULK PROCESSING

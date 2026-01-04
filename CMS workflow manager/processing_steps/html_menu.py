@@ -9,6 +9,8 @@ import uuid
 import time
 import logging
 import zipfile
+import html
+import re
 from typing import Dict, Any, List, Tuple
 from urllib.parse import urlparse
 
@@ -37,6 +39,36 @@ def load_json_data(file_path: str) -> Dict[str, Any]:
         return {}
 
 
+def clean_text(text: Any) -> Any:
+    """
+    Clean text by removing HTML entities, special characters, and normalizing whitespace.
+    Handles strings, returns other types as-is.
+    """
+    if not isinstance(text, str):
+        return text
+    
+    if not text:
+        return text
+    
+    # Decode HTML entities (e.g., &nbsp; -> space, &amp; -> &)
+    cleaned = html.unescape(text)
+    
+    # Remove HTML tags if any remain
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)
+    
+    # Replace common special characters that should be spaces (semicolons, pipes, etc.)
+    # Replace multiple occurrences of these characters with a single space
+    cleaned = re.sub(r'[;|]+', ' ', cleaned)
+    
+    # Replace multiple spaces/newlines/tabs with single space
+    cleaned = re.sub(r'[\s]+', ' ', cleaned)
+    
+    # Strip leading/trailing whitespace
+    cleaned = cleaned.strip()
+    
+    return cleaned
+
+
 def download_and_save_menu_data(job_id: str, source_url: str) -> bool:
     """
     Downloads menu data from the source URL and saves it to job folder
@@ -49,6 +81,12 @@ def download_and_save_menu_data(job_id: str, source_url: str) -> bool:
     
     response_data = menu_download_api(source_url)
     
+    # Log the response data details
+    logger.info(f"API Response Data Type: {type(response_data)}")
+    logger.info(f"API Response Data: {response_data}")
+    print(f"[DEBUG] API Response Data Type: {type(response_data)}")
+    print(f"[DEBUG] API Response Data: {response_data}")
+    
     if response_data:
         try:
             with open(output_file_path, "w", encoding='utf-8') as f:
@@ -59,7 +97,8 @@ def download_and_save_menu_data(job_id: str, source_url: str) -> bool:
             logger.error(f"Error saving file to {output_file_path}: {e}")
             return False
     else:
-        logger.error("No data received from menu API")
+        logger.error("No data received from menu API - response_data is None or empty")
+        print("[ERROR] No data received from menu API - response_data is None or empty")
         return False
 
 
@@ -85,12 +124,43 @@ def payload_mapper(job_id: str) -> bool:
     
     mapped_payload = []
     
+    # Fields that should NOT be cleaned (numeric/status fields)
+    numeric_fields = {'displayorder', 'status', 'MenuOrder', 'SectionOrder', 'ItemOrder', 'MenuStatusId', 'SectionStatus', 'ItemStatus'}
+    
+    # Image fields that should be converted from null to [] (empty array)
+    # Only actual image fields, NOT alt-text fields
+    def is_image_field(field_name: str) -> bool:
+        """Check if a field is an image field (excludes alt-text fields)"""
+        if not field_name:
+            return False
+        field_lower = field_name.lower()
+        # Must contain "image" but NOT "alt-text" or "alttext"
+        if 'image' in field_lower:
+            # Exclude alt-text fields
+            if 'alt-text' in field_lower or 'alttext' in field_lower or 'alt_text' in field_lower:
+                return False
+            return True
+        return False
+    
+    def convert_null_to_empty_array(value: Any, field_name: str) -> Any:
+        """Convert null to [] for image fields (not alt-text), otherwise return value as-is"""
+        if is_image_field(field_name) and value is None:
+            return []
+        return value
+    
     # Iterate through each Menu in the source data
     for source_menu in source_data:
         mapped_menu = {}
-        # Map level 0 fields
+        # Map level 0 fields and clean text (except numeric fields)
         for dest_key, src_key in mapper.get("level 0", {}).items():
-            mapped_menu[dest_key] = source_menu.get(src_key)
+            value = source_menu.get(src_key)
+            # Convert null to [] for image fields
+            value = convert_null_to_empty_array(value, dest_key)
+            # Don't clean numeric/order fields
+            if dest_key in numeric_fields or src_key in numeric_fields:
+                mapped_menu[dest_key] = value
+            else:
+                mapped_menu[dest_key] = clean_text(value)
         
         mapped_menu["MenuSections"] = []
         
@@ -98,9 +168,16 @@ def payload_mapper(job_id: str) -> bool:
         source_sections = source_menu.get("Sections", [])
         for source_section in source_sections:
             mapped_section = {}
-            # Map level 1 fields
+            # Map level 1 fields and clean text (except numeric fields)
             for dest_key, src_key in mapper.get("level 1", {}).items():
-                mapped_section[dest_key] = source_section.get(src_key)
+                value = source_section.get(src_key)
+                # Convert null to [] for image fields
+                value = convert_null_to_empty_array(value, dest_key)
+                # Don't clean numeric/order fields
+                if dest_key in numeric_fields or src_key in numeric_fields:
+                    mapped_section[dest_key] = value
+                else:
+                    mapped_section[dest_key] = clean_text(value)
             
             mapped_section["MenuItems"] = []
             
@@ -108,28 +185,37 @@ def payload_mapper(job_id: str) -> bool:
             source_items = source_section.get("Items", [])
             for source_item in source_items:
                 mapped_item = {}
-                # Map level 2 fields
+                # Map level 2 fields and clean text (except numeric fields)
                 for dest_key, src_key in mapper.get("level 2", {}).items():
-                    mapped_item[dest_key] = source_item.get(src_key)
+                    value = source_item.get(src_key)
+                    # Convert null to [] for image fields
+                    value = convert_null_to_empty_array(value, dest_key)
+                    # Don't clean numeric/order fields
+                    if dest_key in numeric_fields or src_key in numeric_fields:
+                        mapped_item[dest_key] = value
+                    else:
+                        mapped_item[dest_key] = clean_text(value)
                 
-                # Map Level 3: ItemPrices
+                # Map Level 3: ItemPrices and clean text
                 mapped_item["ItemPrices"] = []
                 price_mapper = mapper.get("level 3_prices", {})
                 source_prices = source_item.get("ItemPrices", [])
                 for source_price in source_prices:
                     mapped_price = {}
                     for dest_key, src_key in price_mapper.items():
-                        mapped_price[dest_key] = source_price.get(src_key)
+                        value = source_price.get(src_key)
+                        mapped_price[dest_key] = clean_text(value)
                     mapped_item["ItemPrices"].append(mapped_price)
                 
-                # Map Level 3: ItemAddons
+                # Map Level 3: ItemAddons and clean text
                 mapped_item["ItemAddons"] = []
                 addon_mapper = mapper.get("level 3_addons", {})
                 source_addons = source_item.get("ItemAddons", [])
                 for source_addon in source_addons:
                     mapped_addon = {}
                     for dest_key, src_key in addon_mapper.items():
-                        mapped_addon[dest_key] = source_addon.get(src_key)
+                        value = source_addon.get(src_key)
+                        mapped_addon[dest_key] = clean_text(value)
                     mapped_item["ItemAddons"].append(mapped_addon)
                 
                 mapped_section["MenuItems"].append(mapped_item)
@@ -184,11 +270,33 @@ def payload_creator(job_id: str) -> bool:
     
     final_payload = []
     
+    # Helper function to convert null to [] for image fields (not alt-text)
+    def is_image_field(field_name: str) -> bool:
+        """Check if a field is an image field (excludes alt-text fields)"""
+        if not field_name:
+            return False
+        field_lower = field_name.lower()
+        # Must contain "image" but NOT "alt-text" or "alttext"
+        if 'image' in field_lower:
+            # Exclude alt-text fields
+            if 'alt-text' in field_lower or 'alttext' in field_lower or 'alt_text' in field_lower:
+                return False
+            return True
+        return False
+    
+    def convert_null_to_empty_array(value: Any, field_name: str) -> Any:
+        """Convert null to [] for image fields (not alt-text), otherwise return value as-is"""
+        if is_image_field(field_name) and value is None:
+            return []
+        return value
+    
     # Process each menu
     for menu_data in mapped_data:
         menu_record_json = {}
         for key in menu_template:
-            menu_record_json[key] = menu_data.get(key, None)
+            value = menu_data.get(key, None)
+            value = convert_null_to_empty_array(value, key)
+            menu_record_json[key] = value
         
         menu_output = {
             "recordJsonString": menu_record_json,
@@ -204,7 +312,9 @@ def payload_creator(job_id: str) -> bool:
         for section_data in menu_data.get("MenuSections", []):
             section_record_json = {}
             for key in section_template:
-                section_record_json[key] = section_data.get(key, None)
+                value = section_data.get(key, None)
+                value = convert_null_to_empty_array(value, key)
+                section_record_json[key] = value
             
             section_output = {
                 "recordJsonString": section_record_json,
@@ -220,7 +330,9 @@ def payload_creator(job_id: str) -> bool:
             for item_data in section_data.get("MenuItems", []):
                 item_record_json = {}
                 for key in item_template:
-                    item_record_json[key] = item_data.get(key, None)
+                    value = item_data.get(key, None)
+                    value = convert_null_to_empty_array(value, key)
+                    item_record_json[key] = value
                 
                 item_record_json["ItemPrices"] = []
                 item_record_json["ItemAddons"] = []
@@ -244,7 +356,9 @@ def payload_creator(job_id: str) -> bool:
                 for addon_data in item_data.get("ItemAddons", []):
                     addon_record_json = {}
                     for key in addon_template:
-                        addon_record_json[key] = addon_data.get(key, None)
+                        value = addon_data.get(key, None)
+                        value = convert_null_to_empty_array(value, key)
+                        addon_record_json[key] = value
                     
                     addon_output = {
                         "recordJsonString": addon_record_json,
@@ -399,7 +513,7 @@ def preprocess_menu_data(job_id: str, destination_url: str, destination_site_id:
                 
                 logger.info(f"Created component name map: {map_file_path}")
                 
-                # Update display orders
+                # Update display orders - reset to start from 1 while preserving original order
                 update_display_orders_in_payload(payload_file_path)
                 
                 return mi_block_folder
@@ -428,9 +542,27 @@ def update_display_orders_in_payload(file_path: str) -> bool:
 
 
 def reset_display_orders(data: List[Dict]) -> List[Dict]:
-    """Recursively reset display orders starting from 1"""
+    """Recursively reset display orders starting from 1, preserving original order"""
     if isinstance(data, list):
-        for idx, item in enumerate(data, 1):
+        # Sort by original displayorder to maintain the correct sequence
+        # Items without displayorder will be sorted to the end
+        def get_display_order(item):
+            if isinstance(item, dict):
+                record_data = item.get('recordJsonString', {})
+                if isinstance(record_data, dict):
+                    display_order = record_data.get('displayorder')
+                    if display_order is not None:
+                        try:
+                            return int(display_order)
+                        except (ValueError, TypeError):
+                            pass
+            return float('inf')  # Put items without displayorder at the end
+        
+        # Sort by original displayorder
+        sorted_data = sorted(data, key=get_display_order)
+        
+        # Now reset display orders sequentially starting from 1
+        for idx, item in enumerate(sorted_data, 1):
             if isinstance(item, dict):
                 record_data = item.get('recordJsonString', {})
                 if isinstance(record_data, dict):
@@ -450,6 +582,8 @@ def reset_display_orders(data: List[Dict]) -> List[Dict]:
                         record_data['ItemPrices'] = reset_display_orders(record_data['ItemPrices'])
                     if 'ItemAddons' in record_data:
                         record_data['ItemAddons'] = reset_display_orders(record_data['ItemAddons'])
+        
+        return sorted_data
     
     return data
 
@@ -757,12 +891,28 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                     logger.info(f"Level 1 Section {idx+1} created successfully with Record ID: {created_record_id}")
                     
                     # Update payload with created ID for children
+                    # Update both the section_record in l1_section_mapping AND the corresponding section in final_payload
                     section_record['NewRecordId_L1'] = created_record_id
                     if 'MenuItems' in section_record and section_record['MenuItems'] is not None:
                         for item in section_record['MenuItems']:
                             item['ParentRecordId'] = created_record_id
                             item['ParentComponentId'] = str(l2_component_id)
                             item['MainParentComponentid'] = l0_main_parent_id
+                    
+                    # Also update the corresponding section in final_payload to ensure changes persist
+                    # Find the section in final_payload by matching the section name
+                    section_name_in_mapping = section_record.get('recordJsonString', {}).get('section-name', '')
+                    for menu_record in final_payload:
+                        for section in menu_record.get('MenuSections', []):
+                            section_name_in_final = section.get('recordJsonString', {}).get('section-name', '')
+                            if section_name_in_final == section_name_in_mapping:
+                                section['NewRecordId_L1'] = created_record_id
+                                if 'MenuItems' in section and section['MenuItems'] is not None:
+                                    for item in section['MenuItems']:
+                                        item['ParentRecordId'] = created_record_id
+                                        item['ParentComponentId'] = str(l2_component_id)
+                                        item['MainParentComponentid'] = l0_main_parent_id
+                                break
                 else:
                     logger.warning(f"L1 Section {idx+1} API call succeeded but couldn't extract record ID. Response: {created_record_id}, Type: {type(created_record_id)}")
                     print(f"[WARNING] L1 Section {idx+1} - Invalid record ID: {created_record_id}", flush=True)
@@ -796,10 +946,26 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         _, menu_sections_list = process_menu_level_0_only(menu_record)
         all_item_lists = process_menu_sections_level_1_only(menu_sections_list)
         
+        skipped_items = []
         for item_list in all_item_lists:
             for item_record in item_list:
                 parent_record_id = item_record.get("ParentRecordId", 0)
-                if parent_record_id == 0:
+                # Check for both 0 and empty string (empty string is falsy but not equal to 0)
+                if not parent_record_id or parent_record_id == 0 or parent_record_id == "":
+                    item_name = item_record.get('recordJsonString', {}).get('item-name', 'Unknown')
+                    skipped_items.append(item_name)
+                    logger.warning(f"Skipping item '{item_name}' - ParentRecordId is {parent_record_id} (parent section may not have been created)")
+                    print(f"[WARNING] Skipping item '{item_name}' - ParentRecordId is '{parent_record_id}'. Parent section may have failed to create.", flush=True)
+                    continue
+                
+                # Ensure ParentRecordId is an integer
+                try:
+                    parent_record_id = int(parent_record_id)
+                except (ValueError, TypeError):
+                    item_name = item_record.get('recordJsonString', {}).get('item-name', 'Unknown')
+                    skipped_items.append(item_name)
+                    logger.warning(f"Skipping item '{item_name}' - ParentRecordId '{parent_record_id}' cannot be converted to integer")
+                    print(f"[WARNING] Skipping item '{item_name}' - ParentRecordId '{parent_record_id}' is not a valid integer.", flush=True)
                     continue
                 
                 item_json_string_ref = item_record.get('recordJsonString', {})
@@ -834,6 +1000,13 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                 }
                 l2_records.append(single_record_payload)
                 l2_item_mapping.append((item_record, l3_prices, l3_addons))
+    
+    # Report skipped items
+    if skipped_items:
+        print(f"\n[WARNING] {len(skipped_items)} item(s) were skipped due to missing parent section:", flush=True)
+        for item_name in skipped_items:
+            print(f"  - {item_name}", flush=True)
+        logger.warning(f"Skipped {len(skipped_items)} items due to missing ParentRecordId: {skipped_items}")
     
     # Send all Level 2 records in batches
     if l2_records:
@@ -931,6 +1104,12 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         
         record_data = item_price_record.get("recordJsonString")
         if isinstance(record_data, dict):
+            # Log the price data being sent to verify both fields are present
+            price_value = record_data.get("item-price-option", "NOT SET")
+            description_value = record_data.get("item-price-option-description", "NOT SET")
+            logger.info(f"L3A Price record - Price: {price_value}, Description: {description_value}")
+            if not description_value or description_value == "NOT SET":
+                print(f"[WARNING] L3A Price record missing description! Price: {price_value}", flush=True)
             record_data = json.dumps(record_data)
         
         fixed_payload = {

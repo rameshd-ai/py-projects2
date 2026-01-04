@@ -605,128 +605,124 @@ def _process_home_page_components(
     page_sections_html: List[str] = []
     # Track component IDs that belong to this page
     page_component_ids: set = set()
-    # Track component names from simplified.json for this page
-    page_component_names: List[str] = page_data.get('components', [])
 
     if not components:
         logging.warning("[HOME] Home page has no components to process.")
         return
 
+    # Track component names from simplified.json for this page
+    page_component_names: List[str] = page_data.get('components', [])
+    
     # Pre-download/unzip/convert all home components in one batch (3-phase)
     pre_download_home_components(components, component_cache, api_base_url, site_id, api_headers)
 
+    # Process all components
     for component_name in components:
-        logging.info(f"[HOME] Processing component '{component_name}' for home page '{page_name}'")
+            logging.info(f"[HOME] Processing component '{component_name}' for home page '{page_name}'")
 
-        api_result = check_component_availability_home(component_name, component_cache)
-        section_payload = None
+            api_result = check_component_availability_home(component_name, component_cache)
+            section_payload = None  # Initialize for each component
 
-        if api_result:
-            vComponentId, alias, componentId, cms_component_name = api_result
-            logging.info(
-                f"[HOME][SUCCESS] Component '{component_name}' available as '{cms_component_name}'. "
-                f"Starting content retrieval (inner-page logic: add_records_for_page)."
-            )
-            
-            # Track this component ID as belonging to this page
-            page_component_ids.add(str(componentId))
-            
-            append_home_debug_log(
-                "component_available",
-                {
-                    "page_name": page_name,
-                    "component": component_name,
-                    "cms_component_name": cms_component_name,
-                    "vComponentId": vComponentId,
-                    "componentId": componentId,
-                    "alias": alias,
-                },
-            )
-
-            # Ensure required files exist before processing
-            files_ok = ensure_home_component_files(component_name, componentId, api_base_url, site_id, api_headers)
-            append_home_debug_log(
-                "component_files_ready",
-                {
-                    "page_name": page_name,
-                    "component": component_name,
-                    "componentId": componentId,
-                    "ready": files_ok,
-                },
-            )
-            if not files_ok:
-                logging.error(f"[HOME] Required files missing for component {component_name} (ID {componentId}); skipping.")
-                continue
-
-            # Proactively (re)generate hierarchy/tree before running add_records_for_page,
-            # mirroring inner-page behavior and ensuring files exist even if pre-download skipped something.
-            try:
-                createPayloadJson(site_id, componentId)
-                createRecordsPayload(site_id, componentId)
-                append_home_debug_log(
-                    "component_hierarchy_tree_created",
-                    {"component": component_name, "componentId": componentId},
+            if api_result:
+                vComponentId, alias, componentId, cms_component_name = api_result
+                logging.info(
+                    f"[HOME][SUCCESS] Component '{component_name}' available as '{cms_component_name}'. "
+                    f"Starting content retrieval (inner-page logic: add_records_for_page)."
                 )
-            except Exception as e:
-                logging.error(f"[HOME] Failed to create hierarchy/tree for {component_name} (ID {componentId}): {e}")
+                
+                # Track this component ID as belonging to this page
+                page_component_ids.add(str(componentId))
+                
                 append_home_debug_log(
-                    "component_hierarchy_tree_error",
-                    {"component": component_name, "componentId": componentId, "error": str(e)},
-                )
-
-            try:
-                start_t = time.time()
-                # Use the exact same component processing pipeline as inner pages
-                section_payload = add_records_for_page(
-                    page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias
-                )
-                elapsed = time.time() - start_t
-                HOMEPAGE_TIMING_TRACKER.setdefault("add_records_for_page(home)", []).append(elapsed)
-
-                payload_len = len(section_payload) if section_payload else 0
-                append_home_debug_log(
-                    "component_section_payload",
+                    "component_available",
                     {
                         "page_name": page_name,
                         "component": component_name,
-                        "payload_length": payload_len,
-                        "elapsed_seconds": elapsed,
+                        "cms_component_name": cms_component_name,
+                        "vComponentId": vComponentId,
+                        "componentId": componentId,
+                        "alias": alias,
                     },
                 )
-            except Exception as e:
-                logging.error(f"[HOME] Content retrieval failed for {page_name}/{component_name}: {e}")
+
+                # Ensure required files exist before processing
+                files_ok = ensure_home_component_files(component_name, componentId, api_base_url, site_id, api_headers)
                 append_home_debug_log(
-                    "component_error",
+                    "component_files_ready",
                     {
                         "page_name": page_name,
                         "component": component_name,
-                        "error": str(e),
+                        "componentId": componentId,
+                        "ready": files_ok,
                     },
                 )
-        else:
-            logging.warning(
-                f"[HOME][ERROR] Component '{component_name}' NOT AVAILABLE for home page '{page_name}'. Skipping."
-            )
-            append_home_debug_log(
-                "component_unavailable",
-                {"page_name": page_name, "component": component_name},
-            )
+                if not files_ok:
+                    logging.error(f"[HOME] Required files missing for component {component_name} (ID {componentId}); skipping.")
+                    continue
 
-        if section_payload is not None:
-            page_sections_html.append(section_payload)
-        else:
-            append_home_debug_log(
-                "component_section_empty",
-                {"page_name": page_name, "component": component_name},
-            )
+                # Proactively (re)generate hierarchy/tree before running add_records_for_page,
+                # mirroring inner-page behavior and ensuring files exist even if pre-download skipped something.
+                try:
+                    createPayloadJson(site_id, componentId)
+                    createRecordsPayload(site_id, componentId)
+                    append_home_debug_log(
+                        "component_hierarchy_tree_created",
+                        {"component": component_name, "componentId": componentId},
+                    )
+                except Exception as e:
+                    logging.error(f"[HOME] Failed to create hierarchy/tree for {component_name} (ID {componentId}): {e}")
+                    append_home_debug_log(
+                        "component_hierarchy_tree_error",
+                        {"component": component_name, "componentId": componentId, "error": str(e)},
+                    )
 
-    has_content = page_sections_html and any(
-        section and section.strip() for section in page_sections_html if isinstance(section, str)
-    )
+                try:
+                    start_t = time.time()
+                    # Use the exact same component processing pipeline as inner pages
+                    section_payload = add_records_for_page(
+                        page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias
+                    )
+                    elapsed = time.time() - start_t
+                    HOMEPAGE_TIMING_TRACKER.setdefault("add_records_for_page(home)", []).append(elapsed)
 
-    if not has_content:
-        logging.error("[HOME] Home page failed: No HTML content assembled. Skipping page creation.")
-        return
+                    payload_len = len(section_payload) if section_payload else 0
+                    append_home_debug_log(
+                        "component_section_payload",
+                        {
+                            "page_name": page_name,
+                            "component": component_name,
+                            "payload_length": payload_len,
+                            "elapsed_seconds": elapsed,
+                        },
+                    )
+                except Exception as e:
+                    logging.error(f"[HOME] Content retrieval failed for {page_name}/{component_name}: {e}")
+                    append_home_debug_log(
+                        "component_error",
+                        {
+                            "page_name": page_name,
+                            "component": component_name,
+                            "error": str(e),
+                        },
+                    )
+            else:
+                logging.warning(
+                    f"[HOME][ERROR] Component '{component_name}' NOT AVAILABLE for home page '{page_name}'. Skipping."
+                )
+                append_home_debug_log(
+                    "component_unavailable",
+                    {"page_name": page_name, "component": component_name},
+                )
+
+            # Add section_payload to page_sections_html if it exists (outside the api_result check)
+            if section_payload is not None:
+                page_sections_html.append(section_payload)
+                logging.info(f"[HOME] Added section payload for '{component_name}' (length: {len(section_payload)})")
+            else:
+                append_home_debug_log(
+                    "component_section_empty",
+                    {"page_name": page_name, "component": component_name},
+                )
 
     all_sections_concatenated = "".join(page_sections_html)
     htmlPrefix = '<div class="box2" id="data_page_content"><div id="pagestudio">'
@@ -772,7 +768,16 @@ def _process_home_page_components(
         + (Footer2_html or "")
         + htmlPostfix
     )
-
+    
+    # Check if we have content (header/footer + body components)
+    has_content = page_sections_html and any(
+        section and section.strip() for section in page_sections_html if isinstance(section, str)
+    ) or (Header1_html or Header2_html or Footer1_html or Footer2_html)
+    
+    if not has_content:
+        logging.error("[HOME] Home page failed: No HTML content assembled. Skipping page creation.")
+        return
+    
     logging.info("[HOME] Final HTML for Home Page assembled. Calling pageAction_home...")
     pageAction_home(
         api_base_url,

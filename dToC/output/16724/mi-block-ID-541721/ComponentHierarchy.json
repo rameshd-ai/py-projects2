@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 541721,
+        "type": "MainComponent",
+        "componentName": "Section-layout-with-dots-slider"
+    },
+    {
+        "componentId": 541722,
+        "type": "Level1Child",
+        "componentName": "Section-layout-with-dots-slider-Items"
+    }
+]

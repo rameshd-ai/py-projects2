@@ -599,31 +599,73 @@ def menu_download_api(base_url):
         dict or None: The parsed JSON data from the API response if successful,
                       otherwise None.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     api_endpoint = "/api/MenuDataAPI/GetMenuData"
+    
+    # Ensure HTTPS is used (some sites require HTTPS for API endpoints)
+    if base_url.startswith('http://'):
+        base_url = base_url.replace('http://', 'https://', 1)
+        logger.info(f"Converted HTTP to HTTPS for API call: {base_url}")
+        print(f"[INFO] Converted HTTP to HTTPS for API call")
+    
     full_url = f"{base_url.rstrip('/')}{api_endpoint}"
 
+    logger.info(f"Attempting to download menu data from: {full_url}")
     print(f"Attempting to download menu data from: {full_url}")
 
     try:
-        # Send a GET request to the full URL
+        # Send a POST request to the full URL
         response = requests.post(full_url, timeout=10)
+        
+        # Log response details
+        logger.info(f"API Response Status Code: {response.status_code}")
+        logger.info(f"API Response Headers: {dict(response.headers)}")
+        logger.info(f"API Response Text (first 500 chars): {response.text[:500]}")
+        print(f"API Response Status Code: {response.status_code}")
+        print(f"API Response Text (first 500 chars): {response.text[:500]}")
         
         # Raise an HTTPError for bad responses (4xx or 5xx)
         response.raise_for_status()
         
         # Parse the JSON data from the response body
-        return response.json()
+        json_data = response.json()
+        logger.info(f"Successfully parsed JSON response. Data type: {type(json_data)}, Length: {len(json_data) if isinstance(json_data, (list, dict)) else 'N/A'}")
+        print(f"Successfully parsed JSON response. Data type: {type(json_data)}")
+        return json_data
 
     except requests.exceptions.HTTPError as err_http:
-        print(f"HTTP Error: {err_http}")
+        error_msg = f"HTTP Error: {err_http}"
+        logger.error(error_msg)
+        logger.error(f"Response status: {response.status_code if 'response' in locals() else 'N/A'}")
+        logger.error(f"Response text: {response.text if 'response' in locals() else 'N/A'}")
+        print(error_msg)
+        if 'response' in locals():
+            print(f"Response text: {response.text}")
     except requests.exceptions.ConnectionError as err_conn:
-        print(f"Connection Error: {err_conn}")
+        error_msg = f"Connection Error: {err_conn}"
+        logger.error(error_msg)
+        print(error_msg)
     except requests.exceptions.Timeout as err_timeout:
-        print(f"Timeout Error: {err_timeout}")
+        error_msg = f"Timeout Error: {err_timeout}"
+        logger.error(error_msg)
+        print(error_msg)
     except requests.exceptions.RequestException as err:
-        print(f"An unexpected error occurred: {err}")
+        error_msg = f"An unexpected error occurred: {err}"
+        logger.error(error_msg)
+        print(error_msg)
     except json.JSONDecodeError as err_json:
-        print(f"JSON Decode Error: Could not parse response as JSON. {err_json}")
+        error_msg = f"JSON Decode Error: Could not parse response as JSON. {err_json}"
+        logger.error(error_msg)
+        if 'response' in locals():
+            logger.error(f"Response text that failed to parse: {response.text}")
+            print(f"Response text that failed to parse: {response.text}")
+        print(error_msg)
+    except Exception as e:
+        error_msg = f"Unexpected error: {e}"
+        logger.error(error_msg, exc_info=True)
+        print(error_msg)
     
     return None
 

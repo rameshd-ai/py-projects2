@@ -341,61 +341,98 @@ def get_jobs_list():
 def cleanup_junk_jobs():
     """Remove invalid/junk job folders that don't have proper config.json"""
     try:
-        from utils import get_job_folder
+        from utils import get_job_folder, get_job_output_folder
         import shutil
-        
-        if not os.path.exists(UPLOAD_FOLDER):
-            return jsonify({"success": True, "cleaned": 0, "message": "No uploads folder found"})
-        
-        job_folders = [d for d in os.listdir(UPLOAD_FOLDER) 
-                      if os.path.isdir(os.path.join(UPLOAD_FOLDER, d)) and d.startswith('job_')]
         
         cleaned_count = 0
         cleaned_jobs = []
+        failed_jobs = []
         
-        for job_id in job_folders:
-            try:
-                config_path = os.path.join(get_job_folder(job_id), "config.json")
-                folder_path = get_job_folder(job_id)
-                
-                # Check if config.json exists and is valid
-                is_junk = False
-                if not os.path.exists(config_path):
-                    is_junk = True
-                else:
-                    try:
-                        with open(config_path, 'r', encoding='utf-8') as f:
-                            job_config = json.load(f)
-                        # Check if config is empty or invalid
-                        if not isinstance(job_config, dict) or len(job_config) == 0:
-                            is_junk = True
-                        # Check job_id format
-                        if not job_id or len(job_id) < 20 or not job_id.startswith('job_'):
-                            is_junk = True
-                    except (json.JSONDecodeError, IOError):
+        # Clean up uploads folder
+        if os.path.exists(UPLOAD_FOLDER):
+            job_folders = [d for d in os.listdir(UPLOAD_FOLDER) 
+                          if os.path.isdir(os.path.join(UPLOAD_FOLDER, d)) and d.startswith('job_')]
+            
+            for job_id in job_folders:
+                try:
+                    config_path = os.path.join(get_job_folder(job_id), "config.json")
+                    folder_path = get_job_folder(job_id)
+                    
+                    # Check if config.json exists and is valid
+                    is_junk = False
+                    if not os.path.exists(config_path):
                         is_junk = True
-                
-                if is_junk:
-                    try:
-                        shutil.rmtree(folder_path)
-                        cleaned_count += 1
-                        cleaned_jobs.append(job_id)
-                        logging.info(f"Cleaned up junk job folder: {job_id}")
-                    except Exception as e:
-                        logging.error(f"Failed to delete junk job folder {job_id}: {e}")
-            except Exception as e:
-                logging.error(f"Error checking job {job_id} for cleanup: {e}")
-                continue
+                    else:
+                        try:
+                            with open(config_path, 'r', encoding='utf-8') as f:
+                                job_config = json.load(f)
+                            # Check if config is empty or invalid
+                            if not isinstance(job_config, dict) or len(job_config) == 0:
+                                is_junk = True
+                            # Check job_id format
+                            if not job_id or len(job_id) < 20 or not job_id.startswith('job_'):
+                                is_junk = True
+                        except (json.JSONDecodeError, IOError):
+                            is_junk = True
+                    
+                    if is_junk:
+                        try:
+                            # Delete upload folder
+                            if os.path.exists(folder_path):
+                                shutil.rmtree(folder_path)
+                            
+                            # Also delete corresponding output folder if it exists
+                            output_folder = get_job_output_folder(job_id)
+                            if os.path.exists(output_folder):
+                                shutil.rmtree(output_folder)
+                            
+                            cleaned_count += 1
+                            cleaned_jobs.append(job_id)
+                            logging.info(f"Cleaned up junk job folder: {job_id}")
+                        except Exception as e:
+                            error_msg = f"Failed to delete junk job folder {job_id}: {e}"
+                            logging.error(error_msg)
+                            failed_jobs.append({"job_id": job_id, "error": str(e)})
+                except Exception as e:
+                    logging.error(f"Error checking job {job_id} for cleanup: {e}")
+                    continue
         
-        return jsonify({
+        # Also clean up orphaned output folders (folders in output/ that don't have corresponding upload folders)
+        if os.path.exists(OUTPUT_FOLDER):
+            output_folders = [d for d in os.listdir(OUTPUT_FOLDER) 
+                             if os.path.isdir(os.path.join(OUTPUT_FOLDER, d)) and d.startswith('job_')]
+            
+            for job_id in output_folders:
+                # Check if corresponding upload folder exists
+                upload_folder = get_job_folder(job_id)
+                if not os.path.exists(upload_folder):
+                    # Orphaned output folder - delete it
+                    try:
+                        output_folder_path = get_job_output_folder(job_id)
+                        if os.path.exists(output_folder_path):
+                            shutil.rmtree(output_folder_path)
+                            cleaned_count += 1
+                            cleaned_jobs.append(f"{job_id} (orphaned output)")
+                            logging.info(f"Cleaned up orphaned output folder: {job_id}")
+                    except Exception as e:
+                        error_msg = f"Failed to delete orphaned output folder {job_id}: {e}"
+                        logging.error(error_msg)
+                        failed_jobs.append({"job_id": f"{job_id} (output)", "error": str(e)})
+        
+        response = {
             "success": True,
             "cleaned": cleaned_count,
             "cleaned_jobs": cleaned_jobs,
             "message": f"Cleaned up {cleaned_count} junk job(s)"
-        })
+        }
+        
+        if failed_jobs:
+            response["failed_jobs"] = failed_jobs
+            response["message"] += f", {len(failed_jobs)} failed to delete"
+        
+        return jsonify(response)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-    except Exception as e:
+        logging.error(f"Error in cleanup: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -512,28 +549,56 @@ def delete_job(job_id):
         job_output_folder = get_job_output_folder(job_id)
         
         deleted_items = []
+        errors = []
         
         # Delete upload folder
         if os.path.exists(job_upload_folder):
-            shutil.rmtree(job_upload_folder)
-            deleted_items.append("upload folder")
+            try:
+                shutil.rmtree(job_upload_folder)
+                deleted_items.append("upload folder")
+                logging.info(f"Deleted upload folder for job {job_id}")
+            except Exception as e:
+                error_msg = f"Failed to delete upload folder: {str(e)}"
+                errors.append(error_msg)
+                logging.error(f"Error deleting upload folder for job {job_id}: {e}")
+        else:
+            logging.warning(f"Upload folder not found for job {job_id}: {job_upload_folder}")
         
         # Delete output folder
         if os.path.exists(job_output_folder):
-            shutil.rmtree(job_output_folder)
-            deleted_items.append("output folder")
+            try:
+                shutil.rmtree(job_output_folder)
+                deleted_items.append("output folder")
+                logging.info(f"Deleted output folder for job {job_id}")
+            except Exception as e:
+                error_msg = f"Failed to delete output folder: {str(e)}"
+                errors.append(error_msg)
+                logging.error(f"Error deleting output folder for job {job_id}: {e}")
+        else:
+            logging.warning(f"Output folder not found for job {job_id}: {job_output_folder}")
         
         if deleted_items:
-            return jsonify({
+            response = {
                 "success": True,
                 "message": f"Job {job_id} deleted successfully",
                 "deleted": deleted_items
-            })
+            }
+            if errors:
+                response["warnings"] = errors
+                response["message"] += f" (with {len(errors)} warning(s))"
+            return jsonify(response)
         else:
-            return jsonify({
-                "success": False,
-                "error": "Job not found"
-            }), 404
+            if errors:
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to delete job folders",
+                    "details": errors
+                }), 500
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": "Job not found"
+                }), 404
             
     except Exception as e:
         logging.error(f"Error deleting job {job_id}: {e}")

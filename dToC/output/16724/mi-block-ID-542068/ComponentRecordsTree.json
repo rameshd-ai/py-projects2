@@ -44,7 +44,7 @@
             "level": 0,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "sectionGuid": "297082cf-c7a3-4cdd-a2cb-e5fe94e0c8ce",
+            "sectionGuid": "dcd10f46-2875-42c4-a50d-52c1b4660c03",
             "component_alias": "ef106c69-623b-4548-b5df-d1c259b22794",
             "vComponentId": 21000319
         },
@@ -91,9 +91,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279884,
+            "parent_new_record_id": 3284268,
             "isMigrated": true,
-            "new_record_id": 3279888
+            "new_record_id": 3284270
         },
         {
             "Id": 3074782,
@@ -138,9 +138,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279884,
+            "parent_new_record_id": 3284268,
             "isMigrated": true,
-            "new_record_id": 3279890
+            "new_record_id": 3284273
         },
         {
             "Id": 3074783,
@@ -185,9 +185,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279884,
+            "parent_new_record_id": 3284268,
             "isMigrated": true,
-            "new_record_id": 3279887
+            "new_record_id": 3284270
         },
         {
             "Id": 3074784,
@@ -232,9 +232,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279884,
+            "parent_new_record_id": 3284268,
             "isMigrated": true,
-            "new_record_id": 3279886
+            "new_record_id": 3284271
         },
         {
             "Id": 3074785,
@@ -279,9 +279,9 @@
             "ProfileIds": null,
             "level": 1,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3279884,
+            "parent_new_record_id": 3284268,
             "isMigrated": true,
-            "new_record_id": 3279888
+            "new_record_id": 3284274
         }
     ]
 }

@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 541947,
+        "type": "MainComponent",
+        "componentName": "Feature-Left-Image"
+    },
+    {
+        "componentId": 541948,
+        "type": "Level1Child",
+        "componentName": "Feature-Left-Image-Items"
+    }
+]

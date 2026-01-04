@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 541899,
+        "type": "MainComponent",
+        "componentName": "Venue-Accordian"
+    },
+    {
+        "componentId": 541900,
+        "type": "Level1Child",
+        "componentName": "accordian-list-venue"
+    }
+]
