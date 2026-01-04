@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Figma to CMS Component Generator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>🎨 Figma to CMS</h1>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#" class="nav-link active" data-section="generate">Generate</a></li>
+                <li><a href="#" class="nav-link" data-section="settings">Settings</a></li>
+                <li><a href="#" class="nav-link" data-section="library">Library</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <main>
+            <!-- Generate Section -->
+            <section id="generate-section" class="content-section active">
+                <div class="card">
+                    <h2>Generate Component</h2>
+                    <form id="generateForm">
+                        <div class="form-group">
+                            <label for="figmaUrl">Figma URL:</label>
+                            <input 
+                                type="url" 
+                                id="figmaUrl" 
+                                name="figma_url" 
+                                placeholder="https://www.figma.com/file/..."
+                                required
+                            >
+                            <small>Enter the Figma URL of the design you want to convert</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Generate Component</button>
+                    </form>
+                </div>
+
+                <div id="results" class="card hidden">
+                    <h2>Results</h2>
+                    <div id="resultsContent"></div>
+                </div>
+
+                <div id="progress" class="card hidden">
+                    <h2>Processing...</h2>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressText">Initializing...</p>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section">
+                <div class="card">
+                    <h2>⚙️ Settings</h2>
+                    
+                    <!-- Settings Tabs -->
+                    <div class="settings-tabs">
+                        <button class="settings-tab active" data-tab="api-settings">API Settings</button>
+                        <button class="settings-tab" data-tab="cms-settings">CMS Settings</button>
+                    </div>
+
+                    <!-- API Settings Tab Content -->
+                    <div id="api-settings" class="settings-tab-content active">
+                        <h3>API Configuration</h3>
+                        <p class="info">Configure your API keys for Figma and Claude AI</p>
+                        
+                        <form id="apiSettingsForm">
+                            <div class="form-group">
+                                <label for="figmaToken">Figma Access Token:</label>
+                                <input 
+                                    type="password" 
+                                    id="figmaToken" 
+                                    name="figma_token" 
+                                    placeholder="Enter your Figma access token"
+                                    value="{{ figma_token }}"
+                                >
+                                <small>Get your token from Figma → Settings → Account → Personal Access Tokens</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="claudeToken">Anthropic (Claude) API Key:</label>
+                                <input 
+                                    type="password" 
+                                    id="claudeToken" 
+                                    name="claude_token" 
+                                    placeholder="Enter your Anthropic API key"
+                                    value="{{ claude_token }}"
+                                >
+                                <small>Get your key from <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a></small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save API Settings</button>
+                            <button type="button" id="testApiConnections" class="btn btn-secondary">Test API Connections</button>
+                        </form>
+                        <div id="apiSettingsStatus" class="mt-3"></div>
+                    </div>
+
+                    <!-- CMS Settings Tab Content -->
+                    <div id="cms-settings" class="settings-tab-content">
+                        <h3>CMS Configuration</h3>
+                        <p class="info">Configure your CMS API connection settings</p>
+                        
+                        <form id="cmsSettingsForm">
+                            <div class="form-group">
+                                <label for="cmsBaseUrl">CMS Base URL:</label>
+                                <input 
+                                    type="url" 
+                                    id="cmsBaseUrl" 
+                                    name="cms_base_url" 
+                                    placeholder="https://api.cms.example.com"
+                                    value="{{ cms_base_url }}"
+                                >
+                                <small>Your CMS API base URL</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="cmsApiKey">CMS API Key:</label>
+                                <input 
+                                    type="password" 
+                                    id="cmsApiKey" 
+                                    name="cms_api_key" 
+                                    placeholder="Enter your CMS API key"
+                                    value="{{ cms_api_key }}"
+                                >
+                                <small>Your CMS API authentication key</small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">Save CMS Settings</button>
+                            <button type="button" id="testCmsConnection" class="btn btn-secondary">Test CMS Connection</button>
+                        </form>
+                        <div id="cmsSettingsStatus" class="mt-3"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Library Section -->
+            <section id="library-section" class="content-section">
+                <div class="card">
+                    <h2>Component Library</h2>
+                    <p class="info">Manage your component library from CMS</p>
+                    <button id="refreshLibrary" class="btn btn-secondary">Refresh Library</button>
+                    <div id="libraryStatus" class="mt-3"></div>
+                </div>
+                <div id="libraryResults" class="card hidden">
+                    <h2>Library Results</h2>
+                    <div id="libraryContent"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Navigation handler
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // Remove active class from all links and sections
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                
+                // Add active class to clicked link
+                link.classList.add('active');
+                
+                // Show corresponding section
+                const sectionId = link.getAttribute('data-section') + '-section';
+                document.getElementById(sectionId).classList.add('active');
+            });
+        });
+
+        // Load settings on page load
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                if (data.figma_token) document.getElementById('figmaToken').value = data.figma_token;
+                if (data.claude_token) document.getElementById('claudeToken').value = data.claude_token;
+                if (data.cms_base_url) document.getElementById('cmsBaseUrl').value = data.cms_base_url;
+                if (data.cms_api_key) document.getElementById('cmsApiKey').value = data.cms_api_key;
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+
+        // Settings tabs handler
+        document.querySelectorAll('.settings-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and contents
+                document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // API Settings form handler
+        document.getElementById('apiSettingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('apiSettingsStatus');
+            statusDiv.innerHTML = '<div class="info">Saving API settings...</div>';
+            
+            const formData = {
+                figma_token: document.getElementById('figmaToken').value,
+                claude_token: document.getElementById('claudeToken').value
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    statusDiv.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                } else {
+                    let statusHtml = '<div class="success">API settings saved successfully!</div>';
+                    if (data.test_results) {
+                        statusHtml += '<div class="mt-2"><strong>Connection Status:</strong><ul>';
+                        for (const [service, status] of Object.entries(data.test_results)) {
+                            if (service === 'figma' || service === 'claude') {
+                                const icon = status === 'connected' ? '✅' : '❌';
+                                statusHtml += `<li>${icon} ${service.charAt(0).toUpperCase() + service.slice(1)}: ${status}</li>`;
+                            }
+                        }
+                        statusHtml += '</ul></div>';
+                    }
+                    statusDiv.innerHTML = statusHtml;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        });
+
+        // Test API connections button
+        document.getElementById('testApiConnections').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('apiSettingsStatus');
+            statusDiv.innerHTML = '<div class="info">Testing API connections...</div>';
+            
+            const formData = {
+                figma_token: document.getElementById('figmaToken').value,
+                claude_token: document.getElementById('claudeToken').value
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                if (data.test_results) {
+                    let statusHtml = '<div><strong>API Connection Test Results:</strong><ul>';
+                    for (const [service, status] of Object.entries(data.test_results)) {
+                        if (service === 'figma' || service === 'claude') {
+                            const icon = status === 'connected' ? '✅' : '❌';
+                            statusHtml += `<li>${icon} ${service.charAt(0).toUpperCase() + service.slice(1)}: ${status}</li>`;
+                        }
+                    }
+                    statusHtml += '</ul></div>';
+                    statusDiv.innerHTML = statusHtml;
+                } else {
+                    statusDiv.innerHTML = '<div class="error">Failed to test API connections</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        });
+
+        // CMS Settings form handler
+        document.getElementById('cmsSettingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('cmsSettingsStatus');
+            statusDiv.innerHTML = '<div class="info">Saving CMS settings...</div>';
+            
+            const formData = {
+                cms_base_url: document.getElementById('cmsBaseUrl').value,
+                cms_api_key: document.getElementById('cmsApiKey').value
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    statusDiv.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                } else {
+                    let statusHtml = '<div class="success">CMS settings saved successfully!</div>';
+                    if (data.test_results && data.test_results.cms) {
+                        const icon = data.test_results.cms === 'connected' ? '✅' : '❌';
+                        statusHtml += `<div class="mt-2"><strong>Connection Status:</strong><ul><li>${icon} CMS: ${data.test_results.cms}</li></ul></div>`;
+                    }
+                    statusDiv.innerHTML = statusHtml;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        });
+
+        // Test CMS connection button
+        document.getElementById('testCmsConnection').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('cmsSettingsStatus');
+            statusDiv.innerHTML = '<div class="info">Testing CMS connection...</div>';
+            
+            const formData = {
+                cms_base_url: document.getElementById('cmsBaseUrl').value,
+                cms_api_key: document.getElementById('cmsApiKey').value
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                if (data.test_results && data.test_results.cms) {
+                    const icon = data.test_results.cms === 'connected' ? '✅' : '❌';
+                    statusDiv.innerHTML = `<div><strong>CMS Connection Test:</strong><ul><li>${icon} CMS: ${data.test_results.cms}</li></ul></div>`;
+                } else {
+                    statusDiv.innerHTML = '<div class="error">Failed to test CMS connection</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        });
+
+        // Generate form handler
+        document.getElementById('generateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const figmaUrl = document.getElementById('figmaUrl').value;
+            const resultsDiv = document.getElementById('results');
+            const resultsContent = document.getElementById('resultsContent');
+            const progressDiv = document.getElementById('progress');
+            
+            // Get tokens from settings form
+            const requestData = {
+                figma_url: figmaUrl,
+                figma_token: document.getElementById('figmaToken').value || undefined,
+                claude_token: document.getElementById('claudeToken').value || undefined
+            };
+            
+            // Show progress
+            progressDiv.classList.remove('hidden');
+            resultsDiv.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                // Hide progress
+                progressDiv.classList.add('hidden');
+                
+                // Show results
+                resultsDiv.classList.remove('hidden');
+                if (data.error) {
+                    resultsContent.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                } else {
+                    resultsContent.innerHTML = `
+                        <div class="success">${data.message}</div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                progressDiv.classList.add('hidden');
+                resultsDiv.classList.remove('hidden');
+                resultsContent.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        });
+
+        // Refresh library handler
+        document.getElementById('refreshLibrary').addEventListener('click', async () => {
+            const libraryDiv = document.getElementById('libraryResults');
+            const libraryContent = document.getElementById('libraryContent');
+            const libraryStatus = document.getElementById('libraryStatus');
+            
+            libraryStatus.innerHTML = '<div class="info">Refreshing library...</div>';
+            libraryDiv.classList.remove('hidden');
+            
+            // Get CMS credentials from settings form
+            const requestData = {
+                cms_base_url: document.getElementById('cmsBaseUrl').value || undefined,
+                cms_api_key: document.getElementById('cmsApiKey').value || undefined
+            };
+            
+            try {
+                const response = await fetch('/api/refresh-library', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    libraryStatus.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                    libraryContent.innerHTML = '';
+                } else {
+                    libraryStatus.innerHTML = `<div class="success">${data.message}</div>`;
+                    libraryContent.innerHTML = `
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                libraryStatus.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                libraryContent.innerHTML = '';
+            }
+        });
+
+        // Load settings on page load
+        loadSettings();
+    </script>
+</body>
+</html>

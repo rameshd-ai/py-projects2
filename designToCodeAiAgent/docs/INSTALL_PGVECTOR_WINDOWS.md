@@ -242,3 +242,4 @@ Should show:
 **PostgreSQL Version**: 18.1  
 **pgvector Version**: 0.7+
 
+

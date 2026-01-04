@@ -299,3 +299,4 @@ BEGIN
     RAISE NOTICE '→ pgvector will be added in Phase 2 for visual similarity';
 END $$;
 
+

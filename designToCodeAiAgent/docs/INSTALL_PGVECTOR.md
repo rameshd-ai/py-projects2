@@ -63,3 +63,4 @@ BEGIN
     RAISE NOTICE '→ Ready for Phase 2 visual similarity matching';
 END $$;
 
+

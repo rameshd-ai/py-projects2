@@ -285,3 +285,4 @@ SELECT 'Database setup complete!' as status;
 SELECT * FROM component_stats;
 
 
+

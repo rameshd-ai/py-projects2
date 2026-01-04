@@ -1,0 +1,30 @@
+# Web Framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Agent Orchestration
+langgraph>=1.0.0
+langchain>=1.0.0
+langchain-anthropic>=1.0.0
+
+# Database
+psycopg2-binary>=2.9.9
+pgvector>=0.4.0
+sqlalchemy>=2.0.0
+
+# AI
+anthropic>=0.75.0
+
+# CLIP for embeddings (for vector search) - Optional, install separately if needed
+# torch>=2.6.0
+# torchvision>=0.21.0
+# transformers>=4.36.2
+# clip-by-openai>=1.0.1
+
+# Utilities
+requests>=2.31.0
+beautifulsoup4>=4.12.2
+pillow>=10.4.0
+imagehash>=4.3.0  # For simple image matching
+python-dotenv>=1.0.0
+
