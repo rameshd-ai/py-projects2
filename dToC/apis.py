@@ -1477,3 +1477,115 @@ def update_theme_variables(base_url: str, payload: dict, headers: dict = None) -
         return None
 
 
+def save_module_category(base_url: str, headers: dict, payload: dict) -> Union[Dict[str, Any], None]:
+    """
+    Saves or updates a module category using the CMS Module API.
+    
+    Endpoint: /ccadmin/cms/api/ModuleApi/SaveCategory
+    
+    Args:
+        base_url (str): The base URL of the CMS API (e.g., "https://example.cms.milestoneinternet.info").
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+        payload (dict): Complete request payload containing:
+                       - ModuleCategory: Dictionary with category details including:
+                         - CategoryId: int (0 for new category, existing ID for update)
+                         - ParentCategory: int (parent category ID, 0 for root)
+                         - CategoryName: str (name of the category)
+                         - CategoryAlias: str (alias/slug for the category)
+                         - ResourceTypeID: int (resource type identifier)
+                         - ResourceTypeIdForMultipleImages: int
+                         - categorystatus: int (1 for active, 0 for inactive)
+                         - MilestoneModuleCategoryID: int
+                         - ModuleIdentifier: str (module identifier string)
+                         - ShowSnippets: int
+                         - TopNavigationFormatId: int
+                         - ModuleOrder: int (display order)
+                         - SchemaBusinessTypeDetailID: int
+                         - IsEnableRedirection: bool
+                         - RedirectionURL: str
+                         - SiteId: int (site identifier)
+    
+    Returns:
+        dict: The JSON response from the API if successful, otherwise None.
+    
+    Example:
+        payload = {
+            "ModuleCategory": {
+                "CategoryId": 0,
+                "ParentCategory": 0,
+                "CategoryName": "Test Sample Category",
+                "CategoryAlias": "Test 55",
+                "ResourceTypeID": 1,
+                "ResourceTypeIdForMultipleImages": 0,
+                "categorystatus": 1,
+                "MilestoneModuleCategoryID": 0,
+                "ModuleIdentifier": "MODULE_ABC",
+                "ShowSnippets": 0,
+                "TopNavigationFormatId": 0,
+                "ModuleOrder": 1,
+                "SchemaBusinessTypeDetailID": 0,
+                "IsEnableRedirection": False,
+                "RedirectionURL": "",
+                "SiteId": 28
+            }
+        }
+        response = save_module_category(base_url, headers, payload)
+    """
+    api_url = f"{base_url}/ccadmin/cms/api/ModuleApi/SaveCategory"
+    
+    try:
+        # Ensure Content-Type is set
+        if headers is None:
+            headers = {
+                'Content-Type': 'application/json'
+            }
+        else:
+            headers = headers.copy()
+            headers['Content-Type'] = 'application/json'
+        
+        site_id = payload.get('ModuleCategory', {}).get('SiteId', 'N/A')
+        category_name = payload.get('ModuleCategory', {}).get('CategoryName', 'N/A')
+        logging.info(f"Calling SaveCategory API for SiteId: {site_id}, CategoryName: {category_name}")
+        
+        response = requests.post(
+            api_url,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        logging.info(f"SaveCategory API response status: {response.status_code}")
+        
+        # Raise exception for bad status codes
+        response.raise_for_status()
+        
+        # Parse and return JSON response
+        response_data = response.json()
+        logging.info(f"[SUCCESS] Successfully saved module category: {category_name}")
+        return response_data
+        
+    except requests.exceptions.HTTPError as http_err:
+        status_code = response.status_code if 'response' in locals() else 'N/A'
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"[ERROR] HTTP error in save_module_category: {http_err} (Status Code: {status_code})")
+        if status_code >= 500:
+            logging.error(f"[ERROR] Server error response: {response_text[:500]}")
+        return None
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"[ERROR] Connection error in save_module_category: {conn_err}")
+        return None
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"[ERROR] Timeout error in save_module_category: {timeout_err}")
+        return None
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"[ERROR] Request error in save_module_category: {req_err}")
+        return None
+    except json.JSONDecodeError as json_err:
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"[ERROR] JSON decode error in save_module_category: {json_err}. Response: {response_text[:200]}")
+        return None
+    except Exception as e:
+        logging.error(f"[ERROR] Unexpected error in save_module_category: {e}")
+        return None
+
+
