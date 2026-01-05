@@ -26,5 +26,6 @@ requests>=2.31.0
 beautifulsoup4>=4.12.2
 pillow>=10.4.0
 imagehash>=4.3.0  # For simple image matching
+scikit-image>=0.21.0  # For SSIM (Structural Similarity Index)
 python-dotenv>=1.0.0
 

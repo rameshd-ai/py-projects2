@@ -14,6 +14,7 @@
             </div>
             <ul class="nav-menu">
                 <li><a href="#" class="nav-link active" data-section="generate">Generate</a></li>
+                <li><a href="#" class="nav-link" data-section="projects">Projects</a></li>
                 <li><a href="#" class="nav-link" data-section="settings">Settings</a></li>
                 <li><a href="#" class="nav-link" data-section="library">Library</a></li>
             </ul>
@@ -26,20 +27,109 @@
             <section id="generate-section" class="content-section active">
                 <div class="card">
                     <h2>Generate Component</h2>
-                    <form id="generateForm">
-                        <div class="form-group">
-                            <label for="figmaUrl">Figma URL:</label>
-                            <input 
-                                type="url" 
-                                id="figmaUrl" 
-                                name="figma_url" 
-                                placeholder="https://www.figma.com/file/..."
-                                required
-                            >
-                            <small>Enter the Figma URL of the design you want to convert</small>
+                    
+                    <!-- Workflow Steps Indicator -->
+                    <div class="workflow-steps">
+                        <div class="step active" data-step="1">
+                            <div class="step-number">1</div>
+                            <div class="step-label">Project Info</div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Generate Component</button>
-                    </form>
+                        <div class="step-line"></div>
+                        <div class="step" data-step="2">
+                            <div class="step-number">2</div>
+                            <div class="step-label">Target Site</div>
+                        </div>
+                        <div class="step-line"></div>
+                        <div class="step" data-step="3">
+                            <div class="step-number">3</div>
+                            <div class="step-label">Figma URL</div>
+                        </div>
+                    </div>
+
+                    <!-- Step 1: Project Info -->
+                    <div id="step1" class="workflow-step-content active">
+                        <h3>Step 1: Create Project</h3>
+                        <form id="step1Form">
+                            <div class="form-group">
+                                <label for="projectName">Project Name:</label>
+                                <input 
+                                    type="text" 
+                                    id="projectName" 
+                                    name="project_name" 
+                                    placeholder="Enter project name"
+                                    required
+                                >
+                                <small>Give your project a descriptive name</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Next: Target Site</button>
+                        </form>
+                    </div>
+
+                    <!-- Step 2: Target Site -->
+                    <div id="step2" class="workflow-step-content">
+                        <h3>Step 2: Target Site Configuration</h3>
+                        <form id="step2Form">
+                            <div class="form-group">
+                                <label for="targetSiteUrl">Target Site URL:</label>
+                                <input 
+                                    type="url" 
+                                    id="targetSiteUrl" 
+                                    name="target_site_url" 
+                                    placeholder="https://example.com"
+                                    required
+                                >
+                                <small>The URL of the target site where the component will be used</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="profileAlias">Profile Alias:</label>
+                                <input 
+                                    type="text" 
+                                    id="profileAlias" 
+                                    name="profile_alias" 
+                                    placeholder="Enter profile alias"
+                                    required
+                                >
+                                <small>Profile alias for the CMS</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="siteId">Site ID:</label>
+                                <input 
+                                    type="text" 
+                                    id="siteId" 
+                                    name="site_id" 
+                                    placeholder="Enter site ID"
+                                    required
+                                >
+                                <small>Site ID in the CMS</small>
+                            </div>
+                            <div class="workflow-buttons">
+                                <button type="button" class="btn btn-secondary" id="backToStep1">Back</button>
+                                <button type="submit" class="btn btn-primary">Next: Figma URL</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Step 3: Figma URL -->
+                    <div id="step3" class="workflow-step-content">
+                        <h3>Step 3: Figma Design</h3>
+                        <form id="step3Form">
+                            <div class="form-group">
+                                <label for="figmaUrl">Figma URL:</label>
+                                <input 
+                                    type="url" 
+                                    id="figmaUrl" 
+                                    name="figma_url" 
+                                    placeholder="https://www.figma.com/file/..."
+                                    required
+                                >
+                                <small>Enter the Figma URL of the design you want to convert</small>
+                            </div>
+                            <div class="workflow-buttons">
+                                <button type="button" class="btn btn-secondary" id="backToStep2">Back</button>
+                                <button type="submit" class="btn btn-primary">Generate Component</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
                 <div id="results" class="card hidden">
@@ -53,6 +143,32 @@
                         <div class="progress-fill" id="progressFill"></div>
                     </div>
                     <p id="progressText">Initializing...</p>
+                </div>
+            </section>
+
+            <!-- Projects Section -->
+            <section id="projects-section" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>📁 Projects</h2>
+                        <button id="refreshProjects" class="btn btn-secondary">Refresh</button>
+                    </div>
+                    <div id="projectsList">
+                        <div class="info">Loading projects...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Project View Section (Components List) -->
+            <section id="project-view-section" class="content-section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 id="projectViewTitle">Project Components</h2>
+                        <button id="backToProjects" class="btn btn-secondary">← Back to Projects</button>
+                    </div>
+                    <div id="projectViewContent">
+                        <div class="info">Loading project details...</div>
+                    </div>
                 </div>
             </section>
 
@@ -145,16 +261,88 @@
             <section id="library-section" class="content-section">
                 <div class="card">
                     <h2>Component Library</h2>
-                    <p class="info">Manage your component library from CMS</p>
-                    <button id="refreshLibrary" class="btn btn-secondary">Refresh Library</button>
+                    <p class="info">Train and manage your component library. Click "Train Components" to download and train components with site details.</p>
+                    <div class="library-actions">
+                        <button id="trainAll" class="btn btn-primary">Train Components</button>
+                    </div>
                     <div id="libraryStatus" class="mt-3"></div>
                 </div>
                 <div id="libraryResults" class="card hidden">
                     <h2>Library Results</h2>
                     <div id="libraryContent"></div>
                 </div>
+                <div id="trainingResults" class="card hidden">
+                    <h2>Training Results</h2>
+                    <div id="trainingContent"></div>
+                </div>
+                
+                <!-- Trained Components Preview -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2>🎓 Trained Components</h2>
+                        <button id="refreshTrained" class="btn btn-secondary">Refresh</button>
+                    </div>
+                    <div id="trainedComponentsList">
+                        <div class="info">Loading trained components...</div>
+                    </div>
+                </div>
             </section>
         </main>
+    </div>
+
+    <!-- Training Modal -->
+    <div id="trainingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🚀 Train Components</h2>
+                <span class="modal-close" id="closeTrainingModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="info">Enter target site information to proceed with training</p>
+                <form id="trainingForm">
+                    <div class="form-group">
+                        <label for="trainingTargetSiteUrl">Target Site URL:</label>
+                        <input 
+                            type="url" 
+                            id="trainingTargetSiteUrl" 
+                            name="target_site_url" 
+                            placeholder="https://example.com"
+                            required
+                        >
+                        <small>The URL of the target site where the component will be used</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="trainingProfileAlias">Profile Alias:</label>
+                        <input 
+                            type="text" 
+                            id="trainingProfileAlias" 
+                            name="profile_alias" 
+                            placeholder="Enter profile alias"
+                            required
+                        >
+                        <small>Profile alias for the CMS</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="trainingSiteId">Site ID:</label>
+                        <input 
+                            type="text" 
+                            id="trainingSiteId" 
+                            name="site_id" 
+                            placeholder="Enter site ID"
+                            required
+                        >
+                        <small>Site ID in the CMS</small>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelTraining">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="submitTrainingForm">Start Training</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -352,17 +540,60 @@
             }
         });
 
-        // Generate form handler
-        document.getElementById('generateForm').addEventListener('submit', async (e) => {
+        // Workflow Step Management
+        let currentStep = 1;
+        let projectData = {};
+
+        function showStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.workflow-step-content').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.workflow-steps .step').forEach(s => s.classList.remove('active'));
+            
+            // Show current step
+            document.getElementById(`step${step}`).classList.add('active');
+            document.querySelector(`.workflow-steps .step[data-step="${step}"]`).classList.add('active');
+            
+            // Mark previous steps as completed
+            for (let i = 1; i < step; i++) {
+                document.querySelector(`.workflow-steps .step[data-step="${i}"]`).classList.add('completed');
+            }
+            
+            currentStep = step;
+        }
+
+        // Step 1 Form Handler
+        document.getElementById('step1Form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const figmaUrl = document.getElementById('figmaUrl').value;
+            projectData.project_name = document.getElementById('projectName').value;
+            showStep(2);
+        });
+
+        // Step 2 Form Handler
+        document.getElementById('step2Form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            projectData.target_site_url = document.getElementById('targetSiteUrl').value;
+            projectData.profile_alias = document.getElementById('profileAlias').value;
+            projectData.site_id = document.getElementById('siteId').value;
+            showStep(3);
+        });
+
+        // Step 3 Form Handler (Generate)
+        document.getElementById('step3Form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            projectData.figma_url = document.getElementById('figmaUrl').value;
+            
             const resultsDiv = document.getElementById('results');
             const resultsContent = document.getElementById('resultsContent');
             const progressDiv = document.getElementById('progress');
             
             // Get tokens from settings form
             const requestData = {
-                figma_url: figmaUrl,
+                project_name: projectData.project_name || document.getElementById('projectName').value,
+                target_site_url: projectData.target_site_url || document.getElementById('targetSiteUrl').value,
+                profile_alias: projectData.profile_alias || document.getElementById('profileAlias').value,
+                site_id: projectData.site_id || document.getElementById('siteId').value,
+                figma_url: projectData.figma_url,
+                project_id: projectData.project_id, // Include project ID if adding to existing project
                 figma_token: document.getElementById('figmaToken').value || undefined,
                 claude_token: document.getElementById('claudeToken').value || undefined
             };
@@ -390,10 +621,19 @@
                 if (data.error) {
                     resultsContent.innerHTML = `<div class="error">Error: ${data.error}</div>`;
                 } else {
-                    resultsContent.innerHTML = `
-                        <div class="success">${data.message}</div>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    `;
+                    let html = `<div class="success">${data.message}</div>`;
+                    
+                    // Display verification report if available
+                    if (data.verification_report) {
+                        html += generateVerificationReportHTML(data.verification_report);
+                    }
+                    
+                    // Display other data
+                    html += `<div class="mt-3"><h3>Details:</h3><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+                    
+                    resultsContent.innerHTML = html;
+                    // Reload projects list
+                    loadProjects();
                 }
             } catch (error) {
                 progressDiv.classList.add('hidden');
@@ -402,23 +642,303 @@
             }
         });
 
-        // Refresh library handler
-        document.getElementById('refreshLibrary').addEventListener('click', async () => {
-            const libraryDiv = document.getElementById('libraryResults');
-            const libraryContent = document.getElementById('libraryContent');
-            const libraryStatus = document.getElementById('libraryStatus');
+        // Back buttons
+        document.getElementById('backToStep1').addEventListener('click', () => showStep(1));
+        document.getElementById('backToStep2').addEventListener('click', () => showStep(2));
+
+        // Load Projects
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                
+                const projectsList = document.getElementById('projectsList');
+                if (data.error) {
+                    projectsList.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.projects && data.projects.length > 0) {
+                    let html = '<div class="projects-grid">';
+                    data.projects.forEach(project => {
+                        const createdDate = new Date(project.created_at).toLocaleString();
+                        const components = project.components || [];
+                        const componentCount = components.length || (project.figma_url ? 1 : 0);
+                        
+                        html += `
+                            <div class="project-card">
+                                <h3>${project.project_name || 'Unnamed Project'}</h3>
+                                <div class="project-info">
+                                    <p><strong>Target Site:</strong> ${project.target_site_url || 'N/A'}</p>
+                                    <p><strong>Profile Alias:</strong> ${project.profile_alias || 'N/A'}</p>
+                                    <p><strong>Site ID:</strong> ${project.site_id || 'N/A'}</p>
+                                    <p><strong>Components:</strong> ${componentCount}</p>
+                                    <p><strong>Created:</strong> ${createdDate}</p>
+                                    <p><strong>Status:</strong> <span class="status-badge ${project.status || 'pending'}">${project.status || 'Pending'}</span></p>
+                                </div>
+                                <div class="project-actions">
+                                    <button class="btn btn-primary btn-sm" onclick="addComponentToProject('${project.id}')">Add Component</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="viewProject('${project.id}')">View</button>
+                                    <button class="btn btn-secondary btn-sm" onclick="deleteProject('${project.id}')">Delete</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    projectsList.innerHTML = html;
+                } else {
+                    projectsList.innerHTML = '<div class="info">No projects yet. Create your first project in the Generate section!</div>';
+                }
+            } catch (error) {
+                document.getElementById('projectsList').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Add component to project function
+        window.addComponentToProject = async function(projectId) {
+            try {
+                const response = await fetch(`/api/projects/${projectId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+                
+                const project = data.project;
+                
+                // Fill step 1
+                document.getElementById('projectName').value = project.project_name || '';
+                
+                // Fill step 2
+                document.getElementById('targetSiteUrl').value = project.target_site_url || '';
+                document.getElementById('profileAlias').value = project.profile_alias || '';
+                document.getElementById('siteId').value = project.site_id || '';
+                
+                // Clear step 3 (Figma URL) so user can enter new one
+                document.getElementById('figmaUrl').value = '';
+                
+                // Store project ID for reference
+                projectData.project_id = project.id;
+                projectData.project_name = project.project_name;
+                projectData.target_site_url = project.target_site_url;
+                projectData.profile_alias = project.profile_alias;
+                projectData.site_id = project.site_id;
+                
+                // Navigate to Generate section
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                
+                document.querySelector('.nav-link[data-section="generate"]').classList.add('active');
+                document.getElementById('generate-section').classList.add('active');
+                
+                // Show step 3 directly (steps 1 and 2 are already filled)
+                showStep(3);
+                
+                // Focus on Figma URL input
+                setTimeout(() => {
+                    document.getElementById('figmaUrl').focus();
+                }, 300);
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+            } catch (error) {
+                alert(`Error loading project: ${error.message}`);
+            }
+        };
+
+        // View project function
+        window.viewProject = async function(projectId) {
+            try {
+                const response = await fetch(`/api/projects/${projectId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+                
+                const project = data.project;
+                const components = project.components || [];
+                
+                // If old format, convert single figma_url to components array
+                const allComponents = components.length > 0 ? components : 
+                    (project.figma_url ? [{
+                        id: 'legacy',
+                        figma_url: project.figma_url,
+                        status: project.status || 'pending',
+                        created_at: project.created_at,
+                        screenshot_path: project.screenshot_path,
+                        html_length: project.html_length
+                    }] : []);
+                
+                // Build components list HTML
+                let componentsHtml = `
+                    <div class="project-details">
+                        <h3>${project.project_name || 'Unnamed Project'}</h3>
+                        <div class="project-meta">
+                            <p><strong>Target Site:</strong> ${project.target_site_url || 'N/A'}</p>
+                            <p><strong>Profile Alias:</strong> ${project.profile_alias || 'N/A'}</p>
+                            <p><strong>Site ID:</strong> ${project.site_id || 'N/A'}</p>
+                            <p><strong>Total Components:</strong> ${allComponents.length}</p>
+                            <p><strong>Created:</strong> ${new Date(project.created_at).toLocaleString()}</p>
+                        </div>
+                    </div>
+                `;
+                
+                if (allComponents.length > 0) {
+                    componentsHtml += '<div class="components-grid">';
+                    allComponents.forEach(comp => {
+                        const compDate = new Date(comp.created_at || project.created_at).toLocaleString();
+                        const isProcessed = comp.status === 'completed';
+                        
+                        componentsHtml += `
+                            <div class="component-card">
+                                <div class="component-header">
+                                    <h4>Component</h4>
+                                    <span class="status-badge ${comp.status || 'pending'}">${comp.status || 'Pending'}</span>
+                                </div>
+                                <div class="component-info">
+                                    <p><strong>Figma URL:</strong> <a href="${comp.figma_url}" target="_blank">View Design</a></p>
+                                    <p><strong>Created:</strong> ${compDate}</p>
+                                    ${isProcessed ? `
+                                        <p><strong>Screenshot:</strong> ${comp.screenshot_path || 'N/A'}</p>
+                                        <p><strong>HTML Length:</strong> ${comp.html_length || 0} characters</p>
+                                    ` : ''}
+                                </div>
+                                ${isProcessed ? `
+                                    <div class="component-actions">
+                                        <button class="btn btn-primary btn-sm" onclick="downloadComponent('${project.id}', '${comp.id}')">Download</button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                    componentsHtml += '</div>';
+                } else {
+                    componentsHtml += '<div class="info">No components found for this project.</div>';
+                }
+                
+                // Update view content
+                document.getElementById('projectViewTitle').textContent = `${project.project_name || 'Unnamed Project'} - Components`;
+                document.getElementById('projectViewContent').innerHTML = componentsHtml;
+                
+                // Navigate to project view section
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                
+                document.getElementById('project-view-section').classList.add('active');
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+            } catch (error) {
+                alert(`Error loading project: ${error.message}`);
+            }
+        };
+
+        // Back to projects button
+        document.getElementById('backToProjects').addEventListener('click', () => {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById('projects-section').classList.add('active');
             
-            libraryStatus.innerHTML = '<div class="info">Refreshing library...</div>';
-            libraryDiv.classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector('.nav-link[data-section="projects"]').classList.add('active');
+        });
+
+        // Download component function
+        window.downloadComponent = function(projectId, componentId) {
+            // TODO: Implement component download
+            alert(`Download component ${componentId} from project ${projectId} - Feature coming soon!`);
+        };
+
+        // Delete project function
+        window.deleteProject = async function(projectId) {
+            if (!confirm('Are you sure you want to delete this project?')) return;
+            
+            try {
+                const response = await fetch(`/api/projects/${projectId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                } else {
+                    loadProjects();
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        };
+
+        // Refresh projects button
+        document.getElementById('refreshProjects').addEventListener('click', loadProjects);
+
+        // Load projects when Projects section is shown
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (link.getAttribute('data-section') === 'projects') {
+                    setTimeout(loadProjects, 100);
+                }
+            });
+        });
+
+        // Train all handler - Open modal
+        document.getElementById('trainAll').addEventListener('click', () => {
+            document.getElementById('trainingModal').classList.add('active');
+        });
+
+        // Close modal handlers
+        document.getElementById('closeTrainingModal').addEventListener('click', () => {
+            document.getElementById('trainingModal').classList.remove('active');
+        });
+
+        document.getElementById('cancelTraining').addEventListener('click', () => {
+            document.getElementById('trainingModal').classList.remove('active');
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('trainingModal').addEventListener('click', (e) => {
+            if (e.target.id === 'trainingModal') {
+                document.getElementById('trainingModal').classList.remove('active');
+            }
+        });
+
+        // Training form handler
+        document.getElementById('trainingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const trainingDiv = document.getElementById('trainingResults');
+            const trainingContent = document.getElementById('trainingContent');
+            const libraryStatus = document.getElementById('libraryStatus');
+            const modal = document.getElementById('trainingModal');
+            
+            // Get form data (same as Step 2)
+            const sourceData = {
+                target_site_url: document.getElementById('trainingTargetSiteUrl').value,
+                profile_alias: document.getElementById('trainingProfileAlias').value,
+                site_id: document.getElementById('trainingSiteId').value
+            };
+            
+            // Close modal
+            modal.classList.remove('active');
+            
+            // Show progress
+            libraryStatus.innerHTML = '<div class="info">Training new components...</div>';
+            trainingDiv.classList.remove('hidden');
+            trainingContent.innerHTML = '<div class="info">Starting training process...</div>';
             
             // Get CMS credentials from settings form
             const requestData = {
+                ...sourceData,
                 cms_base_url: document.getElementById('cmsBaseUrl').value || undefined,
                 cms_api_key: document.getElementById('cmsApiKey').value || undefined
             };
             
             try {
-                const response = await fetch('/api/refresh-library', {
+                const response = await fetch('/api/train-library', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -428,22 +948,217 @@
                 
                 const data = await response.json();
                 if (data.error) {
-                    libraryStatus.innerHTML = `<div class="error">Error: ${data.error}</div>`;
-                    libraryContent.innerHTML = '';
+                    let errorHtml = `<div class="error"><strong>Error:</strong> ${data.error}</div>`;
+                    if (data.hint) {
+                        errorHtml += `<div class="info mt-2"><strong>Hint:</strong> ${data.hint}</div>`;
+                    }
+                    libraryStatus.innerHTML = errorHtml;
+                    trainingContent.innerHTML = errorHtml;
                 } else {
-                    libraryStatus.innerHTML = `<div class="success">${data.message}</div>`;
-                    libraryContent.innerHTML = `
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    libraryStatus.innerHTML = `<div class="success">${data.message || 'Training completed'}</div>`;
+                    
+                    let trainingHtml = `
+                        <div class="success">Training completed successfully!</div>
+                        <div class="mt-3">
+                            <p><strong>Target Site:</strong> ${sourceData.target_site_url}</p>
+                            <p><strong>Profile Alias:</strong> ${sourceData.profile_alias}</p>
+                            <p><strong>Site ID:</strong> ${sourceData.site_id}</p>
+                            <p><strong>Total Components:</strong> ${data.total_components || 0}</p>
+                            <p><strong>New Components Trained:</strong> ${data.trained_count || 0}</p>
+                            <p><strong>Already Trained:</strong> ${data.already_trained || 0}</p>
+                            <p><strong>Failed:</strong> ${data.failed_count || 0}</p>
+                        </div>
                     `;
+                    
+                    if (data.trained_components && data.trained_components.length > 0) {
+                        trainingHtml += '<div class="mt-3"><strong>Trained Components:</strong><ul>';
+                        data.trained_components.forEach(comp => {
+                            trainingHtml += `<li>${comp.name || comp.id} - ${comp.status || 'trained'}</li>`;
+                        });
+                        trainingHtml += '</ul></div>';
+                    }
+                    
+                    if (data.failed_components && data.failed_components.length > 0) {
+                        trainingHtml += '<div class="mt-3"><strong>Failed Components:</strong><ul>';
+                        data.failed_components.forEach(comp => {
+                            trainingHtml += `<li>${comp.name || comp.id} - ${comp.error || 'Unknown error'}</li>`;
+                        });
+                        trainingHtml += '</ul></div>';
+                    }
+                    
+                    trainingContent.innerHTML = trainingHtml;
+                    
+                    // Refresh trained components list after training
+                    loadTrainedComponents();
+                    
+                    // Reset form
+                    document.getElementById('trainingForm').reset();
                 }
             } catch (error) {
                 libraryStatus.innerHTML = `<div class="error">Error: ${error.message}</div>`;
-                libraryContent.innerHTML = '';
+                trainingContent.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             }
         });
 
+        // Load trained components
+        async function loadTrainedComponents() {
+            try {
+                const response = await fetch('/api/trained-components');
+                const data = await response.json();
+                
+                const trainedList = document.getElementById('trainedComponentsList');
+                if (data.error) {
+                    trainedList.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.components && data.components.length > 0) {
+                    let html = '<div class="trained-components-grid">';
+                    data.components.forEach(comp => {
+                        const trainedDate = new Date(comp.trained_at || comp.created_at).toLocaleString();
+                        html += `
+                            <div class="trained-component-card">
+                                ${comp.screenshot_path ? `
+                                    <div class="component-preview">
+                                        <img src="/api/component-image/${comp.id}" alt="${comp.name || 'Component'}" 
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'300\\' height=\\'200\\'%3E%3Crect fill=\\'%23e0e0e0\\' width=\\'300\\' height=\\'200\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23999\\'%3ENo Preview%3C/text%3E%3C/svg%3E'">
+                                    </div>
+                                ` : `
+                                    <div class="component-preview-placeholder">
+                                        <span>📄</span>
+                                        <p>No Preview</p>
+                                    </div>
+                                `}
+                                <div class="trained-component-info">
+                                    <h4>${comp.name || 'Unnamed Component'}</h4>
+                                    <p class="component-id"><strong>ID:</strong> ${comp.id || 'N/A'}</p>
+                                    ${comp.figma_url ? `<p><a href="${comp.figma_url}" target="_blank">View Figma Design</a></p>` : ''}
+                                    <p class="component-meta"><strong>Trained:</strong> ${trainedDate}</p>
+                                    <span class="status-badge ${comp.status || 'trained'}">${comp.status || 'Trained'}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    trainedList.innerHTML = html;
+                } else {
+                    trainedList.innerHTML = '<div class="info">No trained components yet. Train components using the "Train All" button above.</div>';
+                }
+            } catch (error) {
+                document.getElementById('trainedComponentsList').innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Refresh trained components button
+        document.getElementById('refreshTrained').addEventListener('click', loadTrainedComponents);
+
+        // Load trained components when Library section is shown
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                if (link.getAttribute('data-section') === 'library') {
+                    setTimeout(loadTrainedComponents, 100);
+                }
+            });
+        });
+
+        // Generate HTML for verification report
+        function generateVerificationReportHTML(report) {
+            if (!report) return '';
+            
+            let html = '<div class="verification-report mt-3">';
+            html += '<h3>📊 Verification & Retry Report</h3>';
+            
+            // Summary
+            if (report.summary) {
+                html += '<div class="report-summary card mt-2">';
+                html += '<h4>Summary</h4>';
+                html += '<ul>';
+                html += `<li><strong>Total Sections:</strong> ${report.summary.total_sections || 0}</li>`;
+                html += `<li><strong>Sections Processed:</strong> ${report.summary.sections_processed || 0}</li>`;
+                html += `<li><strong>Sections Verified (≥95%):</strong> ${report.summary.sections_verified || 0}</li>`;
+                html += `<li><strong>Total Retries:</strong> ${report.summary.total_retries || 0}</li>`;
+                html += `<li><strong>Components Added to CMS:</strong> ${report.summary.components_added_to_cms || 0}</li>`;
+                if (report.summary.total_warnings > 0) {
+                    html += `<li><strong class="warning">Warnings:</strong> ${report.summary.total_warnings}</li>`;
+                }
+                html += '</ul>';
+                html += '</div>';
+            }
+            
+            // Section Details
+            if (report.sections && report.sections.length > 0) {
+                html += '<div class="report-sections mt-3">';
+                html += '<h4>Section Details</h4>';
+                
+                report.sections.forEach((section, index) => {
+                    html += `<div class="section-report card mt-2">`;
+                    html += `<h5>${section.section_name || `Section ${index + 1}`}</h5>`;
+                    
+                    // Library Matching
+                    if (section.library_matching) {
+                        html += '<div class="mt-2"><strong>Library Matching:</strong>';
+                        html += `<ul>`;
+                        html += `<li>Matched: ${section.library_matching.matched ? '✅ Yes' : '❌ No'}</li>`;
+                        if (section.library_matching.matched) {
+                            html += `<li>Similarity: ${(section.library_matching.similarity_score * 100).toFixed(1)}%</li>`;
+                            html += `<li>Component: ${section.library_matching.matched_component_name || section.library_matching.matched_component_id || 'N/A'}</li>`;
+                        }
+                        html += `</ul></div>`;
+                    }
+                    
+                    // HTML Generation
+                    if (section.html_generation) {
+                        html += '<div class="mt-2"><strong>HTML Generation:</strong>';
+                        html += `<ul>`;
+                        html += `<li>Retry Count: ${section.html_generation.retry_count || 0}</li>`;
+                        html += `<li>Final Similarity: <strong>${(section.html_generation.final_similarity_score * 100).toFixed(1)}%</strong></li>`;
+                        html += `<li>Verification: <span class="${section.html_generation.verified ? 'success' : 'error'}">${section.html_generation.verification_status}</span></li>`;
+                        if (section.html_generation.cms_component_id) {
+                            html += `<li>CMS Component ID: ${section.html_generation.cms_component_id}</li>`;
+                        }
+                        html += `</ul></div>`;
+                        
+                        // Retry Details
+                        if (section.html_generation.retry_details) {
+                            html += '<div class="mt-2 retry-details">';
+                            html += '<strong>Retry Details:</strong>';
+                            html += `<ul>`;
+                            html += `<li>Total Attempts: ${section.html_generation.retry_details.attempts}</li>`;
+                            html += `<li>Final Similarity: ${(section.html_generation.retry_details.final_attempt_similarity * 100).toFixed(1)}%</li>`;
+                            html += `<li>Status: ${section.html_generation.retry_details.status}</li>`;
+                            html += `</ul></div>`;
+                        }
+                    }
+                    
+                    html += '</div>';
+                });
+                
+                html += '</div>';
+            }
+            
+            // Warnings
+            if (report.warnings && report.warnings.length > 0) {
+                html += '<div class="report-warnings mt-3">';
+                html += '<h4 class="warning">⚠️ Warnings</h4>';
+                html += '<ul>';
+                report.warnings.forEach(warning => {
+                    html += `<li class="warning">${warning}</li>`;
+                });
+                html += '</ul>';
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
         // Load settings on page load
         loadSettings();
+        
+        // Load trained components if on library section
+        if (document.getElementById('library-section').classList.contains('active')) {
+            loadTrainedComponents();
+        }
     </script>
 </body>
 </html>

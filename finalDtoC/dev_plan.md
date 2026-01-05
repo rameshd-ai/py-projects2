@@ -1,35 +1,300 @@
-# SIMPLE DEVELOPMENT PLAN
+# DEVELOPMENT PLAN
 ## Figma to CMS Component Generator
 
-> **🎯 Goal**: Build a simple Flask app with LangGraph that converts Figma designs to CMS components  
+> **🎯 Goal**: Build a Flask app with LangGraph that converts Figma designs to CMS components using pre-trained component library  
 > **📦 Tech Stack**: Flask + LangGraph + PostgreSQL + pgvector + Claude AI  
-> **⏱️ Timeline**: 3-4 weeks (much simpler than original plan)
+> **⏱️ Timeline**: 4-5 weeks
 
 ---
 
-## 🎯 Core Workflow (Simplified)
+## 🎯 Core Workflow (Updated)
 
 ```
-1. User enters Figma URL in browser
-2. System downloads screenshot from Figma API
-3. LangGraph orchestrates agents:
-   a. Check if similar component exists (simple matching)
-   b. If match → return existing component
-   c. If no match → generate new component
-4. Return 3 JSON files (Config, Format, Records)
+PHASE 1: Training Data Preparation (Separate Heavy Module)
+1. User clicks "Train Components" button
+2. User enters site details (Target Site URL, Profile Alias, Site ID)
+3. System exports ALL data for that site from CMS API
+4. System prepares training dataset (huge data, time-consuming)
+5. System generates vector embeddings for all components
+6. System stores training data + embeddings in PostgreSQL + pgvector
+
+PHASE 2: Component Generation
+1. User creates project OR adds component to existing project
+2. User enters Figma URL
+3. System checks if Figma design has multiple sections or single section
+4. If multiple sections: Loop through each section one by one
+5. If single section: Proceed to next step
+6. For each section:
+   a. Check training library for good matches (vector similarity)
+   b. If good match found → Use same structure from library
+   c. If no match → Generate new HTML/JSON based on training data + prompts
+7. Generate ComponentConfig.json, ComponentFormat.json, ComponentRecords.json
+8. Add components to CMS using site details from project
+9. Update project with new components
 ```
 
 ---
 
-## 📁 Simple Project Structure
+## 🔄 Agentic Flow Diagram (LangGraph Workflow)
 
 ```
-designToCodeAiAgent/
-├── app.py                 # Flask app (single file to start)
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         COMPONENT GENERATION WORKFLOW                     │
+│                           (LangGraph StateGraph)                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+START
+  │
+  ▼
+┌─────────────────────────────────┐
+│  1. DETECT SECTIONS             │
+│  ─────────────────────────────  │
+│  • Parse Figma URL              │
+│  • Analyze file structure        │
+│  • Detect single/multiple       │
+│    sections                      │
+│  • Store sections in state      │
+└─────────────────────────────────┘
+  │
+  ▼
+┌─────────────────────────────────┐
+│  2. CHECK LIBRARY MATCH         │
+│  ─────────────────────────────  │
+│  • Generate CLIP embedding      │
+│    for screenshot               │
+│  • Vector search in PostgreSQL  │
+│    (pgvector similarity)       │
+│  • Find best matches            │
+│  • Calculate similarity scores   │
+└─────────────────────────────────┘
+  │
+  ▼
+  ┌───────────────────────────────┐
+  │   DECISION: Match Found?       │
+  │   (Similarity ≥ 85%)          │
+  └───────────────────────────────┘
+  │                    │
+  │ YES                │ NO
+  │                    │
+  ▼                    ▼
+┌─────────────┐    ┌─────────────────────────────────┐
+│ USE MATCH   │    │  3. GENERATE HTML               │
+│ (Skip HTML) │    │  ─────────────────────────────  │
+│             │    │  • Use Claude AI                 │
+│             │    │  • Generate HTML from screenshot │
+│             │    │  • Use training data context     │
+│             │    │  • Store HTML in state           │
+└─────────────┘    └─────────────────────────────────┘
+  │                    │
+  └────────┬───────────┘
+           │
+           ▼
+┌─────────────────────────────────┐
+│  4. EXTRACT STRUCTURE           │
+│  ─────────────────────────────  │
+│  IF MATCHED:                     │
+│    • Use matched component      │
+│      structure (Config/Format/  │
+│      Records JSON)               │
+│  IF GENERATED:                   │
+│    • Parse HTML with BeautifulSoup│
+│    • Extract headings, images,   │
+│      text blocks                 │
+│    • Store structure in state   │
+└─────────────────────────────────┘
+  │
+  ▼
+┌─────────────────────────────────┐
+│  5. CREATE DEFINITIONS          │
+│  ─────────────────────────────  │
+│  IF MATCHED:                     │
+│    • Use existing definitions   │
+│  IF GENERATED:                   │
+│    • Map elements to ControlId   │
+│      (1=Text, 7=Image, etc.)    │
+│    • Create CMS definitions     │
+│    • Store in state             │
+└─────────────────────────────────┘
+  │
+  ▼
+┌─────────────────────────────────┐
+│  6. GENERATE JSON               │
+│  ─────────────────────────────  │
+│  • ComponentConfig.json          │
+│  • ComponentFormat.json          │
+│    (Handlebars template)        │
+│  • ComponentRecords.json         │
+│  • Store all JSON in state       │
+└─────────────────────────────────┘
+  │
+  ▼
+┌─────────────────────────────────┐
+│  7. ADD TO CMS                  │
+│  ─────────────────────────────  │
+│  • Use CMS API client           │
+│  • Add component using site      │
+│    details from project         │
+│  • Store CMS component ID       │
+└─────────────────────────────────┘
+  │
+  ▼
+┌─────────────────────────────────┐
+│  8. UPDATE PROJECT              │
+│  ─────────────────────────────  │
+│  • Update project JSON file      │
+│  • Link components to training   │
+│    data if matched              │
+│  • Store component metadata      │
+└─────────────────────────────────┘
+  │
+  ▼
+  ┌───────────────────────────────┐
+  │   MORE SECTIONS?              │
+  │   (has_multiple_sections)     │
+  └───────────────────────────────┘
+  │                    │
+  │ YES                │ NO
+  │                    │
+  │                    ▼
+  │              ┌──────────┐
+  │              │   END    │
+  │              └──────────┘
+  │
+  ▼
+  (Loop back to step 2)
+  • Increment current_section_index
+  • Process next section
+  • Repeat workflow for each section
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         STATE STRUCTURE                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+ComponentGenerationState {
+  // Project Info
+  project_id: str
+  project_name: str
+  site_details: {
+    target_site_url: str
+    profile_alias: str
+    site_id: str
+  }
+  
+  // Figma Info
+  figma_url: str
+  figma_file_id: str
+  figma_node_id: str
+  
+  // Section Info
+  has_multiple_sections: bool
+  sections: [{
+    id: str
+    name: str
+    ...
+  }]
+  current_section_index: int
+  
+  // Screenshots (one per section)
+  screenshot_paths: [str]
+  
+  // Library Matching
+  matched_components: [{
+    component_id: str
+    name: str
+    similarity: float
+    config_json: {...}
+    format_json: {...}
+    records_json: {...}
+  }]
+  match_similarity_scores: [float]
+  
+  // Generated Content (one per section)
+  html_contents: [str]
+  component_configs: [{...}]
+  component_formats: [{...}]
+  component_records: [{...}]
+  
+  // CMS Integration
+  cms_component_ids: [str]
+  
+  // Status
+  status: 'processing' | 'completed' | 'error'
+  error: str | null
+  current_step: str
+}
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    CONDITIONAL ROUTING LOGIC                              │
+└─────────────────────────────────────────────────────────────────────────┘
+
+1. should_use_match(state):
+   • Check similarity score for current section
+   • IF similarity ≥ 0.85 (85%):
+     → Route to "use_match" (skip HTML generation)
+   • ELSE:
+     → Route to "generate_new" (generate HTML)
+
+2. should_continue_sections(state):
+   • Check if has_multiple_sections
+   • Check current_section_index vs total sections
+   • IF more sections remain:
+     → Route to "next_section" (loop back)
+   • ELSE:
+     → Route to "finish" (END)
+
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    KEY DECISION POINTS                                   │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Decision Point 1: Match Found?                                          │
+│ ────────────────────────────────────────────────────────────────────────│
+│ Location: After check_library_match                                      │
+│ Condition: match_similarity_scores[current_index] ≥ 0.85                │
+│                                                                          │
+│ TRUE  → Use matched component structure                                 │
+│         • Skip HTML generation                                          │
+│         • Use existing Config/Format/Records JSON                      │
+│         • Faster processing                                              │
+│                                                                          │
+│ FALSE → Generate new component                                          │
+│         • Generate HTML with Claude AI                                  │
+│         • Extract structure from HTML                                   │
+│         • Create new definitions                                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Decision Point 2: Multiple Sections?                                    │
+│ ────────────────────────────────────────────────────────────────────────│
+│ Location: After update_project                                           │
+│ Condition: has_multiple_sections AND current_index < sections.length-1  │
+│                                                                          │
+│ TRUE  → Process next section                                            │
+│         • Increment current_section_index                                │
+│         • Loop back to check_library_match                              │
+│         • Process each section independently                            │
+│                                                                          │
+│ FALSE → Finish workflow                                                  │
+│         • All sections processed                                         │
+│         • Return final state                                            │
+│         • END                                                            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📁 Project Structure
+
+```
+finalDtoC/
+├── app.py                 # Flask app with routes
 ├── agents/
 │   ├── __init__.py
-│   ├── graph.py          # LangGraph workflow
-│   └── nodes.py           # Agent functions
+│   ├── graph.py          # LangGraph workflow for component generation
+│   └── nodes.py           # Agent functions (section detection, matching, generation)
 ├── api/
 │   ├── __init__.py
 │   ├── figma.py           # Figma API client
@@ -38,14 +303,19 @@ designToCodeAiAgent/
 ├── models/
 │   ├── __init__.py
 │   └── db.py              # PostgreSQL + pgvector models
+├── training/
+│   ├── __init__.py
+│   ├── data_preparation.py # Export and prepare training data
+│   ├── embeddings.py      # Generate vector embeddings
+│   └── storage.py         # Store training data in database
 ├── utils/
 │   ├── __init__.py
-│   ├── matching.py        # Simple visual matching
+│   ├── matching.py        # Vector similarity matching
 │   └── generator.py       # JSON generation
 ├── templates/
-│   └── index.html         # Single page UI
+│   └── index.html         # UI
 ├── static/
-│   └── style.css          # Basic styling
+│   └── style.css          # Styling
 ├── .env                   # Environment variables
 ├── requirements.txt       # Dependencies
 └── README.md
@@ -53,514 +323,541 @@ designToCodeAiAgent/
 
 ---
 
-## 🚀 Implementation Phases (4 Phases Only)
+## 🚀 Implementation Phases (4 Phases)
 
-### **Phase 1: Basic Flask App + API Clients** (Week 1)
-**Goal**: Get Flask running with API clients
+### **Phase 1: Training Data Preparation Module** (Week 1-2)
+**Goal**: Export all site data, prepare training dataset, generate vector embeddings
 
 **Steps:**
 1. ✅ Create Flask app (`app.py`)
 2. ✅ Create basic HTML page (`templates/index.html`)
-3. ✅ Figma API client (`api/figma.py`) - get screenshot from URL
-4. ✅ CMS API client (`api/cms.py`) - download components
-5. ✅ Claude API client (`api/claude.py`) - generate HTML
-6. ✅ Test all APIs work
+3. ✅ Figma API client (`api/figma.py`)
+4. ✅ CMS API client (`api/cms.py`)
+5. ✅ Claude API client (`api/claude.py`)
+6. ✅ Training module structure (`training/` folder)
+7. **Create training data preparation endpoint** (`/api/train-library`)
+   - Accept site details (Target Site URL, Profile Alias, Site ID)
+   - Export ALL components from CMS for that site
+   - Process and structure training data
+   - Generate vector embeddings for each component
+   - Store in PostgreSQL + pgvector database
+8. **Create database schema**
+   - `trained_components` table with `vector(512)` column
+   - Store: component_id, name, site_info, embedding, config_json, format_json, records_json, screenshot_path
+9. **Implement vector embedding generation**
+   - Use CLIP or similar model to generate embeddings from screenshots
+   - Store embeddings in pgvector column
+10. **Add progress tracking**
+    - Show progress for large data exports
+    - Background job processing
+    - Status updates
 
 **Files:**
-- `app.py` - Flask routes
-- `templates/index.html` - UI
-- `api/figma.py` - Figma integration
-- `api/cms.py` - CMS integration
-- `api/claude.py` - Claude integration
+- `app.py` - Flask routes (training endpoint)
+- `training/data_preparation.py` - Export and structure training data
+- `training/embeddings.py` - Generate vector embeddings
+- `training/storage.py` - Store in database
+- `models/db.py` - Database models
+
+**Key Features:**
+- Heavy, time-consuming process (can take hours for large sites)
+- Background processing with status updates
+- Stores complete component data + embeddings
+- Site-specific training data
 
 ---
 
-### **Phase 2: LangGraph Workflow** (Week 2)
-**Goal**: Build agent workflow with LangGraph
+### **Phase 2: LangGraph Workflow for Component Generation** (Week 2-3)
+**Goal**: Build agent workflow that checks library, generates components, adds to CMS
 
 **Steps:**
-1. ✅ Create LangGraph workflow (`agents/graph.py`)
-2. ✅ Create agent nodes (`agents/nodes.py`):
-   - `match_component` - Check if similar exists
-   - `generate_html` - Use Claude to create HTML
+1. **Install LangGraph**
+   - Add to requirements.txt
+   - Install package
+
+2. **Define State**
+   - Create State class with:
+     - project_id
+     - figma_url
+     - site_details (target_site_url, profile_alias, site_id)
+     - sections (array of sections if multiple)
+     - current_section_index
+     - screenshot_paths (array)
+     - matched_components (array)
+     - generated_components (array)
+     - html_contents (array)
+     - component_configs (array)
+     - component_formats (array)
+     - component_records (array)
+
+3. **Create agent nodes** (`agents/nodes.py`):
+   - `detect_sections` - Check if Figma design has multiple sections
+   - `check_library_match` - Vector search in training library for good matches
+   - `generate_html` - Use Claude to create HTML (if no match or for new structure)
    - `extract_structure` - Parse HTML to find elements
    - `create_definitions` - Convert to CMS format
-   - `generate_json` - Create 3 JSON files
-3. ✅ Connect nodes in graph
-4. ✅ Test workflow end-to-end
+   - `generate_json` - Create 3 JSON files (Config, Format, Records)
+   - `add_to_cms` - Add component to CMS using site details
+   - `update_project` - Update project with new components
+
+4. **Build LangGraph** (`agents/graph.py`):
+   - Create StateGraph
+   - Add all nodes
+   - Define conditional edges
+   - Handle loop for multiple sections
+
+5. **Connect Flask to LangGraph**
+   - Call graph from `/api/generate` route
+   - Pass project details and Figma URL
+   - Return results
+
+6. **Test workflow end-to-end**
 
 **Files:**
 - `agents/graph.py` - LangGraph StateGraph
 - `agents/nodes.py` - All agent functions
+- `utils/matching.py` - Vector similarity search
+- `utils/generator.py` - JSON generation
 
-**Simple Graph Flow:**
+**LangGraph Flow:**
 ```
 START
   ↓
-Match Component? (vector search in PostgreSQL + pgvector)
+Detect Sections (single or multiple?)
   ↓
-  ├─ Match Found → Return Existing
-  └─ No Match → Generate HTML
-                ↓
-            Extract Structure
-                ↓
-            Create Definitions
-                ↓
-            Generate JSON Files
-                ↓
-            END
+  ├─ Single Section → Check Library Match
+  └─ Multiple Sections → Loop:
+                          ↓
+                    Check Library Match (for each section)
+                          ↓
+                    Generate HTML (if no match) OR Use Matched Structure
+                          ↓
+                    Extract Structure
+                          ↓
+                    Create Definitions
+                          ↓
+                    Generate JSON Files
+                          ↓
+                    Add to CMS
+                          ↓
+                    Update Project
+                          ↓
+                    Next Section (if more)
+                          ↓
+                    END
 ```
 
+**Library Matching Logic:**
+- Generate CLIP embedding for Figma screenshot
+- Query PostgreSQL with pgvector: `ORDER BY embedding <=> %s LIMIT 5`
+- If similarity > 0.85 (85%): Use matched component structure
+- If similarity < 0.85: Generate new component based on training data + prompts
+
 ---
 
-### **Phase 3: Component Matching** (Week 3)
-**Goal**: Simple matching system
+### **Phase 3: Vector Embeddings & Matching** (Week 3)
+**Goal**: Optimize vector matching and improve accuracy
 
 **Steps:**
-1. ✅ Create database table for components
-2. ✅ Store component screenshots + metadata
-3. ✅ Simple matching function:
-   - Compare screenshot hashes (perceptual hash)
-   - Compare component names/descriptions
-   - Return best match if similarity > 70%
-4. ✅ Add "Refresh Library" button to UI
-5. ✅ Download all components from CMS API
-6. ✅ Store in database
+1. **Optimize embedding generation**
+   - Use CLIP model for visual embeddings
+   - Cache embeddings for faster matching
+   - Batch processing for multiple components
+
+2. **Improve matching algorithm**
+   - Fine-tune similarity threshold (85% default)
+   - Add metadata matching (component type, structure)
+   - Combine visual + structural similarity
+
+3. **Add matching preview**
+   - Show matched components in UI
+   - Display similarity scores
+   - Allow user to choose match or generate new
+
+4. **Performance optimization**
+   - Index embeddings in PostgreSQL
+   - Optimize vector queries
+   - Add caching layer
 
 **Files:**
-- `models/db.py` - PostgreSQL + pgvector models
-- `utils/matching.py` - Vector similarity matching with pgvector
-- Update `app.py` - Add library refresh route
-
-**Vector Matching:**
-- Generate CLIP embedding for input screenshot
-- Query PostgreSQL with pgvector for similar components (cosine similarity)
-- Use pgvector's `<=>` operator for fast similarity search
-- Return best match if similarity > 0.85
-- Production-ready vector search!
+- `utils/matching.py` - Enhanced matching logic
+- `training/embeddings.py` - Optimized embedding generation
 
 ---
 
-### **Phase 4: JSON Generation & Polish** (Week 4)
-**Goal**: Generate correct CMS JSON format
+### **Phase 4: CMS Integration & Polish** (Week 4-5)
+**Goal**: Complete CMS integration, UI polish, testing
 
 **Steps:**
-1. ✅ Parse HTML structure (find headings, images, text)
-2. ✅ Create ComponentConfig.json structure
-3. ✅ Create ComponentFormat.json with Handlebars
-4. ✅ Create ComponentRecords.json with definitions
-5. ✅ Test with sample Figma URL
-6. ✅ Add download buttons in UI
-7. ✅ Add progress indicators
-8. ✅ Final testing
+1. **Complete CMS integration**
+   - Add components to CMS using site details
+   - Handle CMS API responses
+   - Error handling and retries
+
+2. **Update project management**
+   - Store generated components in projects
+   - Link components to training data
+   - Track component status
+
+3. **UI enhancements**
+   - Show progress for training data preparation
+   - Display matched components
+   - Show generation progress
+   - Download JSON files
+
+4. **Error handling**
+   - Handle CMS API errors
+   - Handle Figma API errors
+   - Handle matching failures
+   - Graceful degradation
+
+5. **Testing**
+   - Test with real Figma URLs
+   - Test with multiple sections
+   - Test matching accuracy
+   - Test CMS integration
+   - Test end-to-end workflow
+
+6. **Documentation**
+   - Update README
+   - Add usage instructions
+   - Document API endpoints
 
 **Files:**
-- `utils/generator.py` - JSON generation
-- Update `agents/nodes.py` - Use generator
-- Update `templates/index.html` - Add download UI
+- `api/cms.py` - Enhanced CMS integration
+- `templates/index.html` - UI updates
+- `app.py` - Error handling
 
 ---
 
-## 📋 Detailed Steps (40 Steps Total)
+## 📋 Detailed Implementation Steps
 
-### **Phase 1: Basic Flask App (Steps 1-10)**
+### **Phase 1: Training Data Preparation (Steps 1-15)**
 
-**Step 1**: Create Flask app structure
-- Create `app.py` with basic route
-- Create `templates/` and `static/` folders
+**Step 1-6**: ✅ Already completed (Flask app, API clients, UI)
 
-**Step 2**: Create HTML page
-- Simple form with Figma URL input
-- Submit button
-- Results area
+**Step 7**: Create training data preparation module
+- Create `training/` folder
+- `training/data_preparation.py` - Export all components from CMS
+- `training/embeddings.py` - Generate vector embeddings
+- `training/storage.py` - Store in database
 
-**Step 3**: Figma API client
-- Parse Figma URL (extract file_id, node_id)
-- Get screenshot from Figma API
-- Save screenshot locally
+**Step 8**: Create database schema
+- Create `trained_components` table
+- Add `vector(512)` column for embeddings (pgvector)
+- Store: component_id, name, site_info (JSON), embedding, config_json, format_json, records_json, screenshot_path, created_at
 
-**Step 4**: CMS API client
-- Download component list
-- Download component JSON files (Config, Format, Records)
-- Download component screenshots
+**Step 9**: Implement CMS data export
+- Call CMS API with site details
+- Export ALL components for that site
+- Download Config, Format, Records JSON files
+- Download screenshots
 
-**Step 5**: Claude API client
-- Send screenshot to Claude
-- Get HTML response
-- Handle errors
+**Step 10**: Structure training data
+- Organize components by type
+- Extract metadata
+- Prepare for embedding generation
 
-**Step 6**: Test Figma API
-- Test with sample URL
-- Verify screenshot downloads
+**Step 11**: Generate vector embeddings
+- Use CLIP model to generate embeddings from screenshots
+- Store embeddings in pgvector format
+- Batch process for efficiency
 
-**Step 7**: Test CMS API
-- Test component download
-- Verify JSON files received
+**Step 12**: Store in database
+- Insert components with embeddings
+- Store JSON files and metadata
+- Link to site information
 
-**Step 8**: Test Claude API
-- Test HTML generation
-- Verify HTML output
+**Step 13**: Add progress tracking
+- Background job processing
+- Status updates via WebSocket or polling
+- Show progress percentage
 
-**Step 9**: Connect Flask to APIs
-- Create `/api/generate` route
-- Call Figma → Claude → return HTML
+**Step 14**: Add training endpoint
+- `/api/train-library` route (already exists, enhance it)
+- Accept site details
+- Start background job
+- Return job ID for status tracking
 
-**Step 10**: Test end-to-end
-- Enter Figma URL in browser
-- Verify HTML is generated
+**Step 15**: Test training data preparation
+- Test with sample site
+- Verify data export
+- Verify embeddings generation
+- Verify database storage
 
 ---
 
-### **Phase 2: LangGraph Workflow (Steps 11-20)**
+### **Phase 2: LangGraph Workflow (Steps 16-30)**
 
-**Step 11**: Install LangGraph
+**Step 16**: Install LangGraph
 - Add to requirements.txt
 - Install package
 
-**Step 12**: Define State
-- Create State class with:
-  - figma_url
-  - screenshot_path
-  - html_content
-  - matched_component_id
-  - component_config
-  - component_format
-  - component_records
+**Step 17**: Define State
+- Create State class with all required fields
+- Support for multiple sections
+- Support for matched vs generated components
 
-**Step 13**: Create match_component node
-- Check database for similar components
-- Return match if found
+**Step 18**: Create `detect_sections` node
+- Analyze Figma design structure
+- Detect if single or multiple sections
+- Extract section boundaries
+- Store sections in state
 
-**Step 14**: Create generate_html node
-- Call Claude API
-- Save HTML to state
+**Step 19**: Create `check_library_match` node
+- Generate embedding for Figma screenshot
+- Query database with pgvector
+- Find best matches (similarity > 85%)
+- Store matches in state
 
-**Step 15**: Create extract_structure node
+**Step 20**: Create `generate_html` node
+- Use Claude API with training data context
+- Generate HTML based on Figma screenshot
+- Use matched component structure if available
+- Store HTML in state
+
+**Step 21**: Create `extract_structure` node
 - Parse HTML with BeautifulSoup
 - Find headings, images, text blocks
+- Extract component structure
 - Store structure in state
 
-**Step 16**: Create create_definitions node
+**Step 22**: Create `create_definitions` node
 - Convert HTML structure to CMS definitions
 - Map elements to ControlId (1=Text, 7=Image, etc.)
+- Create definitions array
+- Store in state
 
-**Step 17**: Create generate_json node
+**Step 23**: Create `generate_json` node
 - Create ComponentConfig.json
-- Create ComponentFormat.json
+- Create ComponentFormat.json (Handlebars template)
 - Create ComponentRecords.json
+- Store in state
 
-**Step 18**: Build LangGraph
+**Step 24**: Create `add_to_cms` node
+- Use CMS API client
+- Add component using site details from project
+- Handle API responses
+- Store CMS component ID
+
+**Step 25**: Create `update_project` node
+- Update project with generated components
+- Link to training data if matched
+- Store component metadata
+
+**Step 26**: Build LangGraph
 - Create StateGraph
 - Add all nodes
-- Define edges (conditional routing)
+- Define edges with conditional routing
+- Handle loop for multiple sections
 
-**Step 19**: Connect Flask to LangGraph
-- Call graph from Flask route
+**Step 27**: Connect Flask to LangGraph
+- Update `/api/generate` route
+- Call graph with project details
+- Pass site details and Figma URL
 - Return results
 
-**Step 20**: Test workflow
-- Test with Figma URL
-- Verify all nodes execute
+**Step 28**: Handle multiple sections
+- Loop through sections
+- Process each section independently
+- Combine results at end
+
+**Step 29**: Test single section workflow
+- Test with single section Figma design
+- Verify matching works
+- Verify generation works
+- Verify CMS integration
+
+**Step 30**: Test multiple sections workflow
+- Test with multiple sections Figma design
+- Verify loop works
+- Verify all sections processed
+- Verify CMS integration for all
 
 ---
 
-### **Phase 3: Component Matching (Steps 21-30)**
+### **Phase 3: Vector Embeddings & Matching (Steps 31-35)**
 
-**Step 21**: Create database schema
-- Use existing PostgreSQL database (from Phase 0)
-- Create `components` table with `vector(512)` column for embeddings
-- Store component metadata and JSON files
-- pgvector extension already installed!
+**Step 31**: Optimize embedding generation
+- Batch processing
+- Caching
+- Performance improvements
 
-**Step 22**: Create database models
-- Create SQLAlchemy models for components table
-- Use pgvector for embedding column (`vector(512)`)
-- Store: component_id, name, embedding, config_json, format_json, records_json
+**Step 32**: Fine-tune matching algorithm
+- Adjust similarity threshold
+- Add metadata matching
+- Combine visual + structural similarity
 
-**Step 23**: Vector matching function
-- Generate CLIP embedding for input screenshot
-- Query PostgreSQL with pgvector for similar components (cosine similarity)
-- Use SQL: `ORDER BY embedding <=> %s LIMIT 5`
-- Return best match with similarity score
+**Step 33**: Add matching preview UI
+- Show matched components
+- Display similarity scores
+- Allow user selection
 
-**Step 24**: Add matching to graph
-- Update match_component node
-- Use matching function
+**Step 34**: Performance optimization
+- Index embeddings
+- Optimize queries
+- Add caching
 
-**Step 25**: Create library refresh route
-- `/api/refresh-library` endpoint
-- Download all components from CMS
-
-**Step 26**: Download components
-- Call CMS API
-- Download Config, Format, Records
-- Download screenshots
-
-**Step 27**: Store in database
-- Generate CLIP embedding for each component screenshot
-- Store embedding in PostgreSQL (pgvector column)
-- Store metadata and JSON files in database
-- Save screenshots locally
-
-**Step 28**: Add refresh button to UI
-- Button in HTML
-- Call refresh route
-- Show progress
-
-**Step 29**: Test matching
-- Refresh library
-- Test with similar design
-- Verify match found
-
-**Step 30**: Test no-match case
-- Test with new design
-- Verify generation path works
+**Step 35**: Test matching accuracy
+- Test with various designs
+- Verify match quality
+- Adjust thresholds
 
 ---
 
-### **Phase 4: JSON Generation & Polish (Steps 31-40)**
+### **Phase 4: CMS Integration & Polish (Steps 36-40)**
 
-**Step 31**: Parse HTML structure
-- Use BeautifulSoup
-- Find all headings (h1, h2, h3)
-- Find all images
-- Find all text blocks
+**Step 36**: Complete CMS integration
+- Handle all CMS API endpoints
+- Error handling
+- Retry logic
 
-**Step 32**: Create ComponentConfig structure
-- Parent component
-- Child components (if nested)
-- Definitions array
+**Step 37**: Update project management
+- Store components in projects
+- Link to training data
+- Track status
 
-**Step 33**: Map elements to ControlId
-- Text → ControlId: 1
-- Image → ControlId: 7
-- Yes/No → ControlId: 8
-- etc.
+**Step 38**: UI enhancements
+- Progress indicators
+- Matching preview
+- Download buttons
+- Error messages
 
-**Step 34**: Create ComponentFormat
-- Generate Handlebars template
-- Replace content with {{data.xxx}}
-- Handle loops with {{#each}}
-
-**Step 35**: Create ComponentRecords
-- Parent record
-- Child records (if nested)
-- Only active records
-
-**Step 36**: Test JSON generation
-- Generate from sample HTML
-- Verify format matches CMS standard
-
-**Step 37**: Add download buttons
-- Download Config button
-- Download Format button
-- Download Records button
-
-**Step 38**: Add progress indicators
-- Show "Processing..." message
-- Show progress steps
-- Use WebSockets or polling
-
-**Step 39**: Final testing
-- Test with real Figma URLs
-- Test matching
-- Test generation
-- Verify JSON files
+**Step 39**: Testing
+- End-to-end testing
+- Error scenarios
+- Performance testing
 
 **Step 40**: Documentation
-- Update README
-- Add usage instructions
-- Add API documentation
+- README updates
+- API documentation
+- Usage guide
 
 ---
 
-## 🛠️ Technology Choices (Simplified)
+## 🛠️ Technology Choices
 
 ### **Web Framework**
-- **Flask** (not FastAPI) - simpler, easier to understand
-- Single `app.py` file to start
-- Add routes as needed
+- **Flask** - Simple, flexible web framework
 
 ### **Agent Orchestration**
-- **LangGraph** - visual workflow, easy to debug
-- Simple StateGraph with conditional edges
-- Each agent = one function
+- **LangGraph** - Visual workflow, easy to debug
+- StateGraph with conditional edges
+- Loop support for multiple sections
 
 ### **Database**
 - **PostgreSQL + pgvector** - Production-ready vector database
 - Stores component embeddings in `vector(512)` columns
 - Fast similarity search with cosine distance
 - Perfect for visual component matching
-- Already set up in Phase 0!
 
 ### **AI/ML**
-- **Claude AI** - for HTML generation
-- **Simple image hashing** - for matching (no CLIP for now)
-- Can add CLIP later if needed
+- **Claude AI** - For HTML generation
+- **CLIP** - For visual embeddings (vector search)
 
 ### **Frontend**
-- **Plain HTML/CSS/JavaScript** (no React/Vue)
-- Single page application
-- Simple form + results display
+- **Plain HTML/CSS/JavaScript** - Simple, no framework needed
 
 ---
 
-## 📦 Dependencies (Simplified)
+## 📦 Dependencies
 
 ```txt
 # Web Framework
-flask==3.0.0
-flask-cors==4.0.0
+flask>=3.0.0
+flask-cors>=4.0.0
 
 # Agent Orchestration
-langgraph==0.0.20
-langchain==0.1.0
-langchain-anthropic==0.1.0
+langgraph>=1.0.0
+langchain>=1.0.0
+langchain-anthropic>=1.0.0
 
 # Database
-psycopg2-binary==2.9.9
-pgvector==0.2.4
-sqlalchemy==2.0.25
+psycopg2-binary>=2.9.9
+pgvector>=0.4.0
+sqlalchemy>=2.0.0
 
 # AI
-anthropic==0.18.0
+anthropic>=0.75.0
 
-# CLIP for embeddings (for vector search)
-torch==2.2.2
-torchvision==0.17.2
-transformers==4.36.2
-clip-by-openai==1.0
+# CLIP for embeddings (for vector search) - Optional for Phase 3
+# torch>=2.6.0
+# torchvision>=0.21.0
+# transformers>=4.57.3
+# clip-by-openai>=1.0.1
 
 # Utilities
-requests==2.31.0
-beautifulsoup4==4.12.2
-pillow==10.2.0
-imagehash==4.3.1  # For simple image matching
-python-dotenv==1.0.0
+requests>=2.31.0
+beautifulsoup4>=4.12.2
+pillow>=10.4.0
+imagehash>=4.3.0  # For simple image matching
+python-dotenv>=1.0.0
 ```
 
-**Total: ~17 packages** (vs 60+ in original plan)
-
-**Note**: PostgreSQL + pgvector is already set up from Phase 0! Includes CLIP for visual embeddings.
-
 ---
 
-## 🎯 Key Simplifications
+## 🎯 Key Features
 
-### **1. PostgreSQL + pgvector**
-- Use PostgreSQL with pgvector extension for vector search
-- Generate CLIP embeddings for visual matching
-- Production-ready vector similarity search
-- Already set up in Phase 0!
+### **1. Training Data Preparation (Separate Heavy Module)**
+- Exports ALL components from CMS for a site
+- Generates vector embeddings for all components
+- Stores complete training dataset in database
+- Time-consuming process (can take hours)
+- Background processing with progress tracking
 
-### **2. Single Flask File to Start**
-- All routes in `app.py`
-- Split later if needed
-- Easier to understand
+### **2. Multi-Section Support**
+- Detects if Figma design has multiple sections
+- Loops through each section independently
+- Processes all sections in sequence
+- Combines results at end
 
-### **3. Vector Matching with pgvector**
-- CLIP embeddings for visual similarity
-- PostgreSQL + pgvector for fast similarity search
-- Use `<=>` operator for cosine similarity
-- 85% similarity threshold (adjustable)
-- Production-ready and scalable
+### **3. Library Matching Before Generation**
+- Checks training library for good matches (vector similarity)
+- If match found (similarity > 85%): Uses same structure
+- If no match: Generates new component based on training data
+- Reduces redundant generation
 
-### **4. No Redis Cache**
-- Use in-memory cache (Python dict)
-- Simple TTL-based expiration
-- Can add Redis later
-
-### **5. Plain HTML Frontend**
-- No React/Vue/Angular
-- Simple JavaScript
-- Easy to modify
-
-### **6. Fewer Agents**
-- 5 agents instead of 7
-- Simpler workflow
-- Easier to debug
-
-### **7. PostgreSQL + pgvector**
-- **Production-ready** - PostgreSQL is battle-tested
-- **Fast vector search** - pgvector extension optimized for similarity
-- **Already set up** - from Phase 0 prerequisites
-- **Scalable** - handles millions of vectors
-- **Perfect for component matching** - stores embeddings + metadata in one place
-
----
-
-## 📊 Comparison: Original vs Simple
-
-| Feature | Original Plan | Simple Plan |
-|---------|--------------|-------------|
-| **Phases** | 8 phases | 4 phases |
-| **Steps** | 122 steps | 40 steps |
-| **Dependencies** | 60+ packages | ~15 packages |
-| **Agents** | 7 agents | 5 agents |
-| **Database** | PostgreSQL + pgvector | PostgreSQL + pgvector |
-| **Vector Search** | pgvector + CLIP | pgvector + CLIP |
-| **Frontend** | React/Vue | Plain HTML |
-| **Cache** | Redis | In-memory |
-| **Timeline** | 8 weeks | 3-4 weeks |
-
----
-
-## 🚀 Getting Started
-
-### **Prerequisites (Already Done in Phase 0!)**
-- ✅ PostgreSQL installed (from Phase 0)
-- ✅ Database created (`miblock_components`)
-- ✅ pgvector extension installed
-- ✅ Virtual environment set up
-- ✅ Install dependencies: `pip install -r requirements.txt`
-
-### **Start Phase 1**
-1. Create `app.py` with Flask
-2. Create basic HTML page
-3. Test Flask runs: `python app.py`
-4. Start building API clients
-
----
-
-## 📝 Notes
-
-- **This is a simplified plan** - focus on core functionality first
-- **Can add complexity later** - CLIP, Redis, React, etc.
-- **Iterative approach** - build, test, improve
-- **Each phase is independent** - can test as you go
+### **4. CMS Integration**
+- Adds generated components to CMS
+- Uses site details from project
+- Handles API responses and errors
+- Updates project with new components
 
 ---
 
 ## ✅ Success Criteria
 
 **Phase 1 Complete When:**
-- Flask app runs
-- Can enter Figma URL
-- APIs return data
+- Training data preparation works
+- Can export all components from CMS
+- Vector embeddings generated and stored
+- Database populated with training data
 
 **Phase 2 Complete When:**
 - LangGraph workflow runs
-- All nodes execute
-- Returns HTML
+- Section detection works
+- Library matching works
+- Component generation works
+- Multiple sections handled
+- CMS integration works
 
 **Phase 3 Complete When:**
-- Can refresh library
-- Matching works
-- Finds similar components
+- Matching accuracy > 85%
+- Performance optimized
+- Matching preview works
 
 **Phase 4 Complete When:**
-- Generates correct JSON
-- Can download files
-- Works end-to-end
+- End-to-end workflow works
+- UI polished
+- Error handling complete
+- Documentation updated
 
 ---
 
-## 🎯 Next Steps
+## 🚀 Next Steps
 
-1. **Review this plan** - make sure it makes sense
-2. **Start Phase 1** - create Flask app
-3. **Build incrementally** - test each step
-4. **Ask questions** - if anything unclear
+1. **Enhance training module** - Complete Phase 1 training data preparation
+2. **Build LangGraph workflow** - Implement Phase 2 agent nodes
+3. **Test and iterate** - Test with real data, improve accuracy
 
-**Ready to start?** Just say "start Phase 1" and we'll begin! 🚀
-
+**Ready to continue?** Let's start enhancing the training module! 🚀

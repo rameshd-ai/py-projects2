@@ -25,9 +25,14 @@ class CMSClient:
         if not self.api_key:
             raise ValueError("CMS_API_KEY not found in environment variables")
     
-    def get_components(self) -> List[Dict]:
+    def get_components(self, site_url: Optional[str] = None, profile_alias: Optional[str] = None, site_id: Optional[str] = None) -> List[Dict]:
         """
         Get list of all components from CMS
+        
+        Args:
+            site_url: Optional target site URL to filter components
+            profile_alias: Optional profile alias to filter components
+            site_id: Optional site ID to filter components
         
         Returns:
             List of component metadata
@@ -38,7 +43,16 @@ class CMSClient:
             'Content-Type': 'application/json'
         }
         
-        response = requests.get(endpoint, headers=headers)
+        # Add site parameters if provided
+        params = {}
+        if site_url:
+            params['site_url'] = site_url
+        if profile_alias:
+            params['profile_alias'] = profile_alias
+        if site_id:
+            params['site_id'] = site_id
+        
+        response = requests.get(endpoint, headers=headers, params=params)
         response.raise_for_status()
         
         return response.json()
