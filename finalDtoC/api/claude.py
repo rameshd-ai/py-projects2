@@ -107,3 +107,4 @@ Generate only the HTML code, no markdown formatting."""
         
         return html_content.strip()
 
+
