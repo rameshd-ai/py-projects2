@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 881917,
+            "FormatName": "Title with Icon",
+            "FormatKey": "title-with-icon",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each ComponentRecordJson.title-with-icon}}\n<!-- Header 98 Starts -->\n<div class=\"hdr101-widget\n        {{IfCond data.set-top-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-top {{/IfCond}} \n        {{IfCond data.set-bottom-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-bottom {{/IfCond}}\">\n    <div class=\"hdr37-widget__container widget__box__container\" data-uk-scrollspy=\"cls: uk-animation-slide-bottom-medium ; target: .title-animation; delay: 300; repeat: false\">\n        <div class=\"hdr101-fullgrid\" {{IfCond data.background-image.0.OriginalImagePath 'notempty' ''}} data-src=\"{{data.background-image.0.OriginalImagePath}}\" data-uk-img {{/IfCond}} >\n            <div class=\"widget__box__content\">\n                <div class=\"hdr101-widget__box  uk-text-center is-inverse dynamiccomponenteditenable\" %%componentRecordEditable%%>\n                    <div class=\"title-icon\">\n                        <img src=\"{{data.section-title-icon.0.OriginalImagePath}}\" alt=\"{{data.section-title-icon-alt}}\" width=\"45\" height=\"36\" tabindex=\"0\" data-uk-svg>\n                    </div>\n                    <h3 class=\"title title--l title-animation\" tabindex=\"0\">{{data.section-title}}</h3>\n                    <div class=\"snippet__desc text-editor\" tabindex=\"0\">\n                        {{{data.snippet-description}}}\n                    </div>\n                    <div class=\"hdr101-widget__action\">\n                        {{IfCond data.primary-button-link 'notempty' '' 'and' data.primary-button-text 'notempty' ''}}\n                        <a href=\"{{data.primary-button-link}}\" class=\"uk-button uk-button-primary uk-button-primary-inverse\">\n                            {{data.primary-button-text}}\n                            <span class=\"template-icon-chevron-right-thick reverse\"></span>\n                            <span class=\"sr-only\">for {{data.section-title}}</span>\n                        </a>\n                        {{/IfCond}}\n                    </div>\n                </div>\n            </div>\n        </div>\n    </div>\n</div>\n<!-- Header 98 Ends -->\n{{/each}}",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

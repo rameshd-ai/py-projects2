@@ -482,7 +482,7 @@ def pageAction_home(
         from processing_steps.process_assembly import updatePageMapping
         # Pass home_debug_log_callback to also log to home_debug.log
         # Pass page_component_ids, page_component_names, and component_cache to filter mapping to only components for this page
-        _, mapping_payload = updatePageMapping(base_url, headers, page_id, site_id, header_footer_details, home_debug_log_callback=append_home_debug_log, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
+        _, mapping_payload = updatePageMapping(base_url, headers, page_id, site_id, header_footer_details, home_debug_log_callback=append_home_debug_log, page_name=page_name, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
         mapping_time = time.time() - start_time
         logging.info(f"[HOME][TIMING] updatePageMapping completed in {mapping_time:.2f} seconds")
         logging.info(f"[HOME][SUCCESS] updatePageMapping completed for page '{page_name}' (ID: {page_id})")

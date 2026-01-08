@@ -85,6 +85,11 @@ TIMING_TRACKER: Dict[str, List[float]] = {}  # Function name -> list of executio
 # --- 3. GLOBAL GUID TRACKER (for verification) ---
 COMPONENT_GUID_TRACKER: Dict[str, str] = {}  # component_id -> pageSectionGuid (for verification)
 
+# --- 3.5. GLOBAL PAGE-COMPONENT SECTIONGUID MAPPING (FIX FOR DUPLICATE SECTIONGUID ISSUE) ---
+# Maps (page_name, component_id) -> sectionGuid to prevent sectionGuid from being overwritten
+# when the same component is used on multiple pages
+PAGE_COMPONENT_SECTIONGUID_MAP: Dict[Tuple[str, int], str] = {}  # (page_name, component_id) -> sectionGuid
+
 # --- 4. GLOBAL PAGE PUBLISH QUEUE ---
 # Each entry: {"page_id": int, "page_name": str, "header_footer_details": Dict[str, Any]}
 PAGES_TO_PUBLISH: List[Dict[str, Any]] = []
@@ -336,6 +341,8 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
                 logging.info(f"[GUID] Component '{component_alias_unpacked}' (ID: {component_id_unpacked}) reusing existing GUID: {pageSectionGuid}")
         else:
             COMPONENT_GUID_TRACKER[component_key] = pageSectionGuid
+            # Store sectionGuid mapping per page+component to prevent overwriting when same component used on multiple pages
+            PAGE_COMPONENT_SECTIONGUID_MAP[(page_name, component_id_unpacked)] = pageSectionGuid
             logging.info(f"[GUID] Generated unique pageSectionGuid for component '{component_alias_unpacked}' (ID: {component_id_unpacked}) on page '{page_name}': {pageSectionGuid}") 
         
         miBlockId = component_id_unpacked
@@ -558,7 +565,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     start_time = time.time()
     mapping_payload = None
     try:
-        _, mapping_payload = updatePageMapping(base_url, headers,page_id,site_id,header_footer_details, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
+        _, mapping_payload = updatePageMapping(base_url, headers,page_id,site_id,header_footer_details, page_name=page_name, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
         mapping_time = time.time() - start_time
         logging.info(f"[TIMING] updatePageMapping completed in {mapping_time:.2f} seconds")
         
@@ -589,7 +596,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
 
 
 
-def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any], home_debug_log_callback=None, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None):
+def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any], home_debug_log_callback=None, page_name: Optional[str] = None, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None):
     """
     Creates and sends the page mapping payload using data from all
     ComponentRecordsTree.json files found in the migration output folders, 
@@ -663,12 +670,25 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
                         logging.info(f"[MAPPING] Including component {component_id_from_file} in mapping (found in valid_component_ids)")
                 
                 # Extract the required fields from the main component record
+                # FIX: Get sectionGuid from PAGE_COMPONENT_SECTIONGUID_MAP instead of ComponentRecordsTree.json
+                # to prevent duplicate sectionGuid issue when same component is used on multiple pages
+                component_id_from_file_int = int(component_id_from_file) if component_id_from_file.isdigit() else None
+                section_guid = None
+                if page_name and component_id_from_file_int:
+                    section_guid = PAGE_COMPONENT_SECTIONGUID_MAP.get((page_name, component_id_from_file_int))
+                
+                # Fallback to reading from ComponentRecordsTree.json if not found in mapping (for backward compatibility)
+                if not section_guid:
+                    section_guid = main_component_record.get("sectionGuid")
+                    if section_guid:
+                        logging.warning(f"[MAPPING] sectionGuid not found in PAGE_COMPONENT_SECTIONGUID_MAP for page '{page_name}', component {component_id_from_file}. Using value from ComponentRecordsTree.json (may be incorrect if component used on multiple pages).")
+                
                 mapping_data = {
                     "pageId": page_id,
                     "vComponentAlias": main_component_record.get("component_alias"),
                     "vComponentId": main_component_record.get("vComponentId", ""), 
                     "contentEntityType": 2, # Fixed value (for body components)
-                    "pageSectionGuid": main_component_record.get("sectionGuid")
+                    "pageSectionGuid": section_guid
                 }
                 
                 # Simple validation before adding
@@ -860,7 +880,21 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
             if main_component_record:
                 # Extract the required fields (ComponentId and sectionGuid)
                 component_id = str(main_component_record.get("ComponentId"))
-                section_guid = main_component_record.get("sectionGuid")
+                # FIX: Get sectionGuid from mapping_payload instead of ComponentRecordsTree.json
+                # to prevent duplicate sectionGuid issue when same component is used on multiple pages
+                section_guid = None
+                if mapping_payload:
+                    # Find sectionGuid for this component from mapping_payload
+                    for mapping_entry in mapping_payload:
+                        if str(mapping_entry.get("vComponentId", "")) == str(main_component_record.get("vComponentId", "")):
+                            section_guid = mapping_entry.get("pageSectionGuid")
+                            break
+                
+                # Fallback to reading from ComponentRecordsTree.json if not found in mapping_payload (for backward compatibility)
+                if not section_guid:
+                    section_guid = main_component_record.get("sectionGuid")
+                    if section_guid:
+                        logging.warning(f"[PUBLISH] sectionGuid not found in mapping_payload for component {component_id}. Using value from ComponentRecordsTree.json (may be incorrect if component used on multiple pages).")
                 
                 # CRITICAL: Only add components that are mapped to THIS page
                 # Check if this sectionGuid is in the mapping payload for this page
@@ -1461,7 +1495,10 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                     
                     # *** CRITICAL FIX: Update properties in the in-memory record ***
                     record["isMigrated"] = True
-                    record["sectionGuid"] = pageSectionGuid
+                    # NOTE: Do NOT store sectionGuid in ComponentRecordsTree.json as it's page-specific
+                    # and gets overwritten when the same component is used on multiple pages.
+                    # sectionGuid is now tracked in PAGE_COMPONENT_SECTIONGUID_MAP instead.
+                    # record["sectionGuid"] = pageSectionGuid  # REMOVED to fix duplicate sectionGuid issue
                     record["component_alias"] = component_alias
                     record["vComponentId"] = vComponentId
                     
