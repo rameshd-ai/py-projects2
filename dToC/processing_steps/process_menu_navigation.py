@@ -478,14 +478,12 @@ def run_menu_navigation_step(
             
             show_in_navigation_value = show_in_navigation_raw.strip().lower()
             # Check if value is "yes" (case-insensitive, handles "yes", "Yes", "YES", etc.)
-            # Default to True (active) if empty or not "no"
+            # Only True if explicitly "yes", otherwise False
             if show_in_navigation_value == "yes":
                 page_status = True
-            elif show_in_navigation_value == "no":
-                page_status = False
             else:
-                # Default to True (active) if ShowInNavigation is missing or empty
-                page_status = True
+                # If ShowInNavigation is "no", empty, or missing -> status = False (not in navigation)
+                page_status = False
             
             # Log for debugging
             logging.debug(f"Page '{page_name}': ShowInNavigation='{show_in_navigation_raw}' -> normalized='{show_in_navigation_value}' -> status={page_status}")
@@ -1031,6 +1029,12 @@ def run_menu_navigation_step(
         
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
+        
+        # Exit after menu processing is complete
+        logging.info("Exiting after menu navigation processing...")
+        import sys
+        sys.exit(0)
+        
         return {
             "menu_navigation_created": True,
             "file_prefix": file_prefix,

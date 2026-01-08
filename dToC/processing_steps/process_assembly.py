@@ -3676,26 +3676,54 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     
     # Second pass: Add level 2+ records to their parent groups
     # Also handle orphaned children (parent is matched, so not in new_records)
+    # IMPORTANT: Handle nested levels - level 3 records should be children of level 2, not level 1
     orphaned_children = []
+    level_2_records = {}  # Track level 2 records for level 3 to reference
     
     for r in records_sorted:
         rec_level = r.get("level") or r.get("matched_page_level", 0)
         page_name = r.get("page_name") or r.get("matched_page_name", "")
         parent_name = r.get("parent_page_name")
         
-        if rec_level >= 2:
+        if rec_level == 2:
+            # Level 2 records: add to level 1 parent group, and track them for level 3
             if not parent_name:
-                logging.warning(f"Level {rec_level} record '{page_name}' has no parent_page_name - skipping grouping")
+                logging.warning(f"Level 2 record '{page_name}' has no parent_page_name - skipping grouping")
                 continue
             
             if parent_name in parent_child_groups:
                 parent_child_groups[parent_name]["children"].append(r)
                 # Sort children by displayOrder to maintain sequence from simplified.json
                 parent_child_groups[parent_name]["children"].sort(key=lambda c: c.get("displayOrder", 999))
-                logging.info(f"[SUCCESS] Added level {rec_level} record '{page_name}' to parent group '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
+                # Track this level 2 record for level 3 children
+                level_2_records[page_name] = r
+                logging.info(f"[SUCCESS] Added level 2 record '{page_name}' to parent group '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
             else:
                 # Parent is matched (not in new_records), child needs to be saved separately
-                # We'll need to get the parent's record ID from matched_records
+                orphaned_children.append(r)
+                logging.info(f"[WARNING] Level 2 record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
+        
+        elif rec_level >= 3:
+            # Level 3+ records: should be children of level 2, not level 1
+            if not parent_name:
+                logging.warning(f"Level {rec_level} record '{page_name}' has no parent_page_name - skipping grouping")
+                continue
+            
+            # Check if parent is a level 2 record (in our records)
+            if parent_name in level_2_records:
+                # Add to the level 2 record's children (we'll create a nested structure)
+                level_2_record = level_2_records[parent_name]
+                if "nested_children" not in level_2_record:
+                    level_2_record["nested_children"] = []
+                level_2_record["nested_children"].append(r)
+                logging.info(f"[SUCCESS] Added level {rec_level} record '{page_name}' to level 2 parent '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
+            elif parent_name in parent_child_groups:
+                # Fallback: parent is level 1 (shouldn't happen but handle it)
+                parent_child_groups[parent_name]["children"].append(r)
+                parent_child_groups[parent_name]["children"].sort(key=lambda c: c.get("displayOrder", 999))
+                logging.warning(f"[FALLBACK] Added level {rec_level} record '{page_name}' directly to level 1 parent '{parent_name}' (expected level 2 parent)")
+            else:
+                # Parent is matched (not in new_records), child needs to be saved separately
                 orphaned_children.append(r)
                 logging.info(f"[WARNING] Level {rec_level} record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
     
@@ -3834,9 +3862,10 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             
             logging.info(f"    → Updated {len(children)} children parentRecordId → {new_parent_id}")
             
-            # STEP 4: Save children
+            # STEP 4: Save children (level 2 records)
             for child_idx, child in enumerate(children):
                 child_name = child.get("page_name") or child.get("matched_page_name")
+                child_level = child.get("level") or child.get("matched_page_level", 0)
                 
                 child_api_record = {
                     "componentId": child["componentId"],
@@ -3850,7 +3879,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                 }
                 
                 try:
-                    logging.info(f"  [Child {child_idx+1}] Saving '{child_name}' (parent={child['parentRecordId']})")
+                    logging.info(f"  [Child {child_idx+1}] Saving '{child_name}' (level {child_level}, parent={child['parentRecordId']})")
                     child_resp = requests.post(api_url, headers=api_headers, json=child_api_record, timeout=30)
                     child_resp.raise_for_status()
                     
@@ -3862,17 +3891,91 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                         child["new_recordId"] = new_child_id
                         logging.info(f"    [SUCCESS] Child ID: {new_child_id}")
                         
+                        # STEP 4.5: If this is a level 2 record, update level 3 children's parentRecordId
+                        nested_children = child.get("nested_children", [])
+                        if nested_children:
+                            logging.info(f"    → Updating {len(nested_children)} level 3 children's parentRecordId → {new_child_id}")
+                            for nested_child in nested_children:
+                                nested_child["parentRecordId"] = new_child_id
+                                nested_child_name = nested_child.get("page_name") or nested_child.get("matched_page_name", "")
+                                logging.info(f"      Updated '{nested_child_name}' parentRecordId → {new_child_id}")
+                        
                         # Update file
                         with open(payload_filepath, 'r', encoding='utf-8') as f:
                             payload_data = json.load(f)
                         
+                        # Create a set of nested child page names for efficient lookup
+                        nested_child_names = {nested_child.get("page_name") or nested_child.get("matched_page_name", "") 
+                                            for nested_child in nested_children}
+                        
                         for file_rec in payload_data.get("records", []):
                             file_page = file_rec.get("page_name") or file_rec.get("matched_page_name")
-                            if file_page == child_name:
+                            file_parent = file_rec.get("parent_page_name")
+                            
+                            # Update the level 2 record's new_recordId
+                            # parent_name for level 2 records is group_name (level 1 parent)
+                            if file_page == child_name and file_parent == group_name:
                                 file_rec["new_recordId"] = new_child_id
+                            
+                            # Update level 3 children in file - match by BOTH page_name AND parent_page_name
+                            # This prevents updating wrong records when multiple records have the same page_name
+                            if file_parent == child_name and file_page in nested_child_names:
+                                file_rec["parentRecordId"] = new_child_id
+                                logging.debug(f"      Updated file record '{file_page}' (parent: '{file_parent}') parentRecordId → {new_child_id}")
                         
                         with open(payload_filepath, 'w', encoding='utf-8') as f:
                             json.dump(payload_data, f, indent=4, ensure_ascii=False)
+                        
+                        # STEP 4.6: Save level 3 children after level 2 parent is saved
+                        for nested_idx, nested_child in enumerate(nested_children):
+                            nested_child_name = nested_child.get("page_name") or nested_child.get("matched_page_name", "")
+                            
+                            nested_api_record = {
+                                "componentId": nested_child["componentId"],
+                                "recordId": nested_child["recordId"],
+                                "parentRecordId": nested_child["parentRecordId"],
+                                "recordDataJson": nested_child["recordDataJson"],
+                                "status": nested_child["status"],
+                                "tags": nested_child["tags"],
+                                "displayOrder": nested_child["displayOrder"],
+                                "updatedBy": nested_child["updatedBy"]
+                            }
+                            
+                            try:
+                                logging.info(f"    [Level 3 Child {nested_idx+1}] Saving '{nested_child_name}' (parent={nested_child['parentRecordId']})")
+                                nested_resp = requests.post(api_url, headers=api_headers, json=nested_api_record, timeout=30)
+                                nested_resp.raise_for_status()
+                                
+                                nested_result = nested_resp.json()
+                                new_nested_id = nested_result.get("result")
+                                
+                                if new_nested_id:
+                                    saved_records[nested_child_name] = new_nested_id
+                                    nested_child["new_recordId"] = new_nested_id
+                                    logging.info(f"      [SUCCESS] Level 3 Child ID: {new_nested_id}")
+                                    
+                                    # Update file
+                                    with open(payload_filepath, 'r', encoding='utf-8') as f:
+                                        payload_data = json.load(f)
+                                    
+                                    # Get parent name from nested_child
+                                    nested_child_parent = nested_child.get("parent_page_name", "")
+                                    
+                                    for file_rec in payload_data.get("records", []):
+                                        file_page = file_rec.get("page_name") or file_rec.get("matched_page_name")
+                                        file_parent = file_rec.get("parent_page_name")
+                                        # Match by BOTH page_name AND parent_page_name to avoid overwriting duplicate page names
+                                        if file_page == nested_child_name and file_parent == nested_child_parent:
+                                            file_rec["new_recordId"] = new_nested_id
+                                            file_rec["parentRecordId"] = nested_child["parentRecordId"]
+                                            logging.debug(f"        Updated file record '{file_page}' (parent: '{file_parent}') with new_recordId={new_nested_id}, parentRecordId={nested_child['parentRecordId']}")
+                                    
+                                    with open(payload_filepath, 'w', encoding='utf-8') as f:
+                                        json.dump(payload_data, f, indent=4, ensure_ascii=False)
+                                else:
+                                    logging.error(f"      [ERROR] No result ID for level 3 child")
+                            except Exception as e:
+                                logging.error(f"      [ERROR] Failed to save level 3 child '{nested_child_name}': {e}")
                     else:
                         logging.error(f"    [ERROR] No result ID")
                 except Exception as e:
@@ -4037,7 +4140,19 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             level = page_node.get("level", 0)
             is_matched = page_node.get("matchFound", False)
             
+            # Get page_status from page_node (based on ShowInNavigation from XML)
+            page_status = page_node.get("page_status", True)
+            
+            # IMPORTANT: Skip pages with page_status=False
+            # These pages have ShowInNavigation="" or "No" and should not be in the menu
+            # Example: "RFP" sub-pages that have ShowInNavigation=""
+            if not page_status:
+                logging.info(f"[SKIP] Skipping page '{page_name}' (level {level}) - page_status=False (ShowInNavigation is not 'Yes')")
+                return  # Don't process this page or its sub_pages
+            
             if not is_matched:
+                # Page exists and should be in navigation, but doesn't have a menu record yet
+                # Create a new record for it
                 # Determine ComponentId based on level
                 if menu_level == 0:
                     if level == 0:
