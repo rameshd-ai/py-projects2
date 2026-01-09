@@ -45,6 +45,7 @@
             "has_image": false,
             "recordType": "MainComponent",
             "isMigrated": true,
+            "new_record_id": 3381661,
             "component_alias": "aeedcfad-8318-4dd1-9f00-64c1bc548fd0",
             "vComponentId": 21006040
         },
@@ -92,9 +93,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3380010,
+            "parent_new_record_id": 3381661,
             "isMigrated": true,
-            "new_record_id": 3380016
+            "new_record_id": 3381664
         },
         {
             "Id": 3182460,
@@ -140,9 +141,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3380010,
+            "parent_new_record_id": 3381661,
             "isMigrated": true,
-            "new_record_id": 3380016
+            "new_record_id": 3381663
         },
         {
             "Id": 3182461,
@@ -188,9 +189,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3380010,
+            "parent_new_record_id": 3381661,
             "isMigrated": true,
-            "new_record_id": 3380012
+            "new_record_id": 3381667
         },
         {
             "Id": 3182462,
@@ -236,9 +237,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3380010,
+            "parent_new_record_id": 3381661,
             "isMigrated": true,
-            "new_record_id": 3380015
+            "new_record_id": 3381666
         },
         {
             "Id": 3182463,
@@ -284,9 +285,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3380010,
+            "parent_new_record_id": 3381661,
             "isMigrated": true,
-            "new_record_id": 3380013
+            "new_record_id": 3381664
         }
     ]
 }

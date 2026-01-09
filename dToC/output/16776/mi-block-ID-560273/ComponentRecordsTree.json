@@ -45,6 +45,7 @@
             "has_image": false,
             "recordType": "MainComponent",
             "isMigrated": true,
+            "new_record_id": 3381398,
             "component_alias": "c8c43c66-24dc-4711-88f7-54984c3b6075",
             "vComponentId": 21006061
         },
@@ -92,9 +93,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3379727,
+            "parent_new_record_id": 3381398,
             "isMigrated": true,
-            "new_record_id": 3379733
+            "new_record_id": 3381405
         },
         {
             "Id": 3183033,
@@ -140,9 +141,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3379727,
+            "parent_new_record_id": 3381398,
             "isMigrated": true,
-            "new_record_id": 3379730
+            "new_record_id": 3381400
         },
         {
             "Id": 3183034,
@@ -188,9 +189,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3379727,
+            "parent_new_record_id": 3381398,
             "isMigrated": true,
-            "new_record_id": 3379734
+            "new_record_id": 3381404
         },
         {
             "Id": 3183035,
@@ -236,9 +237,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3379727,
+            "parent_new_record_id": 3381398,
             "isMigrated": true,
-            "new_record_id": 3379731
+            "new_record_id": 3381401
         },
         {
             "Id": 3183036,
@@ -284,9 +285,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3379727,
+            "parent_new_record_id": 3381398,
             "isMigrated": true,
-            "new_record_id": 3379729
+            "new_record_id": 3381399
         },
         {
             "Id": 3183037,
@@ -332,9 +333,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3379727,
+            "parent_new_record_id": 3381398,
             "isMigrated": true,
-            "new_record_id": 3379732
+            "new_record_id": 3381402
         },
         {
             "Id": 3183038,
@@ -380,9 +381,9 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3379727,
+            "parent_new_record_id": 3381398,
             "isMigrated": true,
-            "new_record_id": 3379733
+            "new_record_id": 3381405
         }
     ]
 }

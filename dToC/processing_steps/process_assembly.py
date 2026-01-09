@@ -13,7 +13,7 @@ import zipfile # <-- Required for handling exported component files
 import html # <-- Required for HTML entity decoding
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
-from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,addUpdateRecordsToCMS_bulk,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName
+from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,addUpdateRecordsToCMS_bulk,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName,update_miblock_record_asset
 # ================= CONFIG/UTILITY DEFINITIONS (BASED ON USER PATTERN) =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
@@ -392,6 +392,148 @@ def add_has_image_to_records(records_file_path: str) -> bool:
         return False
     except Exception as e:
         logging.error(f"Error adding has_image to records: {e}")
+        logging.exception("Full traceback:")
+        return False
+
+
+def update_record_asset_if_needed(
+    record: Dict[str, Any],
+    new_record_id: int,
+    component_id: int,
+    base_url: str,
+    headers: Dict[str, str]
+) -> bool:
+    """
+    Checks if a record has images and updates the asset using the UpdateMiblockRecordAsset API.
+    
+    Args:
+        record: The record dictionary with RecordJsonString/recordDataJson and has_image field
+        new_record_id: The newly created record ID from CMS
+        component_id: The component ID (MiBlockId)
+        base_url: Base URL for the API
+        headers: API headers with authorization
+        
+    Returns:
+        bool: True if update was successful or not needed, False if failed
+    """
+    # Check if record has images
+    if not record.get("has_image", False):
+        return True  # No image, nothing to update
+    
+    try:
+        # Try RecordJsonString first (from ComponentRecordsTree.json), then recordDataJson (from API payload)
+        record_json_string = record.get("RecordJsonString") or record.get("recordDataJson")
+        if not record_json_string:
+            return True  # No record data, nothing to update
+        
+        # Parse RecordJsonString
+        if isinstance(record_json_string, str):
+            record_json = json.loads(record_json_string)
+        else:
+            record_json = record_json_string
+        
+        # Find the key that contains ResourceID and extract image data
+        asset_fields = []
+        image_pattern = '"ResourceID"'
+        
+        for key, value in record_json.items():
+            # Convert value to string to search for pattern
+            value_str = json.dumps(value) if not isinstance(value, str) else value
+            
+            if image_pattern in value_str:
+                # This key contains an image
+                field_alias = key
+                asset_urls = []
+                
+                # Extract OriginalImagePath from the value
+                if isinstance(value, list):
+                    # Value is a list of image objects
+                    for img_obj in value:
+                        if isinstance(img_obj, dict):
+                            original_path = img_obj.get("OriginalImagePath")
+                            if original_path:
+                                asset_urls.append(original_path)
+                elif isinstance(value, dict):
+                    # Value is a single image object
+                    original_path = value.get("OriginalImagePath")
+                    if original_path:
+                        asset_urls.append(original_path)
+                elif isinstance(value, str):
+                    # Value might be a JSON string, try to parse it
+                    try:
+                        parsed_value = json.loads(value)
+                        if isinstance(parsed_value, list):
+                            for img_obj in parsed_value:
+                                if isinstance(img_obj, dict):
+                                    original_path = img_obj.get("OriginalImagePath")
+                                    if original_path:
+                                        asset_urls.append(original_path)
+                        elif isinstance(parsed_value, dict):
+                            original_path = parsed_value.get("OriginalImagePath")
+                            if original_path:
+                                asset_urls.append(original_path)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                
+                # Only add if we found asset URLs
+                if asset_urls:
+                    asset_fields.append({
+                        "FieldAlias": field_alias,
+                        "AssetUrls": asset_urls
+                    })
+        
+        # If we found asset fields, call the API
+        if asset_fields:
+            # component_id is the ComponentId from the record itself
+            # For subcomponents, this will be the subcomponent ID (not the parent)
+            # RecordId is the newly created record ID returned from the save operation
+            payload = {
+                "MiBlockId": component_id,  # ComponentId from record (subcomponent ID if it's a subcomponent)
+                "RecordId": new_record_id,  # Newly created record ID from CMS save operation
+                "AssetFields": asset_fields
+            }
+            
+            logging.info(f"[ASSET UPDATE] Updating assets for record {new_record_id} (component {component_id}) with {len(asset_fields)} field(s)")
+            logging.info(f"[ASSET UPDATE] MiBlockId: {component_id} (ComponentId from record - subcomponent ID if applicable)")
+            logging.info(f"[ASSET UPDATE] RecordId: {new_record_id} (Newly created record ID from save operation)")
+            logging.info(f"[ASSET UPDATE] API Payload: {json.dumps(payload, indent=2)}")
+            
+            # Log to debug file for easier tracking
+            append_debug_log("asset_update_request", {
+                "record_id": new_record_id,
+                "component_id": component_id,
+                "payload": payload
+            })
+            
+            result = update_miblock_record_asset(base_url, headers, payload)
+            
+            if result:
+                logging.info(f"[SUCCESS] Updated assets for record {new_record_id}")
+                logging.info(f"[ASSET UPDATE] API Response: {json.dumps(result, indent=2)}")
+                # Log success to debug file
+                append_debug_log("asset_update_success", {
+                    "record_id": new_record_id,
+                    "component_id": component_id,
+                    "response": result
+                })
+                return True
+            else:
+                logging.warning(f"[WARNING] Failed to update assets for record {new_record_id}")
+                logging.warning(f"[ASSET UPDATE] API Response: None or empty")
+                # Log failure to debug file
+                append_debug_log("asset_update_failure", {
+                    "record_id": new_record_id,
+                    "component_id": component_id,
+                    "response": None,
+                    "error": "API returned None or empty"
+                })
+                return False
+        else:
+            logging.debug(f"[ASSET UPDATE] No asset URLs found for record {new_record_id} despite has_image=true")
+            return True  # No URLs found, but not an error
+            
+    except Exception as e:
+        logging.error(f"[ERROR] Failed to update assets for record {new_record_id}: {e}")
         logging.exception("Full traceback:")
         return False
 
@@ -1454,6 +1596,11 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
                     record["isMigrated"] = True
                     record["new_record_id"] = new_record_id
                     
+                    # A.5: Update asset if record has images
+                    component_id_for_asset = record.get("ComponentId")
+                    if component_id_for_asset and record.get("has_image", False):
+                        update_record_asset_if_needed(record, new_record_id, component_id_for_asset, base_url, headers)
+                    
                     # B. Tag next-level children (N+1)
                     updated_children_count = 0
                     for child in records:
@@ -1485,6 +1632,11 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
                     migrated_count += 1
                     record["isMigrated"] = True
                     record["new_record_id"] = new_record_id
+                    
+                    # Update asset if record has images
+                    component_id_for_asset = record.get("ComponentId")
+                    if component_id_for_asset and record.get("has_image", False):
+                        update_record_asset_if_needed(record, new_record_id, component_id_for_asset, base_url, headers)
                     
                     # Tag children
                     for child in records:
@@ -1586,12 +1738,17 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                     
                     # *** CRITICAL FIX: Update properties in the in-memory record ***
                     record["isMigrated"] = True
+                    record["new_record_id"] = main_component_new_id  # Store new_record_id for tracking
                     # NOTE: Do NOT store sectionGuid in ComponentRecordsTree.json as it's page-specific
                     # and gets overwritten when the same component is used on multiple pages.
                     # sectionGuid is now tracked in PAGE_COMPONENT_SECTIONGUID_MAP instead.
                     # record["sectionGuid"] = pageSectionGuid  # REMOVED to fix duplicate sectionGuid issue
                     record["component_alias"] = component_alias
                     record["vComponentId"] = vComponentId
+                    
+                    # Update asset if record has images (after storing new_record_id)
+                    if record.get("has_image", False):
+                        update_record_asset_if_needed(record, main_component_new_id, component_id, base_url, headers)
                     
                     break 
                 else:
@@ -1884,6 +2041,33 @@ def createRecordsPayload(site_id, component_id):
     with open(output_file_path, 'w') as f:
         # Save the list of records in sequence under the key 'componentRecordsTree'
         json.dump({"componentRecordsTree": records_tree}, f, indent=4)
+    
+    # 7. Ensure has_image field is preserved in ComponentRecordsTree.json
+    # (It should already be there from enrich_record.copy(), but verify and add if missing)
+    records_tree_file_path = output_file_path
+    if os.path.exists(records_tree_file_path):
+        try:
+            with open(records_tree_file_path, 'r', encoding='utf-8') as f:
+                tree_data = json.load(f)
+            
+            tree_records = tree_data.get("componentRecordsTree", [])
+            records_updated = False
+            
+            # Create a map of Id -> has_image from MiBlockComponentRecords.json for quick lookup
+            has_image_map = {record.get("Id"): record.get("has_image", False) for record in all_records}
+            
+            for tree_record in tree_records:
+                record_id = tree_record.get("Id")
+                if record_id in has_image_map and "has_image" not in tree_record:
+                    tree_record["has_image"] = has_image_map[record_id]
+                    records_updated = True
+            
+            if records_updated:
+                with open(records_tree_file_path, 'w', encoding='utf-8') as f:
+                    json.dump(tree_data, f, indent=4, ensure_ascii=False)
+                logging.info(f"Updated ComponentRecordsTree.json with has_image fields")
+        except Exception as e:
+            logging.warning(f"Could not update has_image in ComponentRecordsTree.json: {e}")
     
     print("Successfully collected and saved component records tree with recordType.")
     return True
@@ -3883,6 +4067,11 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                     orphan["new_recordId"] = new_orphan_id
                     logging.info(f"    [SUCCESS] Orphaned Child ID: {new_orphan_id}")
                     
+                    # Update asset if orphan record has images
+                    component_id_for_asset = orphan.get("componentId")
+                    if component_id_for_asset and orphan.get("has_image", False):
+                        update_record_asset_if_needed(orphan, new_orphan_id, component_id_for_asset, api_base_url, api_headers)
+                    
                     # Update file
                     with open(payload_filepath, 'r', encoding='utf-8') as f:
                         payload_data = json.load(f)
@@ -3946,6 +4135,11 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             parent_rec["new_recordId"] = new_parent_id
             logging.info(f"    [SUCCESS] Parent ID: {new_parent_id}")
             
+            # Update asset if parent record has images
+            component_id_for_asset = parent_rec.get("componentId")
+            if component_id_for_asset and parent_rec.get("has_image", False):
+                update_record_asset_if_needed(parent_rec, new_parent_id, component_id_for_asset, api_base_url, api_headers)
+            
             # STEP 2: Update children parentRecordId immediately
             for child in children:
                 child["parentRecordId"] = new_parent_id
@@ -3995,6 +4189,11 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                         saved_records[child_name] = new_child_id
                         child["new_recordId"] = new_child_id
                         logging.info(f"    [SUCCESS] Child ID: {new_child_id}")
+                        
+                        # Update asset if child record has images
+                        component_id_for_asset = child.get("componentId")
+                        if component_id_for_asset and child.get("has_image", False):
+                            update_record_asset_if_needed(child, new_child_id, component_id_for_asset, api_base_url, api_headers)
                         
                         # STEP 4.5: If this is a level 2 record, update level 3 children's parentRecordId
                         nested_children = child.get("nested_children", [])
@@ -4058,6 +4257,11 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                                     saved_records[nested_child_name] = new_nested_id
                                     nested_child["new_recordId"] = new_nested_id
                                     logging.info(f"      [SUCCESS] Level 3 Child ID: {new_nested_id}")
+                                    
+                                    # Update asset if nested child record has images
+                                    component_id_for_asset = nested_child.get("componentId")
+                                    if component_id_for_asset and nested_child.get("has_image", False):
+                                        update_record_asset_if_needed(nested_child, new_nested_id, component_id_for_asset, api_base_url, api_headers)
                                     
                                     # Update file
                                     with open(payload_filepath, 'r', encoding='utf-8') as f:
