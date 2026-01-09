@@ -305,6 +305,97 @@ def add_levels_to_records(records_file_path: str) -> bool:
         return False
 
 
+def add_has_image_to_records(records_file_path: str) -> bool:
+    """
+    Adds 'has_image' field to each record in MiBlockComponentRecords.json based on image detection.
+    
+    Logic:
+    - Checks RecordJsonString for each record
+    - Searches for pattern \"ResourceID\" in any key's value (indicates image data)
+    - Sets has_image = true if image found, false otherwise
+    
+    Args:
+        records_file_path: Path to the MiBlockComponentRecords.json file
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Read the records file
+        with open(records_file_path, 'r', encoding='utf-8') as f:
+            records_data = json.load(f)
+        
+        component_records = records_data.get("componentRecords", [])
+        if not component_records:
+            logging.warning(f"No componentRecords found in {records_file_path}")
+            return False
+        
+        image_pattern = '\"ResourceID\"'
+        records_with_images = 0
+        records_without_images = 0
+        
+        # Process each record
+        for record in component_records:
+            has_image = False
+            record_json_string = record.get("RecordJsonString")
+            
+            if record_json_string:
+                try:
+                    # RecordJsonString might be a string or already a dict
+                    if isinstance(record_json_string, str):
+                        # Parse the JSON string
+                        record_json = json.loads(record_json_string)
+                    else:
+                        # Already a dict
+                        record_json = record_json_string
+                    
+                    # Convert the entire JSON to string to search for the pattern
+                    # This handles nested structures and arrays
+                    json_string = json.dumps(record_json)
+                    
+                    # Check if the pattern exists in the JSON string
+                    if image_pattern in json_string:
+                        has_image = True
+                        records_with_images += 1
+                    else:
+                        records_without_images += 1
+                        
+                except (json.JSONDecodeError, TypeError) as e:
+                    # If parsing fails, check the raw string
+                    if isinstance(record_json_string, str) and image_pattern in record_json_string:
+                        has_image = True
+                        records_with_images += 1
+                    else:
+                        records_without_images += 1
+                    logging.warning(f"Error parsing RecordJsonString for record ID {record.get('Id')}: {e}")
+            else:
+                # No RecordJsonString, no image
+                records_without_images += 1
+            
+            # Set the has_image field
+            record["has_image"] = has_image
+        
+        # Save the updated records back to the file
+        with open(records_file_path, 'w', encoding='utf-8') as f:
+            json.dump(records_data, f, indent=4, ensure_ascii=False)
+        
+        logging.info(f"[SUCCESS] Successfully added has_image fields to {len(component_records)} records")
+        logging.info(f"  - Records with images: {records_with_images}")
+        logging.info(f"  - Records without images: {records_without_images}")
+        return True
+        
+    except FileNotFoundError:
+        logging.error(f"Records file not found: {records_file_path}")
+        return False
+    except json.JSONDecodeError as e:
+        logging.error(f"JSON decode error in {records_file_path}: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Error adding has_image to records: {e}")
+        logging.exception("Full traceback:")
+        return False
+
+
 # --- MODIFIED: add_records_for_page now contains the complex file processing logic ---
 def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str):
     """
@@ -3059,6 +3150,13 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                         logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
                                     except Exception as e:
                                         logging.error(f"[ERROR] Error adding levels to records: {e}")
+                                    
+                                    # Add has_image field to records
+                                    try:
+                                        add_has_image_to_records(records_file_path)
+                                        logging.info(f"[SUCCESS] Added has_image fields to records in {records_file_path}")
+                                    except Exception as e:
+                                        logging.error(f"[ERROR] Error adding has_image to records: {e}")
 
                                 
                                 # --- POLLING LOGIC to wait for MiBlockComponentConfig.json to be accessible ---
@@ -3100,6 +3198,13 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                         logging.info(f"[SUCCESS] Added level fields to records in {records_file_path}")
                                     except Exception as e:
                                         logging.error(f"[ERROR] Error adding levels to records: {e}")
+                                    
+                                    # Add has_image field to records
+                                    try:
+                                        add_has_image_to_records(records_file_path)
+                                        logging.info(f"[SUCCESS] Added has_image fields to records in {records_file_path}")
+                                    except Exception as e:
+                                        logging.error(f"[ERROR] Error adding has_image to records: {e}")
 
 
 
@@ -4762,9 +4867,27 @@ def pre_download_all_components(
             except Exception as e:
                 logging.error(f"[{idx}/{len(component_info_list)}] [ERROR] Failed to add levels for {component_id}: {e}")
     
-    # Step 6: Verify config files are accessible (quick check, no polling needed after unzip)
+    # Step 6: Add has_image fields to all MiBlockComponentRecords.json files (after all extraction is complete)
     logging.info("\n========================================================")
-    logging.info("PRE-DOWNLOAD: Phase 5 - Verifying config files are accessible...")
+    logging.info("PRE-DOWNLOAD: Phase 5 - Adding has_image fields to records...")
+    logging.info("========================================================")
+    
+    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get(component_id, (False, None))
+        if not success or not save_folder:
+            continue
+        
+        records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
+        if os.path.exists(records_file_path):
+            try:
+                add_has_image_to_records(records_file_path)
+                logging.info(f"[{idx}/{len(component_info_list)}] [SUCCESS] Added has_image fields for {component_id}")
+            except Exception as e:
+                logging.error(f"[{idx}/{len(component_info_list)}] [ERROR] Failed to add has_image for {component_id}: {e}")
+    
+    # Step 7: Verify config files are accessible (quick check, no polling needed after unzip)
+    logging.info("\n========================================================")
+    logging.info("PRE-DOWNLOAD: Phase 6 - Verifying config files are accessible...")
     logging.info("========================================================")
     
     for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):

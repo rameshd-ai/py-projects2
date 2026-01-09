@@ -1589,3 +1589,97 @@ def save_module_category(base_url: str, headers: dict, payload: dict) -> Union[D
         return None
 
 
+def update_miblock_record_asset(base_url: str, headers: dict, payload: dict) -> Union[Dict[str, Any], None]:
+    """
+    Updates asset fields (e.g., images) for a Miblock record using the CMS Miblock API.
+    This function is typically called just after a record is created to update component images.
+    
+    Endpoint: /ccadmin/cms/api/MiblockApi/UpdateMiblockRecordAsset
+    
+    Args:
+        base_url (str): The base URL of the CMS API (e.g., "https://example.cms.milestoneinternet.info").
+        headers (dict): HTTP headers, typically including Authorization and Content-Type.
+        payload (dict): Complete request payload containing:
+                       - MiBlockId: int (the MiBlock component ID)
+                       - RecordId: int (the record ID to update)
+                       - AssetFields: list of dictionaries, each containing:
+                         - FieldAlias: str (e.g., "image")
+                         - AssetUrls: list of str (URLs of the assets to set)
+    
+    Returns:
+        dict: The JSON response from the API if successful, otherwise None.
+    
+    Example:
+        payload = {
+            "MiBlockId": 56779,
+            "RecordId": 375110,
+            "AssetFields": [
+                {
+                    "FieldAlias": "image",
+                    "AssetUrls": [
+                        "https://assets.staging.milestoneinternet.com/cms-platform-for-marriott-replica/abecy-sports-social-module/1920-x-1080-hd-wallpapers-7.jpg"
+                    ]
+                }
+            ]
+        }
+        response = update_miblock_record_asset(base_url, headers, payload)
+    """
+    api_url = f"{base_url}/ccadmin/cms/api/MiblockApi/UpdateMiblockRecordAsset"
+    
+    try:
+        # Ensure Content-Type is set
+        if headers is None:
+            headers = {
+                'Content-Type': 'application/json'
+            }
+        else:
+            headers = headers.copy()
+            headers['Content-Type'] = 'application/json'
+        
+        mi_block_id = payload.get('MiBlockId', 'N/A')
+        record_id = payload.get('RecordId', 'N/A')
+        asset_fields_count = len(payload.get('AssetFields', []))
+        logging.info(f"Calling UpdateMiblockRecordAsset API for MiBlockId: {mi_block_id}, RecordId: {record_id}, AssetFields: {asset_fields_count}")
+        
+        response = requests.post(
+            api_url,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        logging.info(f"UpdateMiblockRecordAsset API response status: {response.status_code}")
+        
+        # Raise exception for bad status codes
+        response.raise_for_status()
+        
+        # Parse and return JSON response
+        response_data = response.json()
+        logging.info(f"[SUCCESS] Successfully updated Miblock record asset for RecordId: {record_id}")
+        return response_data
+        
+    except requests.exceptions.HTTPError as http_err:
+        status_code = response.status_code if 'response' in locals() else 'N/A'
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"[ERROR] HTTP error in update_miblock_record_asset: {http_err} (Status Code: {status_code})")
+        if status_code >= 500:
+            logging.error(f"[ERROR] Server error response: {response_text[:500]}")
+        return None
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"[ERROR] Connection error in update_miblock_record_asset: {conn_err}")
+        return None
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"[ERROR] Timeout error in update_miblock_record_asset: {timeout_err}")
+        return None
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"[ERROR] Request error in update_miblock_record_asset: {req_err}")
+        return None
+    except json.JSONDecodeError as json_err:
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"[ERROR] JSON decode error in update_miblock_record_asset: {json_err}. Response: {response_text[:200]}")
+        return None
+    except Exception as e:
+        logging.error(f"[ERROR] Unexpected error in update_miblock_record_asset: {e}")
+        return None
+
+

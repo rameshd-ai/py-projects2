@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 560148,
+        "type": "MainComponent",
+        "componentName": "Review-slider-dots"
+    },
+    {
+        "componentId": 560149,
+        "type": "Level1Child",
+        "componentName": "Review Slider Dots Items"
+    }
+]

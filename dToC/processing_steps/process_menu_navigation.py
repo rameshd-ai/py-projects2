@@ -609,9 +609,12 @@ def run_menu_navigation_step(
                             # Add level fields
                             records_file_path = os.path.join(save_folder, "MiBlockComponentRecords.json")
                             if os.path.exists(records_file_path):
-                                from process_assembly import add_levels_to_records
+                                from process_assembly import add_levels_to_records, add_has_image_to_records
                                 add_levels_to_records(records_file_path)
                                 logging.info(f"[SUCCESS] Added level fields")
+                                # Add has_image field to records
+                                add_has_image_to_records(records_file_path)
+                                logging.info(f"[SUCCESS] Added has_image fields")
         
         # 3. Create menu_navigation.json
         menu_navigation_data = {
