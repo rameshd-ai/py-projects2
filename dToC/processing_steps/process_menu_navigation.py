@@ -1030,11 +1030,6 @@ def run_menu_navigation_step(
         logging.info("END: Menu Navigation Processing Complete")
         logging.info("========================================================")
         
-        # Exit after menu processing is complete
-        logging.info("Exiting after menu navigation processing...")
-        import sys
-        sys.exit(0)
-        
         return {
             "menu_navigation_created": True,
             "file_prefix": file_prefix,
