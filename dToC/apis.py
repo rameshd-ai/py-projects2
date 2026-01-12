@@ -1683,3 +1683,133 @@ def update_miblock_record_asset(base_url: str, headers: dict, payload: dict) -> 
         return None
 
 
+def get_miblock_records(base_url: str, headers: dict, params: dict) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
+    """
+    Retrieves MiBlock records for a specific component and parent using the CMS PageApi.
+    This API is used to get immediate parent's sub-record details.
+    
+    Endpoint: GET /api/PageApi/GetMiblockRecords
+    
+    Args:
+        base_url (str): The base URL of the CMS API (e.g., "https://example.cms.milestoneinternet.info").
+        headers (dict): HTTP headers, typically including Authorization.
+        params (dict): Query parameters containing:
+                      - miblockId: int (the MiBlock component ID)
+                      - pageSectionGuid: str (the unique GUID for the page section)
+                      - parentRecordId: int (the parent record ID to get sub-records for, 0 for root records)
+                      - languageId: int (language ID, default is 0)
+    
+    Returns:
+        dict/list: The JSON response from the API if successful, otherwise None.
+                  Returns a list of record objects with complete record details including:
+                  - RecordId, ParentRecordId, MiBlockId
+                  - RecordJsonString (the actual record data as JSON string)
+                  - SubComponentRecordCount (number of child records)
+                  - Status, DisplayOrder, CreatedDate, UpdatedDate
+    
+    Example Request:
+        params = {
+            "miblockId": 560556,
+            "pageSectionGuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "parentRecordId": 0,  # 0 for root records, or parent's RecordId for sub-records
+            "languageId": 0
+        }
+        response = get_miblock_records(base_url, headers, params)
+    
+    Example Response:
+        [
+          {
+            "RecordId": 3383620,
+            "ParentRecordId": 3383619,
+            "RecordJsonString": "{\\"Id\\": \\"3383620\\", \\"ParentId\\": \\"##ParentId##\\", \\"snippet-image\\": null, \\"snippet-image-alt-text\\": \\"Enter Snippet Image ALT Text\\", \\"snippet-tagline\\": \\"Enter Snippet Tagline\\", \\"snippet-description\\": \\"Enter Snippet Description\\", \\"snippet-description-more\\": \\"Enter Snippet Description More\\", \\"snippet-primary-button-text\\": \\"Enter Snippet Primary Button - Text\\", \\"snippet-primary-button-link\\": \\"Enter Snippet Primary Button - Link\\", \\"snippet-secondary-button-text\\": \\"Enter Snippet Secondary Button - Text\\", \\"snippet-secondary-button-link\\": \\"Enter Snippet Secondary Button - Link\\", \\"snippet-title\\": \\"Enter Snippet Title\\"}",
+            "SiteId": 16776,
+            "MiBlockId": 560557,
+            "ParentMiBlockId": 560556,
+            "MainParentMiBlockId": 560556,
+            "MiBlockName": "Feature-right-Image-Items",
+            "ResourceTypeID": 0,
+            "Status": true,
+            "DisplayOrder": 834,
+            "CreatedDate": "2026-01-12T09:14:41.05",
+            "CreatedBy": 26083,
+            "UpdatedDate": "2026-01-12T09:14:41.05",
+            "UpdatedBy": 26083,
+            "Tags": null,
+            "DraftExists": true,
+            "SelectedProfiles": null,
+            "ChildComponents": null,
+            "MappedProfiles": null,
+            "IsPersonalizationEnabled": false,
+            "RefByContentLibrary": false,
+            "LanguageId": 0,
+            "PrimaryLanguageRecordId": 0,
+            "RecordUrl": null,
+            "StartDate": null,
+            "EndDate": null,
+            "Region": null,
+            "OffsetZoneName": null,
+            "Offset": null,
+            "TemplateId": 0,
+            "TabletTemplateId": 0,
+            "MobileTemplateId": 0,
+            "AmpTemplateId": 0,
+            "SubComponentRecordCount": 0
+          }
+        ]
+    
+    Notes:
+        - Use parentRecordId = 0 to get root/parent records
+        - Use parentRecordId = {parent's RecordId} to get immediate child records
+        - RecordJsonString contains the actual field data as a JSON string
+        - SubComponentRecordCount indicates if the record has child records
+    """
+    api_url = f"{base_url}/api/PageApi/GetMiblockRecords"
+    
+    try:
+        miblock_id = params.get('miblockId', 'N/A')
+        parent_record_id = params.get('parentRecordId', 'N/A')
+        logging.info(f"Calling GetMiblockRecords API for MiblockId: {miblock_id}, ParentRecordId: {parent_record_id}")
+        
+        response = requests.get(
+            api_url,
+            headers=headers,
+            params=params,
+            timeout=30
+        )
+        
+        logging.info(f"GetMiblockRecords API response status: {response.status_code}")
+        
+        # Raise exception for bad status codes
+        response.raise_for_status()
+        
+        # Parse and return JSON response
+        response_data = response.json()
+        record_count = len(response_data) if isinstance(response_data, list) else 1
+        logging.info(f"[SUCCESS] Successfully retrieved {record_count} MiBlock record(s) for MiblockId: {miblock_id}")
+        return response_data
+        
+    except requests.exceptions.HTTPError as http_err:
+        status_code = response.status_code if 'response' in locals() else 'N/A'
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"[ERROR] HTTP error in get_miblock_records: {http_err} (Status Code: {status_code})")
+        if status_code >= 500:
+            logging.error(f"[ERROR] Server error response: {response_text[:500]}")
+        return None
+    except requests.exceptions.ConnectionError as conn_err:
+        logging.error(f"[ERROR] Connection error in get_miblock_records: {conn_err}")
+        return None
+    except requests.exceptions.Timeout as timeout_err:
+        logging.error(f"[ERROR] Timeout error in get_miblock_records: {timeout_err}")
+        return None
+    except requests.exceptions.RequestException as req_err:
+        logging.error(f"[ERROR] Request error in get_miblock_records: {req_err}")
+        return None
+    except json.JSONDecodeError as json_err:
+        response_text = response.text if 'response' in locals() else 'No response'
+        logging.error(f"[ERROR] JSON decode error in get_miblock_records: {json_err}. Response: {response_text[:200]}")
+        return None
+    except Exception as e:
+        logging.error(f"[ERROR] Unexpected error in get_miblock_records: {e}")
+        return None
+
+

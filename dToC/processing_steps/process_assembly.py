@@ -12,9 +12,10 @@ import uuid # <-- Required for generating pageSectionGuid
 import zipfile # <-- Required for handling exported component files
 import html # <-- Required for HTML entity decoding
 import shutil # <-- Required for cloning component folders
+import traceback # <-- Required for detailed error logging
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
-from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,addUpdateRecordsToCMS_bulk,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName,update_miblock_record_asset
+from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,addUpdateRecordsToCMS_bulk,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName,update_miblock_record_asset,get_miblock_records
 # ================= CONFIG/UTILITY DEFINITIONS (BASED ON USER PATTERN) =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
@@ -574,6 +575,204 @@ def update_record_asset_if_needed(
         return False
 
 
+def fetch_and_update_cms_generated_subrecords(
+    parent_record_id: int,
+    component_id: int,
+    page_section_guid: str,
+    base_url: str,
+    headers: Dict[str, str],
+    component_records_map: Dict[int, Dict[str, Any]],
+    max_depth: int = 3,
+    current_depth: int = 0
+) -> None:
+    """
+    Recursively fetches CMS-generated sub-records and updates their images.
+    
+    Since CMS auto-generates sub-records when a parent is created, this function:
+    1. Calls get_miblock_records() API to fetch immediate children
+    2. For each child that has images, calls update_record_asset_if_needed()
+    3. Recursively processes grandchildren up to max_depth levels
+    
+    Args:
+        parent_record_id: The parent record ID whose children to fetch
+        component_id: The main component ID (used for logging)
+        page_section_guid: The unique page section GUID
+        base_url: Base URL for the API
+        headers: API headers with authorization
+        component_records_map: Map of ComponentId -> record data (from ComponentRecordsTree.json)
+                               Used to get has_image flag and RecordJsonString
+        max_depth: Maximum recursion depth (default 3)
+        current_depth: Current recursion level (starts at 0)
+    
+    Returns:
+        None
+    """
+    if current_depth >= max_depth:
+        logging.info(f"[SUBRECORD UPDATE] Reached max depth {max_depth}, stopping recursion")
+        return
+    
+    try:
+        # Find child component IDs from component_records_map
+        # Child components have ParentComponentId matching the parent's ComponentId
+        child_component_ids = []
+        for rec in component_records_map.values():
+            if isinstance(rec, dict):
+                parent_comp_id = rec.get("ParentComponentId")
+                child_comp_id = rec.get("ComponentId")
+                # Check if this is a child of the current parent component
+                if parent_comp_id == component_id and child_comp_id:
+                    if child_comp_id not in child_component_ids:
+                        child_component_ids.append(child_comp_id)
+        
+        logging.info(f"[SUBRECORD UPDATE] Found {len(child_component_ids)} child component(s) for parent component {component_id}: {child_component_ids}")
+        
+        # If no child components found in map, try with parent component ID first
+        if not child_component_ids:
+            child_component_ids = [component_id]
+            logging.info(f"[SUBRECORD UPDATE] No child components found in map, trying with parent component ID {component_id}")
+        
+        # Fetch sub-records for each child component
+        all_sub_records = []
+        for child_comp_id in child_component_ids:
+            params = {
+                "miblockId": child_comp_id,  # Use child component ID, not parent
+                "pageSectionGuid": page_section_guid,
+                "parentRecordId": parent_record_id,
+                "languageId": 0
+            }
+            
+            logging.info(f"[SUBRECORD UPDATE] Fetching CMS-generated sub-records for parent {parent_record_id} using child component {child_comp_id} (depth {current_depth})")
+            logging.info(f"[SUBRECORD UPDATE] API params: miblockId={params['miblockId']}, pageSectionGuid={params['pageSectionGuid']}, parentRecordId={params['parentRecordId']}")
+            append_debug_log("subrecord_fetch_request", {
+                "parent_record_id": parent_record_id,
+                "child_component_id": child_comp_id,
+                "params": params,
+                "depth": current_depth
+            })
+            
+            sub_records = get_miblock_records(base_url, headers, params)
+            
+            if sub_records:
+                all_sub_records.extend(sub_records)
+                logging.info(f"[SUBRECORD UPDATE] Found {len(sub_records)} sub-record(s) using child component {child_comp_id}")
+        
+        append_debug_log("subrecord_fetch_response", {
+            "parent_record_id": parent_record_id,
+            "sub_records_count": len(all_sub_records),
+            "sub_records": all_sub_records[:2] if all_sub_records else None  # Log first 2 for debugging
+        })
+        
+        if not all_sub_records:
+            logging.info(f"[SUBRECORD UPDATE] No sub-records found for parent {parent_record_id} after trying all child components")
+            return
+        
+        sub_records = all_sub_records
+        logging.info(f"[SUBRECORD UPDATE] Total {len(sub_records)} CMS-generated sub-record(s) found for parent {parent_record_id}")
+        
+        logging.info(f"[SUBRECORD UPDATE] Found {len(sub_records)} CMS-generated sub-record(s) for parent {parent_record_id}")
+        
+        # Process each sub-record
+        for idx, sub_record in enumerate(sub_records, 1):
+            try:
+                sub_record_id = sub_record.get("RecordId")
+                sub_miblock_id = sub_record.get("MiBlockId")  # This is the sub-component ID
+                sub_component_record_count = sub_record.get("SubComponentRecordCount", 0)
+                record_json_string = sub_record.get("RecordJsonString")
+                
+                if not sub_record_id or not sub_miblock_id:
+                    logging.warning(f"[SUBRECORD UPDATE] Sub-record missing RecordId or MiBlockId, skipping")
+                    continue
+                
+                logging.info(f"[SUBRECORD UPDATE] [{idx}/{len(sub_records)}] Processing sub-record {sub_record_id} (MiBlock: {sub_miblock_id})")
+                
+                # Check if this sub-record has images
+                # First, try to find source record by ComponentId (MiBlockId from CMS response)
+                source_record = component_records_map.get(sub_miblock_id)
+                
+                # If not found, search all records for matching ComponentId
+                if not source_record:
+                    for rec in component_records_map.values():
+                        if isinstance(rec, dict) and rec.get("ComponentId") == sub_miblock_id:
+                            source_record = rec
+                            break
+                
+                # Check if record has images - either from source record or parse RecordJsonString
+                has_image = False
+                if source_record:
+                    has_image = source_record.get("has_image", False)
+                    logging.info(f"[SUBRECORD UPDATE] Found source record for MiBlock {sub_miblock_id}, has_image={has_image}")
+                else:
+                    # If no source record found, check RecordJsonString directly for image pattern
+                    if record_json_string:
+                        try:
+                            record_json = json.loads(record_json_string) if isinstance(record_json_string, str) else record_json_string
+                            record_str = json.dumps(record_json) if not isinstance(record_json_string, str) else record_json_string
+                            has_image = '"ResourceID"' in record_str
+                            logging.info(f"[SUBRECORD UPDATE] No source record found, checking RecordJsonString directly, has_image={has_image}")
+                        except:
+                            pass
+                
+                if has_image:
+                    logging.info(f"[SUBRECORD UPDATE] Sub-record {sub_record_id} has images, updating assets...")
+                    
+                    # CRITICAL: Use source_record's RecordJsonString (has actual image data) 
+                    # instead of CMS response RecordJsonString (has null values for images)
+                    # The CMS-generated record has placeholder/null values, we need the original data
+                    source_record_json = source_record.get("RecordJsonString") if source_record else None
+                    
+                    if not source_record_json:
+                        logging.warning(f"[SUBRECORD UPDATE] No source RecordJsonString found for sub-record {sub_record_id}, cannot update image")
+                        continue
+                    
+                    logging.info(f"[SUBRECORD UPDATE] Using source RecordJsonString for sub-record {sub_record_id} (CMS response has null values)")
+                    
+                    # Create a temporary record dict for update_record_asset_if_needed
+                    temp_record = {
+                        "has_image": True,
+                        "RecordJsonString": source_record_json,  # Use source record data, not CMS response
+                        "ComponentId": sub_miblock_id
+                    }
+                    
+                    # Update the asset using the sub-component's MiBlockId
+                    success = update_record_asset_if_needed(
+                        record=temp_record,
+                        new_record_id=sub_record_id,
+                        component_id=sub_miblock_id,  # Use sub-component ID, not parent
+                        base_url=base_url,
+                        headers=headers
+                    )
+                    
+                    if success:
+                        logging.info(f"[SUBRECORD UPDATE] Successfully updated assets for sub-record {sub_record_id}")
+                    else:
+                        logging.warning(f"[SUBRECORD UPDATE] Failed to update assets for sub-record {sub_record_id}")
+                else:
+                    logging.info(f"[SUBRECORD UPDATE] Sub-record {sub_record_id} (MiBlock: {sub_miblock_id}) has no images, skipping asset update")
+                
+                # Recursively process grandchildren if this record has sub-components
+                if sub_component_record_count > 0:
+                    logging.info(f"[SUBRECORD UPDATE] Sub-record {sub_record_id} has {sub_component_record_count} child(ren), fetching recursively...")
+                    fetch_and_update_cms_generated_subrecords(
+                        parent_record_id=sub_record_id,
+                        component_id=component_id,  # Keep main component ID for logging
+                        page_section_guid=page_section_guid,
+                        base_url=base_url,
+                        headers=headers,
+                        component_records_map=component_records_map,
+                        max_depth=max_depth,
+                        current_depth=current_depth + 1
+                    )
+                
+            except Exception as e:
+                logging.error(f"[SUBRECORD UPDATE] Error processing sub-record: {e}")
+                logging.exception("Full traceback:")
+                continue
+        
+    except Exception as e:
+        logging.error(f"[SUBRECORD UPDATE] Error fetching sub-records for parent {parent_record_id}: {e}")
+        logging.exception("Full traceback:")
+
+
 # --- MODIFIED: add_records_for_page now contains the complex file processing logic ---
 def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str):
     """
@@ -741,11 +940,12 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
 
         createPayloadJson(site_id, miBlockId, page_name) #this is only to create ComponentHierarchy.json 
         createRecordsPayload(site_id, miBlockId, page_name) #this will fetch and create a single set of records for dummy data creates file ComponentRecordsTree.json
-        #this is to add records of all levels
+        
+        # Add records - parent only (CMS auto-generates sub-records)
         mainComp(save_folder,component_id,pageSectionGuid,base_url,headers,component_alias,vComponentId)
-        migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=1)
-        migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=2)
-        migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=3)
+        
+        # NOTE: Sub-record migration removed - CMS handles this automatically
+        # See REMOVED_FEATURES.md for restoration instructions if needed in future
 
         # 2. Use the component_alias (string) for HTML generation
         section_payload = generatecontentHtml(1, component_alias, pageSectionGuid)
@@ -1800,6 +2000,50 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                     # Update asset if record has images (after storing new_record_id)
                     if record.get("has_image", False):
                         update_record_asset_if_needed(record, main_component_new_id, component_id, base_url, headers)
+                    
+                    # Fetch and update CMS-generated sub-records (since CMS auto-generates them)
+                    logging.info(f"[MAINCOMP] Checking for CMS-generated sub-records for parent {main_component_new_id} (component {component_id})...")
+                    append_debug_log("subrecord_update_start", {
+                        "parent_record_id": main_component_new_id,
+                        "component_id": component_id,
+                        "page_section_guid": pageSectionGuid
+                    })
+                    try:
+                        # Build component records map for has_image lookup
+                        # Map by ComponentId for quick lookup, but also store all records
+                        component_records_map = {}
+                        for rec in records:
+                            if isinstance(rec, dict) and rec.get("ComponentId"):
+                                comp_id = rec.get("ComponentId")
+                                # Store by ComponentId (this is the MiBlockId)
+                                component_records_map[comp_id] = rec
+                        
+                        logging.info(f"[MAINCOMP] Built component_records_map with {len(component_records_map)} entries: {list(component_records_map.keys())}")
+                        
+                        # Fetch and update sub-records recursively
+                        fetch_and_update_cms_generated_subrecords(
+                            parent_record_id=main_component_new_id,
+                            component_id=component_id,
+                            page_section_guid=pageSectionGuid,
+                            base_url=base_url,
+                            headers=headers,
+                            component_records_map=component_records_map,
+                            max_depth=3,
+                            current_depth=0
+                        )
+                        append_debug_log("subrecord_update_complete", {
+                            "parent_record_id": main_component_new_id,
+                            "component_id": component_id
+                        })
+                    except Exception as e:
+                        logging.error(f"[MAINCOMP] Error processing CMS-generated sub-records: {e}")
+                        logging.exception("Full traceback:")
+                        append_debug_log("subrecord_update_error", {
+                            "parent_record_id": main_component_new_id,
+                            "component_id": component_id,
+                            "error": str(e),
+                            "traceback": traceback.format_exc()
+                        })
                     
                     break 
                 else:

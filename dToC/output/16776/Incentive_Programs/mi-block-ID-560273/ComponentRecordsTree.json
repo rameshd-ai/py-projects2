@@ -45,7 +45,7 @@
             "has_image": false,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "new_record_id": 3383543,
+            "new_record_id": 3384218,
             "component_alias": "c8c43c66-24dc-4711-88f7-54984c3b6075",
             "vComponentId": 21006061
         },
@@ -93,9 +93,7 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3383543,
-            "isMigrated": true,
-            "new_record_id": 3383550
+            "parent_new_record_id": 3384218
         },
         {
             "Id": 3183033,
@@ -141,9 +139,7 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3383543,
-            "isMigrated": true,
-            "new_record_id": 3383544
+            "parent_new_record_id": 3384218
         },
         {
             "Id": 3183034,
@@ -189,9 +185,7 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3383543,
-            "isMigrated": true,
-            "new_record_id": 3383550
+            "parent_new_record_id": 3384218
         },
         {
             "Id": 3183035,
@@ -237,9 +231,7 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3383543,
-            "isMigrated": true,
-            "new_record_id": 3383547
+            "parent_new_record_id": 3384218
         },
         {
             "Id": 3183036,
@@ -285,9 +277,7 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3383543,
-            "isMigrated": true,
-            "new_record_id": 3383546
+            "parent_new_record_id": 3384218
         },
         {
             "Id": 3183037,
@@ -333,9 +323,7 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3383543,
-            "isMigrated": true,
-            "new_record_id": 3383545
+            "parent_new_record_id": 3384218
         },
         {
             "Id": 3183038,
@@ -381,9 +369,7 @@
             "level": 1,
             "has_image": false,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3383543,
-            "isMigrated": true,
-            "new_record_id": 3383549
+            "parent_new_record_id": 3384218
         }
     ]
 }
