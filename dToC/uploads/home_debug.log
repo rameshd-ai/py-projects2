@@ -1,12 +1,12 @@
-{"section": "config_loaded", "data": {"file_prefix": "b006d43d-1492-499a-bd62-e50b20059d97", "api_base_url_present": true, "token_present": true, "site_id": "16776"}, "timestamp": "2026-01-09 21:51:04"}
-{"section": "home_json_found", "data": {"file_prefix": "b006d43d-1492-499a-bd62-e50b20059d97", "home_simplified_file": "D:\\GItHIbProjects\\py-projects2\\dToC\\processing_steps\\..\\uploads\\b006d43d-1492-499a-bd62-e50b20059d97_home_simplified.json"}, "timestamp": "2026-01-09 21:51:04"}
-{"section": "home_page_start", "data": {"page_name": "Home page", "components": ["Meta Title", "Meta Description", "H1"]}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "category_skipped", "data": {"page_name": "Home page", "category_id": 0}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "component_unavailable", "data": {"page_name": "Home page", "component": "Meta Title"}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "component_section_empty", "data": {"page_name": "Home page", "component": "Meta Title"}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "component_unavailable", "data": {"page_name": "Home page", "component": "Meta Description"}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "component_section_empty", "data": {"page_name": "Home page", "component": "Meta Description"}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "component_unavailable", "data": {"page_name": "Home page", "component": "H1"}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "component_section_empty", "data": {"page_name": "Home page", "component": "H1"}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "publish_queue", "data": {"queued": 0}, "timestamp": "2026-01-09 21:51:11"}
-{"section": "home_step_complete", "data": {"file_prefix": "b006d43d-1492-499a-bd62-e50b20059d97", "elapsed_seconds": 0.019884586334228516, "published_count": 0}, "timestamp": "2026-01-09 21:51:11"}
+{"section": "config_loaded", "data": {"file_prefix": "796dfd1e-1efb-4887-903f-496fe458368c", "api_base_url_present": true, "token_present": true, "site_id": "16776"}, "timestamp": "2026-01-12 12:33:54"}
+{"section": "home_json_found", "data": {"file_prefix": "796dfd1e-1efb-4887-903f-496fe458368c", "home_simplified_file": "D:\\GItHIbProjects\\py-projects2\\dToC\\processing_steps\\..\\uploads\\796dfd1e-1efb-4887-903f-496fe458368c_home_simplified.json"}, "timestamp": "2026-01-12 12:33:54"}
+{"section": "home_page_start", "data": {"page_name": "Home page", "components": ["Meta Title", "Meta Description", "H1"]}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "category_skipped", "data": {"page_name": "Home page", "category_id": 0}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "component_unavailable", "data": {"page_name": "Home page", "component": "Meta Title"}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "component_section_empty", "data": {"page_name": "Home page", "component": "Meta Title"}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "component_unavailable", "data": {"page_name": "Home page", "component": "Meta Description"}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "component_section_empty", "data": {"page_name": "Home page", "component": "Meta Description"}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "component_unavailable", "data": {"page_name": "Home page", "component": "H1"}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "component_section_empty", "data": {"page_name": "Home page", "component": "H1"}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "publish_queue", "data": {"queued": 0}, "timestamp": "2026-01-12 12:34:00"}
+{"section": "home_step_complete", "data": {"file_prefix": "796dfd1e-1efb-4887-903f-496fe458368c", "elapsed_seconds": 0.03332018852233887, "published_count": 0}, "timestamp": "2026-01-12 12:34:00"}

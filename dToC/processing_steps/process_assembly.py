@@ -11,6 +11,7 @@ import requests
 import uuid # <-- Required for generating pageSectionGuid
 import zipfile # <-- Required for handling exported component files
 import html # <-- Required for HTML entity decoding
+import shutil # <-- Required for cloning component folders
 from typing import Dict, Any, List, Union, Tuple, Optional
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
 from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,addUpdateRecordsToCMS_bulk,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName,update_miblock_record_asset
@@ -96,6 +97,41 @@ PAGES_TO_PUBLISH: List[Dict[str, Any]] = []
 
 # --- 5. DEBUG LOG FILE (for deep investigation) ---
 DEBUG_LOG_FILE = os.path.join(UPLOAD_FOLDER, "assembly_debug.log")
+
+def sanitize_page_name_for_filesystem(page_name: str) -> str:
+    """
+    Sanitizes a page name to be safe for use as a directory name.
+    Removes or replaces characters that are not allowed in filenames/directories.
+    
+    Args:
+        page_name: The original page name (e.g., "What we do", "About Us & Services")
+    
+    Returns:
+        A sanitized version suitable for filesystem use (e.g., "What_we_do", "About_Us_Services")
+    """
+    # Replace spaces and common separators with underscores
+    sanitized = page_name.replace(" ", "_").replace("/", "_").replace("\\", "_")
+    
+    # Remove or replace other problematic characters
+    # Windows/Linux invalid chars: < > : " | ? * 
+    invalid_chars = '<>:"|?*'
+    for char in invalid_chars:
+        sanitized = sanitized.replace(char, "")
+    
+    # Replace & and other special chars with safe alternatives
+    sanitized = sanitized.replace("&", "and")
+    sanitized = sanitized.replace("'", "")
+    sanitized = sanitized.replace(",", "")
+    sanitized = sanitized.replace(".", "")
+    
+    # Remove consecutive underscores
+    while "__" in sanitized:
+        sanitized = sanitized.replace("__", "_")
+    
+    # Remove leading/trailing underscores
+    sanitized = sanitized.strip("_")
+    
+    return sanitized
 
 def append_debug_log(section: str, data: Dict[str, Any]) -> None:
     """
@@ -580,8 +616,9 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
         
         miBlockId = component_id_unpacked
         mi_block_folder = f"mi-block-ID-{miBlockId}"
-        # Output directory is relative to the current working directory, not UPLOAD_FOLDER
-        output_dir = os.path.join("output", str(site_id)) 
+        # Output directory is page-specific: output/{site_id}/{page_name}/mi-block-ID-{component_id}
+        sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
+        output_dir = os.path.join("output", str(site_id), sanitized_page_name) 
         save_folder = os.path.join(output_dir, mi_block_folder)
         os.makedirs(save_folder, exist_ok=True)
         
@@ -702,8 +739,8 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
             except Exception as e:
                 logging.error(f"[ERROR] Error adding levels to records: {e}")
 
-        createPayloadJson(site_id,miBlockId) #this is only to create ComponentHierarchy.json 
-        createRecordsPayload(site_id,miBlockId) #this will fetch and create a single set of records for dummy data creates file ComponentRecordsTree.json
+        createPayloadJson(site_id, miBlockId, page_name) #this is only to create ComponentHierarchy.json 
+        createRecordsPayload(site_id, miBlockId, page_name) #this will fetch and create a single set of records for dummy data creates file ComponentRecordsTree.json
         #this is to add records of all levels
         mainComp(save_folder,component_id,pageSectionGuid,base_url,headers,component_alias,vComponentId)
         migrate_next_level_components(save_folder, pageSectionGuid, base_url, headers, level=1)
@@ -868,8 +905,13 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
     # --- PHASE 1: COLLECT BODY COMPONENT MAPPING DATA ---
     all_mappings: List[Dict[str, Any]] = []
     
-    # Construct the base path to search: output/site_id/mi-block-ID-*
-    search_path = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
+    # Construct the base path to search: output/site_id/{page_name}/mi-block-ID-* or output/site_id/*/mi-block-ID-*
+    if page_name:
+        sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
+        search_path = os.path.join("output", str(site_id), sanitized_page_name, "mi-block-ID-*", "ComponentRecordsTree.json")
+    else:
+        # Search across all pages
+        search_path = os.path.join("output", str(site_id), "*", "mi-block-ID-*", "ComponentRecordsTree.json")
     
     # print(f"[INFO] Searching for migration files in: {os.path.join('output', str(site_id), 'mi-block-ID-*')}")
     
@@ -1041,7 +1083,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
 
 
 
-def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any], home_debug_log_callback=None, mapping_payload: Optional[List[Dict[str, Any]]] = None):
+def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: int, header_footer_details: Dict[str, Any], home_debug_log_callback=None, mapping_payload: Optional[List[Dict[str, Any]]] = None, page_name: Optional[str] = None):
     """
     Constructs the necessary payload to publish all migrated components (MiBlocks, 
     Headers, Footers) and the page itself, then calls the publishing API.
@@ -1049,6 +1091,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
     Args:
         home_debug_log_callback: Optional callback function to log payload to home_debug.log
         mapping_payload: Optional mapping payload from updatePageMapping to check contentEntityType
+        page_name: Optional page name for page-specific folder structure
     """
     
     # --- PHASE 0: BUILD MAPPING LOOKUP FROM MAPPING PAYLOAD ---
@@ -1069,7 +1112,11 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
     # Create a lookup: sectionGuid -> (componentId, should_be_miblock)
     # This helps us determine if components should be MIBLOCK even if they're in header_footer_details
     section_guid_to_component: Dict[str, Tuple[str, bool]] = {}
-    search_path_mapping = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
+    if page_name:
+        sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
+        search_path_mapping = os.path.join("output", str(site_id), sanitized_page_name, "mi-block-ID-*", "ComponentRecordsTree.json")
+    else:
+        search_path_mapping = os.path.join("output", str(site_id), "*", "mi-block-ID-*", "ComponentRecordsTree.json")
     for file_path in glob.glob(search_path_mapping):
         try:
             with open(file_path, 'r') as f:
@@ -1094,8 +1141,12 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
     # Track which section GUIDs we've already added as MIBLOCK
     added_section_guids: set = set()
     
-    # Construct the base path to search: output/site_id/mi-block-ID-*
-    search_path = os.path.join("output", str(site_id), "mi-block-ID-*", "ComponentRecordsTree.json")
+    # Construct the base path to search based on page_name
+    if page_name:
+        sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
+        search_path = os.path.join("output", str(site_id), sanitized_page_name, "mi-block-ID-*", "ComponentRecordsTree.json")
+    else:
+        search_path = os.path.join("output", str(site_id), "*", "mi-block-ID-*", "ComponentRecordsTree.json")
     
     # Use glob to find all matching ComponentRecordsTree.json files
     for file_path in glob.glob(search_path):
@@ -1796,16 +1847,17 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
 
 
 
-def createPayloadJson(site_id, component_id):
+def createPayloadJson(site_id, component_id, page_name: Optional[str] = None):
     """
     Reads the MiBlockComponentConfig.json for a given component_id,
     determines the component hierarchy based on ParentId, and creates 
     a new JSON file with component ID, type (level), and name in the
-    'output/{site_id}/mi-block-ID-{component_id}' folder.
+    'output/{site_id}/{page_name}/mi-block-ID-{component_id}' folder.
 
     Args:
         site_id (int/str): The ID of the site, used as part of the folder path.
         component_id (int/str): The ID of the component (used to construct the folder path).
+        page_name (str, optional): The page name for page-specific folder structure.
         
     Returns:
         bool: True if the operation was successful, False otherwise.
@@ -1813,8 +1865,12 @@ def createPayloadJson(site_id, component_id):
     component_id_str = str(component_id)
     site_id_str = str(site_id)
     
-    # Construct the folder path: output/site_id/mi-block-ID-component_id
-    folder_path = os.path.join("output", site_id_str, f"mi-block-ID-{component_id_str}")
+    # Construct the folder path based on whether page_name is provided
+    if page_name:
+        sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
+        folder_path = os.path.join("output", site_id_str, sanitized_page_name, f"mi-block-ID-{component_id_str}")
+    else:
+        folder_path = os.path.join("output", site_id_str, f"mi-block-ID-{component_id_str}")
     
     input_file_path = os.path.join(folder_path, "MiBlockComponentConfig.json")
     output_file_name = "ComponentHierarchy.json"
@@ -1939,16 +1995,26 @@ def _read_json_file(file_path: str) -> Optional[Dict[str, Any]]:
 
 
 
-def createRecordsPayload(site_id, component_id):
+def createRecordsPayload(site_id, component_id, page_name: Optional[str] = None):
     """
     Finds the root record for the given component_id, recursively collects
     all descendant records, and adds the 'recordType' based on ComponentHierarchy.json.
+    Preserves migration status and has_image from existing ComponentRecordsTree.json.
+    
+    Args:
+        site_id: The site ID
+        component_id: The component ID
+        page_name: Optional page name for page-specific folder structure
     """
     component_id_int = int(component_id)
     site_id_str = str(site_id)
     
-    # 1. Define Paths
-    folder_path = os.path.join("output", site_id_str, f"mi-block-ID-{str(component_id)}")
+    # Determine folder path based on whether page_name is provided
+    if page_name:
+        sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
+        folder_path = os.path.join("output", site_id_str, sanitized_page_name, f"mi-block-ID-{str(component_id)}")
+    else:
+        folder_path = os.path.join("output", site_id_str, f"mi-block-ID-{str(component_id)}")
     
     # Input files
     records_input_path = os.path.join(folder_path, "MiBlockComponentRecords.json")
@@ -4877,37 +4943,38 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
 
 # ================= Pre-download All Components Function =================
 
-def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]]) -> List[Tuple[int, str, str]]:
+def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]]) -> List[Tuple[int, str, str, str]]:
     """
-    Collects all unique component IDs that will be needed during assembly.
-    Returns a list of tuples: (componentId, component_name, cms_component_name)
+    Collects all component IDs and their associated pages that will be needed during assembly.
+    Returns a list of tuples: (componentId, component_name, cms_component_name, page_name)
+    
+    Note: The same component can appear multiple times if used on different pages.
     """
-    component_ids = set()  # Use set to avoid duplicates
     component_info_list = []
     
-    def traverse_pages(page_node: Dict[str, Any]):
-        """Recursively traverse all pages to collect component names."""
+    def traverse_pages(page_node: Dict[str, Any], page_name: str):
+        """Recursively traverse all pages to collect component names with their page context."""
         components = page_node.get('components', [])
         for component_name in components:
             # Check if component is available in cache
             api_result = check_component_availability(component_name, component_cache)
             if api_result:
                 vComponentId, alias, componentId, cms_component_name = api_result
-                # Add to set if not already present
-                if componentId not in component_ids:
-                    component_ids.add(componentId)
-                    component_info_list.append((componentId, component_name, cms_component_name))
+                # Add each component-page pair (allow duplicates across pages)
+                component_info_list.append((componentId, component_name, cms_component_name, page_name))
         
         # Recursively process sub_pages
         for sub_page in page_node.get('sub_pages', []):
-            traverse_pages(sub_page)
+            sub_page_name = sub_page.get('page_name', 'Unnamed_SubPage')
+            traverse_pages(sub_page, sub_page_name)
     
     # Traverse all top-level pages
     pages = processed_json.get('pages', [])
     for page in pages:
-        traverse_pages(page)
+        page_name = page.get('page_name', 'Unnamed_Page')
+        traverse_pages(page, page_name)
     
-    logging.info(f"Collected {len(component_info_list)} unique components to pre-download")
+    logging.info(f"Collected {len(component_info_list)} component-page pairs to pre-download")
     return component_info_list
 
 
@@ -4917,78 +4984,104 @@ def pre_download_all_components(
     api_base_url: str,
     site_id: int,
     api_headers: Dict[str, str]
-) -> Dict[int, bool]:
+) -> Dict[Tuple[int, str], bool]:
     """
-    Pre-downloads all components that will be needed during assembly.
-    Downloads all components, then unzips all, then converts all TXT to JSON.
+    Pre-downloads all components that will be needed during assembly to page-specific folders.
+    Downloads unique components once, then clones them to page-specific folders for reuse.
+    Then unzips all, then converts all TXT to JSON, adds levels, adds has_image, and verifies config.
     
     Returns:
-        Dict mapping componentId -> success status (True/False)
+        Dict mapping (componentId, page_name) -> success status (True/False)
     """
     logging.info("\n========================================================")
-    logging.info("PRE-DOWNLOAD: Collecting all component IDs...")
+    logging.info("PRE-DOWNLOAD: Collecting all component-page pairs...")
     logging.info("========================================================")
     
-    # Step 1: Collect all component IDs
+    # Step 1: Collect all component-page pairs (includes duplicates for same component on different pages)
     component_info_list = collect_all_component_ids(processed_json, component_cache)
     
     if not component_info_list:
         logging.info("No components found to pre-download.")
         return {}
     
-    logging.info(f"\nFound {len(component_info_list)} unique components to download:")
-    for comp_id, comp_name, cms_name in component_info_list:
-        logging.info(f"  - {comp_name} (ID: {comp_id}, CMS: {cms_name})")
+    logging.info(f"\nFound {len(component_info_list)} component-page pairs to process:")
+    for comp_id, comp_name, cms_name, page_name in component_info_list:
+        logging.info(f"  - {comp_name} (ID: {comp_id}, Page: {page_name})")
     
-    # Step 2: Download all components (override if already exists)
+    # Step 2: Download all components to page-specific folders (with cloning optimization)
     logging.info("\n========================================================")
-    logging.info("PRE-DOWNLOAD: Phase 1 - Downloading all components...")
+    logging.info("PRE-DOWNLOAD: Phase 1 - Downloading/Cloning components to page folders...")
     logging.info("========================================================")
     
-    download_results = {}  # componentId -> (success, save_folder)
+    download_results = {}  # (componentId, page_name) -> (success, save_folder)
+    downloaded_components = {}  # componentId -> first_save_folder (for cloning)
     output_dir = os.path.join("output", str(site_id))
     
-    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
+    for idx, (component_id, component_name, cms_component_name, page_name) in enumerate(component_info_list, 1):
+        sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
         mi_block_folder = f"mi-block-ID-{component_id}"
-        save_folder = os.path.join(output_dir, mi_block_folder)
-        os.makedirs(save_folder, exist_ok=True)
+        save_folder = os.path.join(output_dir, sanitized_page_name, mi_block_folder)
         
-        try:
-            logging.info(f"[{idx}/{len(component_info_list)}] Downloading component {component_id} ({component_name})...")
-            response_content, content_disposition = export_mi_block_component(
-                api_base_url, component_id, site_id, api_headers
-            )
+        # Check if we've already downloaded this component for another page
+        if component_id in downloaded_components:
+            # Clone from the first downloaded location
+            source_folder = downloaded_components[component_id]
+            try:
+                logging.info(f"[{idx}/{len(component_info_list)}] Cloning component {component_id} ({component_name}) from existing download to page '{page_name}'...")
+                
+                # Remove destination if it exists
+                if os.path.exists(save_folder):
+                    shutil.rmtree(save_folder)
+                
+                # Clone the folder
+                shutil.copytree(source_folder, save_folder)
+                
+                download_results[(component_id, page_name)] = (True, save_folder)
+                logging.info(f"  [SUCCESS] Cloned {component_id} to {save_folder}")
+            except Exception as e:
+                download_results[(component_id, page_name)] = (False, save_folder)
+                logging.error(f"  [ERROR] Failed to clone component {component_id} to page '{page_name}': {e}")
+        else:
+            # First time seeing this component - download it
+            os.makedirs(save_folder, exist_ok=True)
             
-            if response_content:
-                os.makedirs(save_folder, exist_ok=True)
-                
-                filename = (
-                    content_disposition.split('filename=')[1].strip('"')
-                    if content_disposition and 'filename=' in content_disposition
-                    else f"component_{component_id}.zip"
+            try:
+                logging.info(f"[{idx}/{len(component_info_list)}] Downloading component {component_id} ({component_name}) for page '{page_name}'...")
+                response_content, content_disposition = export_mi_block_component(
+                    api_base_url, component_id, site_id, api_headers
                 )
-                file_path = os.path.join(save_folder, filename)
                 
-                # Save zip file
-                with open(file_path, "wb") as file:
-                    file.write(response_content)
-                
-                download_results[component_id] = (True, save_folder)
-                logging.info(f"  [SUCCESS] Downloaded {component_id} ({len(response_content)} bytes)")
-            else:
-                download_results[component_id] = (False, save_folder)
-                logging.warning(f"  [WARNING] No content returned for component {component_id}")
-        except Exception as e:
-            download_results[component_id] = (False, save_folder)
-            logging.error(f"  [ERROR] Failed to download component {component_id}: {e}")
+                if response_content:
+                    filename = (
+                        content_disposition.split('filename=')[1].strip('"')
+                        if content_disposition and 'filename=' in content_disposition
+                        else f"component_{component_id}.zip"
+                    )
+                    file_path = os.path.join(save_folder, filename)
+                    
+                    # Save zip file
+                    with open(file_path, "wb") as file:
+                        file.write(response_content)
+                    
+                    # Track this as the first download location for potential cloning
+                    downloaded_components[component_id] = save_folder
+                    
+                    download_results[(component_id, page_name)] = (True, save_folder)
+                    logging.info(f"  [SUCCESS] Downloaded {component_id} ({len(response_content)} bytes)")
+                else:
+                    download_results[(component_id, page_name)] = (False, save_folder)
+                    logging.warning(f"  [WARNING] No content returned for component {component_id}")
+            except Exception as e:
+                download_results[(component_id, page_name)] = (False, save_folder)
+                logging.error(f"  [ERROR] Failed to download component {component_id}: {e}")
     
-    # Step 3: Unzip all downloaded components
+    # Step 3: Unzip all downloaded/cloned components
     logging.info("\n========================================================")
     logging.info("PRE-DOWNLOAD: Phase 2 - Unzipping all components...")
     logging.info("========================================================")
     
-    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
-        success, save_folder = download_results.get(component_id, (False, None))
+    for idx, (component_id, component_name, cms_component_name, page_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get((component_id, page_name), (False, None))
         if not success or not save_folder:
             continue
         
@@ -4999,7 +5092,7 @@ def pre_download_all_components(
             zip_path = os.path.join(save_folder, zip_file)
             try:
                 if zipfile.is_zipfile(zip_path):
-                    logging.info(f"[{idx}/{len(component_info_list)}] Unzipping {component_id} ({component_name})...")
+                    logging.info(f"[{idx}/{len(component_info_list)}] Unzipping {component_id} ({component_name}) for page '{page_name}'...")
                     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                         zip_ref.extractall(save_folder)
                     os.remove(zip_path)
@@ -5007,7 +5100,7 @@ def pre_download_all_components(
                 else:
                     logging.warning(f"  [WARNING] {zip_file} is not a valid zip file")
             except Exception as e:
-                logging.error(f"  [ERROR] Failed to unzip {component_id}: {e}")
+                logging.error(f"  [ERROR] Failed to unzip {component_id} for page '{page_name}': {e}")
     
     # Give OS time to finish file operations
     time.sleep(2)
@@ -5018,8 +5111,8 @@ def pre_download_all_components(
     logging.info("========================================================")
     
     total_converted = 0
-    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
-        success, save_folder = download_results.get(component_id, (False, None))
+    for idx, (component_id, component_name, cms_component_name, page_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get((component_id, page_name), (False, None))
         if not success or not save_folder or not os.path.exists(save_folder):
             continue
         
@@ -5027,7 +5120,7 @@ def pre_download_all_components(
         if not txt_files:
             continue
         
-        logging.info(f"[{idx}/{len(component_info_list)}] Converting TXT files for {component_id} ({component_name})...")
+        logging.info(f"[{idx}/{len(component_info_list)}] Converting TXT files for {component_id} ({component_name}) on page '{page_name}'...")
         converted_count = 0
         
         for txt_file in txt_files:
@@ -5046,7 +5139,7 @@ def pre_download_all_components(
                 converted_count += 1
                 total_converted += 1
             except Exception as e:
-                logging.error(f"  [ERROR] Failed to convert {txt_file} for {component_id}: {e}")
+                logging.error(f"  [ERROR] Failed to convert {txt_file} for {component_id} on page '{page_name}': {e}")
         
         if converted_count > 0:
             logging.info(f"  [SUCCESS] Converted {converted_count} file(s) for {component_id}")
@@ -5058,8 +5151,8 @@ def pre_download_all_components(
     logging.info("PRE-DOWNLOAD: Phase 4 - Adding level fields to records...")
     logging.info("========================================================")
     
-    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
-        success, save_folder = download_results.get(component_id, (False, None))
+    for idx, (component_id, component_name, cms_component_name, page_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get((component_id, page_name), (False, None))
         if not success or not save_folder:
             continue
         
@@ -5076,8 +5169,8 @@ def pre_download_all_components(
     logging.info("PRE-DOWNLOAD: Phase 5 - Adding has_image fields to records...")
     logging.info("========================================================")
     
-    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
-        success, save_folder = download_results.get(component_id, (False, None))
+    for idx, (component_id, component_name, cms_component_name, page_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get((component_id, page_name), (False, None))
         if not success or not save_folder:
             continue
         
@@ -5085,17 +5178,17 @@ def pre_download_all_components(
         if os.path.exists(records_file_path):
             try:
                 add_has_image_to_records(records_file_path)
-                logging.info(f"[{idx}/{len(component_info_list)}] [SUCCESS] Added has_image fields for {component_id}")
+                logging.info(f"[{idx}/{len(component_info_list)}] [SUCCESS] Added has_image fields for {component_id} on page '{page_name}'")
             except Exception as e:
-                logging.error(f"[{idx}/{len(component_info_list)}] [ERROR] Failed to add has_image for {component_id}: {e}")
+                logging.error(f"[{idx}/{len(component_info_list)}] [ERROR] Failed to add has_image for {component_id} on page '{page_name}': {e}")
     
     # Step 7: Verify config files are accessible (quick check, no polling needed after unzip)
     logging.info("\n========================================================")
     logging.info("PRE-DOWNLOAD: Phase 6 - Verifying config files are accessible...")
     logging.info("========================================================")
     
-    for idx, (component_id, component_name, cms_component_name) in enumerate(component_info_list, 1):
-        success, save_folder = download_results.get(component_id, (False, None))
+    for idx, (component_id, component_name, cms_component_name, page_name) in enumerate(component_info_list, 1):
+        success, save_folder = download_results.get((component_id, page_name), (False, None))
         if not success or not save_folder:
             continue
         
@@ -5113,8 +5206,8 @@ def pre_download_all_components(
         else:
             logging.warning(f"[{idx}/{len(component_info_list)}] [WARNING] Config file not found for {component_id}")
     
-    # Return success status for each component
-    result_status = {comp_id: success for comp_id, (success, _) in download_results.items()}
+    # Return success status for each (component_id, page_name) pair
+    result_status = {(comp_id, page_name): success for (comp_id, page_name), (success, _) in download_results.items()}
     
     logging.info("\n========================================================")
     logging.info(f"PRE-DOWNLOAD: Complete! {sum(1 for s in result_status.values() if s)}/{len(result_status)} components ready")

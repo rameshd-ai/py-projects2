@@ -24,6 +24,7 @@ from processing_steps.process_assembly import (
     add_records_for_page,
     createPayloadJson,
     createRecordsPayload,
+    sanitize_page_name_for_filesystem,
 )
 import zipfile
 
@@ -119,10 +120,11 @@ def check_component_availability_home(
     return None
 
 
-def _get_home_component_folder(site_id: int, component_id: int) -> str:
-    """Returns the output folder path for a component, identical to inner pages."""
+def _get_home_component_folder(site_id: int, component_id: int, page_name: str = "Home") -> str:
+    """Returns the output folder path for a component with page-specific folder structure."""
     mi_block_folder = f"mi-block-ID-{component_id}"
-    output_dir = os.path.join("output", str(site_id))
+    sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
+    output_dir = os.path.join("output", str(site_id), sanitized_page_name)
     save_folder = os.path.join(output_dir, mi_block_folder)
     os.makedirs(save_folder, exist_ok=True)
     return save_folder
@@ -134,6 +136,7 @@ def pre_download_home_components(
     api_base_url: str,
     site_id: int,
     api_headers: Dict[str, str],
+    page_name: str = "Home",
 ) -> None:
     """
     Pre-download all home components first, then unzip all, then convert all txt->json.
@@ -141,6 +144,9 @@ def pre_download_home_components(
       1) Download all zips
       2) Unzip all
       3) Convert all TXT to JSON
+    
+    Args:
+        page_name: The page name for folder structure (default: "Home")
     """
     # Resolve components to ids/aliases
     resolved: List[Tuple[str, int, int, str]] = []
@@ -154,7 +160,7 @@ def pre_download_home_components(
 
     # Phase 1: Download all
     for comp_name, comp_id, vId, alias in resolved:
-        folder = _get_home_component_folder(site_id, comp_id)
+        folder = _get_home_component_folder(site_id, comp_id, page_name)
         try:
             logging.info(f"[HOME][PRE-DOWNLOAD] Downloading component {comp_name} (ID {comp_id})")
             response_content, content_disposition = export_mi_block_component(api_base_url, comp_id, site_id, api_headers)
@@ -181,7 +187,7 @@ def pre_download_home_components(
 
     # Phase 2: Unzip all
     for comp_name, comp_id, _, _ in resolved:
-        folder = _get_home_component_folder(site_id, comp_id)
+        folder = _get_home_component_folder(site_id, comp_id, page_name)
         for fname in os.listdir(folder):
             if fname.lower().endswith(".zip"):
                 zip_path = os.path.join(folder, fname)
@@ -206,7 +212,7 @@ def pre_download_home_components(
 
     # Phase 3: Convert all TXT to JSON
     for comp_name, comp_id, _, _ in resolved:
-        folder = _get_home_component_folder(site_id, comp_id)
+        folder = _get_home_component_folder(site_id, comp_id, page_name)
         txt_count = 0
         converted = 0
         for extracted_file in os.listdir(folder):
@@ -255,13 +261,17 @@ def ensure_home_component_files(
     api_base_url: str,
     site_id: int,
     api_headers: Dict[str, str],
+    page_name: str = "Home",
 ) -> bool:
     """
     Per-component safeguard: make sure MiBlockComponentConfig.json and
     MiBlockComponentRecords.json exist for this component. If missing,
     attempt download->unzip->txt->json conversion once.
+    
+    Args:
+        page_name: The page name for folder structure (default: "Home")
     """
-    folder = _get_home_component_folder(site_id, comp_id)
+    folder = _get_home_component_folder(site_id, comp_id, page_name)
     config_path = os.path.join(folder, "MiBlockComponentConfig.json")
     records_path = os.path.join(folder, "MiBlockComponentRecords.json")
 
@@ -529,7 +539,7 @@ def publish_queued_home_pages(base_url: str, headers: Dict[str, str], site_id: i
             # Pass home_debug_log_callback to also log to home_debug.log
             # Pass mapping_payload to check contentEntityType for correct MIBLOCK vs COMPONENT classification
             from processing_steps.process_assembly import publishPage
-            publishPage(base_url, headers, page_id, site_id, header_footer_details, home_debug_log_callback=append_home_debug_log, mapping_payload=mapping_payload)
+            publishPage(base_url, headers, page_id, site_id, header_footer_details, home_debug_log_callback=append_home_debug_log, mapping_payload=mapping_payload, page_name=page_name)
             success_count += 1
             append_home_debug_log(
                 "publish_success",
@@ -614,7 +624,7 @@ def _process_home_page_components(
     page_component_names: List[str] = page_data.get('components', [])
     
     # Pre-download/unzip/convert all home components in one batch (3-phase)
-    pre_download_home_components(components, component_cache, api_base_url, site_id, api_headers)
+    pre_download_home_components(components, component_cache, api_base_url, site_id, api_headers, page_name)
 
     # Process all components
     for component_name in components:
@@ -646,7 +656,7 @@ def _process_home_page_components(
                 )
 
                 # Ensure required files exist before processing
-                files_ok = ensure_home_component_files(component_name, componentId, api_base_url, site_id, api_headers)
+                files_ok = ensure_home_component_files(component_name, componentId, api_base_url, site_id, api_headers, page_name)
                 append_home_debug_log(
                     "component_files_ready",
                     {
