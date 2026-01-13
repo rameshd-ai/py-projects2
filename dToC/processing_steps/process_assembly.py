@@ -458,6 +458,43 @@ def update_record_asset_if_needed(
         return True  # No image, nothing to update
     
     try:
+        DEFAULT_PLACEHOLDER_URL = "https://assets.milestoneinternet.com/connect-dmc/site-images/placeholder.png"
+        # Derive an asset base prefix from the placeholder (e.g., https://assets.milestoneinternet.com/connect-dmc/)
+        ASSET_BASE_PREFIX = DEFAULT_PLACEHOLDER_URL.split("site-images")[0]
+
+        def _normalize_asset_url(url: Optional[str]) -> Optional[str]:
+            if not url or not isinstance(url, str):
+                return None
+            cleaned_url = url.strip()
+            lowered = cleaned_url.lower()
+
+            def _build_asset_path(relative_path: str) -> Optional[str]:
+                if not ASSET_BASE_PREFIX:
+                    return None
+                relative = relative_path.lstrip("/")
+                return f"{ASSET_BASE_PREFIX}{relative}"
+
+            # If CMS leaves placeholder tokens, convert them into absolute URLs using the site base URL
+            if lowered.startswith("%%strpath%%"):
+                relative_path = cleaned_url.replace("%%strpath%%", "", 1)
+                absolute = _build_asset_path(relative_path)
+                if absolute:
+                    return absolute
+                return DEFAULT_PLACEHOLDER_URL
+
+            # Handle other relative resource paths (e.g., resourcefiles/...)
+            if lowered.startswith("resourcefiles") or lowered.startswith("/resourcefiles"):
+                absolute = _build_asset_path(cleaned_url)
+                if absolute:
+                    return absolute
+                return DEFAULT_PLACEHOLDER_URL
+
+            # If it's a fully-qualified URL, return as-is
+            if lowered.startswith("http://") or lowered.startswith("https://"):
+                return cleaned_url
+
+            # Fallback to placeholder for any other format
+            return DEFAULT_PLACEHOLDER_URL
         # Try RecordJsonString first (from ComponentRecordsTree.json), then recordDataJson (from API payload)
         record_json_string = record.get("RecordJsonString") or record.get("recordDataJson")
         if not record_json_string:
@@ -488,13 +525,15 @@ def update_record_asset_if_needed(
                     for img_obj in value:
                         if isinstance(img_obj, dict):
                             original_path = img_obj.get("OriginalImagePath")
-                            if original_path:
-                                asset_urls.append(original_path)
+                            normalized = _normalize_asset_url(original_path)
+                            if normalized:
+                                asset_urls.append(normalized)
                 elif isinstance(value, dict):
                     # Value is a single image object
                     original_path = value.get("OriginalImagePath")
-                    if original_path:
-                        asset_urls.append(original_path)
+                    normalized = _normalize_asset_url(original_path)
+                    if normalized:
+                        asset_urls.append(normalized)
                 elif isinstance(value, str):
                     # Value might be a JSON string, try to parse it
                     try:
@@ -503,12 +542,14 @@ def update_record_asset_if_needed(
                             for img_obj in parsed_value:
                                 if isinstance(img_obj, dict):
                                     original_path = img_obj.get("OriginalImagePath")
-                                    if original_path:
-                                        asset_urls.append(original_path)
+                                    normalized = _normalize_asset_url(original_path)
+                                    if normalized:
+                                        asset_urls.append(normalized)
                         elif isinstance(parsed_value, dict):
                             original_path = parsed_value.get("OriginalImagePath")
-                            if original_path:
-                                asset_urls.append(original_path)
+                            normalized = _normalize_asset_url(original_path)
+                            if normalized:
+                                asset_urls.append(normalized)
                     except (json.JSONDecodeError, TypeError):
                         pass
                 
@@ -1450,7 +1491,57 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
         except Exception as e:
             print(f"  [ERROR] Error processing file {file_path}: {e}")
     
-    # --- PHASE 1.5: ADD MISSING MIBLOCKS (components with folders but no ComponentRecordsTree.json) ---
+    # --- PHASE 1.5: ADD MISSING MIBLOCKS FROM MAPPING PAYLOAD ---
+    # If components are in the mapping payload but weren't found in the folder search,
+    # add them to the publish payload anyway (they might be in other page folders or missing folders)
+    if mapping_payload and valid_section_guids_for_page:
+        for mapping_entry in mapping_payload:
+            section_guid = mapping_entry.get("pageSectionGuid")
+            content_entity_type = mapping_entry.get("contentEntityType")
+            v_component_id = mapping_entry.get("vComponentId")
+            
+            # Only process if this sectionGuid belongs to this page and has contentEntityType: 2 (body component)
+            if section_guid and section_guid in valid_section_guids_for_page and content_entity_type == 2:
+                # Check if we already added this sectionGuid
+                if section_guid not in added_section_guids:
+                    # Try to find the component ID from the mapping payload or from ComponentRecordsTree.json in other folders
+                    component_id = None
+                    
+                    # First, try to find ComponentRecordsTree.json in any page folder
+                    search_path_all = os.path.join("output", str(site_id), "*", "mi-block-ID-*", "ComponentRecordsTree.json")
+                    for file_path in glob.glob(search_path_all):
+                        try:
+                            with open(file_path, 'r') as f:
+                                data = json.load(f)
+                                records = data.get("componentRecordsTree", [])
+                                main_component_record = next(
+                                    (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
+                                    None
+                                )
+                                if main_component_record:
+                                    record_v_component_id = main_component_record.get("vComponentId")
+                                    if record_v_component_id and str(record_v_component_id) == str(v_component_id):
+                                        component_id = str(main_component_record.get("ComponentId"))
+                                        logging.info(f"[PUBLISH] Found component {component_id} (vComponentId: {v_component_id}) in folder {os.path.dirname(file_path)} for sectionGuid {section_guid}")
+                                        break
+                        except Exception:
+                            pass
+                    
+                    # If component ID not found, try to extract from vComponentId mapping (if available)
+                    # For now, we'll skip components without a component ID
+                    if component_id:
+                        miblock_entry = {
+                            "id": component_id,
+                            "type": "MIBLOCK",
+                            "pageSectionGuid": section_guid
+                        }
+                        publish_payload.append(miblock_entry)
+                        added_section_guids.add(section_guid)
+                        logging.info(f"[PUBLISH] Added missing MiBlock {component_id} (vComponentId: {v_component_id}) with sectionGuid {section_guid} from mapping payload (not found in page-specific folder).")
+                    else:
+                        logging.warning(f"[PUBLISH] Component with vComponentId {v_component_id} and sectionGuid {section_guid} is in mapping payload but ComponentRecordsTree.json not found in any folder.")
+    
+    # --- PHASE 1.6: ADD MISSING MIBLOCKS (components with folders but no ComponentRecordsTree.json) ---
     # Some components might have output folders but missing ComponentRecordsTree.json
     # Check all mi-block-ID-* folders and add any missing ones as MIBLOCK
     # NOTE: This phase is now mostly redundant since we filter by mapping payload in Phase 1
@@ -5305,41 +5396,83 @@ def pre_download_all_components(
     for comp_id, comp_name, cms_name, page_name in component_info_list:
         logging.info(f"  - {comp_name} (ID: {comp_id}, Page: {page_name})")
     
-    # Step 2: Download all components to page-specific folders (with cloning optimization)
+    # Step 2: Download all components to page-specific folders (with file-based cloning optimization)
     logging.info("\n========================================================")
     logging.info("PRE-DOWNLOAD: Phase 1 - Downloading/Cloning components to page folders...")
     logging.info("========================================================")
     
     download_results = {}  # (componentId, page_name) -> (success, save_folder)
-    downloaded_components = {}  # componentId -> first_save_folder (for cloning)
     output_dir = os.path.join("output", str(site_id))
+    
+    # File-based tracking: Load existing downloaded components tracking file
+    tracking_file_path = os.path.join(output_dir, "_downloaded_components.json")
+    downloaded_components = {}  # componentId -> source_folder_path
+    
+    # Load tracking file if it exists
+    if os.path.exists(tracking_file_path):
+        try:
+            with open(tracking_file_path, 'r', encoding='utf-8') as f:
+                tracking_data = json.load(f)
+                # Convert string keys to int for consistency
+                downloaded_components = {int(k): v for k, v in tracking_data.items()}
+                logging.info(f"Loaded {len(downloaded_components)} previously downloaded components from tracking file")
+        except Exception as e:
+            logging.warning(f"Failed to load tracking file {tracking_file_path}: {e}. Starting fresh.")
+            downloaded_components = {}
+    else:
+        logging.info("No existing tracking file found. Starting fresh download tracking.")
     
     for idx, (component_id, component_name, cms_component_name, page_name) in enumerate(component_info_list, 1):
         sanitized_page_name = sanitize_page_name_for_filesystem(page_name)
         mi_block_folder = f"mi-block-ID-{component_id}"
         save_folder = os.path.join(output_dir, sanitized_page_name, mi_block_folder)
         
-        # Check if we've already downloaded this component for another page
+        # Check if we've already downloaded this component (from tracking file or current session)
         if component_id in downloaded_components:
-            # Clone from the first downloaded location
+            # Clone immediately from the tracked source location
             source_folder = downloaded_components[component_id]
             try:
-                logging.info(f"[{idx}/{len(component_info_list)}] Cloning component {component_id} ({component_name}) from existing download to page '{page_name}'...")
+                logging.info(f"[{idx}/{len(component_info_list)}] Component {component_id} ({component_name}) already downloaded. Cloning to page '{page_name}'...")
                 
-                # Remove destination if it exists
-                if os.path.exists(save_folder):
-                    shutil.rmtree(save_folder)
-                
-                # Clone the folder
-                shutil.copytree(source_folder, save_folder)
-                
-                download_results[(component_id, page_name)] = (True, save_folder)
-                logging.info(f"  [SUCCESS] Cloned {component_id} to {save_folder}")
+                # Verify source folder exists and has content
+                if not os.path.exists(source_folder):
+                    logging.warning(f"  [WARNING] Source folder does not exist: {source_folder}. Will re-download.")
+                    # Remove from tracking and proceed to download
+                    downloaded_components.pop(component_id, None)
+                    # Fall through to download logic below
+                else:
+                    # Check if source folder has content (zip file or extracted files)
+                    source_files = os.listdir(source_folder) if os.path.exists(source_folder) else []
+                    if not source_files:
+                        logging.warning(f"  [WARNING] Source folder is empty: {source_folder}. Will re-download.")
+                        downloaded_components.pop(component_id, None)
+                        # Fall through to download logic below
+                    else:
+                        # Source folder exists and has content - proceed with cloning
+                        # Remove destination if it exists
+                        if os.path.exists(save_folder):
+                            logging.info(f"  Removing existing folder: {save_folder}")
+                            shutil.rmtree(save_folder)
+                        
+                        # Clone the folder (with zip file - will be unzipped in Phase 2)
+                        shutil.copytree(source_folder, save_folder)
+                        
+                        # Verify clone was successful (check for files)
+                        if os.path.exists(save_folder) and len(os.listdir(save_folder)) > 0:
+                            download_results[(component_id, page_name)] = (True, save_folder)
+                            logging.info(f"  [SUCCESS] Cloned {component_id} from {os.path.basename(os.path.dirname(source_folder))} to {sanitized_page_name}")
+                        else:
+                            logging.error(f"  [ERROR] Clone verification failed: {save_folder} is empty or doesn't exist")
+                            download_results[(component_id, page_name)] = (False, save_folder)
+                        continue  # Skip download logic
             except Exception as e:
-                download_results[(component_id, page_name)] = (False, save_folder)
                 logging.error(f"  [ERROR] Failed to clone component {component_id} to page '{page_name}': {e}")
-        else:
-            # First time seeing this component - download it
+                logging.exception("Full traceback:")
+                # Remove invalid entry and try to download
+                downloaded_components.pop(component_id, None)
+        
+        # First time seeing this component OR cloning failed - download it
+        if (component_id, page_name) not in download_results or not download_results[(component_id, page_name)][0]:
             os.makedirs(save_folder, exist_ok=True)
             
             try:
@@ -5360,11 +5493,20 @@ def pre_download_all_components(
                     with open(file_path, "wb") as file:
                         file.write(response_content)
                     
-                    # Track this as the first download location for potential cloning
+                    # Track this as the source location for potential cloning (update tracking)
                     downloaded_components[component_id] = save_folder
                     
+                    # Update tracking file immediately
+                    try:
+                        os.makedirs(output_dir, exist_ok=True)
+                        tracking_data = {str(k): v for k, v in downloaded_components.items()}
+                        with open(tracking_file_path, 'w', encoding='utf-8') as f:
+                            json.dump(tracking_data, f, indent=2, ensure_ascii=False)
+                    except Exception as e:
+                        logging.warning(f"  [WARNING] Failed to update tracking file: {e}")
+                    
                     download_results[(component_id, page_name)] = (True, save_folder)
-                    logging.info(f"  [SUCCESS] Downloaded {component_id} ({len(response_content)} bytes)")
+                    logging.info(f"  [SUCCESS] Downloaded {component_id} ({len(response_content)} bytes) and added to tracking file")
                 else:
                     download_results[(component_id, page_name)] = (False, save_folder)
                     logging.warning(f"  [WARNING] No content returned for component {component_id}")

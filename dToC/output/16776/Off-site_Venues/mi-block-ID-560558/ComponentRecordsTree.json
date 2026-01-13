@@ -45,7 +45,7 @@
             "has_image": false,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "new_record_id": 3389408,
+            "new_record_id": 3389910,
             "component_alias": "b0882529-5414-40e2-b7d9-d5303182850f",
             "vComponentId": 21006019
         },
@@ -93,7 +93,7 @@
             "level": 1,
             "has_image": true,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3389408
+            "parent_new_record_id": 3389910
         },
         {
             "Id": 3183999,
@@ -139,7 +139,7 @@
             "level": 1,
             "has_image": true,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3389408
+            "parent_new_record_id": 3389910
         }
     ]
 }

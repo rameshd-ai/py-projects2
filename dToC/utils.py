@@ -1,125 +1,142 @@
-# utils.py
-
-import time
 import os
 import json
-import random
+import time
 import importlib
-from typing import Generator, Any, Dict
+import traceback
+from typing import Dict, Any, Generator
 
-# Import config constants
-from config import UPLOAD_FOLDER, PROCESSING_STEPS 
+from config import PROCESSING_STEPS
 
-# --- Dynamic Step Module Loader ---
-STEP_MODULES = {}
-for step in PROCESSING_STEPS:
-    step_id = step["id"]
-    step_function_name = step["module"]
-    try:
-        # Dynamically import the module, e.g., 'processing_steps.process_xml'
-        module = importlib.import_module(f"processing_steps.{step_id}")
-        STEP_MODULES[step_function_name] = getattr(module, step_function_name)
-    except Exception as e:
-        print(f"ERROR: Could not load processing step '{step_id}' with function '{step_function_name}'. Error: {e}")
-        
-def format_sse(data: Dict[str, Any], event: str = 'update') -> str:
-    """Formats a dictionary into a Server-Sent Event stream string."""
-    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
-def extract_file_prefix(filename: str) -> str:
-    """Extracts the unique UUID prefix from the filename (e.g., 'UUID_original.xml')."""
-    # Filenames are structured as: UUID_originalfilename.ext
-    parts = filename.split('_', 1)
-    return parts[0] if len(parts) > 1 else ''
+def _build_sse_event(payload: Dict[str, Any]) -> str:
+    """
+    Helper to format a dict as a Server-Sent Event (SSE) 'update' event.
+    """
+    return f"event: update\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
-def generate_progress_stream(filename: str) -> Generator[str, None, None]:
-    
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    
-    # --- CRITICAL ADDITION: Extract and store the file prefix ---
-    file_prefix = extract_file_prefix(filename)
-    if not file_prefix:
-        yield format_sse({
-            "status": "error",
-            "message": "Processing failed: Could not determine unique file prefix from filename.",
-            "step_id": "initial"
-        }, event='update')
-        # Cleanup is handled by the finally block below, but we must return here.
-        return
 
-    # Initialize previous_step_data and ensure the file_prefix is always available
-    previous_step_data = {"file_prefix": file_prefix} 
-    step_id = 'initial'
-    last_ping_time = time.time()
-    PING_INTERVAL = 30  # Send keep-alive ping every 30 seconds
+def generate_progress_stream(filepath: str) -> Generator[str, None, None]:
+    """
+    Main generator used by the /stream route to run all processing steps
+    and stream progress updates to the browser via SSE.
 
-    try:
-        yield format_sse({"status": "start", "message": "Processing started..."}, event='update')
+    Args:
+        filepath: Full path to the uploaded XML file.
+    Yields:
+        SSE-formatted strings with JSON payloads describing progress.
+    """
+    # Derive the unique file prefix from the uploaded filename
+    basename = os.path.basename(filepath)  # "<uuid>_OriginalName.xml"
+    name_without_ext = basename.rsplit(".", 1)[0]
+    file_prefix = name_without_ext.split("_", 1)[0] or name_without_ext
 
-        for step_config in PROCESSING_STEPS:
-            step_id = step_config["id"]
-            step_function_name = step_config["module"]
-            step_name = step_config["name"]
-            error_chance = step_config["error_chance"]
+    total_steps = len(PROCESSING_STEPS)
+    step_data: Dict[str, Any] = {"file_prefix": file_prefix}
 
-            if step_function_name not in STEP_MODULES:
-                 # Catch the error if the function failed to load at startup
-                 raise NotImplementedError(f"Processing module for '{step_name}' not properly loaded.")
+    # Initial event
+    yield _build_sse_event(
+        {
+            "status": "start",
+            "step_id": "initial",
+            "message": "Processing pipeline started.",
+            "file_prefix": file_prefix,
+        }
+    )
 
-            step_function = STEP_MODULES[step_function_name]
+    for index, step in enumerate(PROCESSING_STEPS, start=1):
+        step_id = step.get("id")
+        step_name = step.get("name", step_id)
+        module_func_name = step.get("module")
 
-            yield format_sse({
+        # Notify client that this step is starting
+        yield _build_sse_event(
+            {
                 "status": "in_progress",
                 "step_id": step_id,
-                "message": f"Step **'{step_name}'** is now in progress..."
-            }, event='update')
+                "step_index": index,
+                "total_steps": total_steps,
+                "message": f"Starting step {index}/{total_steps}: {step_name}",
+            }
+        )
+
+        try:
+            import time as time_module
+            step_start_time = time_module.time()
             
-            # Send keep-alive ping if needed
-            current_time = time.time()
-            if current_time - last_ping_time >= PING_INTERVAL:
-                yield format_sse({"status": "ping", "message": "keep-alive"}, event='ping')
-                last_ping_time = current_time
+            # Dynamically import the processing module based on the step id
+            # e.g. id="process_xml"  ->  processing_steps.process_xml
+            module = importlib.import_module(f"processing_steps.{step_id}")
+            step_func = getattr(module, module_func_name)
 
-            # Simulate an occasional failure if error_chance > 0
-            if random.random() < error_chance:
-                raise Exception(f"Simulated failure during: {step_name}")
+            # Call signatures vary slightly between steps, so handle the known cases:
+            if step_id == "process_xml":
+                # First step works directly from the uploaded file path
+                step_data = step_func(filepath, step)
+            elif step_id in ("process_home_page", "process_assembly"):
+                # These steps accept a dict and optionally file_prefix via kwargs
+                step_data = step_func(step_data, step, {"file_prefix": file_prefix}, file_name=file_prefix)
+            else:
+                # Default pattern: (input_filepath, step_config, previous_step_data)
+                step_data = step_func(filepath, step, step_data)
 
-            # Execute the step function
-            # Note: We pass the full filepath of the original XML file
-            step_result = step_function(filepath, step_config, previous_step_data)
+            # Calculate duration
+            step_duration = round(time_module.time() - step_start_time, 2)
+
+            # Small delay to keep UI in sync with configured delays (non-blocking for correctness)
+            delay = step.get("delay", 0)
+            if isinstance(delay, (int, float)) and delay > 0:
+                time.sleep(min(delay, 3.0))
+
+            # Emit success for this step (frontend expects "done" status with duration)
+            yield _build_sse_event(
+                {
+                    "status": "done",
+                    "step_id": step_id,
+                    "step_index": index,
+                    "total_steps": total_steps,
+                    "message": f"Completed: {step_name}",
+                    "duration": step_duration,
+                }
+            )
+
+        except Exception as exc:
+            error_message = f"Processing failed at step '{step_name}': {exc}"
+            tb_str = traceback.format_exc()
             
-            # Update shared data with results from the current step
-            previous_step_data.update(step_result)
-            
-            # Send keep-alive ping if needed
-            current_time = time.time()
-            if current_time - last_ping_time >= PING_INTERVAL:
-                yield format_sse({"status": "ping", "message": "keep-alive"}, event='ping')
-                last_ping_time = current_time
+            # Calculate duration if step_start_time was set
+            try:
+                step_duration = round(time.time() - step_start_time, 2)
+            except:
+                step_duration = 0
 
-            yield format_sse({
-                "status": "done",
-                "step_id": step_id,
-                "message": f"Step **'{step_name}'** successfully completed."
-            }, event='update')
+            # Emit error event
+            yield _build_sse_event(
+                {
+                    "status": "error",
+                    "step_id": step_id,
+                    "step_index": index,
+                    "total_steps": total_steps,
+                    "message": error_message,
+                    "traceback": tb_str,
+                    "duration": step_duration,
+                }
+            )
+            # Stop further processing on first hard failure
+            return
 
-        # Final completion message (modified to exclude output_files)
-        final_message = "Processing complete. All required operations finished successfully."
-        
-        yield format_sse({
+    # All steps completed successfully
+    output_files = None
+    if isinstance(step_data, dict):
+        output_files = step_data.get("output_files")
+
+    yield _build_sse_event(
+        {
             "status": "complete",
-            "message": final_message,
-            # 'output_files' list is intentionally removed from the payload
-        }, event='update')
+            "step_id": "final",
+            "message": "All processing steps completed successfully.",
+            "file_prefix": file_prefix,
+            "output_files": output_files,
+        }
+    )
 
-    except Exception as e:
-        yield format_sse({
-            "status": "error",
-            "message": f"Processing failed at step '{step_id}': {str(e)}",
-            "step_id": step_id
-        }, event='update')
 
-    finally:
-        # Guarantee cleanup: delete the original uploaded file regardless of success/fail
-        if os.path.exists(filepath):
-            os.remove(filepath)
