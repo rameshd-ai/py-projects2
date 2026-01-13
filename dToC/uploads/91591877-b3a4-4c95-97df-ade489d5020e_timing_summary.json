@@ -1,0 +1,114 @@
+{
+    "file_prefix": "91591877-b3a4-4c95-97df-ade489d5020e",
+    "timestamp": "2026-01-13 12:28:43",
+    "timing_summary": [
+        {
+            "function": "assemble_page_templates_level1",
+            "count": 1,
+            "total_seconds": 2388.003669023514,
+            "total_minutes": 39.8000611503919,
+            "average_seconds": 2388.003669023514,
+            "average_minutes": 39.8000611503919,
+            "max_seconds": 2388.003669023514,
+            "max_minutes": 39.8000611503919,
+            "min_seconds": 2388.003669023514,
+            "min_minutes": 39.8000611503919
+        },
+        {
+            "function": "add_records_for_page",
+            "count": 119,
+            "total_seconds": 1866.7682325839996,
+            "total_minutes": 31.112803876399994,
+            "average_seconds": 15.68712800490756,
+            "average_minutes": 0.261452133415126,
+            "max_seconds": 28.217468976974487,
+            "max_minutes": 0.47029114961624147,
+            "min_seconds": 2.1127848625183105,
+            "min_minutes": 0.03521308104197184
+        },
+        {
+            "function": "pre_download_all_components",
+            "count": 1,
+            "total_seconds": 456.7418010234833,
+            "total_minutes": 7.612363350391388,
+            "average_seconds": 456.7418010234833,
+            "average_minutes": 7.612363350391388,
+            "max_seconds": 456.7418010234833,
+            "max_minutes": 7.612363350391388,
+            "min_seconds": 456.7418010234833,
+            "min_minutes": 7.612363350391388
+        },
+        {
+            "function": "publishPage",
+            "count": 29,
+            "total_seconds": 332.1246962547302,
+            "total_minutes": 5.535411604245504,
+            "average_seconds": 11.452575732921732,
+            "average_minutes": 0.1908762622153622,
+            "max_seconds": 28.460131883621216,
+            "max_minutes": 0.47433553139368695,
+            "min_seconds": 8.300342798233032,
+            "min_minutes": 0.13833904663721722
+        },
+        {
+            "function": "psPublishApi",
+            "count": 29,
+            "total_seconds": 246.8370645046234,
+            "total_minutes": 4.113951075077057,
+            "average_seconds": 8.511622913952532,
+            "average_minutes": 0.14186038189920888,
+            "max_seconds": 14.589530229568481,
+            "max_minutes": 0.2431588371594747,
+            "min_seconds": 5.9962921142578125,
+            "min_minutes": 0.09993820190429688
+        },
+        {
+            "function": "updatePageMapping",
+            "count": 29,
+            "total_seconds": 94.5143473148346,
+            "total_minutes": 1.57523912191391,
+            "average_seconds": 3.259115424649469,
+            "average_minutes": 0.05431859041082448,
+            "max_seconds": 6.148930549621582,
+            "max_minutes": 0.10248217582702637,
+            "min_seconds": 2.4515135288238525,
+            "min_minutes": 0.04085855881373088
+        },
+        {
+            "function": "CreatePage",
+            "count": 33,
+            "total_seconds": 63.68665671348572,
+            "total_minutes": 1.0614442785580953,
+            "average_seconds": 1.929898688287446,
+            "average_minutes": 0.0321649781381241,
+            "max_seconds": 3.151069402694702,
+            "max_minutes": 0.05251782337824504,
+            "min_seconds": 1.2607460021972656,
+            "min_minutes": 0.02101243336995443
+        },
+        {
+            "function": "psMappingApi",
+            "count": 29,
+            "total_seconds": 60.900723457336426,
+            "total_minutes": 1.0150120576222739,
+            "average_seconds": 2.1000249468047043,
+            "average_minutes": 0.035000415780078405,
+            "max_seconds": 4.964725494384766,
+            "max_minutes": 0.08274542490641276,
+            "min_seconds": 1.3528807163238525,
+            "min_minutes": 0.022548011938730874
+        },
+        {
+            "function": "GetAllVComponents",
+            "count": 1,
+            "total_seconds": 6.616985321044922,
+            "total_minutes": 0.11028308868408203,
+            "average_seconds": 6.616985321044922,
+            "average_minutes": 0.11028308868408203,
+            "max_seconds": 6.616985321044922,
+            "max_minutes": 0.11028308868408203,
+            "min_seconds": 6.616985321044922,
+            "min_minutes": 0.11028308868408203
+        }
+    ]
+}

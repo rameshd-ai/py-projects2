@@ -1136,13 +1136,31 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
                     component_id_from_file = folder_name.replace("mi-block-ID-", "")
                 
                 # CRITICAL: Only include components that belong to THIS page
-                if final_valid_component_ids and component_id_from_file:
-                    if component_id_from_file not in final_valid_component_ids:
-                        # This component doesn't belong to this page, skip it
-                        logging.info(f"[MAPPING] Skipping component {component_id_from_file}: Not in valid_component_ids set. Valid IDs: {sorted(final_valid_component_ids)}")
-                        continue
+                # If searching in a page-specific folder, include all components in that folder
+                # (they were processed for this page, so they belong here)
+                # If searching across all pages, use the filter to exclude components from other pages
+                if component_id_from_file:
+                    if page_name:
+                        # Searching in page-specific folder: include all components found
+                        # (they were processed for this page, so they belong here)
+                        logging.info(f"[MAPPING] Including component {component_id_from_file} in mapping (found in page-specific folder for '{page_name}')")
+                    elif final_valid_component_ids:
+                        # Searching across all pages: filter by valid component IDs
+                        if component_id_from_file not in final_valid_component_ids:
+                            logging.info(f"[MAPPING] Skipping component {component_id_from_file}: Not in valid_component_ids set. Valid IDs: {sorted(final_valid_component_ids)}")
+                            continue
+                        else:
+                            logging.info(f"[MAPPING] Including component {component_id_from_file} in mapping (found in valid_component_ids)")
+                    elif page_component_ids:
+                        # Searching across all pages: filter by page component IDs from processing
+                        if component_id_from_file not in page_component_ids:
+                            logging.info(f"[MAPPING] Skipping component {component_id_from_file}: Not in page_component_ids set. Valid IDs: {sorted(page_component_ids)}")
+                            continue
+                        else:
+                            logging.info(f"[MAPPING] Including component {component_id_from_file} in mapping (found in page_component_ids)")
                     else:
-                        logging.info(f"[MAPPING] Including component {component_id_from_file} in mapping (found in valid_component_ids)")
+                        # No filter provided: include all components found
+                        logging.info(f"[MAPPING] Including component {component_id_from_file} in mapping (no filter provided)")
                 
                 # Extract the required fields from the main component record
                 # FIX: Get sectionGuid from PAGE_COMPONENT_SECTIONGUID_MAP instead of ComponentRecordsTree.json
@@ -1349,8 +1367,14 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
         search_path = os.path.join("output", str(site_id), "*", "mi-block-ID-*", "ComponentRecordsTree.json")
     
     # Use glob to find all matching ComponentRecordsTree.json files
-    for file_path in glob.glob(search_path):
+    found_files = list(glob.glob(search_path))
+    logging.info(f"[PUBLISH] Found {len(found_files)} ComponentRecordsTree.json file(s) for page '{page_name}' (ID: {page_id})")
+    
+    for file_path in found_files:
         try:
+            folder_name = os.path.basename(os.path.dirname(file_path))
+            logging.debug(f"[PUBLISH] Processing ComponentRecordsTree.json from folder: {folder_name}")
+            
             with open(file_path, 'r') as f:
                 data = json.load(f)
                 records = data.get("componentRecordsTree", [])
@@ -1360,35 +1384,56 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
                 (r for r in records if isinstance(r, dict) and r.get("ParentId") == 0),
                 None
             )
+            
+            if not main_component_record:
+                logging.warning(f"[PUBLISH] No main component record (ParentId=0) found in {folder_name}")
+                continue
 
             if main_component_record:
                 # Extract the required fields (ComponentId and sectionGuid)
                 component_id = str(main_component_record.get("ComponentId"))
+                v_component_id = main_component_record.get("vComponentId")
+                
                 # FIX: Get sectionGuid from mapping_payload instead of ComponentRecordsTree.json
                 # to prevent duplicate sectionGuid issue when same component is used on multiple pages
                 section_guid = None
                 if mapping_payload:
                     # Find sectionGuid for this component from mapping_payload
+                    # Match by both ComponentId (from folder name) and vComponentId (from record)
                     for mapping_entry in mapping_payload:
-                        if str(mapping_entry.get("vComponentId", "")) == str(main_component_record.get("vComponentId", "")):
+                        mapping_v_component_id = mapping_entry.get("vComponentId")
+                        # Match by vComponentId if available, otherwise try to match by component alias or other means
+                        if v_component_id and mapping_v_component_id and str(mapping_v_component_id) == str(v_component_id):
                             section_guid = mapping_entry.get("pageSectionGuid")
+                            logging.debug(f"[PUBLISH] Found sectionGuid {section_guid} for component {component_id} (vComponentId: {v_component_id}) from mapping_payload")
                             break
                 
-                # Fallback to reading from ComponentRecordsTree.json if not found in mapping_payload (for backward compatibility)
+                # Fallback to reading from ComponentRecordsTree.json if not found in mapping_payload
                 if not section_guid:
                     section_guid = main_component_record.get("sectionGuid")
                     if section_guid:
-                        logging.warning(f"[PUBLISH] sectionGuid not found in mapping_payload for component {component_id}. Using value from ComponentRecordsTree.json (may be incorrect if component used on multiple pages).")
+                        logging.warning(f"[PUBLISH] sectionGuid not found in mapping_payload for component {component_id} (vComponentId: {v_component_id}). Using value from ComponentRecordsTree.json: {section_guid}")
                 
                 # CRITICAL: Only add components that are mapped to THIS page
                 # Check if this sectionGuid is in the mapping payload for this page
                 if component_id and section_guid:
-                    # If mapping_payload exists, only include components that are mapped to this page
+                    # If mapping_payload exists and we have valid section GUIDs, filter by them
+                    # BUT: If we're in a page-specific folder, include all components found (they belong to this page)
                     if mapping_payload and valid_section_guids_for_page:
                         if section_guid not in valid_section_guids_for_page:
-                            # This component belongs to a different page, skip it
-                            logging.warning(f"[PUBLISH] Skipping component {component_id} (sectionGuid: {section_guid}): Not found in mapping payload for page {page_id}. This may cause publish failure if component is in page HTML.")
-                            continue
+                            # If we're in a page-specific folder, this component belongs to this page, so include it anyway
+                            if page_name:
+                                logging.info(f"[PUBLISH] Component {component_id} (sectionGuid: {section_guid}) not in mapping payload, but found in page-specific folder '{page_name}', including it anyway")
+                            else:
+                                # This component belongs to a different page, skip it
+                                logging.warning(f"[PUBLISH] Skipping component {component_id} (sectionGuid: {section_guid}): Not found in mapping payload for page {page_id}. This may cause publish failure if component is in page HTML.")
+                                continue
+                    
+                    # CRITICAL: Check if this sectionGuid has already been added to avoid duplicates
+                    # BUT: Only skip if we're sure it's a duplicate (same sectionGuid means same component instance)
+                    if section_guid in added_section_guids:
+                        logging.info(f"[PUBLISH] Skipping duplicate component {component_id} with sectionGuid {section_guid} (already added)")
+                        continue
                     
                     miblock_entry = {
                         "id": component_id,
@@ -1398,7 +1443,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
                     publish_payload.append(miblock_entry)
                     added_component_ids.add(component_id)  # Track that we added this component
                     added_section_guids.add(section_guid)  # Track section GUID as MIBLOCK
-                    # print(f"  [SUCCESS] Added MiBlock {component_id} for publishing.")
+                    logging.info(f"[PUBLISH] Added MiBlock {component_id} (vComponentId: {v_component_id}) with sectionGuid {section_guid} for publishing.")
                 else:
                     print(f"  [WARNING] Skipping file {os.path.basename(os.path.dirname(file_path))}: Missing 'component_id' or 'sectionGuid'.")
 
@@ -1587,6 +1632,10 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
         api_result = psPublishApi(base_url, headers, site_id, final_api_payload)
         api_time = time.time() - api_start_time
         logging.info(f"[TIMING] psPublishApi completed in {api_time:.2f} seconds")
+        
+        # Log the API response for debugging
+        logging.info(f"[PUBLISH] API response for page {page_id}: {json.dumps(api_result, indent=2) if isinstance(api_result, (dict, list)) else str(api_result)}")
+        append_debug_log("publish_api_response", {"page_id": page_id, "response": api_result})
         
         # Track timing
         if "psPublishApi" not in TIMING_TRACKER:
@@ -2000,6 +2049,10 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                     # Update asset if record has images (after storing new_record_id)
                     if record.get("has_image", False):
                         update_record_asset_if_needed(record, main_component_new_id, component_id, base_url, headers)
+                    
+                    # Add delay before fetching sub-records to ensure parent record is fully processed by CMS
+                    logging.info(f"[MAINCOMP] Waiting 2 seconds before fetching sub-records for parent {main_component_new_id} to ensure CMS has processed the parent record...")
+                    time.sleep(2)
                     
                     # Fetch and update CMS-generated sub-records (since CMS auto-generates them)
                     logging.info(f"[MAINCOMP] Checking for CMS-generated sub-records for parent {main_component_new_id} (component {component_id})...")
