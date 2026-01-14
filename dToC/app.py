@@ -305,6 +305,77 @@ def delete_project(site_id):
         }), 500
 
 
+# --- NEW: Get Global Config ---
+@app.route('/api/global_config', methods=['GET'])
+def get_global_config():
+    """
+    Returns the current global_config.json content.
+    """
+    try:
+        global_config_path = os.path.join(app.config['UPLOAD_FOLDER'], 'global_config.json')
+        
+        if not os.path.exists(global_config_path):
+            # Return default structure if file doesn't exist
+            return jsonify({
+                "success": True,
+                "config": {
+                    "debug_page_filter": ""
+                }
+            }), 200
+        
+        with open(global_config_path, 'r', encoding='utf-8') as f:
+            config_data = json.load(f)
+        
+        return jsonify({
+            "success": True,
+            "config": config_data
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"Error reading global config: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error reading global config: {str(e)}"
+        }), 500
+
+
+# --- NEW: Update Global Config ---
+@app.route('/api/global_config', methods=['POST'])
+def update_global_config():
+    """
+    Updates the global_config.json file with new values.
+    """
+    try:
+        data = request.get_json()
+        debug_page_filter = data.get('debug_page_filter', '')
+        
+        global_config_path = os.path.join(app.config['UPLOAD_FOLDER'], 'global_config.json')
+        
+        # Ensure uploads folder exists
+        os.makedirs(os.path.dirname(global_config_path), exist_ok=True)
+        
+        # Update config
+        config_data = {
+            "debug_page_filter": debug_page_filter.strip() if debug_page_filter else ""
+        }
+        
+        with open(global_config_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=2)
+        
+        return jsonify({
+            "success": True,
+            "message": "Global config updated successfully",
+            "config": config_data
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"Error updating global config: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error updating global config: {str(e)}"
+        }), 500
+
+
 # --- Run Application ---
 
 if __name__ == '__main__':
