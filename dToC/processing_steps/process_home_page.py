@@ -37,19 +37,42 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "..", "uploads")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # --- DEBUG LOG FILE FOR HOMEPAGE STEP ---
-HOME_DEBUG_LOG_FILE = os.path.join(UPLOAD_FOLDER, "home_debug.log")
+def get_site_upload_folder(site_id: Optional[int] = None) -> str:
+    """Returns the site-specific upload folder path."""
+    if site_id is not None:
+        site_folder = os.path.join(UPLOAD_FOLDER, str(site_id))
+        os.makedirs(site_folder, exist_ok=True)
+        return site_folder
+    return UPLOAD_FOLDER
 
+def get_home_debug_log_filepath(site_id: Optional[int] = None) -> str:
+    """Returns the home debug log file path, site-specific if site_id is provided."""
+    site_folder = get_site_upload_folder(site_id)
+    return os.path.join(site_folder, "home_debug.log")
 
-def append_home_debug_log(section: str, data: Dict[str, Any]) -> None:
-    """Safely append structured debug info for the homepage step."""
+HOME_DEBUG_LOG_FILE = get_home_debug_log_filepath()  # Default
+
+# Global variable to store current site_id for home debug logging
+_CURRENT_HOME_SITE_ID: Optional[int] = None
+
+def set_current_home_site_id(site_id: Optional[int]) -> None:
+    """Sets the current site_id for home debug logging."""
+    global _CURRENT_HOME_SITE_ID
+    _CURRENT_HOME_SITE_ID = site_id
+
+def append_home_debug_log(section: str, data: Dict[str, Any], site_id: Optional[int] = None) -> None:
+    """Safely append structured debug info for the homepage step. Uses site_id if provided, otherwise uses global _CURRENT_HOME_SITE_ID."""
     try:
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        log_site_id = site_id if site_id is not None else _CURRENT_HOME_SITE_ID
+        log_file = get_home_debug_log_filepath(log_site_id)
+        log_folder = os.path.dirname(log_file)
+        os.makedirs(log_folder, exist_ok=True)
         entry = {
             "section": section,
             "data": data,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
-        with open(HOME_DEBUG_LOG_FILE, "a", encoding="utf-8") as f:
+        with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except Exception:
         # Never block execution on debug logging
@@ -885,6 +908,11 @@ def run_homepage_processing_step(
         api_base_url = settings.get("target_site_url")
         raw_token = settings.get("cms_login_token") or settings.get("auth_token")
         site_id = settings.get("site_id") if settings.get("site_id") is not None else settings.get("destination_id")
+        
+        # Set site_id for home debug logging
+        if site_id:
+            set_current_home_site_id(site_id)
+            logging.info(f"[HOME] Using site_id: {site_id} for file organization")
 
         append_home_debug_log(
             "config_loaded",
@@ -894,6 +922,7 @@ def run_homepage_processing_step(
                 "token_present": bool(raw_token),
                 "site_id": site_id,
             },
+            site_id=site_id
         )
 
         if (

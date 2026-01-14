@@ -15,11 +15,9 @@
                         {
                             "page_name": "RFP",
                             "level": 3,
-                            "page_status": false,
-                            "matchFound": false
+                            "page_status": false
                         }
-                    ],
-                    "matchFound": true
+                    ]
                 },
                 {
                     "page_name": "Bespoke Leisure",
@@ -29,38 +27,31 @@
                         {
                             "page_name": "RFP",
                             "level": 3,
-                            "page_status": false,
-                            "matchFound": false
+                            "page_status": false
                         }
-                    ],
-                    "matchFound": true
+                    ]
                 },
                 {
                     "page_name": "Meetings",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Events",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "PCO Services",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Group Travel Logistics",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 }
-            ],
-            "matchFound": true
+            ]
         },
         {
             "page_name": "Experiences",
@@ -70,71 +61,59 @@
                 {
                     "page_name": "Team Building",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Tailored Activities",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Enterntainment and production",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "CSR",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Branding",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Giveaways",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Events Design",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Airport VIP Services",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Transportation",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Dine Arounds",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Off-site Venues",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 }
-            ],
-            "matchFound": true
+            ]
         },
         {
             "page_name": "Destinations",
@@ -144,71 +123,59 @@
                 {
                     "page_name": "Punta Cana",
                     "level": 2,
-                    "page_status": false,
-                    "matchFound": true
+                    "page_status": false
                 },
                 {
                     "page_name": "Santo Domingo",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Los Cabos",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Cancun and Riviera Maya",
                     "level": 2,
-                    "page_status": true,
-                    "matchFound": true
+                    "page_status": true
                 },
                 {
                     "page_name": "Puerto Vallarta",
                     "level": 2,
-                    "page_status": false,
-                    "matchFound": true
+                    "page_status": false
                 }
-            ],
-            "matchFound": true
+            ]
         },
         {
             "page_name": "Request a Quote / Book Services",
             "level": 1,
-            "page_status": true,
-            "matchFound": true
+            "page_status": true
         },
         {
             "page_name": "Contact Us",
             "level": 1,
-            "page_status": false,
-            "matchFound": false
+            "page_status": false
         },
         {
             "page_name": "Client Testimonials & Case Studies",
             "level": 1,
-            "page_status": false,
-            "matchFound": false
+            "page_status": false
         },
         {
             "page_name": "Blog",
             "level": 1,
-            "page_status": true,
-            "matchFound": true
+            "page_status": true
         },
         {
             "page_name": "FAQs",
             "level": 1,
-            "page_status": false,
-            "matchFound": false
+            "page_status": false
         },
         {
             "page_name": "About Us",
             "level": 1,
-            "page_status": true,
-            "matchFound": true
+            "page_status": true
         }
     ]
 }

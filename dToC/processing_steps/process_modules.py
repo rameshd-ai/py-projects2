@@ -2,30 +2,58 @@ import json
 import os
 import re
 import sys
+import logging
 from datetime import datetime
-from typing import Dict, Any, List, Union
+from typing import Dict, Any, List, Union, Optional
 
 # IMPORTANT: These must be correctly defined in 'apis' and 'config'
 # Assuming these imports are available in your environment
 from apis import GetPageCategoryList, save_module_category
 from config import UPLOAD_FOLDER
+from typing import Optional
 
 # --- DEBUG LOG FILE FOR MODULE PROCESSING STEP ---
-MODULE_DEBUG_LOG_FILE = os.path.join(UPLOAD_FOLDER, "module_debug.log")
+def get_site_upload_folder(site_id: Optional[int] = None) -> str:
+    """Returns the site-specific upload folder path."""
+    if site_id is not None:
+        site_folder = os.path.join(UPLOAD_FOLDER, str(site_id))
+        os.makedirs(site_folder, exist_ok=True)
+        return site_folder
+    return UPLOAD_FOLDER
 
-def append_module_debug_log(section: str, data: Dict[str, Any]) -> None:
+def get_module_debug_log_filepath(site_id: Optional[int] = None) -> str:
+    """Returns the module debug log file path, site-specific if site_id is provided."""
+    site_folder = get_site_upload_folder(site_id)
+    return os.path.join(site_folder, "module_debug.log")
+
+MODULE_DEBUG_LOG_FILE = get_module_debug_log_filepath()  # Default
+
+# Global variable to store current site_id for module debug logging
+_CURRENT_MODULE_SITE_ID: Optional[int] = None
+
+def set_current_module_site_id(site_id: Optional[int]) -> None:
+    """Sets the current site_id for module debug logging."""
+    global _CURRENT_MODULE_SITE_ID
+    _CURRENT_MODULE_SITE_ID = site_id
+
+def append_module_debug_log(section: str, data: Dict[str, Any], site_id: Optional[int] = None) -> None:
     """
     Writes structured debug information to module_debug.log file.
     Uses JSON format with timestamp for easy parsing.
+    Uses site_id if provided, otherwise uses global _CURRENT_MODULE_SITE_ID.
     """
     try:
+        log_site_id = site_id if site_id is not None else _CURRENT_MODULE_SITE_ID
+        log_file = get_module_debug_log_filepath(log_site_id)
+        log_folder = os.path.dirname(log_file)
+        os.makedirs(log_folder, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = {
             "timestamp": timestamp,
             "section": section,
             "data": data
         }
-        with open(MODULE_DEBUG_LOG_FILE, "a", encoding="utf-8") as f:
+        with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
     except Exception:
         # Never block execution on debug logging
@@ -248,6 +276,11 @@ def run_module_processing_step(
 
     target_url = settings.get("target_site_url")
     site_id = settings.get("site_id")
+    
+    # Set site_id for module debug logging
+    if site_id:
+        set_current_module_site_id(site_id)
+        logging.info(f"[MODULE] Using site_id: {site_id} for file organization")
     
     # --- FIX START: Correctly retrieve the raw token string ---
     # The user-provided config uses 'cms_login_token' for the raw string.

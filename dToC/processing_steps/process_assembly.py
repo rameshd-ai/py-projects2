@@ -14,6 +14,7 @@ import html # <-- Required for HTML entity decoding
 import shutil # <-- Required for cloning component folders
 import traceback # <-- Required for detailed error logging
 from typing import Dict, Any, List, Union, Tuple, Optional
+from urllib.parse import urlparse
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
 from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsToCMS,addUpdateRecordsToCMS_bulk,generatecontentHtml,GetTemplatePageByName,psMappingApi,psPublishApi,GetPageCategoryList,CustomGetComponentAliasByName,update_miblock_record_asset,get_miblock_records
 # ================= CONFIG/UTILITY DEFINITIONS (BASED ON USER PATTERN) =================
@@ -21,57 +22,112 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def get_config_filepath(file_prefix: str) -> str:
-    """Constructs the unique config.json filepath based on the prefix."""
-    base_prefix = os.path.basename(file_prefix)
-    config_filename = f"{base_prefix}_config.json" 
-    return os.path.join(UPLOAD_FOLDER, config_filename)
+def get_site_upload_folder(site_id: Optional[int] = None) -> str:
+    """
+    Returns the site-specific upload folder path.
+    If site_id is provided, returns uploads/{site_id}/, otherwise returns uploads/
+    """
+    if site_id is not None:
+        site_folder = os.path.join(UPLOAD_FOLDER, str(site_id))
+        os.makedirs(site_folder, exist_ok=True)
+        return site_folder
+    return UPLOAD_FOLDER
 
-def load_settings(file_prefix: str) -> Dict[str, Any] | None:
-    """Loads the settings/config file based on the unique prefix."""
-    filepath = get_config_filepath(file_prefix) 
+def get_config_filepath(file_prefix: str, site_id: Optional[int] = None) -> str:
+    """Constructs the unique config.json filepath based on the prefix and site_id."""
+    base_prefix = os.path.basename(file_prefix)
+    config_filename = f"{base_prefix}_config.json"
+    site_folder = get_site_upload_folder(site_id)
+    return os.path.join(site_folder, config_filename)
+
+def load_settings(file_prefix: str, site_id: Optional[int] = None) -> Dict[str, Any] | None:
+    """Loads the settings/config file based on the unique prefix and site_id."""
+    # Try site-specific folder first, then fallback to root uploads folder
+    filepath = get_config_filepath(file_prefix, site_id)
+    if not os.path.exists(filepath) and site_id is not None:
+        # Fallback: try root uploads folder (for backward compatibility)
+        filepath = get_config_filepath(file_prefix, None)
     if not os.path.exists(filepath):
         logging.error(f"Config file not found at {filepath}")
         return None
     try:
-        with open(filepath, "r") as f:
+        with open(filepath, "r", encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config file: {e}")
         return None
+
+def load_global_config(site_id: Optional[int] = None) -> Dict[str, Any] | None:
+    """Loads the global config file (not prefix-specific). Checks site-specific folder first, then root."""
+    # Try site-specific folder first
+    if site_id is not None:
+        site_folder = get_site_upload_folder(site_id)
+        global_config_path = os.path.join(site_folder, "global_config.json")
+        if os.path.exists(global_config_path):
+            try:
+                with open(global_config_path, "r", encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logging.warning(f"Error loading site-specific global config file: {e}. Trying root folder...")
+    
+    # Fallback to root uploads folder
+    global_config_path = os.path.join(UPLOAD_FOLDER, "global_config.json")
+    if not os.path.exists(global_config_path):
+        # If global config doesn't exist, return empty dict (not None) so .get() works
+        return {}
+    try:
+        with open(global_config_path, "r", encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        logging.warning(f"Error loading global config file: {e}. Continuing with defaults.")
+        return {}
         
-def find_processed_json_filepath(file_prefix: str) -> str | None:
+def find_processed_json_filepath(file_prefix: str, site_id: Optional[int] = None) -> str | None:
     """
     DYNAMically finds the processed JSON file for INNER PAGES based on the unique prefix.
+    Searches site-specific folder first, then root uploads folder.
 
     IMPORTANT:
         - Must return ONLY the main `<prefix>_simplified.json`
         - MUST NOT return `<prefix>_home_simplified.json`
     """
     base_prefix = os.path.basename(file_prefix)
-    if not os.path.isdir(UPLOAD_FOLDER):
-        return None
+    
+    # Search in site-specific folder first
+    search_folders = []
+    if site_id is not None:
+        site_folder = get_site_upload_folder(site_id)
+        if os.path.isdir(site_folder):
+            search_folders.append(site_folder)
+    # Also search root uploads folder (for backward compatibility)
+    if os.path.isdir(UPLOAD_FOLDER):
+        search_folders.append(UPLOAD_FOLDER)
 
     chosen_path: Optional[str] = None
-    for filename in os.listdir(UPLOAD_FOLDER):
-        # We only want "<prefix>_simplified.json", not "<prefix>_home_simplified.json"
-        if (
-            filename.startswith(base_prefix)
-            and filename.endswith("_simplified.json")
-            and not filename.endswith("_home_simplified.json")
-        ):
-            chosen_path = os.path.join(UPLOAD_FOLDER, filename)
+    for search_folder in search_folders:
+        if not os.path.isdir(search_folder):
+            continue
+        for filename in os.listdir(search_folder):
+            # We only want "<prefix>_simplified.json", not "<prefix>_home_simplified.json"
+            if (
+                filename.startswith(base_prefix)
+                and filename.endswith("_simplified.json")
+                and not filename.endswith("_home_simplified.json")
+            ):
+                chosen_path = os.path.join(search_folder, filename)
+                break
+        if chosen_path:
             break
 
     if chosen_path:
         append_debug_log(
             "find_processed_json_filepath",
-            {"file_prefix": file_prefix, "chosen_file": chosen_path},
+            {"file_prefix": file_prefix, "chosen_file": chosen_path, "site_id": site_id},
         )
     else:
         append_debug_log(
             "find_processed_json_filepath",
-            {"file_prefix": file_prefix, "chosen_file": None},
+            {"file_prefix": file_prefix, "chosen_file": None, "site_id": site_id},
         )
 
     return chosen_path
@@ -97,7 +153,13 @@ PAGE_COMPONENT_SECTIONGUID_MAP: Dict[Tuple[str, int], str] = {}  # (page_name, c
 PAGES_TO_PUBLISH: List[Dict[str, Any]] = []
 
 # --- 5. DEBUG LOG FILE (for deep investigation) ---
-DEBUG_LOG_FILE = os.path.join(UPLOAD_FOLDER, "assembly_debug.log")
+# This will be set dynamically based on site_id when needed
+def get_debug_log_filepath(site_id: Optional[int] = None) -> str:
+    """Returns the debug log file path, site-specific if site_id is provided."""
+    site_folder = get_site_upload_folder(site_id)
+    return os.path.join(site_folder, "assembly_debug.log")
+
+DEBUG_LOG_FILE = get_debug_log_filepath()  # Default (will be updated per site)
 
 def sanitize_page_name_for_filesystem(page_name: str) -> str:
     """
@@ -134,19 +196,32 @@ def sanitize_page_name_for_filesystem(page_name: str) -> str:
     
     return sanitized
 
-def append_debug_log(section: str, data: Dict[str, Any]) -> None:
+# Global variable to store current site_id for debug logging
+_CURRENT_SITE_ID: Optional[int] = None
+
+def set_current_site_id(site_id: Optional[int]) -> None:
+    """Sets the current site_id for debug logging."""
+    global _CURRENT_SITE_ID, DEBUG_LOG_FILE
+    _CURRENT_SITE_ID = site_id
+    DEBUG_LOG_FILE = get_debug_log_filepath(site_id)
+
+def append_debug_log(section: str, data: Dict[str, Any], site_id: Optional[int] = None) -> None:
     """
     Writes structured debug information to a separate log file.
     This is used only for deep debugging (e.g., page/component flows).
+    Uses site_id if provided, otherwise uses global _CURRENT_SITE_ID.
     """
     try:
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        log_site_id = site_id if site_id is not None else _CURRENT_SITE_ID
+        log_file = get_debug_log_filepath(log_site_id)
+        log_folder = os.path.dirname(log_file)
+        os.makedirs(log_folder, exist_ok=True)
         entry = {
             "section": section,
             "data": data,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
-        with open(DEBUG_LOG_FILE, "a", encoding="utf-8") as f:
+        with open(log_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except Exception:
         # Never let debug logging break the main flow
@@ -458,9 +533,78 @@ def update_record_asset_if_needed(
         return True  # No image, nothing to update
     
     try:
-        DEFAULT_PLACEHOLDER_URL = "https://assets.milestoneinternet.com/connect-dmc/site-images/placeholder.png"
-        # Derive an asset base prefix from the placeholder (e.g., https://assets.milestoneinternet.com/connect-dmc/)
-        ASSET_BASE_PREFIX = DEFAULT_PLACEHOLDER_URL.split("site-images")[0]
+        # Static base URL for assets (used when NOT resourcefiles)
+        ASSETS_BASE_URL = "https://assets.milestoneinternet.com"
+        
+        # Check if record data contains "resourcefiles" path - if so, use base_url directly
+        record_json_string = record.get("RecordJsonString") or record.get("recordDataJson")
+        has_resourcefiles = False
+        if record_json_string:
+            try:
+                record_json_temp = json.loads(record_json_string) if isinstance(record_json_string, str) else record_json_string
+                record_str = json.dumps(record_json_temp) if not isinstance(record_json_string, str) else record_json_string
+                # Check if any image path contains "resourcefiles"
+                if "resourcefiles" in record_str.lower():
+                    has_resourcefiles = True
+                    logging.info(f"[ASSET UPDATE] Found 'resourcefiles' in image path, will use base_url directly")
+            except:
+                pass
+        
+        # If resourcefiles detected, use base_url directly (strip trailing slash if present)
+        if has_resourcefiles and base_url:
+            # Use base_url directly for resourcefiles paths
+            ASSET_BASE_PREFIX = base_url.rstrip("/") + "/"
+            DEFAULT_PLACEHOLDER_URL = f"{ASSET_BASE_PREFIX}site-images/placeholder.png"
+            logging.info(f"[ASSET UPDATE] Using base_url directly for resourcefiles: {ASSET_BASE_PREFIX}")
+        else:
+            # For non-resourcefiles paths, extract site-specific path and use assets.milestoneinternet.com
+            site_specific_path = None
+            
+            # Try to find an existing absolute URL in the record data
+            if record_json_string:
+                try:
+                    record_json_temp = json.loads(record_json_string) if isinstance(record_json_string, str) else record_json_string
+                    # Search through all fields for any absolute image URLs
+                    for key, value in record_json_temp.items():
+                        value_str = json.dumps(value) if not isinstance(value, str) else value
+                        # Look for https://assets.milestoneinternet.com/ pattern
+                        if "https://assets.milestoneinternet.com/" in value_str:
+                            # Extract the site-specific path (e.g., "connect-dmc" from "https://assets.milestoneinternet.com/connect-dmc/...")
+                            match = re.search(r'https://assets\.milestoneinternet\.com/([^/]+)/', value_str)
+                            if match:
+                                site_specific_path = match.group(1)
+                                logging.info(f"[ASSET UPDATE] Extracted site-specific path from existing URL: '{site_specific_path}'")
+                                break
+                except:
+                    pass
+            
+            # If still not found, try to extract from base_url as fallback
+            if not site_specific_path and base_url:
+                try:
+                    # Try to extract site identifier from base_url (e.g., "connect-dmc" from "https://connect-dmc.milestoneinternet.com")
+                    parsed = urlparse(base_url)
+                    hostname = parsed.hostname or ""
+                    # Check if hostname contains a site identifier (e.g., "connect-dmc.milestoneinternet.com")
+                    if "." in hostname:
+                        parts = hostname.split(".")
+                        if len(parts) >= 2:
+                            # First part might be the site identifier
+                            potential_site = parts[0]
+                            if potential_site and potential_site != "www":
+                                site_specific_path = potential_site
+                                logging.info(f"[ASSET UPDATE] Extracted site-specific path from base_url (fallback): '{site_specific_path}'")
+                except:
+                    pass
+            
+            # Fallback: use a default (but log a warning)
+            if not site_specific_path:
+                site_specific_path = "connect-dmc"  # Default fallback
+                logging.warning(f"[ASSET UPDATE] Could not determine site-specific path, using default: '{site_specific_path}'. Consider adding an absolute image URL to source data.")
+            
+            # Build the asset base prefix dynamically
+            ASSET_BASE_PREFIX = f"{ASSETS_BASE_URL}/{site_specific_path}/"
+            DEFAULT_PLACEHOLDER_URL = f"{ASSET_BASE_PREFIX}site-images/placeholder.png"
+            logging.info(f"[ASSET UPDATE] Using asset base prefix: {ASSET_BASE_PREFIX}")
 
         def _normalize_asset_url(url: Optional[str]) -> Optional[str]:
             if not url or not isinstance(url, str):
@@ -495,6 +639,7 @@ def update_record_asset_if_needed(
 
             # Fallback to placeholder for any other format
             return DEFAULT_PLACEHOLDER_URL
+        
         # Try RecordJsonString first (from ComponentRecordsTree.json), then recordDataJson (from API payload)
         record_json_string = record.get("RecordJsonString") or record.get("recordDataJson")
         if not record_json_string:
@@ -510,6 +655,8 @@ def update_record_asset_if_needed(
         asset_fields = []
         image_pattern = '"ResourceID"'
         
+        logging.debug(f"[ASSET UPDATE] Searching for image fields in record JSON. Keys: {list(record_json.keys())}")
+        
         for key, value in record_json.items():
             # Convert value to string to search for pattern
             value_str = json.dumps(value) if not isinstance(value, str) else value
@@ -518,6 +665,7 @@ def update_record_asset_if_needed(
                 # This key contains an image
                 field_alias = key
                 asset_urls = []
+                logging.info(f"[ASSET UPDATE] Found image field: '{field_alias}' with value type: {type(value).__name__}")
                 
                 # Extract OriginalImagePath from the value
                 if isinstance(value, list):
@@ -728,20 +876,47 @@ def fetch_and_update_cms_generated_subrecords(
                 
                 # Check if this sub-record has images
                 # First, try to find source record by ComponentId (MiBlockId from CMS response)
-                source_record = component_records_map.get(sub_miblock_id)
+                # Handle both int and string type matching
+                source_record = component_records_map.get(sub_miblock_id) or component_records_map.get(int(sub_miblock_id)) or component_records_map.get(str(sub_miblock_id))
                 
-                # If not found, search all records for matching ComponentId
+                # If not found, search all records for matching ComponentId (handle type mismatches)
                 if not source_record:
                     for rec in component_records_map.values():
-                        if isinstance(rec, dict) and rec.get("ComponentId") == sub_miblock_id:
-                            source_record = rec
-                            break
+                        if isinstance(rec, dict):
+                            rec_comp_id = rec.get("ComponentId")
+                            # Try exact match, then int/string conversions
+                            if (rec_comp_id == sub_miblock_id or 
+                                (isinstance(rec_comp_id, int) and isinstance(sub_miblock_id, (int, str)) and rec_comp_id == int(sub_miblock_id)) or
+                                (isinstance(rec_comp_id, str) and isinstance(sub_miblock_id, (int, str)) and int(rec_comp_id) == int(sub_miblock_id))):
+                                source_record = rec
+                                break
                 
                 # Check if record has images - either from source record or parse RecordJsonString
                 has_image = False
                 if source_record:
                     has_image = source_record.get("has_image", False)
                     logging.info(f"[SUBRECORD UPDATE] Found source record for MiBlock {sub_miblock_id}, has_image={has_image}")
+                    # Log detailed source record info for debugging
+                    source_record_json_str = source_record.get("RecordJsonString", "")
+                    if source_record_json_str:
+                        try:
+                            source_json = json.loads(source_record_json_str) if isinstance(source_record_json_str, str) else source_record_json_str
+                            # Find image fields
+                            image_fields = []
+                            for key, value in source_json.items():
+                                if isinstance(value, (dict, list)) or (isinstance(value, str) and '"ResourceID"' in value):
+                                    value_str = json.dumps(value) if not isinstance(value, str) else value
+                                    if '"ResourceID"' in value_str:
+                                        image_fields.append(key)
+                            logging.info(f"[SUBRECORD UPDATE] Source record has image fields: {image_fields}")
+                        except:
+                            pass
+                    append_debug_log("subrecord_source_found", {
+                        "sub_record_id": sub_record_id,
+                        "sub_miblock_id": sub_miblock_id,
+                        "has_image": has_image,
+                        "source_component_id": source_record.get("ComponentId")
+                    })
                 else:
                     # If no source record found, check RecordJsonString directly for image pattern
                     if record_json_string:
@@ -749,7 +924,13 @@ def fetch_and_update_cms_generated_subrecords(
                             record_json = json.loads(record_json_string) if isinstance(record_json_string, str) else record_json_string
                             record_str = json.dumps(record_json) if not isinstance(record_json_string, str) else record_json_string
                             has_image = '"ResourceID"' in record_str
-                            logging.info(f"[SUBRECORD UPDATE] No source record found, checking RecordJsonString directly, has_image={has_image}")
+                            logging.info(f"[SUBRECORD UPDATE] No source record found for MiBlock {sub_miblock_id}, checking RecordJsonString directly, has_image={has_image}")
+                            append_debug_log("subrecord_source_not_found", {
+                                "sub_record_id": sub_record_id,
+                                "sub_miblock_id": sub_miblock_id,
+                                "has_image_from_cms": has_image,
+                                "component_records_map_keys": list(component_records_map.keys()) if component_records_map else []
+                            })
                         except:
                             pass
                 
@@ -762,10 +943,22 @@ def fetch_and_update_cms_generated_subrecords(
                     source_record_json = source_record.get("RecordJsonString") if source_record else None
                     
                     if not source_record_json:
-                        logging.warning(f"[SUBRECORD UPDATE] No source RecordJsonString found for sub-record {sub_record_id}, cannot update image")
+                        logging.warning(f"[SUBRECORD UPDATE] No source RecordJsonString found for sub-record {sub_record_id} (MiBlock: {sub_miblock_id}), cannot update image")
+                        logging.warning(f"[SUBRECORD UPDATE] source_record exists: {source_record is not None}, component_records_map keys: {list(component_records_map.keys()) if component_records_map else 'empty'}")
+                        append_debug_log("subrecord_image_update_failed", {
+                            "sub_record_id": sub_record_id,
+                            "sub_miblock_id": sub_miblock_id,
+                            "source_record_found": source_record is not None,
+                            "source_record_json_exists": bool(source_record_json) if source_record else False
+                        })
                         continue
                     
-                    logging.info(f"[SUBRECORD UPDATE] Using source RecordJsonString for sub-record {sub_record_id} (CMS response has null values)")
+                    logging.info(f"[SUBRECORD UPDATE] Using source RecordJsonString for sub-record {sub_record_id} (MiBlock: {sub_miblock_id}) - CMS response has null values")
+                    append_debug_log("subrecord_using_source_json", {
+                        "sub_record_id": sub_record_id,
+                        "sub_miblock_id": sub_miblock_id,
+                        "source_record_component_id": source_record.get("ComponentId") if source_record else None
+                    })
                     
                     # Create a temporary record dict for update_record_asset_if_needed
                     temp_record = {
@@ -1805,6 +1998,97 @@ def publish_queued_pages(base_url: str, headers: Dict[str, str], site_id: int) -
     
     logging.info(f"[PUBLISH] Queued publish complete: {success_count}/{total_pages} pages processed.")
     return success_count
+
+def cleanup_files_to_site_folder(file_prefix: str, site_id: Optional[int]) -> None:
+    """
+    Moves log files and remaining JSON files from root uploads/ folder to uploads/{site_id}/ folder.
+    This ensures all files are organized by site_id after processing is complete.
+    
+    Files moved:
+    - home_debug.log
+    - module_debug.log
+    - Any JSON files matching the file_prefix pattern (e.g., {file_prefix}_*.json)
+    """
+    if not site_id:
+        logging.warning("[CLEANUP] No site_id provided, skipping file organization.")
+        return
+    
+    try:
+        site_folder = get_site_upload_folder(site_id)
+        root_folder = UPLOAD_FOLDER
+        
+        # Ensure site folder exists
+        os.makedirs(site_folder, exist_ok=True)
+        
+        # Files to move (log files)
+        log_files_to_move = [
+            "home_debug.log",
+            "module_debug.log"
+        ]
+        
+        moved_count = 0
+        
+        # Move log files
+        for log_file in log_files_to_move:
+            source_path = os.path.join(root_folder, log_file)
+            dest_path = os.path.join(site_folder, log_file)
+            
+            if os.path.exists(source_path):
+                try:
+                    # If destination exists, append to it (merge logs)
+                    if os.path.exists(dest_path):
+                        with open(source_path, 'r', encoding='utf-8') as src:
+                            content = src.read()
+                        with open(dest_path, 'a', encoding='utf-8') as dst:
+                            dst.write("\n" + "="*80 + "\n")
+                            dst.write(f"# Merged from root folder on {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                            dst.write("="*80 + "\n")
+                            dst.write(content)
+                        os.remove(source_path)
+                        logging.info(f"[CLEANUP] Merged and moved {log_file} to {site_folder}/")
+                    else:
+                        shutil.move(source_path, dest_path)
+                        logging.info(f"[CLEANUP] Moved {log_file} to {site_folder}/")
+                    moved_count += 1
+                except Exception as e:
+                    logging.warning(f"[CLEANUP] Failed to move {log_file}: {e}")
+        
+        # Move JSON files matching file_prefix pattern
+        if file_prefix:
+            base_prefix = os.path.basename(file_prefix)
+            try:
+                for filename in os.listdir(root_folder):
+                    # Skip directories and files that don't match the pattern
+                    file_path = os.path.join(root_folder, filename)
+                    if not os.path.isfile(file_path):
+                        continue
+                    
+                    # Match files that start with file_prefix and are JSON files
+                    if filename.startswith(base_prefix) and filename.endswith('.json'):
+                        # Skip files that are already in site folder (check if they exist)
+                        dest_path = os.path.join(site_folder, filename)
+                        if os.path.exists(dest_path):
+                            # File already exists in site folder, skip
+                            continue
+                        
+                        try:
+                            shutil.move(file_path, dest_path)
+                            logging.info(f"[CLEANUP] Moved {filename} to {site_folder}/")
+                            moved_count += 1
+                        except Exception as e:
+                            logging.warning(f"[CLEANUP] Failed to move {filename}: {e}")
+            except Exception as e:
+                logging.warning(f"[CLEANUP] Error scanning for JSON files: {e}")
+        
+        if moved_count > 0:
+            logging.info(f"[CLEANUP] Successfully organized {moved_count} file(s) into {site_folder}/")
+        else:
+            logging.info("[CLEANUP] No files needed to be moved (all files already organized).")
+            
+    except Exception as e:
+        logging.error(f"[CLEANUP] Error during cleanup: {e}")
+        logging.exception("Full traceback:")
+        # Don't raise - cleanup failures shouldn't break the main process
 
 def CreatePage(base_url, headers, payload,template_id):
     """
@@ -3407,7 +3691,23 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         logging.warning("No 'pages' list found in the processed JSON. Aborting assembly.")
         return
 
+    # Load page filter from global config file
+    page_filter = None
+    global_config = load_global_config(site_id)
+    if global_config:
+        page_filter = global_config.get("debug_page_filter")  # Can be None, empty string, or a page name
+        if page_filter and page_filter.strip():
+            page_filter = page_filter.strip()
+        else:
+            page_filter = None
     
+    # Filter pages if page_filter is set
+    if page_filter:
+        pages = [p for p in pages if p.get('page_name') == page_filter]
+        if not pages:
+            logging.warning(f"[DEBUG] No page found with name '{page_filter}'. Available pages: {[p.get('page_name') for p in processed_json.get('pages', [])]}")
+            return
+        logging.info(f"[DEBUG] Processing ONLY page: '{page_filter}' (filtered from {len(processed_json.get('pages', []))} total pages)")
 
     initial_level = 1
     initial_hierarchy: List[str] = []
@@ -3476,7 +3776,8 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
     
     try:
         # 1. Read _util_pages.json and extract menu component name from Automation Guide
-        util_pages_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_util_pages.json")
+        site_folder = get_site_upload_folder(site_id)
+        util_pages_file = os.path.join(site_folder, f"{file_prefix}_util_pages.json")
         
         if not os.path.exists(util_pages_file):
             logging.error(f"File not found: {util_pages_file}")
@@ -3566,7 +3867,8 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
             menu_component_name = "Main Menu"
         
         # 2. Read _simplified.json and extract page tree structure
-        simplified_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_simplified.json")
+        site_folder = get_site_upload_folder(site_id)
+        simplified_file = os.path.join(site_folder, f"{file_prefix}_simplified.json")
         
         if not os.path.exists(simplified_file):
             logging.error(f"File not found: {simplified_file}")
@@ -3636,7 +3938,8 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
             if all_components_response and isinstance(all_components_response, list):
                 # Save the full component list response to a JSON file for debugging
                 components_output_filename = f"{file_prefix}_all_components_response.json"
-                components_output_filepath = os.path.join(UPLOAD_FOLDER, components_output_filename)
+                site_folder = get_site_upload_folder(site_id)
+                components_output_filepath = os.path.join(site_folder, components_output_filename)
                 
                 components_data_to_save = {
                     "total_components": len(all_components_response),
@@ -3875,7 +4178,8 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
         
         # 4. Save the new JSON file
         output_filename = f"{file_prefix}_menu_navigation.json"
-        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+        site_folder = get_site_upload_folder(site_id)
+        output_filepath = os.path.join(site_folder, output_filename)
         
         with open(output_filepath, 'w', encoding='utf-8') as f:
             json.dump(menu_navigation_data, f, indent=4, ensure_ascii=False)
@@ -3941,7 +4245,8 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
     
     try:
         # 1. Read menu_navigation.json
-        menu_nav_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_menu_navigation.json")
+        site_folder = get_site_upload_folder(site_id)
+        menu_nav_file = os.path.join(site_folder, f"{file_prefix}_menu_navigation.json")
         if not os.path.exists(menu_nav_file):
             logging.error(f"Menu navigation file not found: {menu_nav_file}")
             return False
@@ -4239,7 +4544,8 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         # 6. Save all matched records to a single JSON file
         if all_matched_records:
             output_filename = f"{file_prefix}_matched_records.json"
-            output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+            site_folder = get_site_upload_folder(site_id)
+            output_filepath = os.path.join(site_folder, output_filename)
             
             matched_records_data = {
                 "total_matched": len(all_matched_records),
@@ -4276,14 +4582,15 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         return False
 
 
-def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str, payload_filename: str) -> Dict[str, int]:
+def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str, payload_filename: str, site_id: Optional[int] = None) -> Dict[str, int]:
     """
     Updates existing records in CMS using their actual record IDs.
     Uses bulk processing for better performance.
     """
     logging.info(f"Calling API to UPDATE {len(records)} existing records using bulk processing...")
     
-    payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
+    site_folder = get_site_upload_folder(site_id)
+    payload_filepath = os.path.join(site_folder, payload_filename)
     
     # Prepare all records for bulk API call
     records_payload_list = []
@@ -4378,14 +4685,15 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
     return updated_records
 
 
-def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str, payload_filename: str) -> Dict[str, int]:
+def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str], records: List[Dict[str, Any]], file_prefix: str, payload_filename: str, site_id: Optional[int] = None) -> Dict[str, int]:
     """
     Saves records level by level, updating payload file after each parent is saved.
     """
     logging.info(f"Calling API to save {len(records)} records in sequential order...")
     
     api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
-    payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
+    site_folder = get_site_upload_folder(site_id)
+    payload_filepath = os.path.join(site_folder, payload_filename)
     
     # Group records by parent-child
     # IMPORTANT: Maintain order from simplified.json - only sort by level, then preserve original order within each level
@@ -4474,7 +4782,8 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     if orphaned_children:
         logging.info(f"Found {len(orphaned_children)} orphaned children (parents are matched)")
         # Read matched_records to get parent IDs
-        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
+        site_folder = get_site_upload_folder(site_id)
+        matched_records_file = os.path.join(site_folder, f"{file_prefix}_matched_records.json")
         parent_id_map = {}
         
         if os.path.exists(matched_records_file):
@@ -4762,7 +5071,8 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
     logging.info("========================================================")
     
     try:
-        menu_nav_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_menu_navigation.json")
+        site_folder = get_site_upload_folder(site_id)
+        menu_nav_file = os.path.join(site_folder, f"{file_prefix}_menu_navigation.json")
         if not os.path.exists(menu_nav_file):
             logging.error(f"Menu navigation file not found: {menu_nav_file}")
             return False
@@ -4880,7 +5190,8 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             logging.warning(f"Config file not found: {config_file}. Using default property names.")
         
         # Read matched_records.json to get page_name -> record Id mapping
-        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
+        site_folder = get_site_upload_folder(site_id)
+        matched_records_file = os.path.join(site_folder, f"{file_prefix}_matched_records.json")
         page_name_to_record_id = {}
         
         if os.path.exists(matched_records_file):
@@ -5022,7 +5333,8 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         
         if new_records:
             output_filename = f"{file_prefix}_new_records_payload.json"
-            output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+            site_folder = get_site_upload_folder(site_id)
+            output_filepath = os.path.join(site_folder, output_filename)
             
             payload = {
                 "componentId": component_id,
@@ -5039,7 +5351,7 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             # Call API to save records if api_base_url and api_headers provided
             if api_base_url and api_headers:
                 logging.info("Calling API to save new records to CMS...")
-                call_save_miblock_records_api(api_base_url, api_headers, new_records, file_prefix, output_filename)
+                call_save_miblock_records_api(api_base_url, api_headers, new_records, file_prefix, output_filename, site_id)
             else:
                 logging.warning("API credentials not provided, skipping API call")
             
@@ -5075,7 +5387,8 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
     
     try:
         # 1. Read matched_records.json
-        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_matched_records.json")
+        site_folder = get_site_upload_folder(site_id)
+        matched_records_file = os.path.join(site_folder, f"{file_prefix}_matched_records.json")
         if not os.path.exists(matched_records_file):
             logging.error(f"Matched records file not found: {matched_records_file}")
             logging.info("Skipping matched records update")
@@ -5279,7 +5592,8 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         
         # 4. Save payload to separate file
         output_filename = f"{file_prefix}_save_miblock_records_payload.json"
-        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+        site_folder = get_site_upload_folder(site_id)
+        output_filepath = os.path.join(site_folder, output_filename)
         
         with open(output_filepath, 'w', encoding='utf-8') as f:
             json.dump(final_payload, f, indent=4, ensure_ascii=False)
@@ -5298,7 +5612,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             ))
             
             # Call update API (uses existing record IDs)
-            call_update_miblock_records_api(api_base_url, api_headers, api_payloads, file_prefix, output_filename)
+            call_update_miblock_records_api(api_base_url, api_headers, api_payloads, file_prefix, output_filename, site_id)
         else:
             logging.warning("API credentials not provided, skipping API call for matched records")
         
@@ -5331,12 +5645,17 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
 
 # ================= Pre-download All Components Function =================
 
-def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]]) -> List[Tuple[int, str, str, str]]:
+def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]], page_filter: Optional[str] = None) -> List[Tuple[int, str, str, str]]:
     """
     Collects all component IDs and their associated pages that will be needed during assembly.
     Returns a list of tuples: (componentId, component_name, cms_component_name, page_name)
     
     Note: The same component can appear multiple times if used on different pages.
+    
+    Args:
+        processed_json: The processed JSON containing pages
+        component_cache: The component cache for lookups
+        page_filter: Optional page name to filter by (e.g., "About Us"). If None, processes all pages.
     """
     component_info_list = []
     
@@ -5356,8 +5675,17 @@ def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: L
             sub_page_name = sub_page.get('page_name', 'Unnamed_SubPage')
             traverse_pages(sub_page, sub_page_name)
     
-    # Traverse all top-level pages
+    # Traverse all top-level pages (or filtered page)
     pages = processed_json.get('pages', [])
+    
+    # Filter pages if page_filter is set
+    if page_filter:
+        pages = [p for p in pages if p.get('page_name') == page_filter]
+        if not pages:
+            logging.warning(f"[PRE-DOWNLOAD] No page found with name '{page_filter}'. Available pages: {[p.get('page_name') for p in processed_json.get('pages', [])]}")
+            return []
+        logging.info(f"[PRE-DOWNLOAD] Filtering to only page: '{page_filter}'")
+    
     for page in pages:
         page_name = page.get('page_name', 'Unnamed_Page')
         traverse_pages(page, page_name)
@@ -5386,7 +5714,17 @@ def pre_download_all_components(
     logging.info("========================================================")
     
     # Step 1: Collect all component-page pairs (includes duplicates for same component on different pages)
-    component_info_list = collect_all_component_ids(processed_json, component_cache)
+    # Load page filter from global config file
+    page_filter = None
+    global_config = load_global_config(site_id)
+    if global_config:
+        page_filter = global_config.get("debug_page_filter")  # Can be None, empty string, or a page name
+        if page_filter and page_filter.strip():
+            page_filter = page_filter.strip()
+        else:
+            page_filter = None
+    
+    component_info_list = collect_all_component_ids(processed_json, component_cache, page_filter=page_filter)
     
     if not component_info_list:
         logging.info("No components found to pre-download.")
@@ -5691,15 +6029,25 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
 
     # --- 2. Load Settings and Configure API ---
     logging.info("STEP 1: Loading configuration for API details...")
-    settings = load_settings(file_prefix)
+    # Try to load settings first to get site_id (try root folder first for backward compatibility)
+    settings = load_settings(file_prefix, None)  # Try root folder first
     if not settings:
         raise RuntimeError("Could not load user configuration using load_settings. Aborting assembly.")
+    
+    # Extract site_id and set it globally for debug logging
+    site_id = settings.get("site_id")
+    if site_id:
+        set_current_site_id(site_id)
+        logging.info(f"[SITE] Using site_id: {site_id} for file organization")
+        # Reload settings from site-specific folder if it exists
+        site_specific_settings = load_settings(file_prefix, site_id)
+        if site_specific_settings:
+            settings = site_specific_settings
+            logging.info(f"[SITE] Loaded settings from site-specific folder: {site_id}")
 
     try:
         api_base_url = settings.get("target_site_url")
         raw_token = settings.get("cms_login_token") 
-        # --- NEW PARAMETER EXTRACTION ---
-        site_id = settings.get("site_id") 
 
         if not api_base_url or not raw_token or not isinstance(raw_token, str) or not raw_token.strip() or site_id is None:
              raise ValueError("Target URL, valid CMS Login Token, or 'site_id' missing in configuration.")
@@ -5720,7 +6068,7 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     FILE_SUFFIX = "_simplified.json"
     full_payload: Dict[str, Any] = {}
     
-    file_path = find_processed_json_filepath(file_prefix)
+    file_path = find_processed_json_filepath(file_prefix, site_id)
     if not file_path:
         logging.error(f"Error: Could not find target processed JSON file starting with '{os.path.basename(file_prefix)}'.")
         raise FileNotFoundError(f"Input file not found for prefix {file_prefix}.")
@@ -5842,7 +6190,8 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     # --- 6. SAVE THE STATUS FILE AS CSV ---
     STATUS_SUFFIX = "_assembly_report.csv" 
     status_filename = f"{file_prefix}{STATUS_SUFFIX}"
-    status_file_path = os.path.join(UPLOAD_FOLDER, status_filename)
+    site_folder = get_site_upload_folder(site_id)
+    status_file_path = os.path.join(site_folder, status_filename)
     
     # --- MODIFIED: Added 'cms_component_name' to the fieldnames ---
     fieldnames = ["page", "component", "cms_component_name", "level", "hierarchy", "available", "status"]
@@ -5902,7 +6251,8 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
         
         # Save timing summary to JSON file for easy analysis
         try:
-            timing_file = os.path.join(UPLOAD_FOLDER, f"{file_prefix}_timing_summary.json")
+            site_folder = get_site_upload_folder(site_id)
+            timing_file = os.path.join(site_folder, f"{file_prefix}_timing_summary.json")
             with open(timing_file, 'w', encoding='utf-8') as f:
                 json.dump({
                     "file_prefix": file_prefix,
@@ -5913,6 +6263,18 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
         except Exception as e:
             logging.error(f"[ERROR] Failed to save timing summary: {e}")
     
+    # --- 7.5. CLEANUP: Move log files and remaining JSON files to site_id folder ---
+    try:
+        logging.info("\n========================================================")
+        logging.info("STEP 7.5: CLEANUP - Organizing files by site_id")
+        logging.info("========================================================")
+        cleanup_files_to_site_folder(file_prefix, site_id)
+        logging.info("[CLEANUP] File organization complete.")
+    except Exception as e:
+        logging.error(f"[ERROR] Cleanup step failed: {e}")
+        logging.exception("Full traceback:")
+        # Don't fail the entire process if cleanup fails
+
     # --- 8. Prepare Final Output ---
     final_output = {
         "assembly_status": "SUCCESS: Pages and components processed.",

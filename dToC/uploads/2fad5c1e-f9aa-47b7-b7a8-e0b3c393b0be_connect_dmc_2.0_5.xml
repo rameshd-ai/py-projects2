@@ -3,7 +3,7 @@
   <title>Connect DMC</title>
   <version>2.0</version>
   <link>https://milestoneinc.slickplan.com/ywp5miiaw</link>
-  <pubDate>Sat, 20 Dec 2025 03:56:51 -0500</pubDate>
+  <pubDate>Tue, 13 Jan 2026 05:58:19 -0500</pubDate>
   <settings>
     <language>en_US</language>
   </settings>
@@ -22,6 +22,35 @@
       <id>svgmainsection</id>
     </options>
     <cells>
+      <cell id="svgfb66tb9z4g2fd2sh">
+        <color>#f0cb12</color>
+        <order>9000</order>
+        <textcolor>#2015f9</textcolor>
+        <text>About Us</text>
+        <level>1</level>
+        <contents lang="en_US">
+          <body>
+            <wysiwyg>
+              <id>cb7hhhavd</id>
+              <content>&amp;lt;div class=&amp;quot;OutlineElement Ltr SCXW187083328 BCX8&amp;quot;&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Meta Title &amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Meta Description&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;M1-Inside Hero&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;M2-Image intro&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Header: Title &amp;#039;About Us&amp;#039;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Overview&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;A8-Feature Snippet&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Our mission&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;A9-Feature Snippet-Dark&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Our Vision&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Our Values&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;PageInfoBlock&amp;lt;br&amp;gt;PageTemplateName: With Banner&amp;lt;br&amp;gt;Default Title: About Us&amp;lt;br&amp;gt;Default Description: About Us&amp;lt;br&amp;gt;&amp;lt;span data-teams=&amp;quot;true&amp;quot;&amp;gt;Header1: Navbar&amp;lt;br&amp;gt;Header2:&amp;lt;br&amp;gt;Footer1: Footer&amp;lt;br&amp;gt;Footer2:&amp;lt;/span&amp;gt;&amp;lt;br&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span data-teams=&amp;quot;true&amp;quot;&amp;gt;ShowInNavigation: Yes&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
+&amp;lt;/div&amp;gt;</content>
+            </wysiwyg>
+          </body>
+        </contents>
+      </cell>
       <cell id="svgndbt4eoweczoi1ml">
         <text>Cancun and Riviera Maya</text>
         <order>4000</order>
@@ -604,36 +633,6 @@
 &amp;lt;p&amp;gt;&amp;lt;strong&amp;gt;A15-Form No Image&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;PageInfoBlock&amp;lt;br&amp;gt;PageTemplateName: With Banner&amp;lt;br&amp;gt;Default Title: Incentive Programs&amp;lt;br&amp;gt;Default Description: Incentive Programs&amp;lt;br&amp;gt;&amp;lt;span data-teams=&amp;quot;true&amp;quot;&amp;gt;Header1: Navbar&amp;lt;br&amp;gt;Header2:&amp;lt;br&amp;gt;Footer1: Footer&amp;lt;br&amp;gt;Footer2:&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
 &amp;lt;p&amp;gt;&amp;lt;span data-teams=&amp;quot;true&amp;quot;&amp;gt;&amp;lt;span data-contrast=&amp;quot;auto&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; lang=&amp;quot;EN-US&amp;quot; class=&amp;quot;TextRun SCXW42573070 BCX0&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SpellingErrorV2Themed SCXW42573070 BCX0&amp;quot;&amp;gt;ShowInNavigation&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW42573070 BCX0&amp;quot;&amp;gt;: Yes&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;EOP SCXW42573070 BCX0&amp;quot; data-ccp-props=&amp;quot;{&amp;quot;335559685&amp;quot;:720,&amp;quot;335559738&amp;quot;:240,&amp;quot;335559739&amp;quot;:240}&amp;quot;&amp;gt; &amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;</content>
-            </wysiwyg>
-          </body>
-        </contents>
-      </cell>
-      <cell id="svgfb66tb9z4g2fd2sh">
-        <color>#f0cb12</color>
-        <order>9000</order>
-        <textcolor>#2015f9</textcolor>
-        <text>About Us</text>
-        <level>1</level>
-        <contents lang="en_US">
-          <body>
-            <wysiwyg>
-              <id>cb7hhhavd</id>
-              <content>&amp;lt;div class=&amp;quot;OutlineElement Ltr SCXW187083328 BCX8&amp;quot;&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Meta Title &amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Meta Description&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;M1-Inside Hero&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;M2-Image intro&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Header: Title &amp;#039;About Us&amp;#039;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Overview&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;A8-Feature Snippet&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Our mission&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;A9-Feature Snippet-Dark&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Our Vision&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;A8-Feature Snippet&amp;lt;/span&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;Our Values&amp;lt;/span&amp;gt;&amp;lt;span class=&amp;quot;TextRun SCXW187083328 BCX8&amp;quot; lang=&amp;quot;EN-US&amp;quot; xml:lang=&amp;quot;EN-US&amp;quot; data-contrast=&amp;quot;auto&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;strong&amp;gt;&amp;lt;/strong&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;PageInfoBlock&amp;lt;br&amp;gt;PageTemplateName: With Banner&amp;lt;br&amp;gt;Default Title: About Us&amp;lt;br&amp;gt;Default Description: About Us&amp;lt;br&amp;gt;&amp;lt;span data-teams=&amp;quot;true&amp;quot;&amp;gt;Header1: Navbar&amp;lt;br&amp;gt;Header2:&amp;lt;br&amp;gt;Footer1: Footer&amp;lt;br&amp;gt;Footer2:&amp;lt;/span&amp;gt;&amp;lt;br&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;p class=&amp;quot;Paragraph SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span class=&amp;quot;NormalTextRun SCXW187083328 BCX8&amp;quot;&amp;gt;&amp;lt;span data-teams=&amp;quot;true&amp;quot;&amp;gt;ShowInNavigation: Yes&amp;lt;/span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/p&amp;gt;
-&amp;lt;/div&amp;gt;</content>
             </wysiwyg>
           </body>
         </contents>

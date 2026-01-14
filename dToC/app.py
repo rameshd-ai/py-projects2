@@ -4,6 +4,7 @@ import os
 import json
 import uuid
 import sys
+import shutil
 
 # Import config and utils files
 # Note: You must ensure 'config.py' defines UPLOAD_FOLDER, MAX_CONTENT_LENGTH, and allowed_file
@@ -83,11 +84,19 @@ def save_config():
             "profile_alias": data.get('profileAlias')
         }
         
+        # Save the config file in site-specific folder if site_id is provided
+        site_id = data.get('siteId')
+        if site_id:
+            site_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(site_id))
+            os.makedirs(site_folder, exist_ok=True)
+        else:
+            site_folder = app.config['UPLOAD_FOLDER']
+        
         # Save the config file in the uploads directory, using the same unique prefix
         config_filename = f"{file_prefix}_config.json"
-        config_filepath = os.path.join(app.config['UPLOAD_FOLDER'], config_filename)
+        config_filepath = os.path.join(site_folder, config_filename)
         
-        with open(config_filepath, 'w') as f:
+        with open(config_filepath, 'w', encoding='utf-8') as f:
             json.dump(config_to_save, f, indent=4)
             
         return jsonify({
@@ -135,6 +144,165 @@ def download_status_report(filename):
         app.logger.error(f"Download request failed: File not found in {app.config['UPLOAD_FOLDER']}: {filename}")
         # Return a 404 error with a custom message that matches the browser error
         return "File wasn't available on site", 404
+
+
+# --- NEW: List Processed Projects ---
+@app.route('/api/projects', methods=['GET'])
+def list_projects():
+    """
+    Lists all processed projects by scanning site_id folders in uploads/ and output/.
+    Returns a list of projects with their site_id and folder information.
+    """
+    try:
+        uploads_folder = app.config['UPLOAD_FOLDER']
+        output_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+        
+        projects = []
+        site_ids = set()
+        
+        # Scan uploads folder for site_id directories
+        if os.path.exists(uploads_folder):
+            for item in os.listdir(uploads_folder):
+                item_path = os.path.join(uploads_folder, item)
+                if os.path.isdir(item_path) and item.isdigit():
+                    site_ids.add(item)
+        
+        # Scan output folder for site_id directories
+        if os.path.exists(output_folder):
+            for item in os.listdir(output_folder):
+                item_path = os.path.join(output_folder, item)
+                if os.path.isdir(item_path) and item.isdigit():
+                    site_ids.add(item)
+        
+        # Build project list with details
+        for site_id in sorted(site_ids, key=lambda x: int(x) if x.isdigit() else 0, reverse=True):
+            uploads_path = os.path.join(uploads_folder, site_id)
+            output_path = os.path.join(output_folder, site_id)
+            
+            has_uploads = os.path.exists(uploads_path) and os.path.isdir(uploads_path)
+            has_output = os.path.exists(output_path) and os.path.isdir(output_path)
+            
+            # Count files in uploads folder
+            file_count = 0
+            if has_uploads:
+                try:
+                    file_count = len([f for f in os.listdir(uploads_path) if os.path.isfile(os.path.join(uploads_path, f))])
+                except:
+                    pass
+            
+            # Try to get site URL from config file
+            site_url = None
+            if has_uploads:
+                try:
+                    # Look for config files in the uploads folder
+                    for filename in os.listdir(uploads_path):
+                        if filename.endswith('_config.json'):
+                            config_path = os.path.join(uploads_path, filename)
+                            try:
+                                with open(config_path, 'r', encoding='utf-8') as f:
+                                    config_data = json.load(f)
+                                    # Try both 'target_site_url' and 'site_url' keys
+                                    site_url = config_data.get('target_site_url') or config_data.get('site_url')
+                                    app.logger.info(f"Found config file {filename} for site_id {site_id}, target_site_url: {config_data.get('target_site_url')}, site_url: {site_url}")
+                                    if site_url and isinstance(site_url, str) and site_url.strip():
+                                        break
+                            except Exception as e:
+                                app.logger.error(f"Error reading config file {filename}: {e}")
+                                pass
+                except Exception as e:
+                    app.logger.debug(f"Error scanning uploads folder for site_id {site_id}: {e}")
+                    pass
+            
+            # Fallback: if no URL found, use site_id
+            if not site_url or (isinstance(site_url, str) and site_url.strip() == ''):
+                site_url = f"Site ID: {site_id}"
+            
+            # Ensure site_url is always a string
+            if not site_url:
+                site_url = f"Site ID: {site_id}"
+            
+            projects.append({
+                "site_id": str(site_id),
+                "site_url": str(site_url),
+                "has_uploads": has_uploads,
+                "has_output": has_output,
+                "file_count": file_count
+            })
+        
+        return jsonify({
+            "success": True,
+            "projects": projects
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"Error listing projects: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error listing projects: {str(e)}"
+        }), 500
+
+
+# --- NEW: Delete Project ---
+@app.route('/api/projects/<site_id>', methods=['DELETE'])
+def delete_project(site_id):
+    """
+    Deletes a project by removing the site_id folder from both uploads/ and output/.
+    """
+    try:
+        # Validate site_id (should be numeric)
+        if not site_id.isdigit():
+            return jsonify({
+                "success": False,
+                "message": "Invalid site_id. Must be numeric."
+            }), 400
+        
+        uploads_folder = app.config['UPLOAD_FOLDER']
+        output_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+        
+        uploads_path = os.path.join(uploads_folder, site_id)
+        output_path = os.path.join(output_folder, site_id)
+        
+        deleted_folders = []
+        errors = []
+        
+        # Delete uploads folder
+        if os.path.exists(uploads_path) and os.path.isdir(uploads_path):
+            try:
+                shutil.rmtree(uploads_path)
+                deleted_folders.append(f"uploads/{site_id}")
+            except Exception as e:
+                errors.append(f"Failed to delete uploads/{site_id}: {str(e)}")
+        
+        # Delete output folder
+        if os.path.exists(output_path) and os.path.isdir(output_path):
+            try:
+                shutil.rmtree(output_path)
+                deleted_folders.append(f"output/{site_id}")
+            except Exception as e:
+                errors.append(f"Failed to delete output/{site_id}: {str(e)}")
+        
+        if deleted_folders:
+            message = f"Successfully deleted: {', '.join(deleted_folders)}"
+            if errors:
+                message += f". Errors: {', '.join(errors)}"
+            return jsonify({
+                "success": True,
+                "message": message,
+                "deleted_folders": deleted_folders
+            }), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": f"No folders found for site_id {site_id}",
+                "errors": errors
+            }), 404
+            
+    except Exception as e:
+        app.logger.error(f"Error deleting project {site_id}: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error deleting project: {str(e)}"
+        }), 500
 
 
 # --- Run Application ---

@@ -1,0 +1,114 @@
+{
+    "file_prefix": "2fad5c1e-f9aa-47b7-b7a8-e0b3c393b0be",
+    "timestamp": "2026-01-14 11:38:46",
+    "timing_summary": [
+        {
+            "function": "assemble_page_templates_level1",
+            "count": 1,
+            "total_seconds": 1760.8741776943207,
+            "total_minutes": 29.34790296157201,
+            "average_seconds": 1760.8741776943207,
+            "average_minutes": 29.34790296157201,
+            "max_seconds": 1760.8741776943207,
+            "max_minutes": 29.34790296157201,
+            "min_seconds": 1760.8741776943207,
+            "min_minutes": 29.34790296157201
+        },
+        {
+            "function": "add_records_for_page",
+            "count": 119,
+            "total_seconds": 1443.87531042099,
+            "total_minutes": 24.0645885070165,
+            "average_seconds": 12.133405969924286,
+            "average_minutes": 0.20222343283207145,
+            "max_seconds": 20.21506667137146,
+            "max_minutes": 0.336917777856191,
+            "min_seconds": 2.1811139583587646,
+            "min_minutes": 0.03635189930597941
+        },
+        {
+            "function": "pre_download_all_components",
+            "count": 1,
+            "total_seconds": 423.03547620773315,
+            "total_minutes": 7.050591270128886,
+            "average_seconds": 423.03547620773315,
+            "average_minutes": 7.050591270128886,
+            "max_seconds": 423.03547620773315,
+            "max_minutes": 7.050591270128886,
+            "min_seconds": 423.03547620773315,
+            "min_minutes": 7.050591270128886
+        },
+        {
+            "function": "publishPage",
+            "count": 29,
+            "total_seconds": 271.5902695655823,
+            "total_minutes": 4.526504492759704,
+            "average_seconds": 9.36518170915801,
+            "average_minutes": 0.15608636181930016,
+            "max_seconds": 14.286766290664673,
+            "max_minutes": 0.23811277151107788,
+            "min_seconds": 7.049055576324463,
+            "min_minutes": 0.11748425960540772
+        },
+        {
+            "function": "psPublishApi",
+            "count": 29,
+            "total_seconds": 204.9088532924652,
+            "total_minutes": 3.4151475548744203,
+            "average_seconds": 7.065822527326387,
+            "average_minutes": 0.11776370878877311,
+            "max_seconds": 12.056723833084106,
+            "max_minutes": 0.20094539721806845,
+            "min_seconds": 4.903016567230225,
+            "min_minutes": 0.08171694278717041
+        },
+        {
+            "function": "updatePageMapping",
+            "count": 29,
+            "total_seconds": 59.1041898727417,
+            "total_minutes": 0.9850698312123617,
+            "average_seconds": 2.0380755128531622,
+            "average_minutes": 0.03396792521421937,
+            "max_seconds": 2.8604793548583984,
+            "max_minutes": 0.04767465591430664,
+            "min_seconds": 1.7404053211212158,
+            "min_minutes": 0.029006755352020262
+        },
+        {
+            "function": "CreatePage",
+            "count": 33,
+            "total_seconds": 35.987465620040894,
+            "total_minutes": 0.5997910936673482,
+            "average_seconds": 1.0905292612133604,
+            "average_minutes": 0.018175487686889338,
+            "max_seconds": 2.3578572273254395,
+            "max_minutes": 0.03929762045542399,
+            "min_seconds": 0.7093892097473145,
+            "min_minutes": 0.011823153495788575
+        },
+        {
+            "function": "psMappingApi",
+            "count": 29,
+            "total_seconds": 27.76543092727661,
+            "total_minutes": 0.46275718212127687,
+            "average_seconds": 0.9574286526647108,
+            "average_minutes": 0.015957144211078512,
+            "max_seconds": 1.7441580295562744,
+            "max_minutes": 0.029069300492604574,
+            "min_seconds": 0.7122232913970947,
+            "min_minutes": 0.01187038818995158
+        },
+        {
+            "function": "GetAllVComponents",
+            "count": 1,
+            "total_seconds": 5.415731191635132,
+            "total_minutes": 0.0902621865272522,
+            "average_seconds": 5.415731191635132,
+            "average_minutes": 0.0902621865272522,
+            "max_seconds": 5.415731191635132,
+            "max_minutes": 0.0902621865272522,
+            "min_seconds": 5.415731191635132,
+            "min_minutes": 0.0902621865272522
+        }
+    ]
+}

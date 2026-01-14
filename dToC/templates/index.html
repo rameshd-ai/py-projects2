@@ -46,6 +46,31 @@
         
         /* Utility for hiding the final output section initially */
         .hidden { display: none; }
+        
+        /* Modal overlay styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 900px;
+            width: 95%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="bg-gray-100 antialiased">
@@ -56,8 +81,16 @@
             
             <div class="w-full max-w-6xl mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden flex flex-col flex-grow flex-shrink-0 transition-all duration-300 h-fit">
                 
-                <div class="p-6 md:p-8 header-bg text-white flex-shrink-0">
+                <div class="p-6 md:p-8 header-bg text-white flex-shrink-0 flex justify-between items-center">
                     <h1 class="text-3xl font-light">Page Builder Automation</h1>
+                    <button 
+                        id="manageProjectsBtn"
+                        onclick="openProjectsModal()"
+                        class="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition duration-200 font-semibold text-sm flex items-center"
+                    >
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        Manage Projects
+                    </button>
                 </div>
 
                 <div class="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-gray-200 flex-grow h-[calc(100vh-250px)] lg:h-[calc(100vh-16rem)]"> 
@@ -138,6 +171,25 @@
             </div>
             
         </main>
+    </div>
+
+    <!-- Projects Management Modal -->
+    <div id="projectsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Processed Projects</h2>
+                <button onclick="closeProjectsModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div id="projectsList" class="space-y-3">
+                <div class="text-center text-gray-500 py-8">
+                    <div class="spinner mx-auto mb-4"></div>
+                    <p>Loading projects...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -362,6 +414,93 @@
             
             // Initial UI cleanup 
             resetUI();
+        });
+
+        // Projects Management Modal Functions
+        function openProjectsModal() {
+            const modal = document.getElementById('projectsModal');
+            modal.classList.remove('hidden');
+            loadProjects();
+        }
+
+        function closeProjectsModal() {
+            const modal = document.getElementById('projectsModal');
+            modal.classList.add('hidden');
+        }
+
+        async function loadProjects() {
+            const projectsList = document.getElementById('projectsList');
+            projectsList.innerHTML = '<div class="text-center text-gray-500 py-8"><div class="spinner mx-auto mb-4"></div><p>Loading projects...</p></div>';
+            
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                
+                console.log('Projects API Response:', data); // Debug logging
+                
+                if (data.success && data.projects.length > 0) {
+                    projectsList.innerHTML = data.projects.map(project => {
+                        // Ensure site_url is always defined
+                        const siteUrl = project.site_url || project.target_site_url || `Site ID: ${project.site_id}`;
+                        console.log('Project:', project, 'Site URL:', siteUrl); // Debug logging
+                        
+                        return `
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition duration-200">
+                            <div class="flex-1">
+                                <div class="font-semibold text-gray-800">${siteUrl}</div>
+                                <div class="text-sm text-gray-600 mt-1">
+                                    ${project.has_uploads ? '✓ Uploads folder' : '✗ No uploads'} | 
+                                    ${project.has_output ? '✓ Output folder' : '✗ No output'} | 
+                                    ${project.file_count} file(s)
+                                </div>
+                            </div>
+                            <button 
+                                onclick="deleteProject('${project.site_id}')" 
+                                class="ml-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 font-semibold text-sm flex items-center"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                Delete
+                            </button>
+                        </div>
+                    `;
+                    }).join('');
+                } else {
+                    projectsList.innerHTML = '<div class="text-center text-gray-500 py-8"><p>No processed projects found.</p></div>';
+                }
+            } catch (error) {
+                projectsList.innerHTML = `<div class="text-center text-red-500 py-8"><p>Error loading projects: ${error.message}</p></div>`;
+                console.error('Error loading projects:', error);
+            }
+        }
+
+        async function deleteProject(siteId) {
+            if (!confirm(`Are you sure you want to delete all data for Site ID ${siteId}? This will permanently delete the folder from both uploads/ and output/. This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/projects/${siteId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Successfully deleted: ${data.message}`);
+                    loadProjects(); // Reload the list
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`Error deleting project: ${error.message}`);
+                console.error('Error deleting project:', error);
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('projectsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeProjectsModal();
+            }
         });
     </script>
 </body>
