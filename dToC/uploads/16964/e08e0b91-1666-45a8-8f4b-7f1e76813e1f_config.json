@@ -1,0 +1,16 @@
+{
+    "target_site_url": "https://hotelnikkosf-automation.w021cms.milestoneinternet.info",
+    "site_id": "16964",
+    "profile_alias": "2803.1",
+    "file_prefix": "e08e0b91-1666-45a8-8f4b-7f1e76813e1f",
+    "output_json_filenames": [
+        "e08e0b91-1666-45a8-8f4b-7f1e76813e1f_home_pages.json",
+        "e08e0b91-1666-45a8-8f4b-7f1e76813e1f_footer_unknown_pages.json",
+        "e08e0b91-1666-45a8-8f4b-7f1e76813e1f_util_pages.json",
+        "e08e0b91-1666-45a8-8f4b-7f1e76813e1f_simplified.json"
+    ],
+    "menu_component_name": "Main Menu",
+    "menu_level": 0,
+    "level_1_custom_properties": {},
+    "cms_login_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzaXRlSUQiOiIxNjk2NCIsInNpdGVVUkwiOiJodHRwczovL2hvdGVsbmlra29zZi1hdXRvbWF0aW9uLncwMjFjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby8iLCJhcGlVUkwiOiJodHRwczovL2hvdGVsbmlra29zZi1hdXRvbWF0aW9uLncwMjFjbXMubWlsZXN0b25laW50ZXJuZXQuaW5mby9jY2FkbWluL2Ntcy8iLCJ1c2VySUQiOiIzMDUzMCIsInVzZXJUeXBlSUQiOiI0IiwidXNlck5hbWUiOiJmcmV5amEuY21zZHh0ZWFtQG1pbGVzdG9uZWludGVybmV0LmNvbSIsInVzZXJFbWFpbCI6ImZyZXlqYS5jbXNkeHRlYW1AbWlsZXN0b25laW50ZXJuZXQuY29tIiwibWl4cGFuZWxLZXkiOiI1Y2Q2MzE4ZTRiYTA4MDUyOGIxMzcxYzQzOTlkMjMxNSIsInBvZCI6IjIxIiwic2Vzc2lvbklEIjoiZXJ4Z2FrdG9ocTFrZnE0dmg0cnppcHEzIiwiZGFtQmFzZVVSTCI6Imh0dHBzOi8vZGFtYXBpLm1pbGVzdG9uZWludGVybmV0LmNvbS9hcGkvdjIuMC8iLCJwZXJzb25hbGl6YXRpb25FbmFibGVkIjoiRmFsc2UiLCJtaW1Qcm9maWxlSWQiOiIxMTQ4MCIsImlzQWdlbmN5VXNlciI6IlRydWUiLCJpc1RyYW5zbGF0aW9uRW5hYmxlZCI6IkZhbHNlIiwidXNlclRoaW5nSWQiOiI5NDQ5YTRmNy0yNDJmLWYwMTEtOGIzZC0wMDBkM2EzZjhhZDQiLCJtcGNVc2VySWQiOiIyMjI4MiIsImlzSW1hZ2VBdXRob3JpemF0aW9uRW5hYmxlIjoiRmFsc2UiLCJpc0FJRW5hYmxlZCI6IkZhbHNlIiwidXNlclR5cGVOYW1lIjoiQ2xpZW50IiwiaXNNdWx0aUxvY2F0aW9uRXZlbnRDYWxlbmRhciI6IkZhbHNlIiwicHJvZmlsZUFsaWFzIjoiIiwidXNlck1haW5UeXBlSWQiOiI0IiwibmJmIjoxNzY4ODI1NjcxLCJleHAiOjE3Njg5MTIwNzEsImlhdCI6MTc2ODgyNTY3MSwiaXNzIjoiaHR0cHM6Ly9ob3RlbG5pa2tvc2YtYXV0b21hdGlvbi53MDIxY21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIiwiYXVkIjoiaHR0cHM6Ly9ob3RlbG5pa2tvc2YtYXV0b21hdGlvbi53MDIxY21zLm1pbGVzdG9uZWludGVybmV0LmluZm8vIn0.njlb-q03U25Eq3VYFMKazoGlC4PeVS3h0xdj4_dZFV4"
+}

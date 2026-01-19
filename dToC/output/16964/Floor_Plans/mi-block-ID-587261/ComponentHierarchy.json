@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 587261,
+        "type": "MainComponent",
+        "componentName": "floor-plan-chart"
+    },
+    {
+        "componentId": 587262,
+        "type": "Level1Child",
+        "componentName": "capacity-chart-list"
+    }
+]

@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 894147,
+            "FormatName": "Detail Snippet Right align",
+            "FormatKey": "detail-snippet-right-align",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each componentRecordJson.detail-snippet-right-align}}\n<div class=\"inner-padding {{#each data.change-background-color[]}}{{IfCond this '=' 'Primary Color'}} detail-snippet--primary-bg {{/IfCond}} {{IfCond this '=' 'Secondary Color'}} detail-snippet--secondary-bg {{/IfCond}} {{/each}}\n        {{IfCond data.set-top-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-top {{/IfCond}} \n        {{IfCond data.set-bottom-padding-to-zero[].0 '=' 'Yes'}} uk-padding-remove-bottom {{/IfCond}}\">\n<div class=\"offer-detail uk-container uk-container-1500\" >\n    <div class=\"uk-grid uk-child-width-1-2@m uk-child-width-1-1@s\">\n        <div class=\"offer-content-containter\">\n            <div class=\"offer-content\">\n               {{IfCond data.back-to-page-text 'notempty' '' 'and' data.back-to-page-link 'notempty' ''}}\n              <a href=\"{{data.back-to-page-link}}\" class=\"detail-widget__smalltitle back-button\"><span class=\"template-icon-chevron-left\"></span> {{data.back-to-page-text}}</a>\n              {{/IfCond}}\n                {{IfCond data.subtitle 'notempty' ''}}\n                <div class=\"title title--tagline \" tabindex=\"0\" >{{data.subtitle}}</div>\n                {{/IfCond}}\n                <h2 class=\"offer-title dynamiccomponenteditenable\" %%componentRecordEditable%%  tabindex=\"0\">{{data.title}}</h2>\n                {{IfCond data.description 'notempty' ''}}\n              <div class=\"js-texttoggle\">\n                <div class=\"snippet__desc text-editor\" tabindex=\"0\">                        \n                  {{{data.description}}}\n                  {{IfCond data.detail-description 'notempty' ''}}\n                  <div class=\"js-texttoggle-content\" tabindex=\"0\" style=\"display: none;\">\n                    {{{data.detail-description}}}\n                  </div>\n                  {{/IfCond}}\n                </div>\n                {{IfCond data.detail-description 'notempty' ''}}\n                <button type=\"button\" class=\"uk-button button-link button-readmore js-texttoggle-action\" tabindex=\"0\">\n                  <span class=\"button-readmore__text button-readmore__text--more\">Read More</span>\n                  <span class=\"button-readmore__text button-readmore__text--less\">Less</span>\n                  <span class=\"sr-only\"> {{data.title}}</span>\n                </button>\n                {{/IfCond}}\n              </div>\n              {{/IfCond}}\n                {{IfCond data.cta-text 'notempty' '' 'and' data.cta-link 'notempty' ''}}\n              <div class=\"snippet-action\">\n                <a href=\"{{data.cta-link}}\" role=\"button\" class=\"uk-button uk-button-primary \" {{IfCond data.is-external[].0 '=' 'Yes'}}target=\"_blank\"{{/IfCond}} data-autoDataLayer onclick=\"pushToGtmRenderByDom(this)\" data-msaction=\"click\" {{IfCond (CheckWord \"book\" data.cta-text) '=' 'True'}} data-msevent=\"booking buttons\" data-mscategory=\"booking entrances\" {{else}} data-msevent=\"events\" data-mscategory=\"cta click\" {{/IfCond}}>\n<span class=\"formslable\" aria-hidden=\"true\">{{data.cta-text}} - {{data.title}}</span> {{data.cta-text}} <span class=\"sr-only\">for {{data.title}}</span></a>\n              </div>\n                {{/IfCond}}\n            </div>\n        </div>\n        <div class=\"offer-snippet-image\">\n          \n            <img src=\"{{data.image.0.OriginalImagePath}}\" alt=\"{{data.alt-text}}\" width=\"700\" height=\"525\" tabindex=\"0\" >\n          \n        </div>\n    </div>\n</div>\n</div>\n{{/each}}",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

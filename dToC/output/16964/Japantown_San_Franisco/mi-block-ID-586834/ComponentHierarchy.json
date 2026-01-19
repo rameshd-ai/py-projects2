@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 586834,
+        "type": "MainComponent",
+        "componentName": "Zig-zag-right-image"
+    },
+    {
+        "componentId": 586835,
+        "type": "Level1Child",
+        "componentName": "Layout-1-Zigzag"
+    }
+]

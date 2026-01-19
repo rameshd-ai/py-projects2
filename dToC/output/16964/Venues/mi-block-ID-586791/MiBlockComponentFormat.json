@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 893892,
+            "FormatName": "Intro section collapsible",
+            "FormatKey": "intro-section-collapsible",
+            "FormatPrefix": "",
+            "FormatContent": "<!-- Layout 138 [H1 headline] Starts -->\n{{#each ComponentRecordJson.intro-section-collapsible}}\n<div class=\"h1-headline inner-padding {{#each data.change-background-color[]}}{{IfCond this '=' 'Primary Color'}} h1-headline-widget--primary-bg {{/IfCond}} {{IfCond this '=' 'Secondary Color'}} h1-headline-widget--secondary-bg {{/IfCond}} {{/each}} {{IfCond data.section-bottom-divider[].0 '=' 'Yes'}} section-bottom-divider {{/IfCond}} {{IfCond data.bg-image.0.OriginalImagePath 'notempty' ''}} intro-bg-section {{/IfCond}} {{IfCond data.enable-gray-gradient-bg[].0 '=' 'Yes'}}intro-gray-gradient {{/IfCond}}\" {{IfCond data.bg-image.0.OriginalImagePath 'notempty' ''}} style=\"background-image: url('{{data.bg-image.0.OriginalImagePath}}')\" {{/IfCond}}>\n    <div class=\"uk-container uk-container-small h1-headline__container\">\n        <div class=\"h1-headline__text js-texttoggle\">\n\n            {{IfCond data.back-button-link 'notempty' '' 'and' data.back-button-text 'notempty' ''}}\n            <a href=\"{{data.back-button-link}}\" class=\"uk-button button-link button-link--has-icon h1-headline__back\"> <span class=\"template-icon template-icon-arrow-narrow-left uk-margin-small-right\"></span> {{data.back-button-text}}</a>\n            {{/IfCond}}\n\n            {{IfCond data.page-name 'notempty' ''}}\n            <div class=\"title title--tagline h1-headline__smalltitle\" tabindex=\"0\">\n                {{data.page-name}}\n            </div>\n            {{/IfCond}}\n            {{IfCond data.title 'notempty' ''}}\n            <h1 id=\"main-content-h1\" class=\"title title--xl h1-headline__title dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">\n                {{data.title}}\n            </h1>\n            {{/IfCond}}\n            {{IfCond data.description 'notempty' ''}}\n            <div class=\"h1-headline__content text-editor\" tabindex=\"0\">\n                {{{data.description}}}\n                {{IfCond data.read-more-description 'notempty' ''}}\n                <div class=\"js-texttoggle-content\" style=\"display: none;\">\n                    {{{data.read-more-description}}}\n                </div>\n                {{/IfCond}}\n            </div>\n            {{IfCond data.read-more-description 'notempty' ''}}\n            <button type=\"button\" class=\"uk-button button-link button-readmore js-texttoggle-action\">\n                <span class=\"button-readmore__text button-readmore__text--more\">Read More</span>\n                <span class=\"button-readmore__text button-readmore__text--less\">Less</span>\n              \t<span class=\"sr-only\">{{data.title}}</span>\n            </button>\n            {{/IfCond}}\n            {{/IfCond}}\n            {{IfCond data.cta-1-text 'notempty' '' 'or' data.cta-2-text 'notempty' ''}}\n            <div class=\"h1-headline__actions\">\n                {{IfCond data.cta-1-text 'notempty' '' 'and' data.cta-1-link 'notempty' ''}}\n                <a href=\"{{data.cta-1-link}}\" class=\"uk-button uk-button-primary\">\n                    {{data.cta-1-text}}\n                    <span class=\"sr-only\">for {{data.title}}</span>\n                </a>\n                {{/IfCond}}\n                {{IfCond data.cta-2-text 'notempty' '' 'and' data.cta-2-link 'notempty' ''}}\n                <a href=\"{{data.cta-2-link}}\" class=\"uk-button uk-button-primary\">\n                    {{data.cta-2-text}}\n                    <span class=\"sr-only\">for {{data.title}}</span>\n                </a>\n                {{/IfCond}}\n            </div>\n            {{/IfCond}}\n        </div>\n    </div>\n</div>\n{{/each}}\n<!-- Layout 138 [H1 headline] Ends -->",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

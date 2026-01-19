@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 319327,
+            "ResourceTypeName": "Layout-182",
+            "ResourceTypeFolderName": "layout-182",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 1,
+            "ResourceWidth": 1440,
+            "ResourceHeight": 640,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 0,
+            "TabletResourceWidth": 1440,
+            "TabletResourceHeight": 640,
+            "MobileResourceWidth": 375,
+            "MobileResourceHeight": 420,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 80,
+            "MobileImageQuality": 80,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

@@ -45,7 +45,7 @@
             "has_image": false,
             "recordType": "MainComponent",
             "isMigrated": true,
-            "new_record_id": 3393087,
+            "new_record_id": 3393169,
             "component_alias": "6082878b-719e-49a9-bcef-a302563aa854",
             "vComponentId": 21014407
         },
@@ -93,7 +93,7 @@
             "level": 1,
             "has_image": true,
             "recordType": "Level1Child",
-            "parent_new_record_id": 3393087
+            "parent_new_record_id": 3393169
         }
     ]
 }

@@ -1,0 +1,17 @@
+[
+    {
+        "componentId": 587211,
+        "type": "MainComponent",
+        "componentName": "Zig-zag-accordion"
+    },
+    {
+        "componentId": 587212,
+        "type": "Level1Child",
+        "componentName": "Layout-1-Zigzag1"
+    },
+    {
+        "componentId": 587213,
+        "type": "Level2Child",
+        "componentName": "snippet-accordion-list"
+    }
+]

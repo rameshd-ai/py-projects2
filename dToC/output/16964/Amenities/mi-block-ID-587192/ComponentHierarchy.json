@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 587192,
+        "type": "MainComponent",
+        "componentName": "4-grid-collapsible-with-background"
+    },
+    {
+        "componentId": 587193,
+        "type": "Level1Child",
+        "componentName": "4-grid-collapsible-bg-items"
+    }
+]

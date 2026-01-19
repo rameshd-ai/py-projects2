@@ -1,0 +1,29 @@
+{
+    "resourceTypeList": [
+        {
+            "CarouselID": 0,
+            "ResourceTypeID": 319418,
+            "ResourceTypeName": "FAQs-accordian-BG",
+            "ResourceTypeFolderName": "faqs-accordian-bg",
+            "ResourceFileType": "ImageFile",
+            "ImageType": 1,
+            "ResourceWidth": 1440,
+            "ResourceHeight": 586,
+            "ResourceTypeStatus": 1,
+            "AssetFileTypeID": 0,
+            "TabletResourceWidth": 1200,
+            "TabletResourceHeight": 489,
+            "MobileResourceWidth": 1000,
+            "MobileResourceHeight": 407,
+            "ResourceTag": "",
+            "SortOrder1": "",
+            "SortOrder2": "",
+            "SortOrder3": "",
+            "IsProtected": 0,
+            "TabletImageQuality": 95,
+            "MobileImageQuality": 95,
+            "IsEnableCropper": true,
+            "HideToClient": false
+        }
+    ]
+}

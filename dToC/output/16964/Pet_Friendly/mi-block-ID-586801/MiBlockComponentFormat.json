@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 893898,
+            "FormatName": "Section-layout-left-para",
+            "FormatKey": "section-layout-left-para",
+            "FormatPrefix": "",
+            "FormatContent": "{{#each ComponentRecordJson.section-layout-left-para}}\n<!-- Layout 37 Starts -->\n<div class=\"lt37-widget {{IfCond data.text-start-from-right[].0 '=' 'Yes'}} right-aligned-text {{/IfCond}}\" data-src=\"{{data.background-image.0.OriginalImagePath}}\" data-uk-img data-uk-parallax=\"bgy: -200\">\n    <div class=\"uk-container lt37-widget__container\">\n        <div class=\"lt37-widget__box\">\n            {{IfCond data.section-tag-line 'notempty' ''}}\n            <div class=\"title title--tagline snippet__smalltitle\" tabindex=\"0\">{{data.section-tag-line}}</div>\n            {{/IfCond}}\n            <h2 class=\"title title--xl lt37-widget__title dynamiccomponenteditenable\" %%componentRecordEditable%% tabindex=\"0\">{{data.section-title}}</h2>\n            \n            {{IfCond data.section-description 'notempty' ''}}\n                <div class=\"text-editor lt37-widget__desc\" tabindex=\"0\">\n                    {{{data.section-description}}}\n                </div>\n            {{/IfCond}}\n            \n            {{IfMultipleOrCond data.primary-button-link 'notempty' '' data.secondary-button-link 'notempty' ''}}   \n                <div class=\"lt37-widget__action button-combo\">\n                    {{IfCond data.primary-button-link 'notempty' '' 'and' data.primary-button-text 'notempty' ''}}\n                        <a href=\"{{data.primary-button-link}}\" class=\"uk-button uk-button-default uk-button-default-inverse\" data-autoDataLayer onclick=\"pushToGtmRenderByDom(this)\" data-msaction=\"click\" {{IfCond (CheckWord \"book\" data.primary-button-text) '=' 'True'}} data-msevent=\"booking buttons\" data-mscategory=\"booking entrances\" {{else}} data-msevent=\"events\" data-mscategory=\"cta click\" {{/IfCond}} target=\"{{IfCond data.open-in-new-tab[].0 '=' 'Yes'}}_blank{{/IfCond}}\">\n                          <span class=\"formslable\" aria-hidden=\"true\">{{data.primary-button-text}} - {{data.section-title}}</span>\n                          {{data.primary-button-text}} \n                          <span class=\"sr-only\"> - {{data.section-title}}</span> </a>\n                    {{/IfCond}}\n\n                    {{IfCond data.secondary-button-link 'notempty' '' 'and' data.secondary-button-text 'notempty' ''}}\n                        <a href=\"{{data.secondary-button-link}}\" class=\"uk-button button-link button-link-inverse\" data-autoDataLayer onclick=\"pushToGtmRenderByDom(this)\" data-msaction=\"click\" {{IfCond (CheckWord \"book\" data.snippet-secondary-button-text) '=' 'True'}} data-msevent=\"booking buttons\" data-mscategory=\"booking entrances\" {{else}} data-msevent=\"events\" data-mscategory=\"cta click\" {{/IfCond}}>\n                          <span class=\"formslable\" aria-hidden=\"true\">{{data.secondary-button-text}} - {{data.section-title}}</span>\n                          {{data.secondary-button-text}} \n                          <span class=\"sr-only\"> - {{data.section-title}}</span> \n                     </a>\n                    {{/IfCond}}\n                </div>\n            {{/IfMultipleOrCond}}    \n        </div>\n    </div>\n\n</div>\n<!-- layout 37 Ends -->\n{{/each}}",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}

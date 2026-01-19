@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 587206,
+        "type": "MainComponent",
+        "componentName": "Snippet-Right-Image-With-BG"
+    },
+    {
+        "componentId": 587207,
+        "type": "Level1Child",
+        "componentName": "accordion-list"
+    }
+]

@@ -1,0 +1,12 @@
+[
+    {
+        "componentId": 586861,
+        "type": "MainComponent",
+        "componentName": "4-Grid-collapsible"
+    },
+    {
+        "componentId": 586862,
+        "type": "Level1Child",
+        "componentName": "4-Grid-collapsible-Items"
+    }
+]

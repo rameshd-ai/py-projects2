@@ -1,0 +1,27 @@
+{
+    "ComponentFormat": [
+        {
+            "FormatId": 893879,
+            "FormatName": "Hero banner",
+            "FormatKey": "hero-banner",
+            "FormatPrefix": "",
+            "FormatContent": "<!-- Layout 182 Starts -->\n{{#each ComponentRecordJson.hero-banner}}     \n<div class=\"lt182-widget\">\n  <div class=\"lt182-widget__media dynamiccomponenteditenable\" %%componentRecordEditable%%>\n    <img src=\"{{data.image.0.OriginalImagePath}}\" alt=\"{{data.alt-text}}\" width=\"1440\" height=\"640\" tabindex=\"0\" {{IfCond data.disable-lazy-loading-for-image[].0 '!=' 'Yes'}} loading=\"eager\" data-nodeferimage=\"true\" {{else}} loadin=\"lazy\" {{/IfCond}}> \n  </div>\n</div>\n{{/each}}\n<!-- Layout 182 Ends -->",
+            "FormatPostfix": "",
+            "Status": 1,
+            "ParentId": 0,
+            "IsPublished": 0,
+            "FormatPrefixTablet": "",
+            "FormatContentTablet": "",
+            "FormatPostfixTablet": "",
+            "FormatPrefixMobile": "",
+            "FormatContentMobile": "",
+            "FormatPostfixMobile": "",
+            "FormatPrefixAMP": "",
+            "FormatContentAMP": "",
+            "FormatPostfixAMP": "",
+            "PageConfigurationId": 0,
+            "IsExcludeFromJsonLD": false,
+            "Category": null
+        }
+    ]
+}
