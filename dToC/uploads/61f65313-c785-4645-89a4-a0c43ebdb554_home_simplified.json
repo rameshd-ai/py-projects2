@@ -1,0 +1,17 @@
+{
+    "title": "",
+    "pages": [
+        {
+            "page_name": "Home page",
+            "level": 0,
+            "components": [],
+            "meta_info": {},
+            "sub_pages": [],
+            "category_info": {
+                "CategoryId": 152142,
+                "CategoryName": "Home page",
+                "match_type": "fuzzy_name_match"
+            }
+        }
+    ]
+}

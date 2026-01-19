@@ -36,7 +36,7 @@ def get_site_upload_folder(site_id: Optional[int] = None) -> str:
 def get_config_filepath(file_prefix: str, site_id: Optional[int] = None) -> str:
     """Constructs the unique config.json filepath based on the prefix and site_id."""
     base_prefix = os.path.basename(file_prefix)
-    config_filename = f"{base_prefix}_config.json"
+    config_filename = f"{base_prefix}_config.json" 
     site_folder = get_site_upload_folder(site_id)
     return os.path.join(site_folder, config_filename)
 
@@ -56,7 +56,7 @@ def load_settings(file_prefix: str, site_id: Optional[int] = None) -> Dict[str, 
     except Exception as e:
         logging.error(f"Error loading config file: {e}")
         return None
-
+        
 def load_global_config(site_id: Optional[int] = None) -> Dict[str, Any] | None:
     """Loads the global config file (not prefix-specific). Checks site-specific folder first, then root."""
     # Try site-specific folder first
@@ -3553,7 +3553,34 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
 
 def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, category_id=0, component_cache_for_mapping=component_cache_for_mapping or component_cache)
+    matched_category_id = 0
+    current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+    
+    # Fetch categories list
+    categories = GetPageCategoryList(api_base_url, api_headers)
+    logging.info(f"API categories loaded: {categories}")
+    
+    # Check for API errors
+    if isinstance(categories, dict) and categories.get("error"):
+        logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
+        return
+    
+    # Category Matching Logic - For level 4+ pages, use the TOP-LEVEL section from hierarchy
+    # (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink" should use "Eat and Drink" category)
+    category_base_name = hierarchy[0] if hierarchy else current_page_name
+    normalized_page_name = normalize_page_name(category_base_name)
+    
+    # Search category ID by normalized name for robust matching
+    for cat in categories:
+        cat_name = cat.get("CategoryName")
+        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+            matched_category_id = cat.get("CategoryId", 0)
+            logging.info(f"[SUCCESS] MATCHED Category base '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
+            break
+    else:
+        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
+    
+    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, category_id=matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
 
 def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], parent_page_name: str, component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None, page_filter: Optional[str] = None):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
@@ -3577,7 +3604,12 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
         return
 
     # Category Matching Logic
-    normalized_page_name = normalize_page_name(parent_page_name)
+    # For level 3+ pages (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink"),
+    # we always want to use the TOP-LEVEL section (e.g. "Eat and Drink") to determine
+    # the category, so that all grandchildren share the same category as their parent section.
+    # The top-level page name is stored in hierarchy[0] when present.
+    category_base_name = hierarchy[0] if hierarchy else parent_page_name
+    normalized_page_name = normalize_page_name(category_base_name)
     
     # Search category ID by normalized name for robust matching
     for cat in categories:
@@ -3586,7 +3618,7 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
         # NOTE: normalize_page_name must be available/imported
         if cat_name and normalize_page_name(cat_name) == normalized_page_name:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"[SUCCESS] MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
+            logging.info(f"[SUCCESS] MATCHED Category base '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
             # Exit loop immediately after finding a match
             break 
     else:
@@ -5940,20 +5972,20 @@ def pre_download_all_components(
                     with open(file_path, "wb") as file:
                         file.write(response_content)
                     
-                    # Track this as the source location for potential cloning (update tracking)
-                    downloaded_components[component_id] = save_folder
-                    
-                    # Update tracking file immediately
-                    try:
-                        os.makedirs(output_dir, exist_ok=True)
-                        tracking_data = {str(k): v for k, v in downloaded_components.items()}
-                        with open(tracking_file_path, 'w', encoding='utf-8') as f:
-                            json.dump(tracking_data, f, indent=2, ensure_ascii=False)
-                    except Exception as e:
-                        logging.warning(f"  [WARNING] Failed to update tracking file: {e}")
-                    
-                    download_results[(component_id, page_name)] = (True, save_folder)
-                    logging.info(f"  [SUCCESS] Downloaded {component_id} ({len(response_content)} bytes) and added to tracking file")
+                        # Track this as the source location for potential cloning (update tracking)
+                        downloaded_components[component_id] = save_folder
+                        
+                        # Update tracking file immediately
+                        try:
+                            os.makedirs(output_dir, exist_ok=True)
+                            tracking_data = {str(k): v for k, v in downloaded_components.items()}
+                            with open(tracking_file_path, 'w', encoding='utf-8') as f:
+                                json.dump(tracking_data, f, indent=2, ensure_ascii=False)
+                        except Exception as e:
+                            logging.warning(f"  [WARNING] Failed to update tracking file: {e}")
+                        
+                        download_results[(component_id, page_name)] = (True, save_folder)
+                        logging.info(f"  [SUCCESS] Downloaded {component_id} ({len(response_content)} bytes) and added to tracking file")
                 else:
                     download_results[(component_id, page_name)] = (False, save_folder)
                     logging.warning(f"  [WARNING] No content returned for component {component_id}")
@@ -6385,7 +6417,7 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
         logging.error(f"[ERROR] Cleanup step failed: {e}")
         logging.exception("Full traceback:")
         # Don't fail the entire process if cleanup fails
-
+    
     # --- 8. Prepare Final Output ---
     final_output = {
         "assembly_status": "SUCCESS: Pages and components processed.",

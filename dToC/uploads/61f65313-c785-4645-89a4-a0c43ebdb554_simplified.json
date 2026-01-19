@@ -1,0 +1,987 @@
+{
+    "title": "",
+    "pages": [
+        {
+            "page_name": "Rooms",
+            "components": [
+                "M1-Inside Hero",
+                "M2-Image Intro",
+                "D1-Offer Banner",
+                "A9-2 Column Snippet",
+                "B5-Amenities with Icons",
+                "B7-Amenities Bullets",
+                "B11-FAQs"
+            ],
+            "meta_info": {
+                "PageTemplateName": "Base Layout Page",
+                "DefaultTitle": "Rooms",
+                "DefaultDescription": "Rooms",
+                "Header1": "Navbar with center logo",
+                "Header2": "",
+                "Footer1": "Footer with signup",
+                "ShowInNavigation": "Yes"
+            },
+            "sub_pages": [],
+            "category_info": {
+                "CategoryId": 152085,
+                "CategoryName": "Rooms",
+                "match_type": "fuzzy_name_match"
+            }
+        },
+        {
+            "page_name": "Offers",
+            "components": [
+                "M1-Inside Hero",
+                "M2-Image Intro",
+                "A2-Feature Snippet",
+                "B11-FAQs"
+            ],
+            "meta_info": {
+                "PageTemplateName": "Base Layout Page",
+                "DefaultTitle": "Offers",
+                "DefaultDescription": "Offers",
+                "Header1": "Navbar with center logo",
+                "Header2": "",
+                "Footer1": "Footer with signup",
+                "ShowInNavigation": "Yes"
+            },
+            "sub_pages": [
+                {
+                    "page_name": "Bed and Breakast Package",
+                    "components": [
+                        "M5-Intro",
+                        "M4-Second Tier Intro Snippet"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Rooms",
+                        "DefaultDescription": "Rooms",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "No"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Pet Pride Package",
+                    "components": [
+                        "M5-Intro",
+                        "M4-Second Tier Intro Snippet"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page - Without Banner",
+                        "DefaultTitle": "Pet Pride Package",
+                        "DefaultDescription": "Pet Pride Package",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Park and Stay Package",
+                    "components": [
+                        "M5-Intro",
+                        "M4-Second Tier Intro Snippet"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page - Without Banner",
+                        "DefaultTitle": "Park & Stay Package",
+                        "DefaultDescription": "Park & Stay Package",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                }
+            ],
+            "category_info": {
+                "CategoryId": 152087,
+                "CategoryName": "Offers",
+                "match_type": "fuzzy_name_match"
+            }
+        },
+        {
+            "page_name": "Eat and Drink",
+            "components": [],
+            "meta_info": {},
+            "sub_pages": [
+                {
+                    "page_name": "Overview",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "A10-3 Column Snippet",
+                        "A2-Feature Snippet",
+                        "B11-FAQs"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Dining",
+                        "DefaultDescription": "Dining",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Restaurant Anzu",
+                    "components": [
+                        "M1-Inside Hero",
+                        "A1-Module Nav - Dining",
+                        "A5-Image Accordion"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Restaurant Anzu",
+                        "DefaultDescription": "Restaurant Anzu",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": [
+                        {
+                            "page_name": "Our Food",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Dining",
+                                "M2-Image Intro",
+                                "A5-Image Accordion",
+                                "A2-Feature Snippet"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Our Food",
+                                "DefaultDescription": "Rooms",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Menus",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Dining",
+                                "M2-Image Intro",
+                                "A5-Image Accordion"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Menus",
+                                "DefaultDescription": "Menus",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Private Dining",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Dining",
+                                "M2-Image Intro",
+                                "A5-Image Accordion"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Private Dining",
+                                "DefaultDescription": "Private Dining",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Nearby Dining",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Dining",
+                                "M2-Image Intro",
+                                "C5-Horizontal Slider"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Nearby Dining",
+                                "DefaultDescription": "Nearby Dining",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        }
+                    ]
+                },
+                {
+                    "page_name": "Kanpai Lounge",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "A5-Image Accordion"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Kanapai Lounge",
+                        "DefaultDescription": "Kanapai Lounge",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Feinsteinand#039;s at The Nikko",
+                    "components": [],
+                    "meta_info": {},
+                    "sub_pages": []
+                }
+            ],
+            "category_info": {
+                "CategoryId": 152143,
+                "CategoryName": "Eat and Drink",
+                "match_type": "fuzzy_name_match"
+            }
+        },
+        {
+            "page_name": "Special Events",
+            "components": [
+                "M1-Inside Hero",
+                "M2-Image Intro",
+                "A2-Feature Snippet",
+                "B11-FAQs"
+            ],
+            "meta_info": {
+                "PageTemplateName": "Base Layout Page",
+                "DefaultTitle": "Special Events",
+                "DefaultDescription": "Special Events",
+                "Header1": "Navbar with center logo",
+                "Header2": "",
+                "Footer1": "Footer with signup",
+                "ShowInNavigation": "Yes"
+            },
+            "sub_pages": [
+                {
+                    "page_name": "Meetings and Events",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "A2-Feature Snippet"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Meetings & Events",
+                        "DefaultDescription": "Meetings & Events",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": [
+                        {
+                            "page_name": "Overview",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Meeting",
+                                "M2-Image Intro",
+                                "A2-Feature Snippet"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Meetings & Events",
+                                "DefaultDescription": "Meetings & Events",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Venues",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Meeting",
+                                "M2-Image Intro",
+                                "Sub-Navbar",
+                                "A2-Feature Snippet"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Venues",
+                                "DefaultDescription": "Venues",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Catering",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Meeting",
+                                "M2-Image Intro",
+                                "A2-Feature Snippet",
+                                "C13-Form"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Catering",
+                                "DefaultDescription": "Catering",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Services",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Meeting",
+                                "M2-Image Intro",
+                                "A3-Feature Snippet-Dark",
+                                "B7-Amenities Bullets"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Services",
+                                "DefaultDescription": "Services",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Floor Plans",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Meeting",
+                                "M2-Image Intro",
+                                "B22-Chart"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Floor Plans",
+                                "DefaultDescription": "Floor Plans",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "RFP",
+                            "components": [
+                                "A1-Module Nav - Meeting"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "RFP",
+                                "DefaultDescription": "RFP",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        }
+                    ]
+                },
+                {
+                    "page_name": "Weddings",
+                    "components": [
+                        "M1-Inside Hero",
+                        "A1-Module Nav",
+                        "M2-Image Intro",
+                        "H1 -",
+                        "A2-Feature Snippet",
+                        "B11-FAQs"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Weddings",
+                        "DefaultDescription": "Weddings",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": [
+                        {
+                            "page_name": "Overview",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Wedding",
+                                "M2-Image Intro",
+                                "A2-Feature Snippet"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Weddings",
+                                "DefaultDescription": "Weddings",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Venues",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Wedding",
+                                "M2-Image Intro",
+                                "A2-Feature Snippet"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Venues",
+                                "DefaultDescription": "Venues",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Catering",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Wedding",
+                                "M2-Image Intro",
+                                "A2-Feature Snippet",
+                                "Bay Area Inspired Cuisine"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Catering",
+                                "DefaultDescription": "Catering",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Services",
+                            "components": [
+                                "M1-Inside Hero",
+                                "A1-Module Nav - Wedding",
+                                "M2-Image Intro",
+                                "A2-Feature Snippet",
+                                "A3-Feature Snippet-Dark",
+                                "C12-Gallery Slider"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Services",
+                                "DefaultDescription": "Services",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Plan Your Wedding (RFP)",
+                            "components": [
+                                "A1-Module Nav - Wedding",
+                                "C13-Form",
+                                "Plan Your San Francisco Wedding"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "Base Layout Page",
+                                "DefaultTitle": "Plan Your Wedding",
+                                "DefaultDescription": "Plan Your Wedding",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        }
+                    ]
+                }
+            ],
+            "category_info": {
+                "CategoryId": 152144,
+                "CategoryName": "Special Events",
+                "match_type": "fuzzy_name_match"
+            }
+        },
+        {
+            "page_name": "Pages Outside Hamburger to Left- All pages inside the burger",
+            "components": [],
+            "meta_info": {},
+            "sub_pages": [],
+            "category_info": {
+                "CategoryId": 152145,
+                "CategoryName": "Pages Outside Hamburger to Left- All pages inside the burger",
+                "match_type": "fuzzy_name_match"
+            }
+        },
+        {
+            "page_name": "Our Hotel",
+            "components": [],
+            "meta_info": {},
+            "sub_pages": [
+                {
+                    "page_name": "Amenities",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "A2-Feature Snippet",
+                        "B5-Amenities with Icons",
+                        "B7-Amenities Bullets"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Amenities",
+                        "DefaultDescription": "Amenities",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Location",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "B3-UNAP Call Out",
+                        "B4-Text block",
+                        "A5-Image Accordion",
+                        "A2-Feature Snippet",
+                        "C9-Map Snippet",
+                        "B11-FAQs"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Location",
+                        "DefaultDescription": "Location",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "FAQs",
+                    "components": [
+                        "B4-Text block"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "",
+                        "DefaultTitle": "FAQs",
+                        "DefaultDescription": "FAQs",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Green Hospitality",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "A2-Feature Snippet"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Green Hospitality",
+                        "DefaultDescription": "Green Hospitality",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Blog",
+                    "components": [
+                        "H1: Discover San Francisco With Hotel Nikko"
+                    ],
+                    "meta_info": {
+                        "ShowInNavigation": ""
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Pet  Friendly",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "B2-4 Column Icon with Details",
+                        "A2-Feature Snippet",
+                        "A5-Image Accordion",
+                        "A14-Full Image and Video",
+                        "B11-FAQs",
+                        "C12-Gallery Slider"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Pet Friendly",
+                        "DefaultDescription": "Pet Friendly",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Contact",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "H1",
+                        "C9-Map Snippet",
+                        "B7-Amenities Bullets",
+                        "Hotel Nikko By Email",
+                        "D1-Offer Banner",
+                        "C10-Contact Form"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Contact",
+                        "DefaultDescription": "Contact",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                }
+            ],
+            "category_info": {
+                "CategoryId": 152146,
+                "CategoryName": "Our Hotel",
+                "match_type": "fuzzy_name_match"
+            }
+        },
+        {
+            "page_name": "Gallery",
+            "components": [
+                "B4-Text block"
+            ],
+            "meta_info": {
+                "PageTemplateName": "",
+                "DefaultTitle": "Gallery",
+                "DefaultDescription": "Gallery",
+                "Header1": "Navbar with center logo",
+                "Header2": "",
+                "Footer1": "Footer with signup",
+                "ShowInNavigation": "Yes"
+            },
+            "sub_pages": [],
+            "category_info": {
+                "CategoryId": 152147,
+                "CategoryName": "Gallery",
+                "match_type": "fuzzy_name_match"
+            }
+        },
+        {
+            "page_name": "SF Experiences",
+            "components": [],
+            "meta_info": {},
+            "sub_pages": [
+                {
+                    "page_name": "Explore San Francisco",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro",
+                        "H1",
+                        "A2-Feature Snippet"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Explore San Fransisco",
+                        "DefaultDescription": "Explore San Fransisco",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": [
+                        {
+                            "page_name": "Union Square",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Union Square",
+                                "DefaultDescription": "Union Square",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Moscone Center",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Moscow Center",
+                                "DefaultDescription": "Moscow Center",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "SF Theater District",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "San Francisco's Theatre District",
+                                "DefaultDescription": "San Francisco's Theatre District",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Cable Cars",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Cable Cars",
+                                "DefaultDescription": "Cable Cars",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Chinatown",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "China Town",
+                                "DefaultDescription": "China Town",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Golden Gate Bridge",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Golden Gate Bridge",
+                                "DefaultDescription": "Golden Gate Bridge",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "North Beach",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "North Beach",
+                                "DefaultDescription": "North Beach",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Oracle Park",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Oracle Park",
+                                "DefaultDescription": "Oracle Park",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "FISHERMANand#039;S WHARF",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Fisherman's Wharf",
+                                "DefaultDescription": "Fisherman's Wharf",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Japantown San Franisco",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Japantown San Francisco",
+                                "DefaultDescription": "Japantown San Francisco",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "San Francisco Museum of Modern Art",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "San Francisco Museum of Modern Art",
+                                "DefaultDescription": "San Francisco Museum of Modern Art",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        },
+                        {
+                            "page_name": "Alcatraz Island Tours",
+                            "components": [
+                                "M5-Intro",
+                                "A2-Feature Snippet",
+                                "B11-FAQs"
+                            ],
+                            "meta_info": {
+                                "PageTemplateName": "",
+                                "DefaultTitle": "Alcatraz Island Tours",
+                                "DefaultDescription": "Alcatraz Island Tours",
+                                "Header1": "Navbar with center logo",
+                                "Header2": "",
+                                "Footer1": "Footer with signup",
+                                "ShowInNavigation": "Yes"
+                            },
+                            "sub_pages": []
+                        }
+                    ]
+                },
+                {
+                    "page_name": "Events Calendar",
+                    "components": [],
+                    "meta_info": {
+                        "ShowInNavigation": ""
+                    },
+                    "sub_pages": []
+                },
+                {
+                    "page_name": "Shop at Hotel Nikko",
+                    "components": [
+                        "M1-Inside Hero",
+                        "M2-Image Intro"
+                    ],
+                    "meta_info": {
+                        "PageTemplateName": "Base Layout Page",
+                        "DefaultTitle": "Rooms",
+                        "DefaultDescription": "Rooms",
+                        "Header1": "Navbar with center logo",
+                        "Header2": "",
+                        "Footer1": "Footer with signup",
+                        "ShowInNavigation": "Yes"
+                    },
+                    "sub_pages": []
+                }
+            ],
+            "category_info": {
+                "CategoryId": 152089,
+                "CategoryName": "SF Experiences",
+                "match_type": "fuzzy_name_match"
+            }
+        }
+    ]
+}
