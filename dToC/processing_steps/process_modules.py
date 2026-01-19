@@ -159,7 +159,7 @@ def createCategory(page_name: str, site_id: Union[str, int], base_url: str, head
     append_module_debug_log("category_creation_attempt", {"page_name": page_name, "site_id": site_id})
     
     # Generate category alias from page name
-    category_alias = page_name.lower().replace(' ', '-').replace('_', '-')
+    category_alias = page_name.lower().replace(' ', '-').replace('_', '-').replace('/', '-')
     category_alias = re.sub(r'[^a-z0-9-]', '', category_alias)
     
     # Generate module identifier

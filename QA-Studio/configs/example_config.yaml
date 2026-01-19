@@ -1,0 +1,30 @@
+# Example QA Studio Configuration
+# This file demonstrates the structure of a saved test configuration
+
+base_url: "https://example.com"
+sitemap_url: "https://example.com/sitemap.xml"
+
+browsers:
+  - chromium
+  - firefox
+  # - webkit
+
+devices:
+  - desktop
+  - tablet
+  - mobile
+
+pillars:
+  - 1  # Rendering & Responsiveness
+  - 2  # Site Architecture & Navigation
+  - 3  # Functional & Business Logic
+  - 4  # Console & Technical Checks
+  - 5  # Cross-Browser & Device Testing
+  - 6  # Content, SEO & Schema Validation
+
+seo_config:
+  max_h1_count: 1
+  min_meta_length: 120
+  max_meta_length: 160
+  require_alt_tags: true
+  require_schema: false

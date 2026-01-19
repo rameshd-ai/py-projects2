@@ -1,0 +1,5 @@
+page,component,cms_component_name,level,hierarchy,available,status
+Offers,M1-Inside Hero,M1-Inside Hero,1,Offers,True,SUCCESS: Content retrieved and records added to assembly queue.
+Offers,M2-Image Intro,M2-Image Intro,1,Offers,True,SUCCESS: Content retrieved and records added to assembly queue.
+Offers,A2-Feature Snippet,A2-Feature Snippet,1,Offers,True,SUCCESS: Content retrieved and records added to assembly queue.
+Offers,B11-FAQs,B11-FAQs,1,Offers,True,SUCCESS: Content retrieved and records added to assembly queue.

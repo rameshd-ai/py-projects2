@@ -196,6 +196,27 @@ def sanitize_page_name_for_filesystem(page_name: str) -> str:
     
     return sanitized
 
+def generate_page_alias(page_name: str) -> str:
+    """
+    Generates a URL-friendly page alias from a page name.
+    Preserves "/" characters for hierarchical page names (e.g., "Eat and Drink/Overview").
+    
+    Args:
+        page_name: The original page name (e.g., "Eat and Drink/Overview")
+    
+    Returns:
+        A URL-friendly alias (e.g., "eat-and-drink/overview")
+    """
+    # Convert to lowercase and replace spaces with hyphens
+    # Preserve "/" characters for hierarchical paths
+    alias = page_name.lower().replace(' ', '-')
+    # Replace & with and
+    alias = alias.replace('&', 'and').replace('&amp;', 'and')
+    # Debug logging to verify slash preservation
+    if '/' in page_name:
+        logging.info(f"[DEBUG] generate_page_alias: Input '{page_name}' -> Output '{alias}' (slash preserved: {'/' in alias})")
+    return alias
+
 # Global variable to store current site_id for debug logging
 _CURRENT_SITE_ID: Optional[int] = None
 
@@ -1212,11 +1233,15 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
-    # page_name = page_name + "-Demo"
+    
+    # Extract just the page name (last part after "/") for both pageName and pageAlias
+    # The category_id will handle the parent relationship, so alias should only be the page name
+    page_name_only = page_name.split("/")[-1] if "/" in page_name else page_name
+    
     payload = {
         "pageId": 0,
-        "pageName": page_name,
-        "pageAlias": page_name.lower().replace(' ', '-'),
+        "pageName": page_name_only,  # Just the page name without parent path
+        "pageAlias": generate_page_alias(page_name_only),  # Only the page name, category_id handles parent
         "pageContent": base64_encoded_content,
         "isPageStudioPage": True,
         "pageUpdatedBy": 0,
@@ -1230,6 +1255,7 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         }
     print(f"New page payload ready for '{page_name}'.")
     print(f"New page payload ready for '{payload}'.")
+    logging.info(f"[DEBUG] Page name: '{page_name}', Page alias: '{payload['pageAlias']}'")
     print("before")
     print(page_template_id)
 
@@ -1265,11 +1291,16 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         return data  # Return early, don't proceed with mapping/publishing
 
     # Add delay before mapping to avoid API blocking
+    # Extract just the page name (last part after "/") for folder lookup in mapping/publish
+    # The full page_name may include hierarchy (e.g., "Eat and Drink/Restaurant Anzu")
+    # but folders are organized by page name only (e.g., "Restaurant_Anzu")
+    page_name_for_folder = page_name.split("/")[-1] if "/" in page_name else page_name
+    
     logging.info(f"[TIMING] Starting updatePageMapping for page '{page_name}' (ID: {page_id})")
     start_time = time.time()
     mapping_payload = None
     try:
-        _, mapping_payload = updatePageMapping(base_url, headers,page_id,site_id,header_footer_details, page_name=page_name, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
+        _, mapping_payload = updatePageMapping(base_url, headers,page_id,site_id,header_footer_details, page_name=page_name_for_folder, page_component_ids=page_component_ids, page_component_names=page_component_names, component_cache=component_cache)
         mapping_time = time.time() - start_time
         logging.info(f"[TIMING] updatePageMapping completed in {mapping_time:.2f} seconds")
         
@@ -1283,14 +1314,15 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         # Even if mapping fails, we still queue the page for potential publish
     
     # Instead of publishing immediately, queue this page for publish at the end
+    # Use page_name_for_folder for publish queue so it can find components in the correct folder
     try:
         PAGES_TO_PUBLISH.append({
             "page_id": page_id,
-            "page_name": page_name,
+            "page_name": page_name_for_folder,  # Use folder name for component lookup
             "header_footer_details": header_footer_details,
             "mapping_payload": mapping_payload
         })
-        logging.info(f"[PUBLISH QUEUE] Queued page '{page_name}' (ID: {page_id}) for publish at end of assembly.")
+        logging.info(f"[PUBLISH QUEUE] Queued page '{page_name}' (ID: {page_id}) for publish at end of assembly (folder: '{page_name_for_folder}').")
     except Exception as e:
         logging.error(f"[ERROR] Failed to queue page '{page_name}' (ID: {page_id}) for publish: {e}")
         logging.exception("Full traceback:")
@@ -1979,10 +2011,13 @@ def publish_queued_pages(base_url: str, headers: Dict[str, str], site_id: int) -
         logging.info(f"[TIMING] Waiting 3 seconds before publish of queued page '{page_name}' (ID: {page_id}) to avoid API blocking...")
         time.sleep(3)
         
+        # Extract just the page name for folder lookup (in case page_name includes hierarchy)
+        page_name_for_folder = page_name.split("/")[-1] if "/" in page_name else page_name
+        
         logging.info(f"[TIMING] Starting publishPage for queued page '{page_name}' (ID: {page_id}) [{idx}/{total_pages}]")
         start_time = time.time()
         try:
-            publishPage(base_url, headers, page_id, site_id, header_footer_details, mapping_payload=mapping_payload)
+            publishPage(base_url, headers, page_id, site_id, header_footer_details, mapping_payload=mapping_payload, page_name=page_name_for_folder)
             publish_time = time.time() - start_time
             logging.info(f"[TIMING] publishPage for '{page_name}' completed in {publish_time:.2f} seconds")
             
@@ -3481,8 +3516,17 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         logging.info(f"Final assembly complete for **{page_name}**. Calling pageAction for publishing.")
         # 🌟 STEP 3: Pass the page_template_id, page_component_ids, and component names from simplified.json to pageAction
         page_component_names = components  # Component names from simplified.json
+        
+        # For sub-pages (level 2+), construct full page name with parent hierarchy for proper alias generation
+        # e.g., "Eat and Drink/Restaurant Anzu" instead of just "Restaurant Anzu"
+        full_page_name = page_name
+        if page_level > 1 and hierarchy:
+            # Join hierarchy with "/" to create full path
+            full_page_name = "/".join(hierarchy + [page_name])
+            logging.info(f"[DEBUG] Level {page_level} page: Using full page name '{full_page_name}' for alias generation (hierarchy: {hierarchy})")
+        
         try:
-            result = pageAction(api_base_url, api_headers, final_html, page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details, page_component_ids, page_component_names, component_cache_for_mapping or component_cache)
+            result = pageAction(api_base_url, api_headers, final_html, full_page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details, page_component_ids, page_component_names, component_cache_for_mapping or component_cache)
             
             # Check if pageAction returned an error
             if isinstance(result, dict) and "error" in result:
@@ -3511,10 +3555,15 @@ def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, h
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, category_id=0, component_cache_for_mapping=component_cache_for_mapping or component_cache)
 
-def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], parent_page_name: str, component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None):
+def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, hierarchy: List[str], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str], parent_page_name: str, component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None, page_filter: Optional[str] = None):
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+    
+    # Check page filter - if set and current page doesn't match, skip
+    if page_filter and current_page_name != page_filter:
+        logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter '{page_filter}')")
+        return
 
     logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
     
@@ -3562,11 +3611,38 @@ def assemble_page_templates_level2(
     site_id: int, 
     api_headers: Dict[str, str],
     parent_page_name: str,
-    component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None
+    component_cache_for_mapping: Optional[List[Dict[str, Any]]] = None,
+    page_filter: Optional[str] = None
 ):
     # Initialize the ID variable at the start. Default to 0 if no match is found.
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
+    
+    # Check page filter - if set and current page doesn't match, skip unless it contains matching sub-page
+    if page_filter:
+        if current_page_name != page_filter:
+            # Check if this page has a sub-page that matches the filter
+            def page_contains_subpage_recursive(page, target_name):
+                """Recursively check if page or any sub-page matches target."""
+                if page.get('page_name') == target_name:
+                    return True
+                for sub_page in page.get('sub_pages', []):
+                    if page_contains_subpage_recursive(sub_page, target_name):
+                        return True
+                return False
+            
+            has_matching_subpage = False
+            for sub_page in page_data.get('sub_pages', []):
+                if page_contains_subpage_recursive(sub_page, page_filter):
+                    has_matching_subpage = True
+                    break
+            if not has_matching_subpage:
+                logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter '{page_filter}')")
+                return
+    
+    # Debug: Log if page name contains "/"
+    if '/' in current_page_name:
+        logging.info(f"[DEBUG] Level {page_level} page name contains '/': '{current_page_name}'")
 
     logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
     
@@ -3624,7 +3700,8 @@ def assemble_page_templates_level2(
             site_id, 
             api_headers,
             parent_page_name,
-            component_cache_for_mapping=component_cache_for_mapping or component_cache
+            component_cache_for_mapping=component_cache_for_mapping or component_cache,
+            page_filter=page_filter
         )
 
 def normalize_page_name(name: str) -> str:
@@ -3701,12 +3778,40 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         else:
             page_filter = None
     
+    # Helper function to recursively check if a page contains a sub-page with target name
+    def page_contains_subpage(page, target_name):
+        """Check if page or any of its sub-pages matches target_name."""
+        if page.get('page_name') == target_name:
+            return True
+        for sub_page in page.get('sub_pages', []):
+            if page_contains_subpage(sub_page, target_name):
+                return True
+        return False
+    
+    # Helper function to get all page names recursively
+    def get_all_page_names(pages_list, level=1):
+        """Get all page names from all levels."""
+        names = []
+        for page in pages_list:
+            names.append(f"Level {level}: {page.get('page_name', 'UNKNOWN')}")
+            sub_pages = page.get('sub_pages', [])
+            if sub_pages:
+                names.extend(get_all_page_names(sub_pages, level + 1))
+        return names
+    
     # Filter pages if page_filter is set
     if page_filter:
-        pages = [p for p in pages if p.get('page_name') == page_filter]
-        if not pages:
-            logging.warning(f"[DEBUG] No page found with name '{page_filter}'. Available pages: {[p.get('page_name') for p in processed_json.get('pages', [])]}")
-            return
+        # First try to find it in level 1 pages
+        filtered_pages = [p for p in pages if p.get('page_name') == page_filter]
+        
+        # If not found in level 1, search for parent pages that contain this sub-page
+        if not filtered_pages:
+            filtered_pages = [p for p in pages if page_contains_subpage(p, page_filter)]
+            if not filtered_pages:
+                all_page_names = get_all_page_names(pages)
+                logging.warning(f"[DEBUG] No page found with name '{page_filter}'. Available pages: {all_page_names}")
+                return
+        pages = filtered_pages
         logging.info(f"[DEBUG] Processing ONLY page: '{page_filter}' (filtered from {len(processed_json.get('pages', []))} total pages)")
 
     initial_level = 1
@@ -3714,6 +3819,10 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
+        
+        # Debug: Log if page name contains "/"
+        if '/' in current_page_name:
+            logging.info(f"[DEBUG] Level 1 page name contains '/': '{current_page_name}'")
 
         # Debug log into separate file so we can see exactly which pages/components are being processed
         append_debug_log(
@@ -3751,7 +3860,7 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         # IMPORTANT: Process sub_pages in the exact order they appear in simplified.json
         # Do NOT sort or reorder - maintain sequence as defined in JSON
         for sub_page_data in top_level_page.get("sub_pages", []):
-            assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers, parent_page_name, component_cache_for_mapping=component_cache)
+            assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers, parent_page_name, component_cache_for_mapping=component_cache, page_filter=page_filter)
         # else:
         #     pass
 
@@ -6012,6 +6121,8 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     """
     logging.info("========================================================")
     logging.info("Started Assembly")
+    # Ensure publish queue is clean for this run so we don't re-publish pages from previous runs
+    PAGES_TO_PUBLISH.clear()
     # --- 1. Setup/File Extraction ---
     data_to_process = processed_json
     if len(args) > 1 and isinstance(args[1], dict):

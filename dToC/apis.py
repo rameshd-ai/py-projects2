@@ -1811,5 +1811,3 @@ def get_miblock_records(base_url: str, headers: dict, params: dict) -> Union[Dic
     except Exception as e:
         logging.error(f"[ERROR] Unexpected error in get_miblock_records: {e}")
         return None
-
-

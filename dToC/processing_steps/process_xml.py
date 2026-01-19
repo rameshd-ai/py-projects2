@@ -395,7 +395,7 @@ def parse_sleekplan_xml(xml_file_path: str) -> Tuple[Dict[str, Any], Dict[str, A
     except Exception as e:
         raise e
 
-    title_text = root.find('title').text.replace('&amp;', '&') if root.find('title') is not None else "Untitled Sitemap"
+    title_text = root.find('title').text.replace('&amp;', '&').replace('&', 'and') if root.find('title') is not None else "Untitled Sitemap"
     link_text = root.find('link').text if root.find('link') is not None else None
 
     all_cells = {}; cells_element = root.find('.//cells')
@@ -432,7 +432,7 @@ def parse_sleekplan_xml(xml_file_path: str) -> Tuple[Dict[str, Any], Dict[str, A
 
         cell_data = {
             "id": cell_id,
-            "text": cell.find('text').text.replace('&amp;', '&') if cell.find('text') is not None else "Untitled",
+            "text": cell.find('text').text.replace('&amp;', '&').replace('&', 'and') if cell.find('text') is not None else "Untitled",
             "order": int(cell.find('order').text) if cell.find('order') is not None else 9999,
             "level": cell_level,
             "parent_id": cell.find('parent').text if cell.find('parent') is not None else None,

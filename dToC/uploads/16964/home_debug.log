@@ -1,0 +1,6 @@
+{"section": "config_loaded", "data": {"file_prefix": "3178387b-a296-4b3b-8f97-b93a4b93b99d", "api_base_url_present": true, "token_present": true, "site_id": "16964"}, "timestamp": "2026-01-19 15:27:11"}
+{"section": "home_json_found", "data": {"file_prefix": "3178387b-a296-4b3b-8f97-b93a4b93b99d", "home_simplified_file": "D:\\GItHIbProjects\\py-projects2\\dToC\\processing_steps\\..\\uploads\\3178387b-a296-4b3b-8f97-b93a4b93b99d_home_simplified.json"}, "timestamp": "2026-01-19 15:27:11"}
+{"section": "home_page_start", "data": {"page_name": "Home page", "components": []}, "timestamp": "2026-01-19 15:27:17"}
+{"section": "category_skipped", "data": {"page_name": "Home page", "category_id": 0}, "timestamp": "2026-01-19 15:27:17"}
+{"section": "publish_queue", "data": {"queued": 0}, "timestamp": "2026-01-19 15:27:17"}
+{"section": "home_step_complete", "data": {"file_prefix": "3178387b-a296-4b3b-8f97-b93a4b93b99d", "elapsed_seconds": 0.01610398292541504, "published_count": 0}, "timestamp": "2026-01-19 15:27:17"}

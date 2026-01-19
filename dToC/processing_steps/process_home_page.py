@@ -25,6 +25,7 @@ from processing_steps.process_assembly import (
     createPayloadJson,
     createRecordsPayload,
     sanitize_page_name_for_filesystem,
+    generate_page_alias,
 )
 import zipfile
 
@@ -446,7 +447,7 @@ def pageAction_home(
     payload = {
         "pageId": 0,
         "pageName": page_name,
-        "pageAlias": page_name.lower().replace(' ', '-'),  # Same as level 1 pages
+        "pageAlias": generate_page_alias(page_name),  # Preserve "/" for hierarchical names
         "pageContent": base64_encoded_content,
         "isPageStudioPage": True,
         "pageUpdatedBy": 0,

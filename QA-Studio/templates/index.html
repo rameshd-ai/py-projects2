@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Studio - Automated Quality Assurance Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 QA Studio</h1>
+            <p class="subtitle">Automated Quality Assurance Testing Dashboard</p>
+            <div id="connection-status" style="margin-top: 10px; font-size: 0.9em;">
+                <span id="status-indicator" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #28a745; margin-right: 5px;"></span>
+                <span id="status-text">Connected</span>
+            </div>
+        </header>
+
+        <!-- Configuration Form -->
+        <section id="config-section" class="card">
+            <h2>Test Configuration</h2>
+            <form id="test-config-form">
+                <div class="form-group">
+                    <label for="base-url">Base URL *</label>
+                    <input type="url" id="base-url" name="base_url" required 
+                           placeholder="https://example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="sitemap-url">Sitemap URL (optional)</label>
+                    <input type="url" id="sitemap-url" name="sitemap_url" 
+                           placeholder="https://example.com/sitemap.xml">
+                    <small>Defaults to {base_url}/sitemap.xml if not provided</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Upload Baseline Images (Figma Designs - Optional)</label>
+                    <div style="border: 2px dashed #667eea; border-radius: 8px; padding: 20px; text-align: center; background: #f8f9ff;">
+                        <input type="file" id="baseline-images" name="baseline_images" 
+                               accept="image/png,image/jpeg,image/jpg" 
+                               multiple
+                               style="display: none;">
+                        <button type="button" onclick="document.getElementById('baseline-images').click()" 
+                                class="btn btn-secondary" style="margin-bottom: 10px;">
+                            📤 Choose Figma Images
+                        </button>
+                        <div id="baseline-files-list" style="margin-top: 10px; font-size: 0.9em; color: #666;">
+                            No files selected
+                        </div>
+                        <small style="display: block; margin-top: 10px; color: #666;">
+                            Upload reference images from Figma for pixel-perfect comparison.<br>
+                            Name files: desktop_{url}.png, tablet_{url}.png, mobile_{url}.png<br>
+                            <strong>If not provided:</strong> Tests will check for broken UI and responsiveness issues only.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Browsers</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" name="browsers" value="chromium" checked> Chromium ✅</label>
+                            <label><input type="checkbox" name="browsers" value="firefox"> Firefox ✅</label>
+                            <label><input type="checkbox" name="browsers" value="webkit"> WebKit ✅</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Devices</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" name="devices" value="desktop" checked> Desktop ✅</label>
+                            <label><input type="checkbox" name="devices" value="tablet" checked> Tablet ✅</label>
+                            <label><input type="checkbox" name="devices" value="mobile" checked> Mobile ✅</label>
+                        </div>
+                        <small style="color: #666; margin-top: 5px; display: block;">
+                            All devices are supported for Pillar 1 (Rendering & Responsiveness)
+                        </small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Test Pillars</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="pillars" value="1" checked> 1. Rendering & Responsiveness ✅</label>
+                        <label><input type="checkbox" name="pillars" value="2"> 2. Site Architecture & Navigation (Coming Soon)</label>
+                        <label><input type="checkbox" name="pillars" value="3"> 3. Functional & Business Logic (Coming Soon)</label>
+                        <label><input type="checkbox" name="pillars" value="4"> 4. Console & Technical Checks (Coming Soon)</label>
+                        <label><input type="checkbox" name="pillars" value="5"> 5. Cross-Browser & Device Testing (Coming Soon)</label>
+                        <label><input type="checkbox" name="pillars" value="6"> 6. Content, SEO & Schema Validation (Coming Soon)</label>
+                    </div>
+                    <small style="color: #666; margin-top: 10px; display: block;">
+                        Only Pillar 1 is fully functional. Other pillars are in development.
+                    </small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="run-btn" class="btn btn-primary">Run Tests</button>
+                    <button type="button" id="cancel-btn" class="btn btn-secondary" disabled>Cancel Run</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Progress Modal Popup -->
+        <div id="progress-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Test Run in Progress</h2>
+                    <button id="close-modal-btn" class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="run-header">
+                        <div>
+                            <strong>Run ID:</strong> <span id="modal-run-id">-</span>
+                        </div>
+                        <div class="status-badge" id="modal-status">Running</div>
+                    </div>
+
+                    <div class="run-info">
+                        <div class="info-item">
+                            <span class="label">Elapsed Time:</span>
+                            <span id="modal-elapsed-time">00:00</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Status:</span>
+                            <span id="modal-run-status">Running</span>
+                        </div>
+                        <div class="info-item" style="flex: 1;">
+                            <span class="label">Current URL:</span>
+                            <span id="modal-current-url" style="font-size: 0.9em; color: #666; word-break: break-all;">Initializing...</span>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bars -->
+                    <div class="progress-section">
+                        <h3>Pillar Progress</h3>
+                        <div id="modal-pillar-progress">
+                            <!-- Progress bars will be dynamically generated -->
+                        </div>
+                    </div>
+
+                    <!-- Live Log Panel -->
+                    <div class="log-section">
+                        <div class="log-header">
+                            <h3>Live Log Output</h3>
+                            <button id="modal-clear-logs-btn" class="btn btn-small">Clear</button>
+                        </div>
+                        <div id="modal-log-viewer" class="log-viewer"></div>
+                    </div>
+
+                    <!-- Bug Report Section (shown when test completes) -->
+                    <div id="modal-bug-report" style="display: none; margin-top: 20px;">
+                        <div class="log-header">
+                            <h3>🐛 Bug Report</h3>
+                            <button id="modal-view-full-report-btn" class="btn btn-small">View Full Report</button>
+                        </div>
+                        <div id="modal-bug-report-content" style="background: #fff5f5; padding: 15px; border-radius: 5px; border-left: 4px solid #d9534f; max-height: 400px; overflow-y: auto;">
+                            <p style="text-align: center; color: #666;">Loading bug report...</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="modal-cancel-btn" class="btn btn-secondary">Cancel Run</button>
+                    <button id="modal-minimize-btn" class="btn btn-primary">Minimize</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Run View -->
+        <section id="active-run-section" class="card" style="display: none;">
+            <div class="run-header">
+                <h2>Test Run: <span id="current-run-id">-</span></h2>
+                <div class="status-badge" id="overall-status">Running</div>
+            </div>
+
+            <div class="run-info">
+                <div class="info-item">
+                    <span class="label">Elapsed Time:</span>
+                    <span id="elapsed-time">00:00</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Status:</span>
+                    <span id="run-status">Running</span>
+                </div>
+            </div>
+
+            <!-- Progress Bars -->
+            <div class="progress-section">
+                <h3>Pillar Progress</h3>
+                <div id="pillar-progress">
+                    <!-- Progress bars will be dynamically generated -->
+                </div>
+            </div>
+
+            <!-- Live Log Panel -->
+            <div class="log-section">
+                <div class="log-header">
+                    <h3>Live Log Output</h3>
+                    <button id="clear-logs-btn" class="btn btn-small">Clear</button>
+                </div>
+                <div id="log-viewer" class="log-viewer"></div>
+            </div>
+        </section>
+
+        <!-- Results View -->
+        <section id="results-section" class="card" style="display: none;">
+            <h2>Test Results</h2>
+            <div id="results-content">
+                <!-- Results will be populated here -->
+            </div>
+        </section>
+
+        <!-- Run History -->
+        <section id="history-section" class="card">
+            <h2>Run History</h2>
+            <div id="history-list">
+                <p class="empty-state">No previous runs</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Results Viewer Modal -->
+    <div id="results-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 90%; max-height: 90%;">
+            <div class="modal-header">
+                <h2>Test Results: <span id="results-run-id">-</span></h2>
+                <button id="close-results-modal-btn" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: calc(90vh - 150px); overflow-y: auto;">
+                <div id="results-content-modal">
+                    <p>Loading results...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-results-btn" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Complete Report Modal -->
+    <div id="complete-report-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 95%; max-height: 95%;">
+            <div class="modal-header">
+                <h2>Complete Bug Report: <span id="complete-report-run-id">-</span></h2>
+                <button id="close-complete-report-btn" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: calc(95vh - 150px); overflow-y: auto;">
+                <div id="complete-report-content">
+                    <p style="text-align: center; padding: 20px;">Loading bug report...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="close-complete-report-modal-btn" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/client.js') }}"></script>
+</body>
+</html>
