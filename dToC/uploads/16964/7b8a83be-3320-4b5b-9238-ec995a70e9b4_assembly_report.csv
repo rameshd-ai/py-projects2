@@ -1,0 +1,3 @@
+page,component,cms_component_name,level,hierarchy,available,status
+Park and Stay Package,M5-Intro,M5-Intro,2,Offers > Park and Stay Package,True,SUCCESS: Content retrieved and records added to assembly queue.
+Park and Stay Package,M4-Second Tier Intro Snippet,M4-Second Tier Intro Snippet,2,Offers > Park and Stay Package,True,SUCCESS: Content retrieved and records added to assembly queue.

@@ -1,23 +1,4 @@
 {
-  "586770": "output\\16964\\Rooms\\mi-block-ID-586770",
-  "586791": "output\\16964\\Rooms\\mi-block-ID-586791",
-  "587256": "output\\16964\\Rooms\\mi-block-ID-587256",
-  "587180": "output\\16964\\Rooms\\mi-block-ID-587180",
-  "587192": "output\\16964\\Rooms\\mi-block-ID-587192",
-  "587247": "output\\16964\\Rooms\\mi-block-ID-587247",
-  "587060": "output\\16964\\Rooms\\mi-block-ID-587060",
-  "586834": "output\\16964\\Offers\\mi-block-ID-586834",
-  "587202": "output\\16964\\Bed_and_Breakast_Package\\mi-block-ID-587202",
-  "587184": "output\\16964\\Overview\\mi-block-ID-587184",
-  "586910": "output\\16964\\Restaurant_Anzu\\mi-block-ID-586910",
-  "587211": "output\\16964\\Restaurant_Anzu\\mi-block-ID-587211",
-  "586780": "output\\16964\\Nearby_Dining\\mi-block-ID-586780",
-  "587261": "output\\16964\\Floor_Plans\\mi-block-ID-587261",
-  "587209": "output\\16964\\Services\\mi-block-ID-587209",
-  "587217": "output\\16964\\Location\\mi-block-ID-587217",
-  "587007": "output\\16964\\Location\\mi-block-ID-587007",
-  "587031": "output\\16964\\Location\\mi-block-ID-587031",
-  "586861": "output\\16964\\Pet_Friendly\\mi-block-ID-586861",
-  "586801": "output\\16964\\Pet_Friendly\\mi-block-ID-586801",
-  "587145": "output\\16964\\Contact\\mi-block-ID-587145"
+  "586791": "output\\16964\\Park_and_Stay_Package\\mi-block-ID-586791",
+  "587202": "output\\16964\\Park_and_Stay_Package\\mi-block-ID-587202"
 }

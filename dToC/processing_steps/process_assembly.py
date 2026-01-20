@@ -1194,7 +1194,34 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
                 logging.error(f"[ERROR] Error adding levels to records: {e}")
 
         createPayloadJson(site_id, miBlockId, page_name) #this is only to create ComponentHierarchy.json 
-        createRecordsPayload(site_id, miBlockId, page_name) #this will fetch and create a single set of records for dummy data creates file ComponentRecordsTree.json
+        # Create ComponentRecordsTree.json - CRITICAL for page processing
+        logging.info(f"[add_records_for_page] About to call createRecordsPayload for component {miBlockId} on page '{page_name}'")
+        try:
+            records_tree_result = createRecordsPayload(site_id, miBlockId, page_name) #this will fetch and create a single set of records for dummy data creates file ComponentRecordsTree.json
+            logging.info(f"[add_records_for_page] createRecordsPayload returned: {records_tree_result}")
+        except Exception as e:
+            error_msg = f"[ERROR] Exception in createRecordsPayload for component {miBlockId} on page '{page_name}': {e}"
+            logging.error(error_msg)
+            logging.exception("Full traceback:")
+            append_debug_log("component_records_tree_exception", {
+                "component_id": miBlockId,
+                "page_name": page_name,
+                "error": str(e)
+            })
+            raise  # Re-raise to be caught by outer exception handler
+        
+        if not records_tree_result:
+            error_msg = f"[ERROR] Failed to create ComponentRecordsTree.json for component {miBlockId} on page '{page_name}'. This will prevent page creation!"
+            logging.error(error_msg)
+            print(error_msg)  # Also print to console
+            append_debug_log("component_records_tree_failed", {
+                "component_id": miBlockId,
+                "page_name": page_name,
+                "folder_path": os.path.join("output", str(site_id), sanitize_page_name_for_filesystem(page_name) if page_name else "", f"mi-block-ID-{miBlockId}")
+            })
+            raise Exception(error_msg)
+        else:
+            logging.info(f"[SUCCESS] ComponentRecordsTree.json created successfully for component {miBlockId} on page '{page_name}'")
         
         # Add records - parent only (CMS auto-generates sub-records)
         mainComp(save_folder,component_id,pageSectionGuid,base_url,headers,component_alias,vComponentId)
@@ -2688,16 +2715,35 @@ def createPayloadJson(site_id, component_id, page_name: Optional[str] = None):
 def _read_json_file(file_path: str) -> Optional[Dict[str, Any]]:
     """Helper function to safely read and parse a JSON file."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"Error: Required file not found at {file_path}.")
+        error_msg = f"Error: Required file not found at {file_path}."
+        logging.error(error_msg)
+        print(error_msg)
         return None
-    except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from {file_path}. Check the file format.")
+    except json.JSONDecodeError as e:
+        error_msg = f"Error: Could not decode JSON from {file_path}. Check the file format. Error: {e}"
+        logging.error(error_msg)
+        print(error_msg)
         return None
+    except UnicodeDecodeError as e:
+        error_msg = f"Error: Encoding issue reading {file_path}. Error: {e}. Trying with errors='ignore'..."
+        logging.error(error_msg)
+        print(error_msg)
+        try:
+            # Try reading with error handling
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                return json.load(f)
+        except Exception as e2:
+            error_msg2 = f"Error: Still failed to read {file_path} with error handling. Error: {e2}"
+            logging.error(error_msg2)
+            print(error_msg2)
+            return None
     except Exception as e:
-        print(f"An unexpected error occurred while reading {file_path}: {e}")
+        error_msg = f"An unexpected error occurred while reading {file_path}: {e}"
+        logging.error(error_msg)
+        print(error_msg)
         return None
 
 
@@ -2732,14 +2778,36 @@ def createRecordsPayload(site_id, component_id, page_name: Optional[str] = None)
     output_file_path = os.path.join(folder_path, output_file_name)
 
     # 2. Load Data and Create Type Map
+    logging.info(f"[createRecordsPayload] Creating ComponentRecordsTree.json for component {component_id} on page '{page_name}' in folder: {folder_path}")
+    logging.info(f"[createRecordsPayload] Looking for files:")
+    logging.info(f"  - Records: {records_input_path} (exists: {os.path.exists(records_input_path)})")
+    logging.info(f"  - Hierarchy: {hierarchy_input_path} (exists: {os.path.exists(hierarchy_input_path)})")
+    
+    # Verify folder exists
+    if not os.path.exists(folder_path):
+        error_msg = f"[ERROR] Folder does not exist: {folder_path}. Component may not have been downloaded for this page."
+        logging.error(error_msg)
+        return False
+    
     records_data = _read_json_file(records_input_path)
     hierarchy_data = _read_json_file(hierarchy_input_path)
 
-    if records_data is None or hierarchy_data is None:
+    if records_data is None:
+        error_msg = f"[ERROR] Failed to load MiBlockComponentRecords.json from {records_input_path}"
+        logging.error(error_msg)
+        print(error_msg)
+        return False
+    
+    if hierarchy_data is None:
+        error_msg = f"[ERROR] Failed to load ComponentHierarchy.json from {hierarchy_input_path}"
+        logging.error(error_msg)
+        print(error_msg)
         return False
         
     if not isinstance(hierarchy_data, list):
-        print("Error: ComponentHierarchy.json is required and must contain a list of components.")
+        error_msg = f"Error: ComponentHierarchy.json is required and must contain a list of components. Found: {type(hierarchy_data)}"
+        logging.error(error_msg)
+        print(error_msg)
         return False
 
     # Create map: { componentId (int): type (str) }
@@ -2775,7 +2843,9 @@ def createRecordsPayload(site_id, component_id, page_name: Optional[str] = None)
     )
 
     if root_record is None:
-        print(f"Error: Could not find a root record (ComponentId={component_id_int}, ParentId=0).")
+        error_msg = f"Error: Could not find a root record (ComponentId={component_id_int}, ParentId=0) in {records_input_path}. Total records: {len(all_records)}"
+        logging.error(error_msg)
+        print(error_msg)
         return False
 
     # 4. Prepare data structure for quick lookup (Record ID -> List of Children)
@@ -2808,12 +2878,21 @@ def createRecordsPayload(site_id, component_id, page_name: Optional[str] = None)
     collect_descendants(root_record["Id"])
 
     # 6. Write the output payload
-    # print(f"Found {len(records_tree)} records in the hierarchy. Writing to: {output_file_path}")
+    logging.info(f"[createRecordsPayload] Found {len(records_tree)} records in the hierarchy. Writing to: {output_file_path}")
     
     os.makedirs(folder_path, exist_ok=True)
-    with open(output_file_path, 'w') as f:
+    with open(output_file_path, 'w', encoding='utf-8') as f:
         # Save the list of records in sequence under the key 'componentRecordsTree'
-        json.dump({"componentRecordsTree": records_tree}, f, indent=4)
+        json.dump({"componentRecordsTree": records_tree}, f, indent=4, ensure_ascii=False)
+    
+    # Verify file was created
+    if os.path.exists(output_file_path):
+        file_size = os.path.getsize(output_file_path)
+        logging.info(f"[SUCCESS] ComponentRecordsTree.json created successfully: {output_file_path} ({file_size} bytes, {len(records_tree)} records)")
+    else:
+        error_msg = f"[ERROR] ComponentRecordsTree.json file was not created at {output_file_path}"
+        logging.error(error_msg)
+        return False
     
     # 7. Ensure has_image field is preserved in ComponentRecordsTree.json
     # (It should already be there from enrich_record.copy(), but verify and add if missing)
@@ -3446,6 +3525,20 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
     
     logging.info(f"[DEBUG] Page '{page_name}': page_sections_html count={len(page_sections_html) if page_sections_html else 0}, has_content={has_content}")
     
+    # Debug log for content check
+    append_debug_log(
+        "page_content_check",
+        {
+            "page_name": page_name,
+            "page_level": page_level,
+            "hierarchy": " > ".join(hierarchy + [page_name]),
+            "components_count": len(components),
+            "sections_count": len(page_sections_html) if page_sections_html else 0,
+            "has_content": has_content,
+            "sections_detail": [{"index": i, "is_empty": not (section and section.strip()) if section else True, "length": len(section) if section else 0} for i, section in enumerate(page_sections_html) if page_sections_html]
+        },
+    )
+    
     if has_content: 
         
         # Concatenate all component HTML sections in order
@@ -3547,6 +3640,19 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         logging.error(f"Page **{page_name}** failed: No final HTML content was successfully retrieved/assembled to proceed to pageAction. Skipping pageAction.")
         logging.warning(f"[SKIP] Page '{page_name}' will not be created - no HTML content available")
         logging.info(f"[DEBUG] page_sections_html length: {len(page_sections_html) if page_sections_html else 0}")
+        
+        # Debug log for page with no content
+        append_debug_log(
+            "page_no_content",
+            {
+                "page_name": page_name,
+                "page_level": page_level,
+                "hierarchy": " > ".join(hierarchy + [page_name]),
+                "components": components,
+                "sections_count": len(page_sections_html) if page_sections_html else 0,
+                "reason": "No HTML content generated - page will not be created"
+            },
+        )
         return
         
 # --- TRAVERSAL FUNCTIONS TO PASS CACHE AND NEW PARAMS ---
@@ -3650,6 +3756,19 @@ def assemble_page_templates_level2(
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     
+    # Debug log for level 2 page start
+    append_debug_log(
+        "level2_page_start",
+        {
+            "page_name": current_page_name,
+            "components": page_data.get("components", []),
+            "parent_page": parent_page_name,
+            "hierarchy": " > ".join(hierarchy + [current_page_name]),
+            "page_filter": page_filter,
+            "matches_filter": current_page_name == page_filter if page_filter else None,
+        },
+    )
+    
     # Check page filter - if set and current page doesn't match, skip unless it contains matching sub-page
     if page_filter:
         if current_page_name != page_filter:
@@ -3670,7 +3789,12 @@ def assemble_page_templates_level2(
                     break
             if not has_matching_subpage:
                 logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter '{page_filter}')")
+                append_debug_log("level2_page_skipped", {"page_name": current_page_name, "reason": "doesn't match filter and has no matching sub-page", "page_filter": page_filter})
                 return
+        else:
+            # Page matches filter - log this
+            logging.info(f"[DEBUG] Page '{current_page_name}' matches filter '{page_filter}' - processing")
+            append_debug_log("level2_page_filter_match", {"page_name": current_page_name, "page_filter": page_filter})
     
     # Debug: Log if page name contains "/"
     if '/' in current_page_name:
@@ -3807,8 +3931,19 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         page_filter = global_config.get("debug_page_filter")  # Can be None, empty string, or a page name
         if page_filter and page_filter.strip():
             page_filter = page_filter.strip()
+            # Normalize the filter: convert "&" to "and" to match how page names are stored in JSON
+            # (XML processing converts & to "and" in page names)
+            original_filter = page_filter
+            page_filter = page_filter.replace("&", "and")
+            if original_filter != page_filter:
+                logging.info(f"[FILTER] Page filter normalized: '{original_filter}' -> '{page_filter}' (converted & to 'and')")
+            else:
+                logging.info(f"[FILTER] Page filter loaded from global_config: '{page_filter}'")
         else:
             page_filter = None
+            logging.info(f"[FILTER] Page filter is empty or None. Processing all pages.")
+    else:
+        logging.info(f"[FILTER] No global_config found. Processing all pages.")
     
     # Helper function to recursively check if a page contains a sub-page with target name
     def page_contains_subpage(page, target_name):
@@ -3852,6 +3987,30 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
         
+        # If page_filter is set and current page doesn't match, skip processing its components
+        # but still allow traversal to sub-pages (which might match the filter)
+        should_process_components = True
+        logging.info(f"[DEBUG] Processing page '{current_page_name}' with filter '{page_filter}'")
+        
+        if page_filter and current_page_name != page_filter:
+            logging.info(f"[DEBUG] Page '{current_page_name}' doesn't match filter '{page_filter}'. Checking if it contains matching sub-page...")
+            # Check if this page contains the filtered sub-page
+            has_subpage = page_contains_subpage(top_level_page, page_filter)
+            logging.info(f"[DEBUG] page_contains_subpage('{current_page_name}', '{page_filter}') = {has_subpage}")
+            
+            if not has_subpage:
+                logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter '{page_filter}' and has no matching sub-page)")
+                continue  # Skip this page entirely
+            else:
+                # This page contains the filtered sub-page, so skip processing its components
+                # but still traverse to sub-pages
+                logging.info(f"[DEBUG] Page '{current_page_name}' contains filtered sub-page '{page_filter}'. Skipping component processing for parent page.")
+                should_process_components = False  # Don't process components, but continue to traverse sub-pages
+        elif page_filter and current_page_name == page_filter:
+            logging.info(f"[DEBUG] Page '{current_page_name}' matches filter '{page_filter}'. Will process components.")
+        elif not page_filter:
+            logging.info(f"[DEBUG] No filter set. Will process components for '{current_page_name}'.")
+        
         # Debug: Log if page name contains "/"
         if '/' in current_page_name:
             logging.info(f"[DEBUG] Level 1 page name contains '/': '{current_page_name}'")
@@ -3863,6 +4022,8 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
                 "page_name": current_page_name,
                 "components": top_level_page.get("components", []),
                 "source": "_simplified.json",
+                "page_filter": page_filter,
+                "will_process_components": should_process_components,
             },
         )
 
@@ -3872,18 +4033,24 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         # Default category ID
         category_id = 0
 
-        # Call processor for page
-        _process_page_components(
-            top_level_page,
-            initial_level,
-            initial_hierarchy,
-            component_cache,
-            api_base_url,
-            site_id,
-            api_headers,
-            category_id,  # passing resolved category id
-            component_cache_for_mapping=component_cache  # Pass component cache for mapping
-        )
+        # Only process page components if should_process_components is True
+        if should_process_components:
+            logging.info(f"[DEBUG] Processing components for '{current_page_name}' (should_process_components=True)")
+            # Call processor for page
+            _process_page_components(
+                top_level_page,
+                initial_level,
+                initial_hierarchy,
+                component_cache,
+                api_base_url,
+                site_id,
+                api_headers,
+                category_id,  # passing resolved category id
+                component_cache_for_mapping=component_cache  # Pass component cache for mapping
+            )
+        else:
+            logging.warning(f"[SKIP] Skipping component processing for '{current_page_name}' (filter is '{page_filter}', should_process_components=False)")
+            logging.info(f"[SKIP] Will still traverse to sub-pages to find '{page_filter}'")
 
         next_level = initial_level + 1
         new_hierarchy = initial_hierarchy + [current_page_name]
@@ -5800,38 +5967,95 @@ def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: L
     """
     component_info_list = []
     
-    def traverse_pages(page_node: Dict[str, Any], page_name: str):
-        """Recursively traverse all pages to collect component names with their page context."""
-        components = page_node.get('components', [])
-        for component_name in components:
-            # Check if component is available in cache
-            api_result = check_component_availability(component_name, component_cache)
-            if api_result:
-                vComponentId, alias, componentId, cms_component_name = api_result
-                # Add each component-page pair (allow duplicates across pages)
-                component_info_list.append((componentId, component_name, cms_component_name, page_name))
+    def traverse_pages(page_node: Dict[str, Any], page_name: str, filter_name: Optional[str] = None):
+        """Recursively traverse all pages to collect component names with their page context.
         
-        # Recursively process sub_pages
+        Args:
+            page_node: The page node to traverse
+            page_name: The name of the current page
+            filter_name: Optional page name to filter by. If set, only collect components for pages matching this name.
+        """
+        # Only collect components if no filter is set, or if this page matches the filter
+        should_collect = filter_name is None or page_name == filter_name
+        
+        if should_collect:
+            components = page_node.get('components', [])
+            logging.debug(f"[PRE-DOWNLOAD] Collecting {len(components)} components for page '{page_name}' (matches filter: {filter_name is None or page_name == filter_name})")
+            for component_name in components:
+                # Check if component is available in cache
+                api_result = check_component_availability(component_name, component_cache)
+                if api_result:
+                    vComponentId, alias, componentId, cms_component_name = api_result
+                    # Add each component-page pair (allow duplicates across pages)
+                    component_info_list.append((componentId, component_name, cms_component_name, page_name))
+                    logging.debug(f"[PRE-DOWNLOAD] Added component '{component_name}' (ID: {componentId}) for page '{page_name}'")
+        else:
+            components = page_node.get('components', [])
+            if components:
+                logging.debug(f"[PRE-DOWNLOAD] Skipping {len(components)} components for page '{page_name}' (doesn't match filter '{filter_name}')")
+        
+        # Recursively process sub_pages (always traverse to find matching sub-pages, but only collect if matches filter)
         for sub_page in page_node.get('sub_pages', []):
             sub_page_name = sub_page.get('page_name', 'Unnamed_SubPage')
-            traverse_pages(sub_page, sub_page_name)
+            traverse_pages(sub_page, sub_page_name, filter_name)
     
     # Traverse all top-level pages (or filtered page)
     pages = processed_json.get('pages', [])
     
     # Filter pages if page_filter is set
     if page_filter:
-        pages = [p for p in pages if p.get('page_name') == page_filter]
-        if not pages:
-            logging.warning(f"[PRE-DOWNLOAD] No page found with name '{page_filter}'. Available pages: {[p.get('page_name') for p in processed_json.get('pages', [])]}")
+        # Helper to recursively find a page by name (including sub-pages)
+        def find_page_recursive(page_list, target_name, parent_page=None):
+            """Recursively search for a page with matching name."""
+            for page in page_list:
+                current_name = page.get('page_name', '')
+                logging.debug(f"[PRE-DOWNLOAD] Checking page '{current_name}' against target '{target_name}'")
+                if current_name == target_name:
+                    # Found the target page - return parent if it exists, otherwise return the page itself
+                    logging.info(f"[PRE-DOWNLOAD] Found target page '{target_name}'! Parent: {parent_page.get('page_name') if parent_page else 'None'}")
+                    if parent_page:
+                        return [parent_page]  # Return parent so we can traverse to the sub-page
+                    else:
+                        return [page]  # Top-level page match
+                # Check sub-pages
+                sub_pages = page.get('sub_pages', [])
+                if sub_pages:
+                    logging.debug(f"[PRE-DOWNLOAD] Checking {len(sub_pages)} sub-pages of '{current_name}'")
+                    result = find_page_recursive(sub_pages, target_name, page)
+                    if result:
+                        logging.info(f"[PRE-DOWNLOAD] Found '{target_name}' in sub-pages of '{current_name}'. Returning parent.")
+                        return result  # Found in sub-pages, return parent
             return []
-        logging.info(f"[PRE-DOWNLOAD] Filtering to only page: '{page_filter}'")
+        
+        # Search for the filtered page (including in sub-pages)
+        filtered_pages = find_page_recursive(pages, page_filter)
+        if not filtered_pages:
+            # Get all page names recursively for better error message
+            def get_all_page_names_recursive(page_list, level=1):
+                names = []
+                for page in page_list:
+                    names.append(f"Level {level}: {page.get('page_name', 'UNKNOWN')}")
+                    for sub_page in page.get('sub_pages', []):
+                        names.extend(get_all_page_names_recursive([sub_page], level + 1))
+                return names
+            all_names = get_all_page_names_recursive(pages)
+            logging.warning(f"[PRE-DOWNLOAD] No page found with name '{page_filter}'. Available pages:\n  " + "\n  ".join(all_names))
+            return []
+        pages = filtered_pages
+        logging.info(f"[PRE-DOWNLOAD] Filtering to page: '{page_filter}' (found in hierarchy, starting from parent: {pages[0].get('page_name')})")
     
     for page in pages:
         page_name = page.get('page_name', 'Unnamed_Page')
-        traverse_pages(page, page_name)
+        logging.info(f"[PRE-DOWNLOAD] Traversing page '{page_name}' with filter '{page_filter}'")
+        # Pass the filter to traverse_pages so it only collects components for matching pages
+        traverse_pages(page, page_name, page_filter)
     
-    logging.info(f"Collected {len(component_info_list)} component-page pairs to pre-download")
+    logging.info(f"[PRE-DOWNLOAD] Collected {len(component_info_list)} component-page pairs to pre-download")
+    if page_filter and component_info_list:
+        # Verify all collected components are for the filtered page
+        for comp_id, comp_name, cms_name, collected_page_name in component_info_list:
+            if collected_page_name != page_filter:
+                logging.warning(f"[PRE-DOWNLOAD] WARNING: Collected component '{comp_name}' for page '{collected_page_name}' but filter is '{page_filter}'!")
     return component_info_list
 
 
@@ -5862,6 +6086,12 @@ def pre_download_all_components(
         page_filter = global_config.get("debug_page_filter")  # Can be None, empty string, or a page name
         if page_filter and page_filter.strip():
             page_filter = page_filter.strip()
+            # Normalize the filter: convert "&" to "and" to match how page names are stored in JSON
+            # (XML processing converts & to "and" in page names)
+            original_filter = page_filter
+            page_filter = page_filter.replace("&", "and")
+            if original_filter != page_filter:
+                logging.info(f"[PRE-DOWNLOAD] Page filter normalized: '{original_filter}' -> '{page_filter}' (converted & to 'and')")
         else:
             page_filter = None
     

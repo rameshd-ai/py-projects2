@@ -1,0 +1,114 @@
+{
+    "file_prefix": "7b8a83be-3320-4b5b-9238-ec995a70e9b4",
+    "timestamp": "2026-01-20 10:44:45",
+    "timing_summary": [
+        {
+            "function": "assemble_page_templates_level1",
+            "count": 1,
+            "total_seconds": 36.9605553150177,
+            "total_minutes": 0.616009255250295,
+            "average_seconds": 36.9605553150177,
+            "average_minutes": 0.616009255250295,
+            "max_seconds": 36.9605553150177,
+            "max_minutes": 0.616009255250295,
+            "min_seconds": 36.9605553150177,
+            "min_minutes": 0.616009255250295
+        },
+        {
+            "function": "add_records_for_page",
+            "count": 2,
+            "total_seconds": 23.38495898246765,
+            "total_minutes": 0.38974931637446086,
+            "average_seconds": 11.692479491233826,
+            "average_minutes": 0.19487465818723043,
+            "max_seconds": 12.203246593475342,
+            "max_minutes": 0.20338744322458904,
+            "min_seconds": 11.18171238899231,
+            "min_minutes": 0.18636187314987182
+        },
+        {
+            "function": "pre_download_all_components",
+            "count": 1,
+            "total_seconds": 11.0228910446167,
+            "total_minutes": 0.18371485074361166,
+            "average_seconds": 11.0228910446167,
+            "average_minutes": 0.18371485074361166,
+            "max_seconds": 11.0228910446167,
+            "max_minutes": 0.18371485074361166,
+            "min_seconds": 11.0228910446167,
+            "min_minutes": 0.18371485074361166
+        },
+        {
+            "function": "publishPage",
+            "count": 1,
+            "total_seconds": 7.650822162628174,
+            "total_minutes": 0.12751370271046955,
+            "average_seconds": 7.650822162628174,
+            "average_minutes": 0.12751370271046955,
+            "max_seconds": 7.650822162628174,
+            "max_minutes": 0.12751370271046955,
+            "min_seconds": 7.650822162628174,
+            "min_minutes": 0.12751370271046955
+        },
+        {
+            "function": "psPublishApi",
+            "count": 1,
+            "total_seconds": 5.632009029388428,
+            "total_minutes": 0.0938668171564738,
+            "average_seconds": 5.632009029388428,
+            "average_minutes": 0.0938668171564738,
+            "max_seconds": 5.632009029388428,
+            "max_minutes": 0.0938668171564738,
+            "min_seconds": 5.632009029388428,
+            "min_minutes": 0.0938668171564738
+        },
+        {
+            "function": "GetAllVComponents",
+            "count": 1,
+            "total_seconds": 5.547195196151733,
+            "total_minutes": 0.09245325326919555,
+            "average_seconds": 5.547195196151733,
+            "average_minutes": 0.09245325326919555,
+            "max_seconds": 5.547195196151733,
+            "max_minutes": 0.09245325326919555,
+            "min_seconds": 5.547195196151733,
+            "min_minutes": 0.09245325326919555
+        },
+        {
+            "function": "updatePageMapping",
+            "count": 1,
+            "total_seconds": 3.3602230548858643,
+            "total_minutes": 0.05600371758143107,
+            "average_seconds": 3.3602230548858643,
+            "average_minutes": 0.05600371758143107,
+            "max_seconds": 3.3602230548858643,
+            "max_minutes": 0.05600371758143107,
+            "min_seconds": 3.3602230548858643,
+            "min_minutes": 0.05600371758143107
+        },
+        {
+            "function": "psMappingApi",
+            "count": 1,
+            "total_seconds": 2.2811665534973145,
+            "total_minutes": 0.038019442558288576,
+            "average_seconds": 2.2811665534973145,
+            "average_minutes": 0.038019442558288576,
+            "max_seconds": 2.2811665534973145,
+            "max_minutes": 0.038019442558288576,
+            "min_seconds": 2.2811665534973145,
+            "min_minutes": 0.038019442558288576
+        },
+        {
+            "function": "CreatePage",
+            "count": 1,
+            "total_seconds": 2.065450668334961,
+            "total_minutes": 0.034424177805582684,
+            "average_seconds": 2.065450668334961,
+            "average_minutes": 0.034424177805582684,
+            "max_seconds": 2.065450668334961,
+            "max_minutes": 0.034424177805582684,
+            "min_seconds": 2.065450668334961,
+            "min_minutes": 0.034424177805582684
+        }
+    ]
+}
