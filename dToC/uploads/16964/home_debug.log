@@ -1,6 +1,6 @@
-{"section": "config_loaded", "data": {"file_prefix": "7b8a83be-3320-4b5b-9238-ec995a70e9b4", "api_base_url_present": true, "token_present": true, "site_id": "16964"}, "timestamp": "2026-01-20 10:43:32"}
-{"section": "home_json_found", "data": {"file_prefix": "7b8a83be-3320-4b5b-9238-ec995a70e9b4", "home_simplified_file": "D:\\GItHIbProjects\\py-projects2\\dToC\\processing_steps\\..\\uploads\\7b8a83be-3320-4b5b-9238-ec995a70e9b4_home_simplified.json"}, "timestamp": "2026-01-20 10:43:32"}
-{"section": "home_page_start", "data": {"page_name": "Home page", "components": []}, "timestamp": "2026-01-20 10:43:38"}
-{"section": "category_skipped", "data": {"page_name": "Home page", "category_id": 0}, "timestamp": "2026-01-20 10:43:38"}
-{"section": "publish_queue", "data": {"queued": 0}, "timestamp": "2026-01-20 10:43:38"}
-{"section": "home_step_complete", "data": {"file_prefix": "7b8a83be-3320-4b5b-9238-ec995a70e9b4", "elapsed_seconds": 0.010063886642456055, "published_count": 0}, "timestamp": "2026-01-20 10:43:38"}
+{"section": "config_loaded", "data": {"file_prefix": "761a4830-b375-4134-abf7-4ffc01ddd75b", "api_base_url_present": true, "token_present": true, "site_id": "16964"}, "timestamp": "2026-01-21 07:44:50"}
+{"section": "home_json_found", "data": {"file_prefix": "761a4830-b375-4134-abf7-4ffc01ddd75b", "home_simplified_file": "E:\\r-git\\py-projects2\\dToC\\processing_steps\\..\\uploads\\761a4830-b375-4134-abf7-4ffc01ddd75b_home_simplified.json"}, "timestamp": "2026-01-21 07:44:50"}
+{"section": "home_page_start", "data": {"page_name": "Home page", "components": []}, "timestamp": "2026-01-21 07:44:57"}
+{"section": "category_skipped", "data": {"page_name": "Home page", "category_id": 0}, "timestamp": "2026-01-21 07:44:57"}
+{"section": "publish_queue", "data": {"queued": 0}, "timestamp": "2026-01-21 07:44:57"}
+{"section": "home_step_complete", "data": {"file_prefix": "761a4830-b375-4134-abf7-4ffc01ddd75b", "elapsed_seconds": 0.032346487045288086, "published_count": 0}, "timestamp": "2026-01-21 07:44:57"}
