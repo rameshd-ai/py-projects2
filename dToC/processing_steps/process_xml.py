@@ -404,7 +404,14 @@ def parse_sleekplan_xml(xml_file_path: str) -> Tuple[Dict[str, Any], Dict[str, A
     except Exception as e:
         raise e
 
-    title_text = root.find('title').text.replace('&amp;', '&').replace('&', 'and') if root.find('title') is not None else "Untitled Sitemap"
+    # Properly unescape HTML entities in title
+    raw_title = root.find('title').text if root.find('title') is not None else None
+    if raw_title:
+        title_text = html.unescape(raw_title)
+        title_text = html.unescape(title_text)  # Handle double encoding
+        title_text = re.sub(r'&(?!#[0-9A-Za-z]+;|[A-Za-z]+;)', 'and', title_text)
+    else:
+        title_text = "Untitled Sitemap"
     link_text = root.find('link').text if root.find('link') is not None else None
 
     all_cells = {}; cells_element = root.find('.//cells')
@@ -439,9 +446,21 @@ def parse_sleekplan_xml(xml_file_path: str) -> Tuple[Dict[str, Any], Dict[str, A
         
         component_content = "\n---\n".join(clean_html_blocks).strip()
 
+        # Extract and properly unescape page name
+        raw_text = cell.find('text').text if cell.find('text') is not None else "Untitled"
+        if raw_text:
+            # Multiple unescape to handle double-encoded entities like &amp;#039;
+            page_name = html.unescape(raw_text)
+            page_name = html.unescape(page_name)  # Handle double encoding
+            # Replace standalone & with 'and' (but not & that's part of entities like &#039;)
+            # Only replace & that's not followed by # or letters (entity start)
+            page_name = re.sub(r'&(?!#[0-9A-Za-z]+;|[A-Za-z]+;)', 'and', page_name)
+        else:
+            page_name = "Untitled"
+        
         cell_data = {
             "id": cell_id,
-            "text": cell.find('text').text.replace('&amp;', '&').replace('&', 'and') if cell.find('text') is not None else "Untitled",
+            "text": page_name,
             "order": int(cell.find('order').text) if cell.find('order') is not None else 9999,
             "level": cell_level,
             "parent_id": cell.find('parent').text if cell.find('parent') is not None else None,
