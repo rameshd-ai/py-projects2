@@ -281,24 +281,76 @@ def append_debug_log(section: str, data: Dict[str, Any], site_id: Optional[int] 
 #     return None
 
 
+def parse_component_bracket_info(component_name: str) -> Tuple[str, int, int, int]:
+    """
+    Parses component name to extract bracket info and returns clean name with counts.
+    
+    Format: "A9-2 Column Snippet (Block-1,Main-6,Sub-1)" 
+    - Block-X: Number of component blocks/instances to create (default: 1)
+    - Main-X: Number of main records per block (default: 1)
+    - Sub-X: Number of sub records per main (default: 0)
+    
+    Example: "A9-2 Column Snippet (Block-1,Main-6,Sub-1)" -> ("A9-2 Column Snippet", 1, 6, 1)
+    Example: "L10-2 Column Snippet" -> ("L10-2 Column Snippet", 1, 1, 0)
+    
+    Returns:
+        Tuple[str, int, int, int]: (clean_component_name, block_count, main_count, sub_count)
+    """
+    # Pattern to match (Block-X,Main-Y,Sub-Z) or any combination
+    bracket_pattern = r'\(([^)]+)\)'
+    match = re.search(bracket_pattern, component_name)
+    
+    block_count = 1  # Default to 1 block/component instance
+    main_count = 1   # Default to 1 main record per block
+    sub_count = 0    # Default to 0 sub records
+    
+    if match:
+        bracket_content = match.group(1)
+        # Remove the bracket info from component name
+        clean_name = re.sub(bracket_pattern, '', component_name).strip()
+        
+        # Parse Block-X (number of component blocks/instances)
+        block_match = re.search(r'Block-(\d+)', bracket_content, re.IGNORECASE)
+        if block_match:
+            block_count = int(block_match.group(1))
+        
+        # Parse Main-X (number of main records per block)
+        main_match = re.search(r'Main-(\d+)', bracket_content, re.IGNORECASE)
+        if main_match:
+            main_count = int(main_match.group(1))
+        
+        # Parse Sub-Y (number of sub records per main)
+        sub_match = re.search(r'Sub-(\d+)', bracket_content, re.IGNORECASE)
+        if sub_match:
+            sub_count = int(sub_match.group(1))
+    else:
+        clean_name = component_name.strip()
+    
+    return (clean_name, block_count, main_count, sub_count)
 
 
-def check_component_availability(component_name: str, component_cache: List[Dict[str, Any]]) -> Optional[Tuple[int, str, int, str]]:
+def check_component_availability(component_name: str, component_cache: List[Dict[str, Any]]) -> Optional[Tuple[int, str, int, str, int, int, int]]:
     """
     Checks component availability by performing a LOCAL prefix search up to the first hyphen.
-    Returns the tuple (vComponentId, alias, componentId, cms_component_name) on success, or None on failure.
+    Strips bracket info (Block-X,Main-X,Sub-Y) from component name before searching.
+    
+    Returns the tuple (vComponentId, alias, componentId, cms_component_name, block_count, main_count, sub_count) on success, 
+    or None on failure.
     """
-    hyphen_index = component_name.find('-')
+    # Parse bracket info and get clean name
+    clean_component_name, block_count, main_count, sub_count = parse_component_bracket_info(component_name)
+    
+    hyphen_index = clean_component_name.find('-')
     
     # 1. Determine the search key: The component code up to AND including the first hyphen.
     if hyphen_index != -1:
         # Example: 'L10-2 Column Snippet' -> 'L10-'
-        search_key = component_name[:hyphen_index + 1].strip()
+        search_key = clean_component_name[:hyphen_index + 1].strip()
     else:
         # If no hyphen (e.g., 'Gallery'), use the whole name.
-        search_key = component_name.strip()
+        search_key = clean_component_name.strip()
         
-    logging.info(f"    Searching cache for prefix: **{search_key}** (Original: {component_name})")
+    logging.info(f"    Searching cache for prefix: **{search_key}** (Original: {component_name}, Clean: {clean_component_name}, Block: {block_count}, Main: {main_count}, Sub: {sub_count})")
     
     for component in component_cache:
         cms_component_name = component.get("name", "")
@@ -318,11 +370,11 @@ def check_component_availability(component_name: str, component_cache: List[Dict
             component_id = nested_component_details.get("componentId")
             
             if vComponentId is not None and component_alias is not None and component_id is not None:
-                logging.info(f"    [SUCCESS] Component '{component_name}' found in cache as '{cms_component_name}'.")
-                # Return the CMS name as the 4th element
-                return (vComponentId, component_alias, component_id, cms_component_name)
+                logging.info(f"    [SUCCESS] Component '{component_name}' found in cache as '{cms_component_name}'. Block: {block_count}, Main: {main_count}, Sub: {sub_count}")
+                # Return the CMS name as the 4th element, and block_count/main_count/sub_count as 5th, 6th, and 7th
+                return (vComponentId, component_alias, component_id, cms_component_name, block_count, main_count, sub_count)
     
-    logging.warning(f"    [ERROR] Component prefix '{search_key}' not found in the component cache.")
+    logging.warning(f"    [ERROR] Component prefix '{search_key}' not found in the component cache.'")
     return None
 
 
@@ -1379,7 +1431,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
         for comp_name in page_component_names:
             api_result = check_component_availability(comp_name, component_cache)
             if api_result:
-                _, _, componentId, _ = api_result
+                _, _, componentId, _, _, _, _ = api_result
                 component_id_str = str(componentId)
                 valid_component_ids_from_names.add(component_id_str)
                 logging.info(f"[MAPPING] Found component '{comp_name}' -> ID: {component_id_str}")
@@ -3478,12 +3530,13 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
         section_payload = None
         
         if api_result:
-            vComponentId, alias, componentId, cms_component_name = api_result 
+            vComponentId, alias, componentId, cms_component_name, block_count, main_count, sub_count = api_result 
             
-            logging.info(f"[SUCCESS] Component '{component_name}' is available. Starting content retrieval for **{page_name}**.")
+            logging.info(f"[SUCCESS] Component '{component_name}' is available. Starting content retrieval for **{page_name}**. Block: {block_count}, Main: {main_count}, Sub: {sub_count}")
             
             status_entry["available"] = True
             status_entry["cms_component_name"] = cms_component_name
+            # Note: block_count, main_count, sub_count are kept in local variables for future use, not saved to CSV
             
             # Track this component ID as belonging to this page
             page_component_ids.add(str(componentId))
@@ -5985,10 +6038,10 @@ def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: L
                 # Check if component is available in cache
                 api_result = check_component_availability(component_name, component_cache)
                 if api_result:
-                    vComponentId, alias, componentId, cms_component_name = api_result
+                    vComponentId, alias, componentId, cms_component_name, block_count, main_count, sub_count = api_result
                     # Add each component-page pair (allow duplicates across pages)
                     component_info_list.append((componentId, component_name, cms_component_name, page_name))
-                    logging.debug(f"[PRE-DOWNLOAD] Added component '{component_name}' (ID: {componentId}) for page '{page_name}'")
+                    logging.debug(f"[PRE-DOWNLOAD] Added component '{component_name}' (ID: {componentId}) for page '{page_name}' (Block: {block_count}, Main: {main_count}, Sub: {sub_count})")
         else:
             components = page_node.get('components', [])
             if components:
@@ -6571,7 +6624,7 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     
     try:
         with open(status_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(ASSEMBLY_STATUS_LOG)
         

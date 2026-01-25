@@ -111,20 +111,27 @@ HOMEPAGE_PAGES_TO_PUBLISH: List[Dict[str, Any]] = []
 
 def check_component_availability_home(
     component_name: str, component_cache: List[Dict[str, Any]]
-) -> Optional[Tuple[int, str, int, str]]:
+) -> Optional[Tuple[int, str, int, str, int, int, int]]:
     """
     Homepage-local variant of check_component_availability.
+    Strips bracket info (Block-X,Main-X,Sub-Y) from component name before searching.
 
     Performs a prefix search up to the first hyphen and returns:
-        (vComponentId, alias, componentId, cms_component_name)
+        (vComponentId, alias, componentId, cms_component_name, block_count, main_count, sub_count)
     """
-    hyphen_index = component_name.find("-")
+    # Import here to avoid circular dependency
+    from processing_steps.process_assembly import parse_component_bracket_info
+    
+    # Parse bracket info and get clean name
+    clean_component_name, block_count, main_count, sub_count = parse_component_bracket_info(component_name)
+    
+    hyphen_index = clean_component_name.find("-")
     if hyphen_index != -1:
-        search_key = component_name[: hyphen_index + 1].strip()
+        search_key = clean_component_name[: hyphen_index + 1].strip()
     else:
-        search_key = component_name.strip()
+        search_key = clean_component_name.strip()
 
-    logging.info(f"[HOME] Searching cache for prefix: **{search_key}** (Original: {component_name})")
+    logging.info(f"[HOME] Searching cache for prefix: **{search_key}** (Original: {component_name}, Clean: {clean_component_name}, Block: {block_count}, Main: {main_count}, Sub: {sub_count})")
 
     for component in component_cache:
         cms_component_name = component.get("name", "")
@@ -136,9 +143,9 @@ def check_component_availability_home(
 
             if vComponentId is not None and component_alias is not None and component_id is not None:
                 logging.info(
-                    f"[HOME] [SUCCESS] Component '{component_name}' found in cache as '{cms_component_name}'."
+                    f"[HOME] [SUCCESS] Component '{component_name}' found in cache as '{cms_component_name}'. Block: {block_count}, Main: {main_count}, Sub: {sub_count}"
                 )
-                return vComponentId, component_alias, component_id, cms_component_name
+                return vComponentId, component_alias, component_id, cms_component_name, block_count, main_count, sub_count
 
     logging.warning(f"[HOME] [ERROR] Component prefix '{search_key}' not found in the component cache.")
     return None
@@ -177,7 +184,7 @@ def pre_download_home_components(
     for comp in components:
         res = check_component_availability_home(comp, component_cache)
         if res:
-            vId, alias, compId, cms_name = res
+            vId, alias, compId, cms_name, block_count, main_count, sub_count = res
             resolved.append((comp, compId, vId, alias))
         else:
             logging.warning(f"[HOME][PRE-DOWNLOAD] Component not found in cache, skipping download: {comp}")
@@ -658,15 +665,16 @@ def _process_home_page_components(
             section_payload = None  # Initialize for each component
 
             if api_result:
-                vComponentId, alias, componentId, cms_component_name = api_result
+                vComponentId, alias, componentId, cms_component_name, block_count, main_count, sub_count = api_result
                 logging.info(
                     f"[HOME][SUCCESS] Component '{component_name}' available as '{cms_component_name}'. "
-                    f"Starting content retrieval (inner-page logic: add_records_for_page)."
+                    f"Starting content retrieval (inner-page logic: add_records_for_page). Block: {block_count}, Main: {main_count}, Sub: {sub_count}"
                 )
                 
                 # Track this component ID as belonging to this page
                 page_component_ids.add(str(componentId))
                 
+                # Note: block_count, main_count, sub_count are kept in local variables for future use, not saved to logs
                 append_home_debug_log(
                     "component_available",
                     {
