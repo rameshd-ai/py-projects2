@@ -924,8 +924,30 @@ def fetch_and_update_cms_generated_subrecords(
             "sub_records": all_sub_records[:2] if all_sub_records else None  # Log first 2 for debugging
         })
         
+        # If no sub-records found, retry once after a delay (CMS might need more time)
         if not all_sub_records:
-            logging.info(f"[SUBRECORD UPDATE] No sub-records found for parent {parent_record_id} after trying all child components")
+            logging.warning(f"[SUBRECORD UPDATE] No sub-records found on first attempt. Waiting 2 seconds and retrying...")
+            time.sleep(2)
+            
+            # Retry fetching sub-records
+            for child_comp_id in child_component_ids:
+                params = {
+                    "miblockId": child_comp_id,
+                    "pageSectionGuid": page_section_guid,
+                    "parentRecordId": parent_record_id,
+                    "languageId": 0
+                }
+                
+                logging.info(f"[SUBRECORD UPDATE] Retry: Fetching CMS-generated sub-records for parent {parent_record_id} using child component {child_comp_id}")
+                sub_records = get_miblock_records(base_url, headers, params)
+                
+                if sub_records:
+                    all_sub_records.extend(sub_records)
+                    logging.info(f"[SUBRECORD UPDATE] Retry successful: Found {len(sub_records)} sub-record(s) using child component {child_comp_id}")
+                    break  # Found records, no need to try other components
+        
+        if not all_sub_records:
+            logging.warning(f"[SUBRECORD UPDATE] No sub-records found for parent {parent_record_id} after retry. CMS may not have auto-generated sub-records for this component type.")
             return
         
         sub_records = all_sub_records
@@ -1081,7 +1103,7 @@ def fetch_and_update_cms_generated_subrecords(
 
 
 # --- MODIFIED: add_records_for_page now contains the complex file processing logic ---
-def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str):
+def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str, sub_count: int = 0):
     """
     Adds records/metadata for the page and performs component export/file processing.
     
@@ -1089,6 +1111,9 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
     
     NOTE: `vComponentId`, `componentId`, and `component_alias` are now passed directly
     from the calling function (`_process_page_components`).
+    
+    Args:
+        sub_count: Number of sub-records to create (from Sub-Z in component name). Default 0 means use CMS auto-generated count.
     """
     logging.info(f"    a) Adding records/metadata for page: {page_name} (Using ID: {vComponentId})")
     time.sleep(0.01)
@@ -1276,13 +1301,23 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
             logging.info(f"[SUCCESS] ComponentRecordsTree.json created successfully for component {miBlockId} on page '{page_name}'")
         
         # Add records - parent only (CMS auto-generates sub-records)
-        mainComp(save_folder,component_id,pageSectionGuid,base_url,headers,component_alias,vComponentId)
+        mainComp(save_folder,component_id,pageSectionGuid,base_url,headers,component_alias,vComponentId,sub_count)
         
         # NOTE: Sub-record migration removed - CMS handles this automatically
         # See REMOVED_FEATURES.md for restoration instructions if needed in future
+        
+        # Wait for CMS to finalize all sub-record processing before generating HTML
+        logging.info(f"[HTML GENERATION] Waiting 4 seconds for CMS to finalize sub-records before generating HTML for component {component_id}...")
+        time.sleep(4)
 
         # 2. Use the component_alias (string) for HTML generation
+        logging.info(f"[HTML GENERATION] Generating HTML for component {component_id} (alias: {component_alias}, sectionGuid: {pageSectionGuid})...")
         section_payload = generatecontentHtml(1, component_alias, pageSectionGuid)
+        
+        if section_payload:
+            logging.info(f"[HTML GENERATION] Successfully generated HTML for component {component_id}")
+        else:
+            logging.warning(f"[HTML GENERATION] HTML generation returned empty/null for component {component_id}")
         
     else:
         # Failure: alias_result is an error dictionary
@@ -2450,10 +2485,13 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
     return migrated_count
 
 
-def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,component_alias,vComponentId):
+def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,component_alias,vComponentId, sub_count=0):
     """
     Finds and migrates the 'MainComponent' record, updates its child records 
     in memory, and persists all changes back to the JSON file.
+    
+    Args:
+        sub_count: Number of sub-records to create (from Sub-Z in component name). Default 0 means use CMS auto-generated count.
     """
     records_file_path = os.path.join(save_folder, "ComponentRecordsTree.json")
     # print(f"  [INFO] Searching for MainComponent records in {records_file_path}...")
@@ -2540,8 +2578,8 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                         update_record_asset_if_needed(record, main_component_new_id, component_id, base_url, headers)
                     
                     # Add delay before fetching sub-records to ensure parent record is fully processed by CMS
-                    logging.info(f"[MAINCOMP] Waiting 2 seconds before fetching sub-records for parent {main_component_new_id} to ensure CMS has processed the parent record...")
-                    time.sleep(2)
+                    logging.info(f"[MAINCOMP] Waiting 3 seconds before fetching sub-records for parent {main_component_new_id} to ensure CMS has processed the parent record...")
+                    time.sleep(3)
                     
                     # Fetch and update CMS-generated sub-records (since CMS auto-generates them)
                     logging.info(f"[MAINCOMP] Checking for CMS-generated sub-records for parent {main_component_new_id} (component {component_id})...")
@@ -2563,6 +2601,7 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                         logging.info(f"[MAINCOMP] Built component_records_map with {len(component_records_map)} entries: {list(component_records_map.keys())}")
                         
                         # Fetch and update sub-records recursively
+                        logging.info(f"[MAINCOMP] Fetching and updating CMS-generated sub-records (sub_count from name: {sub_count})...")
                         fetch_and_update_cms_generated_subrecords(
                             parent_record_id=main_component_new_id,
                             component_id=component_id,
@@ -2573,10 +2612,163 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                             max_depth=3,
                             current_depth=0
                         )
+                        logging.info(f"[MAINCOMP] Sub-record fetch and update complete")
                         append_debug_log("subrecord_update_complete", {
                             "parent_record_id": main_component_new_id,
                             "component_id": component_id
                         })
+                        
+                        # --- SUB-RECORD DUPLICATION LOGIC (Sub-Z) ---
+                        if sub_count > 1:  # Only duplicate if we need more than 1 (CMS creates 1 by default)
+                            # Wait a bit more to ensure CMS has created all sub-records
+                            logging.info(f"[SUBRECORD DUPLICATE] Sub_count={sub_count} specified. Waiting 1 second then duplicating...")
+                            time.sleep(1)
+                            logging.info(f"[SUBRECORD DUPLICATE] Will fetch CMS-generated sub-records and duplicate them...")
+                            
+                            try:
+                                # Find child component IDs from component_records_map
+                                child_component_ids = []
+                                for rec in component_records_map.values():
+                                    if isinstance(rec, dict):
+                                        parent_comp_id = rec.get("ParentComponentId")
+                                        child_comp_id = rec.get("ComponentId")
+                                        if parent_comp_id == component_id and child_comp_id:
+                                            if child_comp_id not in child_component_ids:
+                                                child_component_ids.append(child_comp_id)
+                                
+                                if not child_component_ids:
+                                    # For flat list components, use the main component ID itself
+                                    child_component_ids = [component_id]
+                                    logging.info(f"[SUBRECORD DUPLICATE] No child components found, using main component ID {component_id}")
+                                
+                                # Fetch existing sub-records to use as template
+                                template_record = None
+                                for child_comp_id in child_component_ids:
+                                    params = {
+                                        "miblockId": child_comp_id,
+                                        "pageSectionGuid": pageSectionGuid,
+                                        "parentRecordId": main_component_new_id,
+                                        "languageId": 0
+                                    }
+                                    
+                                    existing_sub_records = get_miblock_records(base_url, headers, params)
+                                    existing_count = len(existing_sub_records) if existing_sub_records else 0
+                                    
+                                    logging.info(f"[SUBRECORD DUPLICATE] Found {existing_count} CMS-generated sub-record(s). Target: {sub_count}")
+                                    
+                                    if existing_count >= sub_count:
+                                        logging.info(f"[SUBRECORD DUPLICATE] Already have {existing_count} sub-records (target: {sub_count}), no duplication needed")
+                                        break
+                                    
+                                    # Determine template to use
+                                    template_record = None
+                                    template_record_json_str = None
+                                    
+                                    if existing_count > 0:
+                                        # Use first sub-record as template
+                                        template_record = existing_sub_records[0]
+                                        template_record_json_str = template_record.get("RecordJsonString")
+                                        
+                                        if not template_record_json_str:
+                                            logging.warning(f"[SUBRECORD DUPLICATE] Template record has no RecordJsonString")
+                                            break
+                                    else:
+                                        # No CMS-generated sub-records found - use a record from the JSON file as template
+                                        logging.warning(f"[SUBRECORD DUPLICATE] No CMS-generated sub-records found. Looking for template in component_records_map...")
+                                        
+                                        # Find any non-MainComponent record from the component_records_map to use as template
+                                        fallback_template = None
+                                        for rec in component_records_map.values():
+                                            if isinstance(rec, dict) and rec.get("recordType") != "MainComponent":
+                                                fallback_template = rec
+                                                break
+                                        
+                                        if not fallback_template:
+                                            # Use any record from the map that has RecordJsonString
+                                            for rec in component_records_map.values():
+                                                if isinstance(rec, dict) and rec.get("RecordJsonString"):
+                                                    fallback_template = rec
+                                                    break
+                                        
+                                        if fallback_template:
+                                            template_record = fallback_template
+                                            template_record_json_str = fallback_template.get("RecordJsonString")
+                                            logging.info(f"[SUBRECORD DUPLICATE] Using fallback template from JSON file (ComponentId: {fallback_template.get('ComponentId')})")
+                                            existing_count = 0  # We'll create all sub_count records
+                                        else:
+                                            logging.error(f"[SUBRECORD DUPLICATE] No template found in component_records_map. Cannot create sub-records.")
+                                            break
+                                    
+                                    # Now create records (runs for both CMS template and fallback template cases)
+                                    if template_record and template_record_json_str:
+                                        records_to_create = sub_count - existing_count
+                                        logging.info(f"[SUBRECORD DUPLICATE] Creating {records_to_create} additional sub-record(s)...")
+                                        
+                                        # Create duplicates via API (sequential)
+                                        for i in range(records_to_create):
+                                            try:
+                                                # Parse and clean the template JSON
+                                                template_json = json.loads(template_record_json_str)
+                                                template_json["Id"] = "0"  # CMS will assign new ID
+                                                template_json["ParentId"] = str(main_component_new_id)
+                                                
+                                                # Build API payload
+                                                single_record = {
+                                                    "componentId": child_comp_id,
+                                                    "recordId": 0,
+                                                    "parentRecordId": main_component_new_id,
+                                                    "recordDataJson": json.dumps(template_json),
+                                                    "status": template_record.get("Status", True),
+                                                    "tags": [],
+                                                    "displayOrder": template_record.get("DisplayOrder", 0) + i + 1,
+                                                    "updatedBy": 0,
+                                                    "pageSectionGuid": pageSectionGuid
+                                                }
+                                                
+                                                api_payload = {"main_record_set": [single_record]}
+                                                
+                                                logging.info(f"[SUBRECORD DUPLICATE] Creating sub-record {i+1}/{records_to_create}...")
+                                                resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
+                                                
+                                                if resp_success and isinstance(resp_data, dict):
+                                                    new_record_id = resp_data.get(0) or resp_data.get("0")
+                                                    if new_record_id:
+                                                        logging.info(f"[SUBRECORD DUPLICATE] Created sub-record {i+1}/{records_to_create} with ID {new_record_id}")
+                                                        
+                                                        # Update assets for new sub-record
+                                                        source_record = component_records_map.get(child_comp_id)
+                                                        has_images = source_record.get("has_image", False) if source_record else False
+                                                        
+                                                        if has_images or template_record.get("has_image"):
+                                                            logging.info(f"[SUBRECORD DUPLICATE] Updating assets for new sub-record {new_record_id}...")
+                                                            record_for_update = source_record if source_record else template_record
+                                                            update_record_asset_if_needed(record_for_update, new_record_id, child_comp_id, base_url, headers)
+                                                        else:
+                                                            logging.info(f"[SUBRECORD DUPLICATE] Sub-record {new_record_id} has no images, skipping asset update")
+                                                    else:
+                                                        logging.warning(f"[SUBRECORD DUPLICATE] No record ID in response for sub-record {i+1}")
+                                                else:
+                                                    logging.error(f"[SUBRECORD DUPLICATE] Failed to create sub-record {i+1}: {resp_data}")
+                                                
+                                                # Small delay between creations
+                                                time.sleep(0.3)
+                                                
+                                            except Exception as e:
+                                                logging.error(f"[SUBRECORD DUPLICATE] Error creating sub-record {i+1}: {e}")
+                                                logging.exception("Full traceback:")
+                                        
+                                        # After creating all duplicates, wait extra time for CMS to process them all
+                                        logging.info(f"[SUBRECORD DUPLICATE] Finished creating {records_to_create} sub-records. Waiting 3 seconds for CMS to process all new records...")
+                                        time.sleep(3)
+                                        
+                                    break  # Done with this child component
+                                
+                            except Exception as e:
+                                logging.error(f"[SUBRECORD DUPLICATE] Error during sub-record duplication: {e}")
+                                logging.exception("Full traceback:")
+                        else:
+                            # sub_count is 0 or 1, no duplication needed
+                            logging.info(f"[SUBRECORD DUPLICATE] Sub_count={sub_count}, using default CMS-generated sub-records (no duplication needed)")
                     except Exception as e:
                         logging.error(f"[MAINCOMP] Error processing CMS-generated sub-records: {e}")
                         logging.exception("Full traceback:")
@@ -3547,7 +3739,7 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
                 logging.info(f"[TIMING] Starting add_records_for_page for '{page_name}' with component '{component_name}'...")
                 records_start_time = time.time()
                 # Call function to get section payload (HTML snippet) and add records
-                section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias)
+                section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias, sub_count)
                 records_time = time.time() - records_start_time
                 logging.info(f"[TIMING] add_records_for_page completed in {records_time:.2f} seconds")
                 
