@@ -97,13 +97,9 @@
             gap: 12px;
             padding: 12px;
             border-radius: 8px;
-            cursor: pointer;
+            cursor: default;
             transition: all 0.2s;
             margin-bottom: 8px;
-        }
-
-        .step-item:hover {
-            background: #f3f4f6;
         }
 
         .step-item.active {
@@ -1206,8 +1202,8 @@
                                 Previous
                             </button>
                             <div style="display: flex; gap: 12px;">
-                                <button class="btn btn-secondary" id="skipNextBtn" onclick="skipNextStep()">
-                                    Process and Skip Next Step
+                                <button class="btn btn-secondary" id="skipNextBtn" onclick="skipCurrentStep()">
+                                    Skip
                                 </button>
                                 <button class="btn btn-primary" id="nextBtn" onclick="nextStep()">
                                     Process
@@ -1368,9 +1364,10 @@
             const nextBtn = document.getElementById('nextBtn');
             const skipNextBtn = document.getElementById('skipNextBtn');
             nextBtn.disabled = workflowInProgress;
-            // Disable skip when workflow is in progress or there is no next step to skip
-            const hasNextStepToSkip = currentStep < totalSteps;
-            skipNextBtn.disabled = workflowInProgress || !hasNextStepToSkip;
+            // Skip = skip current step (no processing). Hide on step 1; disable when workflow in progress
+            const showSkipBtn = currentStep > 1;
+            skipNextBtn.style.display = showSkipBtn ? '' : 'none';
+            skipNextBtn.disabled = workflowInProgress;
             
             if (currentStep === totalSteps) {
                 nextBtn.innerHTML = 'Process <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
@@ -1890,52 +1887,41 @@
             }
         }
 
-        async function skipNextStep() {
+        async function skipCurrentStep() {
             if (workflowInProgress) {
                 return;
             }
 
-            const nextStepNumber = currentStep + 1;
-            if (nextStepNumber > totalSteps) {
-                return;
-            }
-
-            const confirmed = confirm('This will process the current step, then skip the next step and jump ahead. Continue?');
+            const confirmed = confirm('Skip this step without processing? You can continue to the next step.');
             if (!confirmed) {
                 return;
             }
 
-            // First, process the current step
-            await saveAndProcessStep();
-
-            // Then skip the next step
-            const success = await skipStepOnServer(nextStepNumber);
+            const stepToSkip = currentStep;
+            const success = await skipStepOnServer(stepToSkip);
             if (!success) {
-                alert('Failed to skip step on server. Please try again.');
                 return;
             }
 
-            // Mark the next step as skipped in UI state
-            stepStatus[nextStepNumber] = 'skipped';
+            // Mark the current step as skipped in UI state
+            stepStatus[stepToSkip] = 'skipped';
 
-            // Update the UI to show the skipped step
-            const skippedStepItem = document.querySelector(`.step-item[data-step="${nextStepNumber}"]`);
+            // Update the sidebar icon for this step
+            const skippedStepItem = document.querySelector(`.step-item[data-step="${stepToSkip}"]`);
             const skippedStepIcon = skippedStepItem?.querySelector('.step-icon');
             if (skippedStepIcon) {
                 skippedStepIcon.innerHTML = '<i class="fas fa-minus"></i>';
                 skippedStepIcon.style.background = '#f59e0b';
                 skippedStepIcon.classList.add('skipped');
+                skippedStepIcon.classList.remove('active', 'pending', 'completed');
             }
 
-            // If there is a step after the skipped one, jump to it; otherwise, we just move to the final state
-            if (nextStepNumber < totalSteps) {
-                currentStep = nextStepNumber + 1;
+            // Move to next step or show completion if this was the last step
+            if (currentStep < totalSteps) {
+                currentStep++;
                 updateUI();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                // Skipping the final step – mark workflow as effectively complete
-                currentStep = totalSteps;
-                updateUI();
                 await showCompletion();
             }
         }
@@ -1947,16 +1933,6 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
-
-        // Click on step items
-        document.querySelectorAll('.step-item').forEach(item => {
-            item.addEventListener('click', function() {
-                if (!workflowInProgress) {
-                    currentStep = parseInt(this.dataset.step);
-                    updateUI();
-                }
-            });
-        });
 
         function displayFileName(input, targetId) {
             const fileName = input.files[0]?.name;
@@ -2177,15 +2153,32 @@
                                     btn.parentNode.appendChild(reprocessBtn);
                                 }
                             }
-                        } else if (isDisabled || (!isProcessed && !hasTimestamp)) {
-                            // Mark as skipped (orange) if disabled or not processed
+                        } else if (isDisabled) {
+                            // Only mark as skipped (orange) and disable when module is actually disabled (e.g. ltoMigration)
                             moduleItem.classList.add('skipped');
                             const btn = moduleItem.querySelector('.sub-process-btn');
                             if (btn && !btn.disabled) {
                                 btn.innerHTML = '<i class="fas fa-minus"></i> Skipped';
                                 btn.style.background = '#f59e0b';
                                 btn.disabled = true;
-                                btn.title = isDisabled ? 'Module is disabled' : 'Module not executed';
+                                btn.title = 'Module is disabled';
+                            }
+                        } else {
+                            // Not processed and not disabled: keep Process button so user can run Dine Menu / FAQ
+                            moduleItem.classList.remove('skipped');
+                            const btn = moduleItem.querySelector('.sub-process-btn');
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = 'Process';
+                                btn.style.background = '';
+                                if (moduleId === 'htmlMenu') {
+                                    btn.onclick = () => processSubProcess('htmlMenu');
+                                } else if (moduleId === 'faqManager') {
+                                    btn.onclick = () => handleFaqManagerClick();
+                                } else {
+                                    btn.onclick = () => processSubProcess(moduleId);
+                                }
+                                btn.title = '';
                             }
                         }
                     });
@@ -2346,10 +2339,13 @@
                 return;
             }
             
-            // Set processing state
+            // Set processing state – keep button disabled until process finishes
             subProcess.classList.add('processing');
-            processBtn.disabled = true;
-            processBtn.textContent = 'Processing...';
+            if (processBtn) {
+                processBtn.disabled = true;
+                processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                processBtn.style.cursor = 'not-allowed';
+            }
             
             try {
                 // Collect form data
@@ -2387,8 +2383,11 @@
                 console.error('Error processing sub-process:', error);
                 alert('Failed to process sub-process: ' + error.message);
                 subProcess.classList.remove('processing');
-                processBtn.disabled = false;
-                processBtn.textContent = 'Process';
+                if (processBtn) {
+                    processBtn.disabled = false;
+                    processBtn.innerHTML = 'Process';
+                    processBtn.style.cursor = '';
+                }
             }
         }
         
@@ -2418,10 +2417,13 @@
                 }
             }
             
-            // Set processing state
+            // Set processing state – keep button disabled until process finishes
             subProcess.classList.add('processing');
-            processBtn.disabled = true;
-            processBtn.textContent = 'Processing...';
+            if (processBtn) {
+                processBtn.disabled = true;
+                processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                processBtn.style.cursor = 'not-allowed';
+            }
             
             try {
                 // Collect form data
@@ -2452,13 +2454,16 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    // Mark as processed (state is saved on backend)
+                    // Mark as processed (state is saved on backend) – only then re-enable
                     processedSubProcesses[moduleId] = true;
                     subProcess.classList.remove('processing');
                     subProcess.classList.add('processed');
-                    processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
-                    processBtn.style.background = '#10b981';
-                    processBtn.disabled = false; // Allow reprocessing
+                    if (processBtn) {
+                        processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                        processBtn.style.background = '#10b981';
+                        processBtn.style.cursor = '';
+                        processBtn.disabled = false;
+                    }
                     if (moduleId === 'htmlMenu') {
                         processBtn.onclick = () => showMenuConfigModal();
                     } else if (moduleId === 'faqManager') {
@@ -2488,13 +2493,14 @@
                         processBtn.parentNode.appendChild(reprocessBtn);
                     }
                     
-                    // For htmlMenu, also update modal button
+                    // For htmlMenu, also update modal button (keep label "Processed", not overwritten)
                     if (moduleId === 'htmlMenu') {
                         const modalProcessBtn = document.getElementById('processDineMenuBtn');
                         if (modalProcessBtn) {
                             modalProcessBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
                             modalProcessBtn.style.background = '#10b981';
                             modalProcessBtn.disabled = false;
+                            modalProcessBtn.removeAttribute('aria-busy');
                         }
                     }
                     
@@ -2507,8 +2513,12 @@
                 console.error('Error processing sub-process:', error);
                 alert('Failed to process sub-process: ' + error.message);
                 subProcess.classList.remove('processing');
-                processBtn.disabled = false;
-                processBtn.textContent = 'Process';
+                if (processBtn) {
+                    processBtn.disabled = false;
+                    processBtn.innerHTML = 'Process';
+                    processBtn.style.background = '#10b981';
+                    processBtn.style.cursor = '';
+                }
             }
         }
 
@@ -2559,7 +2569,7 @@
                     <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; gap: 12px;">
                             <button onclick="saveAllMenuConfigs()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">Save All</button>
-                            <button onclick="processDineMenuFromModal()" id="processDineMenuBtn" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Process</button>
+                            <button type="button" onclick="processDineMenuFromModal()" id="processDineMenuBtn" data-menu-action="process" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Process menu</button>
                         </div>
                         <button onclick="closeMenuConfigModal()" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;">Close</button>
                     </div>
@@ -2587,7 +2597,9 @@
             if (processBtn && processedSubProcesses['htmlMenu']) {
                 processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
                 processBtn.style.background = '#10b981';
-                processBtn.disabled = false; // Allow reprocessing
+                processBtn.disabled = false;
+            } else if (processBtn) {
+                processBtn.innerHTML = 'Process menu';
             }
         }
 
@@ -2606,24 +2618,36 @@
             // NOTE: Do NOT save mapper files here - "Save All" button handles that
             // "Process" button should ONLY process the menu, not save mapper files
             
-            // Disable button and show processing
+            // Disable button and show processing (keep disabled until process finishes)
+            const processingLabel = '<i class="fas fa-spinner fa-spin"></i> Processing…';
             if (processBtn) {
                 processBtn.disabled = true;
-                processBtn.textContent = 'Processing...';
+                processBtn.setAttribute('aria-busy', 'true');
+                processBtn.innerHTML = processingLabel;
                 processBtn.style.background = '#6b7280';
+                processBtn.style.cursor = 'not-allowed';
             }
             
-            // Process the Dine Menu sub-process (this will call APIs)
+            // Keep button label correct while processing (prevents extensions from changing it to e.g. "Get Answer")
+            const keepLabelInterval = setInterval(() => {
+                const btn = document.getElementById('processDineMenuBtn');
+                if (btn && btn.disabled && !btn.innerHTML.includes('Processing') && !btn.innerHTML.includes('Processed')) {
+                    btn.innerHTML = processingLabel;
+                }
+            }, 400);
+            
             try {
                 await processSubProcessDirectly('htmlMenu');
-                // Close the modal after successful processing
+                clearInterval(keepLabelInterval);
                 closeMenuConfigModal();
             } catch (error) {
-                // Re-enable button on error
+                clearInterval(keepLabelInterval);
                 if (processBtn) {
                     processBtn.disabled = false;
-                    processBtn.textContent = 'Process';
+                    processBtn.removeAttribute('aria-busy');
+                    processBtn.innerHTML = 'Process menu';
                     processBtn.style.background = '#10b981';
+                    processBtn.style.cursor = '';
                 }
             }
         }
@@ -2935,11 +2959,12 @@
                 return;
             }
             
-            // Disable button and show processing
+            // Disable button and show processing (keep disabled until process finishes)
             if (processBtn) {
                 processBtn.disabled = true;
-                processBtn.textContent = 'Processing...';
+                processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
                 processBtn.style.background = '#6b7280';
+                processBtn.style.cursor = 'not-allowed';
             }
             
             if (statusDiv) {
@@ -3052,8 +3077,9 @@
                 // Re-enable button on error
                 if (processBtn) {
                     processBtn.disabled = false;
-                    processBtn.textContent = 'Process';
+                    processBtn.innerHTML = 'Process';
                     processBtn.style.background = '#10b981';
+                    processBtn.style.cursor = '';
                 }
                 if (statusDiv) {
                     statusDiv.style.display = 'none';

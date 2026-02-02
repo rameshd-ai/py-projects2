@@ -29,6 +29,16 @@ MENU_FIELD_MAPPER = os.path.join(RESOURCE_DIR, "menu_field_mapper.json")
 MENU_PAYLOAD_TEMPLATE = os.path.join(RESOURCE_DIR, "menu_payload_template.json")
 
 
+def get_menu_component_names() -> Dict[str, str]:
+    """Load component names from payload template (single source of truth)."""
+    template = load_json_data(MENU_PAYLOAD_TEMPLATE)
+    return {
+        "level_0": (template.get("level 0", {}).get("componentName") or "Menu-new"),
+        "level_1": (template.get("level 1", {}).get("componentName") or "Menu-new Section"),
+        "level_2": (template.get("level 2", {}).get("componentName") or "Menu-new Section Item"),
+    }
+
+
 def load_json_data(file_path: str) -> Dict[str, Any]:
     """Safely load JSON data from file"""
     try:
@@ -148,15 +158,43 @@ def payload_mapper(job_id: str) -> bool:
             return []
         return value
     
+    # Helper: get value for level_2 dest_key from source_item (handles flat addon/price loop fields)
+    def get_level2_value(source_item: Dict, dest_key: str, src_key: str):
+        # item-price-option-N or item-price-option-N-description: from ItemPrices[N-1]
+        m = re.match(r"item-price-option-(\d+)(-description)?$", dest_key)
+        if m:
+            idx = int(m.group(1))
+            prices = source_item.get("ItemPrices", [])
+            if idx <= len(prices):
+                p = prices[idx - 1]
+                if m.group(2):
+                    return p.get("PriceDescription") or p.get(src_key)
+                return p.get("Price") or p.get(src_key)
+            return ""
+        # item-add-on-N-name, item-add-on-N-price, item-add-on-N-price-notes: from ItemAddons[N-1]
+        m = re.match(r"item-add-on-(\d+)-(name|price|price-notes)$", dest_key)
+        if m:
+            idx = int(m.group(1))
+            sub = m.group(2)
+            addons = source_item.get("ItemAddons", [])
+            if idx <= len(addons):
+                a = addons[idx - 1]
+                if sub == "name":
+                    return a.get("Name") or a.get(src_key)
+                if sub == "price":
+                    return a.get("Price") or a.get(src_key)
+                return a.get("PriceNotes", "") or ""
+            return ""
+        # Direct field from source item
+        return source_item.get(src_key)
+
     # Iterate through each Menu in the source data
     for source_menu in source_data:
         mapped_menu = {}
-        # Map level 0 fields and clean text (except numeric fields)
-        for dest_key, src_key in mapper.get("level 0", {}).items():
+        # Map level 0 fields (mapper key: level_0)
+        for dest_key, src_key in mapper.get("level_0", {}).items():
             value = source_menu.get(src_key)
-            # Convert null to [] for image fields
             value = convert_null_to_empty_array(value, dest_key)
-            # Don't clean numeric/order fields
             if dest_key in numeric_fields or src_key in numeric_fields:
                 mapped_menu[dest_key] = value
             else:
@@ -164,64 +202,32 @@ def payload_mapper(job_id: str) -> bool:
         
         mapped_menu["MenuSections"] = []
         
-        # Iterate through each Section within the Menu
         source_sections = source_menu.get("Sections", [])
         for source_section in source_sections:
             mapped_section = {}
-            # Map level 1 fields and clean text (except numeric fields)
-            for dest_key, src_key in mapper.get("level 1", {}).items():
+            # Map level 1 fields (mapper key: level_1)
+            for dest_key, src_key in mapper.get("level_1", {}).items():
                 value = source_section.get(src_key)
-                # Convert null to [] for image fields
                 value = convert_null_to_empty_array(value, dest_key)
-                # Don't clean numeric/order fields
                 if dest_key in numeric_fields or src_key in numeric_fields:
                     mapped_section[dest_key] = value
                 else:
                     mapped_section[dest_key] = clean_text(value)
             
             mapped_section["MenuItems"] = []
-            
-            # Iterate through each Item within the Section
             source_items = source_section.get("Items", [])
             for source_item in source_items:
                 mapped_item = {}
-                # Map level 2 fields and clean text (except numeric fields)
-                for dest_key, src_key in mapper.get("level 2", {}).items():
-                    value = source_item.get(src_key)
-                    # Convert null to [] for image fields
+                # Map level 2 fields (mapper key: level_2); addons/prices flattened into numbered fields
+                for dest_key, src_key in mapper.get("level_2", {}).items():
+                    value = get_level2_value(source_item, dest_key, src_key)
                     value = convert_null_to_empty_array(value, dest_key)
-                    # Don't clean numeric/order fields
-                    if dest_key in numeric_fields or src_key in numeric_fields:
+                    if dest_key in numeric_fields or (isinstance(src_key, str) and src_key in numeric_fields):
                         mapped_item[dest_key] = value
                     else:
-                        mapped_item[dest_key] = clean_text(value)
-                
-                # Map Level 3: ItemPrices and clean text
-                mapped_item["ItemPrices"] = []
-                price_mapper = mapper.get("level 3_prices", {})
-                source_prices = source_item.get("ItemPrices", [])
-                for source_price in source_prices:
-                    mapped_price = {}
-                    for dest_key, src_key in price_mapper.items():
-                        value = source_price.get(src_key)
-                        mapped_price[dest_key] = clean_text(value)
-                    mapped_item["ItemPrices"].append(mapped_price)
-                
-                # Map Level 3: ItemAddons and clean text
-                mapped_item["ItemAddons"] = []
-                addon_mapper = mapper.get("level 3_addons", {})
-                source_addons = source_item.get("ItemAddons", [])
-                for source_addon in source_addons:
-                    mapped_addon = {}
-                    for dest_key, src_key in addon_mapper.items():
-                        value = source_addon.get(src_key)
-                        mapped_addon[dest_key] = clean_text(value)
-                    mapped_item["ItemAddons"].append(mapped_addon)
-                
+                        mapped_item[dest_key] = clean_text(value) if value is not None else ""
                 mapped_section["MenuItems"].append(mapped_item)
-            
             mapped_menu["MenuSections"].append(mapped_section)
-        
         mapped_payload.append(mapped_menu)
     
     # Save mapped payload
@@ -255,18 +261,14 @@ def payload_creator(job_id: str) -> bool:
         logger.error(f"Could not load mapped data from {mapped_data_path}")
         return False
     
-    # Extract component names and templates
+    # Extract component names and templates (only level 0, 1, 2; addons/prices are flat in level_2)
     menu_component_name = template.get("level 0", {}).get("componentName")
     section_component_name = template.get("level 1", {}).get("componentName")
     item_component_name = template.get("level 2", {}).get("componentName")
-    price_component_name = template.get("level 3_prices", {}).get("componentName")
-    addon_component_name = template.get("level 3_addons", {}).get("componentName")
     
     menu_template = template.get("level 0", {}).get("recordList", [{}])[0].get("recordJsonString", {})
     section_template = template.get("level 1", {}).get("recordList", [{}])[0].get("recordJsonString", {})
     item_template = template.get("level 2", {}).get("recordList", [{}])[0].get("recordJsonString", {})
-    price_template = template.get("level 3_prices", {}).get("recordList", [{}])[0].get("recordJsonString", {})
-    addon_template = template.get("level 3_addons", {}).get("recordList", [{}])[0].get("recordJsonString", {})
     
     final_payload = []
     
@@ -326,48 +328,13 @@ def payload_creator(job_id: str) -> bool:
                 "MenuItems": []
             }
             
-            # Process items
+            # Process items (level_2 is flat: addons/prices are item-add-on-1-name, item-price-option-1, etc.)
             for item_data in section_data.get("MenuItems", []):
                 item_record_json = {}
                 for key in item_template:
                     value = item_data.get(key, None)
                     value = convert_null_to_empty_array(value, key)
                     item_record_json[key] = value
-                
-                item_record_json["ItemPrices"] = []
-                item_record_json["ItemAddons"] = []
-                
-                # Process prices
-                for price_data in item_data.get("ItemPrices", []):
-                    price_record_json = {}
-                    for key in price_template:
-                        price_record_json[key] = price_data.get(key, None)
-                    
-                    price_output = {
-                        "recordJsonString": price_record_json,
-                        "ParentRecordId": "",
-                        "ParentComponentId": "",
-                        "MainParentComponentid": "",
-                        "componentName": price_component_name
-                    }
-                    item_record_json["ItemPrices"].append(price_output)
-                
-                # Process addons
-                for addon_data in item_data.get("ItemAddons", []):
-                    addon_record_json = {}
-                    for key in addon_template:
-                        value = addon_data.get(key, None)
-                        value = convert_null_to_empty_array(value, key)
-                        addon_record_json[key] = value
-                    
-                    addon_output = {
-                        "recordJsonString": addon_record_json,
-                        "ParentRecordId": "",
-                        "ParentComponentId": "",
-                        "MainParentComponentid": "",
-                        "componentName": addon_component_name
-                    }
-                    item_record_json["ItemAddons"].append(addon_output)
                 
                 item_output = {
                     "recordJsonString": item_record_json,
@@ -408,8 +375,10 @@ def preprocess_menu_data(job_id: str, destination_url: str, destination_site_id:
         'Authorization': f'Bearer {destination_token}',
     }
     
-    # Get component info
-    responseData = getComponentInfo("Menu", destination_url, headers)
+    # Get component info (component name from payload template)
+    component_names = get_menu_component_names()
+    root_component_name = component_names["level_0"]
+    responseData = getComponentInfo(root_component_name, destination_url, headers)
     
     if not responseData or not isinstance(responseData, list) or len(responseData) == 0:
         logger.error("Invalid response from getComponentInfo")
@@ -420,7 +389,7 @@ def preprocess_menu_data(job_id: str, destination_url: str, destination_site_id:
         logger.error("Component ID not found in API response")
         return None
     
-    logger.info(f"Found Menu component ID: {component_id}")
+    logger.info(f"Found {root_component_name} component ID: {component_id}")
     
     # Export component
     response_content, content_disposition = export_mi_block_component(
@@ -572,16 +541,9 @@ def reset_display_orders(data: List[Dict]) -> List[Dict]:
                 if 'MenuSections' in item:
                     item['MenuSections'] = reset_display_orders(item['MenuSections'])
                 
-                # Recurse into MenuItems
+                # Recurse into MenuItems (level_2 is flat; no nested ItemPrices/ItemAddons)
                 if 'MenuItems' in item:
                     item['MenuItems'] = reset_display_orders(item['MenuItems'])
-                
-                # Recurse into ItemPrices and ItemAddons
-                if isinstance(record_data, dict):
-                    if 'ItemPrices' in record_data:
-                        record_data['ItemPrices'] = reset_display_orders(record_data['ItemPrices'])
-                    if 'ItemAddons' in record_data:
-                        record_data['ItemAddons'] = reset_display_orders(record_data['ItemAddons'])
         
         return sorted_data
     
@@ -704,38 +666,35 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         'Authorization': f'Bearer {destination_token}',
     }
     
-    # Extract component IDs from map
-    menu_info = component_map_data.get("Menu", {})
+    # Extract component IDs from map (names from payload template)
+    component_names = get_menu_component_names()
+    menu_info = component_map_data.get(component_names["level_0"], {})
     l0_component_id = menu_info.get("ComponentId")
     l0_main_parent_id = menu_info.get("MainParentComponentid")
-    l1_component_id = component_map_data.get("Menu Section", {}).get("ComponentId")
-    l2_component_id = component_map_data.get("Menu Section Item", {}).get("ComponentId")
-    l3_price_component_id = component_map_data.get("Menu Section Item Price Options", {}).get("ComponentId")
-    l3_addon_component_id = component_map_data.get("Menu Section Item Addons", {}).get("ComponentId")
+    l1_component_id = component_map_data.get(component_names["level_1"], {}).get("ComponentId")
+    l2_component_id = component_map_data.get(component_names["level_2"], {}).get("ComponentId")
     
-    if not all([l0_component_id, l0_main_parent_id, l1_component_id, l2_component_id, l3_price_component_id, l3_addon_component_id]):
+    if not all([l0_component_id, l0_main_parent_id, l1_component_id, l2_component_id]):
         error_msg = "Missing required component IDs in component map"
         print(f"\n[ERROR] {error_msg}", flush=True)
+        _names = get_menu_component_names()
         print(f"[DEBUG] Component IDs found:", flush=True)
-        print(f"  L0 (Menu): {l0_component_id}", flush=True)
+        print(f"  L0 ({_names['level_0']}): {l0_component_id}", flush=True)
         print(f"  L0 Main Parent: {l0_main_parent_id}", flush=True)
-        print(f"  L1 (Section): {l1_component_id}", flush=True)
-        print(f"  L2 (Item): {l2_component_id}", flush=True)
-        print(f"  L3a (Price): {l3_price_component_id}", flush=True)
-        print(f"  L3b (Addon): {l3_addon_component_id}", flush=True)
+        print(f"  L1 ({_names['level_1']}): {l1_component_id}", flush=True)
+        print(f"  L2 ({_names['level_2']}): {l2_component_id}", flush=True)
         logger.error(error_msg)
         return False
     
-    print(f"\n[OK] All component IDs found. Starting API calls...", flush=True)
+    print(f"\n[OK] All component IDs found. Starting API calls (L0, L1, L2 only)...", flush=True)
     print(f"  L0 Component ID: {l0_component_id}", flush=True)
     print(f"  L1 Component ID: {l1_component_id}", flush=True)
     print(f"  L2 Component ID: {l2_component_id}", flush=True)
-    print(f"  L3a Component ID: {l3_price_component_id}", flush=True)
-    print(f"  L3b Component ID: {l3_addon_component_id}", flush=True)
     
     # ========== LEVEL 0: Process Menus ==========
+    _l0_name = get_menu_component_names()["level_0"]
     print("\n" + "="*80, flush=True)
-    print(f"[LEVEL 0] PROCESSING MENU RECORDS (BATCH MODE)", flush=True)
+    print(f"[LEVEL 0] PROCESSING {_l0_name.upper()} RECORDS (BATCH MODE)", flush=True)
     print("="*80, flush=True)
     logger.info("Processing Level 0: Menu records...")
     
@@ -821,10 +780,11 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     time.sleep(1)
     
     # ========== LEVEL 1: Process Sections ==========
+    _l1_name = get_menu_component_names()["level_1"]
     print("\n" + "="*80, flush=True)
-    print(f"[LEVEL 1] PROCESSING MENU SECTION RECORDS (BATCH MODE)", flush=True)
+    print(f"[LEVEL 1] PROCESSING {_l1_name.upper()} RECORDS (BATCH MODE)", flush=True)
     print("="*80, flush=True)
-    logger.info("Processing Level 1: Menu Section records...")
+    logger.info("Processing Level 1: %s records...", _l1_name)
     
     # Collect all Level 1 records first
     l1_records = []
@@ -933,10 +893,11 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     time.sleep(1)
     
     # ========== LEVEL 2: Process Items ==========
+    _l2_name = get_menu_component_names()["level_2"]
     print("\n" + "="*80, flush=True)
-    print(f"[LEVEL 2] PROCESSING MENU ITEM RECORDS (BATCH MODE)", flush=True)
+    print(f"[LEVEL 2] PROCESSING {_l2_name.upper()} RECORDS (BATCH MODE)", flush=True)
     print("="*80, flush=True)
-    logger.info("Processing Level 2: Menu Item records...")
+    logger.info("Processing Level 2: %s records...", _l2_name)
     
     # Collect all Level 2 records first
     l2_records = []
@@ -969,12 +930,8 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                     continue
                 
                 item_json_string_ref = item_record.get('recordJsonString', {})
-                l3_prices = item_json_string_ref.get('ItemPrices', [])
-                l3_addons = item_json_string_ref.get('ItemAddons', [])
-                
+                # level_2 is flat (no nested ItemPrices/ItemAddons)
                 payload_json_string = item_json_string_ref.copy()
-                payload_json_string.pop('ItemPrices', None)
-                payload_json_string.pop('ItemAddons', None)
                 
                 # Status/DisplayOrder logic
                 internal_status = payload_json_string.get("status", 1)
@@ -999,7 +956,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                     "updatedBy": 0,
                 }
                 l2_records.append(single_record_payload)
-                l2_item_mapping.append((item_record, l3_prices, l3_addons))
+                l2_item_mapping.append(item_record)
     
     # Report skipped items
     if skipped_items:
@@ -1016,7 +973,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         
         if success:
             # Map responses back to item records (responseData is now a list indexed by order)
-            for idx, (item_record, l3_prices, l3_addons) in enumerate(l2_item_mapping):
+            for idx, item_record in enumerate(l2_item_mapping):
                 created_record_id = None
                 
                 # Get response by index (responses are in same order as requests)
@@ -1030,19 +987,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                 if created_record_id and isinstance(created_record_id, int) and created_record_id > 0:
                     print(f"[SUCCESS] Level 2 Item {idx+1} created with Record ID: {created_record_id}", flush=True)
                     logger.info(f"Level 2 Item {idx+1} created successfully with Record ID: {created_record_id}")
-                    
-                    # Update L3 children with the new L2 ID
                     item_record['NewRecordId_L2'] = created_record_id
-                    if l3_prices:
-                        for price in l3_prices:
-                            price['ParentRecordId'] = created_record_id
-                            price['ParentComponentId'] = str(l3_price_component_id)
-                            price['MainParentComponentid'] = l0_main_parent_id
-                    if l3_addons:
-                        for addon in l3_addons:
-                            addon['ParentRecordId'] = created_record_id
-                            addon['ParentComponentId'] = str(l3_addon_component_id)
-                            addon['MainParentComponentid'] = l0_main_parent_id
                 else:
                     logger.warning(f"L2 Item {idx+1} API call succeeded but couldn't extract record ID. Response: {created_record_id}, Type: {type(created_record_id)}")
                     print(f"[WARNING] L2 Item {idx+1} - Invalid record ID: {created_record_id}", flush=True)
@@ -1072,167 +1017,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         logger.error(f"Error saving L2 final payload: {e}")
         return False
     
-    time.sleep(1)
-    
-    # ========== LEVEL 3a: Process Item Prices ==========
-    logger.info("Processing Level 3a: Item Price records...")
-    all_l3_data_for_menu = []
-    processed_output_level_3a = []
-    
-    # Collect all L3a raw payloads
-    for menu_record in final_payload:
-        _, menu_sections_list = process_menu_level_0_only(menu_record)
-        all_item_lists = process_menu_sections_level_1_only(menu_sections_list)
-        
-        for item_list in all_item_lists:
-            if item_list:
-                l3_data_from_items = process_menu_items_level_2_only(item_list)
-                all_l3_data_for_menu.extend(l3_data_from_items)
-    
-    # Final processing step to flatten and format ItemPrices
-    final_item_prices_payloads = process_item_prices_level_3a_only_standalone(all_l3_data_for_menu)
-    logger.info(f"Total Level 3a ItemPrices payloads collected: {len(final_item_prices_payloads)}")
-    
-    # Iterate and call API for each L3a record
-    for i, item_price_record in enumerate(final_item_prices_payloads):
-        logger.info(f"Processing L3A ItemPrice {i+1}/{len(final_item_prices_payloads)}")
-        
-        componentName = item_price_record.get("componentName", "ItemPrice")
-        parent_record_id = item_price_record.get("ParentRecordId", 0)
-        ParentComponentId = safe_int(item_price_record.get("ParentComponentId"), 0)
-        MainParentComponentid = safe_int(item_price_record.get("MainParentComponentid"), 0)
-        
-        record_data = item_price_record.get("recordJsonString")
-        if isinstance(record_data, dict):
-            # Log the price data being sent to verify both fields are present
-            price_value = record_data.get("item-price-option", "NOT SET")
-            description_value = record_data.get("item-price-option-description", "NOT SET")
-            logger.info(f"L3A Price record - Price: {price_value}, Description: {description_value}")
-            if not description_value or description_value == "NOT SET":
-                print(f"[WARNING] L3A Price record missing description! Price: {price_value}", flush=True)
-            record_data = json.dumps(record_data)
-        
-        fixed_payload = {
-            "componentName": componentName,
-            "Scopeid": 5,
-            "ParentId": str(ParentComponentId),
-            "recordList": [
-                {
-                    "recordJsonString": record_data,
-                    "ParentRecordId": parent_record_id,
-                    "ParentComponentId": ParentComponentId,
-                    "MainParentComponentid": MainParentComponentid
-                }
-            ]
-        }
-        
-        responseData = None
-        print(f"[API] Calling CreateComponentRecord for Level 3a (Price) {i+1}/{len(final_item_prices_payloads)}...", flush=True)
-        logger.info(f"Calling CreateComponentRecord for Level 3a price record, Parent Record ID: {parent_record_id}")
-        api_result = CreateComponentRecord(destination_url, headers, fixed_payload)
-        
-        if isinstance(api_result, dict):
-            responseData = api_result
-            status_code = responseData.get('ErrorCode', 'N/A')
-            success_status = responseData.get('Success', 'N/A')
-            logger.info(f"L3A API Response Status: {status_code} | Success: {success_status}")
-            print(f"[SUCCESS] Level 3a Price API call completed. Status: {status_code}, Success: {success_status}", flush=True)
-        else:
-            responseData = {"Note": "API call failed (returned non-dict/None).", "status_code": "ERROR_NON_DICT", "original_response": str(api_result)}
-            logger.error("L3A API call failed to return a valid dictionary response.")
-            print(f"[ERROR] L3A API call failed. Response: {api_result}", flush=True)
-        
-        if responseData:
-            processed_output_level_3a.append(responseData)
-    
-    # Save API Responses
-    final_api_output_file_path = os.path.join(get_job_folder(job_id), "final-api-response-L3A.json")
-    try:
-        with open(final_api_output_file_path, "w", encoding='utf-8') as f:
-            json.dump(processed_output_level_3a, f, indent=4)
-        logger.info(f"Level 3a API responses saved: {len(processed_output_level_3a)} records")
-    except Exception as e:
-        logger.error(f"Error saving L3A responses: {e}")
-        return False
-    
-    time.sleep(1)
-    
-    # ========== LEVEL 3b: Process Item Addons ==========
-    logger.info("Processing Level 3b: Item Addon records...")
-    all_l3_data_for_menu = []
-    processed_output_level_3b = []
-    
-    # Collect all L3b raw payloads
-    for menu_record in final_payload:
-        _, menu_sections_list = process_menu_level_0_only(menu_record)
-        all_item_lists = process_menu_sections_level_1_only(menu_sections_list)
-        
-        for item_list in all_item_lists:
-            if item_list:
-                l3_data_from_items = process_menu_items_level_2_only(item_list)
-                all_l3_data_for_menu.extend(l3_data_from_items)
-    
-    # Final processing step to flatten and format ItemAddons
-    final_item_addons_payloads = process_item_addons_level_3b_only_standalone(all_l3_data_for_menu)
-    logger.info(f"Total Level 3b ItemAddons payloads collected: {len(final_item_addons_payloads)}")
-    
-    # Iterate and call API for each L3b record
-    for i, item_addon_record in enumerate(final_item_addons_payloads):
-        logger.info(f"Processing L3B ItemAddon {i+1}/{len(final_item_addons_payloads)}")
-        
-        componentName = item_addon_record.get("componentName", "ItemAddon")
-        parent_record_id = item_addon_record.get("ParentRecordId", 0)
-        ParentComponentId = safe_int(item_addon_record.get("ParentComponentId"), 0)
-        MainParentComponentid = safe_int(item_addon_record.get("MainParentComponentid"), 0)
-        
-        record_data = item_addon_record.get("recordJsonString")
-        if isinstance(record_data, dict):
-            record_data = json.dumps(record_data)
-        
-        fixed_payload = {
-            "componentName": componentName,
-            "Scopeid": 5,
-            "ParentId": str(ParentComponentId),
-            "recordList": [
-                {
-                    "recordJsonString": record_data,
-                    "ParentRecordId": parent_record_id,
-                    "ParentComponentId": ParentComponentId,
-                    "MainParentComponentid": MainParentComponentid
-                }
-            ]
-        }
-        
-        responseData = None
-        print(f"[API] Calling CreateComponentRecord for Level 3b (Addon) {i+1}/{len(final_item_addons_payloads)}...", flush=True)
-        logger.info(f"Calling CreateComponentRecord for Level 3b addon record, Parent Record ID: {parent_record_id}")
-        api_result = CreateComponentRecord(destination_url, headers, fixed_payload)
-        
-        if isinstance(api_result, dict):
-            responseData = api_result
-            status_code = responseData.get('ErrorCode', 'N/A')
-            success_status = responseData.get('Success', 'N/A')
-            logger.info(f"L3B API Response Status: {status_code} | Success: {success_status}")
-            print(f"[SUCCESS] Level 3b Addon API call completed. Status: {status_code}, Success: {success_status}", flush=True)
-        else:
-            responseData = {"Note": "API call failed (returned non-dict/None).", "status_code": "ERROR_NON_DICT", "original_response": str(api_result)}
-            logger.error("L3B API call failed to return a valid dictionary response.")
-            print(f"[ERROR] L3B API call failed. Response: {api_result}", flush=True)
-        
-        if responseData:
-            processed_output_level_3b.append(responseData)
-    
-    # Save API Responses
-    final_api_output_file_path = os.path.join(get_job_folder(job_id), "final-api-response-L3B.json")
-    try:
-        with open(final_api_output_file_path, "w", encoding='utf-8') as f:
-            json.dump(processed_output_level_3b, f, indent=4)
-        logger.info(f"Level 3b API responses saved: {len(processed_output_level_3b)} records")
-    except Exception as e:
-        logger.error(f"Error saving L3B responses: {e}")
-        return False
-    
-    logger.info("All menu levels processing completed successfully")
+    logger.info("All menu levels processing completed successfully (L0, L1, L2 only; addons/prices are flat in level_2)")
     return True
 
 

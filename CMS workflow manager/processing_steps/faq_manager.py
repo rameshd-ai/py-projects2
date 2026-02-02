@@ -6,13 +6,21 @@ Similar to menu processing - fetches FAQ data and creates records in destination
 import os
 import json
 import sys
+import subprocess
 import time
 import logging
 import requests
 from typing import Dict, Any, List
 from urllib.parse import urlparse
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment
+except ImportError:
+    # Install openpyxl into current Python (e.g. when not using Poetry env)
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment
 
 # FAQ processing only exports to Excel, does NOT create records in CMS
 # No CMS API imports needed

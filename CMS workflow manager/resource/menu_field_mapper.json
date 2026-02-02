@@ -1,5 +1,5 @@
 {
-  "level 0": {
+  "level_0": {
     "displayorder": "MenuOrder",
     "menu-description": "Description",
     "menu-image": "MenuResourceName",
@@ -7,7 +7,7 @@
     "menu-type": "Name",
     "status": "MenuStatusId"
   },
-  "level 1": {
+  "level_1": {
     "displayorder": "SectionOrder",
     "section-description": "SectionDescription",
     "section-image": "SectionResourceName",
@@ -15,22 +15,58 @@
     "section-name": "SectionName",
     "status": "SectionStatus"
   },
-  "level 2": {
-    "Item Image": "ItemResourceName",
-    "Item Image alt text": "ItemResourceName",
+  "level_2": {
     "displayorder": "ItemOrder",
-    "item-description": "ItemDescription",
     "item-name": "SectionItemName",
+    "item-description": "ItemDescription",
+    "item-image": "ItemResourceName",
+    "item-image-alt-text": "ItemResourceName",
     "item-price": "",
     "item-price-description": "",
-    "status": "ItemStatus"
-  },
-  "level 3_addons": {
-    "item-add-on-name": "Name",
-    "item-add-on-price": "Price"
-  },
-  "level 3_prices": {
-    "item-price-option": "Price",
-    "item-price-option-description": "PriceDescription"
+    "status": "ItemStatus",
+    "item-price-option-1": "Price",
+    "item-price-option-1-description": "PriceDescription",
+    "item-price-option-2": "Price",
+    "item-price-option-2-description": "PriceDescription",
+    "item-price-option-3": "Price",
+    "item-price-option-3-description": "PriceDescription",
+    "item-price-option-4": "Price",
+    "item-price-option-4-description": "PriceDescription",
+    "item-price-option-5": "Price",
+    "item-price-option-5-description": "PriceDescription",
+    "item-price-option-6": "Price",
+    "item-price-option-6-description": "PriceDescription",
+    "item-price-option-7": "Price",
+    "item-price-option-7-description": "PriceDescription",
+    "item-add-on-1-name": "Name",
+    "item-add-on-1-price": "Price",
+    "item-add-on-1-price-notes": "",
+    "item-add-on-2-name": "Name",
+    "item-add-on-2-price": "Price",
+    "item-add-on-2-price-notes": "",
+    "item-add-on-3-name": "Name",
+    "item-add-on-3-price": "Price",
+    "item-add-on-3-price-notes": "",
+    "item-add-on-4-name": "Name",
+    "item-add-on-4-price": "Price",
+    "item-add-on-4-price-notes": "",
+    "item-add-on-5-name": "Name",
+    "item-add-on-5-price": "Price",
+    "item-add-on-5-price-notes": "",
+    "item-add-on-6-name": "Name",
+    "item-add-on-6-price": "Price",
+    "item-add-on-6-price-notes": "",
+    "item-add-on-7-name": "Name",
+    "item-add-on-7-price": "Price",
+    "item-add-on-7-price-notes": "",
+    "item-add-on-8-name": "Name",
+    "item-add-on-8-price": "Price",
+    "item-add-on-8-price-notes": "",
+    "item-add-on-9-name": "Name",
+    "item-add-on-9-price": "Price",
+    "item-add-on-9-price-notes": "",
+    "item-add-on-10-name": "Name",
+    "item-add-on-10-price": "Price",
+    "item-add-on-10-price-notes": ""
   }
 }
