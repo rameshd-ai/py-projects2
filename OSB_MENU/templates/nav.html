@@ -1,0 +1,24 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">HTML MENU & FAQ MIGRATION</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'settings' %}active{% endif %}" 
+                       href="{{ url_for('settings') }}">Menu Settings</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'move_menu' %}active{% endif %}" 
+                       href="{{ url_for('move_menu') }}">Menu Migration</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if active_page == 'faq' %}active{% endif %}" 
+                       href="{{ url_for('faq') }}">FAQ</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

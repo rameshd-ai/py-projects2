@@ -1073,6 +1073,8 @@ def fetch_and_update_cms_generated_subrecords(
                     
                     if success:
                         logging.info(f"[SUBRECORD UPDATE] Successfully updated assets for sub-record {sub_record_id}")
+                        # Small delay after asset update to ensure CMS processes it
+                        time.sleep(0.5)
                     else:
                         logging.warning(f"[SUBRECORD UPDATE] Failed to update assets for sub-record {sub_record_id}")
                 else:
@@ -1103,7 +1105,7 @@ def fetch_and_update_cms_generated_subrecords(
 
 
 # --- MODIFIED: add_records_for_page now contains the complex file processing logic ---
-def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str, sub_count: int = 0):
+def add_records_for_page(page_name: str, vComponentId: int, componentId: int, base_url: str, site_id: int, headers: Dict[str, str], component_alias: str, main_count: int = 1, sub_count: int = 0):
     """
     Adds records/metadata for the page and performs component export/file processing.
     
@@ -1113,7 +1115,8 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
     from the calling function (`_process_page_components`).
     
     Args:
-        sub_count: Number of sub-records to create (from Sub-Z in component name). Default 0 means use CMS auto-generated count.
+        main_count: Number of main records to create (from Main-X in component name). Default 1.
+        sub_count: Number of sub-records to create per main record (from Sub-Z in component name). Default 0 means use CMS auto-generated count.
     """
     logging.info(f"    a) Adding records/metadata for page: {page_name} (Using ID: {vComponentId})")
     time.sleep(0.01)
@@ -2735,6 +2738,10 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                                                     if new_record_id:
                                                         logging.info(f"[SUBRECORD DUPLICATE] Created sub-record {i+1}/{records_to_create} with ID {new_record_id}")
                                                         
+                                                        # Wait for CMS to process the record before updating assets
+                                                        logging.info(f"[SUBRECORD DUPLICATE] Waiting 1 second for CMS to process record {new_record_id} before updating assets...")
+                                                        time.sleep(1)
+                                                        
                                                         # Update assets for new sub-record
                                                         source_record = component_records_map.get(child_comp_id)
                                                         has_images = source_record.get("has_image", False) if source_record else False
@@ -2742,7 +2749,10 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                                                         if has_images or template_record.get("has_image"):
                                                             logging.info(f"[SUBRECORD DUPLICATE] Updating assets for new sub-record {new_record_id}...")
                                                             record_for_update = source_record if source_record else template_record
-                                                            update_record_asset_if_needed(record_for_update, new_record_id, child_comp_id, base_url, headers)
+                                                            update_success = update_record_asset_if_needed(record_for_update, new_record_id, child_comp_id, base_url, headers)
+                                                            if update_success:
+                                                                # Small delay after asset update to ensure CMS processes it
+                                                                time.sleep(0.5)
                                                         else:
                                                             logging.info(f"[SUBRECORD DUPLICATE] Sub-record {new_record_id} has no images, skipping asset update")
                                                     else:
@@ -2751,15 +2761,15 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                                                     logging.error(f"[SUBRECORD DUPLICATE] Failed to create sub-record {i+1}: {resp_data}")
                                                 
                                                 # Small delay between creations
-                                                time.sleep(0.3)
+                                                time.sleep(0.5)
                                                 
                                             except Exception as e:
                                                 logging.error(f"[SUBRECORD DUPLICATE] Error creating sub-record {i+1}: {e}")
                                                 logging.exception("Full traceback:")
                                         
                                         # After creating all duplicates, wait extra time for CMS to process them all
-                                        logging.info(f"[SUBRECORD DUPLICATE] Finished creating {records_to_create} sub-records. Waiting 3 seconds for CMS to process all new records...")
-                                        time.sleep(3)
+                                        logging.info(f"[SUBRECORD DUPLICATE] Finished creating {records_to_create} sub-records. Waiting 5 seconds for CMS to process all new records and assets...")
+                                        time.sleep(5)
                                         
                                     break  # Done with this child component
                                 
@@ -3736,10 +3746,10 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             # 🛑 CONDITION CHECK REMOVED 🛑
             try:
                 logging.info(f"Attempting content retrieval for page: {page_name}")
-                logging.info(f"[TIMING] Starting add_records_for_page for '{page_name}' with component '{component_name}'...")
+                logging.info(f"[TIMING] Starting add_records_for_page for '{page_name}' with component '{component_name}' (Main: {main_count}, Sub: {sub_count})...")
                 records_start_time = time.time()
                 # Call function to get section payload (HTML snippet) and add records
-                section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias, sub_count)
+                section_payload = add_records_for_page(page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias, main_count, sub_count)
                 records_time = time.time() - records_start_time
                 logging.info(f"[TIMING] add_records_for_page completed in {records_time:.2f} seconds")
                 

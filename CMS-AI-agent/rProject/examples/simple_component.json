@@ -1,0 +1,110 @@
+{
+  "component_name": "ag_hero_section",
+  "component_type": "simple",
+  "category_id": 21,
+  "description": "Hero section with heading, subheading, and dual call-to-action buttons",
+  "miblocks": [
+    {
+      "component_name": "AG Hero Section",
+      "component_alias_name": "ag-hero-section",
+      "definitions": [
+        {
+          "PropertyName": "Main Heading",
+          "PropertyAliasName": "mainHeading",
+          "ControlName": "Text",
+          "IsIdentifier": true,
+          "IsMandatory": true,
+          "DataType": "string",
+          "PropertyMaxLength": 200
+        },
+        {
+          "PropertyName": "Subheading",
+          "PropertyAliasName": "subheading",
+          "ControlName": "Text",
+          "IsIdentifier": false,
+          "IsMandatory": true,
+          "DataType": "string",
+          "PropertyMaxLength": 500
+        },
+        {
+          "PropertyName": "Primary CTA Text",
+          "PropertyAliasName": "primaryCtaText",
+          "ControlName": "Text",
+          "IsIdentifier": false,
+          "IsMandatory": true,
+          "DataType": "string",
+          "PropertyMaxLength": 50
+        },
+        {
+          "PropertyName": "Primary CTA Link",
+          "PropertyAliasName": "primaryCtaLink",
+          "ControlName": "Text",
+          "IsIdentifier": false,
+          "IsMandatory": false,
+          "DataType": "string",
+          "PropertyMaxLength": 500
+        },
+        {
+          "PropertyName": "Secondary CTA Text",
+          "PropertyAliasName": "secondaryCtaText",
+          "ControlName": "Text",
+          "IsIdentifier": false,
+          "IsMandatory": true,
+          "DataType": "string",
+          "PropertyMaxLength": 50
+        },
+        {
+          "PropertyName": "Secondary CTA Link",
+          "PropertyAliasName": "secondaryCtaLink",
+          "ControlName": "Text",
+          "IsIdentifier": false,
+          "IsMandatory": false,
+          "DataType": "string",
+          "PropertyMaxLength": 500
+        },
+        {
+          "PropertyName": "Background Image",
+          "PropertyAliasName": "backgroundImage",
+          "ControlName": "File",
+          "IsIdentifier": false,
+          "IsMandatory": true,
+          "DataType": "string",
+          "ResourceTypeName": "Image",
+          "PropertyMaxLength": 500
+        }
+      ],
+      "records": [
+        {
+          "RecordJsonString": {
+            "mainHeading": "Welcome to Our Amazing Service",
+            "subheading": "Discover the power of innovation and creativity with our cutting-edge solutions designed for modern businesses.",
+            "primaryCtaText": "Get Started",
+            "primaryCtaLink": "/get-started",
+            "secondaryCtaText": "Learn More",
+            "secondaryCtaLink": "/learn-more",
+            "backgroundImage": ["https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&h=1080&fit=crop"]
+          },
+          "Status": true,
+          "DisplayOrder": 1
+        }
+      ]
+    }
+  ],
+  "css": {
+    "fileName": "ag-hero-section-styles",
+    "content": "/* Hero Section Styles */\n.uk-section[data-component=\"hero-section\"] {\n  min-height: 600px;\n}\n\n@media (max-width: 960px) {\n  .uk-section[data-component=\"hero-section\"] {\n    min-height: 500px;\n  }\n}"
+  },
+  "format": {
+    "formatName": "AG Hero Section Format",
+    "formatKey": "ag-hero-section-format",
+    "formatContent": "{{#each ComponentRecordJson.ag-hero-section}}\n<section class=\"uk-section uk-section-xlarge uk-background-cover uk-light uk-flex uk-flex-middle\" \n         style=\"background-image: url('{{data.backgroundImage}}');\" \n         data-component=\"hero-section\">\n  \n  <div class=\"uk-container\">\n    <div class=\"uk-width-2-3@m uk-text-center uk-margin-auto\">\n      \n      <h1 class=\"uk-heading-xlarge uk-margin-remove-top\" %%componentRecordEditable%%>\n        {{data.mainHeading}}\n      </h1>\n      \n      <p class=\"uk-text-lead uk-margin-medium-top\">\n        {{data.subheading}}\n      </p>\n      \n      <div class=\"uk-margin-large-top\">\n        {{#if data.primaryCtaLink}}\n          <a href=\"{{data.primaryCtaLink}}\" class=\"uk-button uk-button-primary uk-button-large uk-margin-small-right\">\n            {{data.primaryCtaText}}\n          </a>\n        {{else}}\n          <button class=\"uk-button uk-button-primary uk-button-large uk-margin-small-right\" type=\"button\">\n            {{data.primaryCtaText}}\n          </button>\n        {{/if}}\n        \n        {{#if data.secondaryCtaLink}}\n          <a href=\"{{data.secondaryCtaLink}}\" class=\"uk-button uk-button-default uk-button-large\">\n            {{data.secondaryCtaText}}\n          </a>\n        {{else}}\n          <button class=\"uk-button uk-button-default uk-button-large\" type=\"button\">\n            {{data.secondaryCtaText}}\n          </button>\n        {{/if}}\n      </div>\n      \n    </div>\n  </div>\n  \n</section>\n{{/each}}"
+  },
+  "vcomponent": {
+    "name": "AG Hero Section Component",
+    "alias": "ag-hero-section-component",
+    "description": "Hero section with heading, subheading, and dual call-to-action buttons",
+    "categoryId": 21,
+    "isActive": true,
+    "interactionType": "None"
+  }
+}

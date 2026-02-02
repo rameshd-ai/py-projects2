@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}CMS AI Agent - Home{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    .hero .logo {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 800;
+        font-size: 2.5rem;
+        letter-spacing: 0.2em;
+        background: linear-gradient(90deg, var(--cyan), var(--magenta));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.75rem;
+    }
+    .badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        letter-spacing: 0.3em;
+        color: var(--cyan-dim);
+        text-transform: uppercase;
+        animation: pulse 2s ease-in-out infinite;
+    }
+    .status-dot {
+        display: inline-block;
+        width: 6px; height: 6px;
+        background: var(--cyan);
+        border-radius: 50%;
+        margin-right: 0.5rem;
+        box-shadow: 0 0 10px var(--cyan);
+        animation: blink 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .description {
+        max-width: 680px;
+        margin: 0 auto 3rem;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        line-height: 1.8;
+    }
+
+    .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 3rem;
+    }
+    .feature-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .feature-card:hover {
+        border-color: var(--cyan-dim);
+        box-shadow: 0 0 30px rgba(0, 245, 255, 0.1);
+    }
+    .feature-card h3 {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.9rem;
+        color: var(--cyan);
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.1em;
+    }
+    .feature-card p {
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        line-height: 1.6;
+    }
+
+    .cta {
+        display: inline-block;
+        margin-top: 2rem;
+        padding: 0.9rem 2rem;
+        background: linear-gradient(135deg, #00d4aa, #00f5ff);
+        color: #0a0a0f;
+        text-decoration: none;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    .cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 245, 255, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+    <h1 class="logo">CMS AI AGENT</h1>
+    <span class="badge"><span class="status-dot"></span>ONLINE</span>
+
+    <p class="description">
+        CMS AI Agent is an intelligent assistant that connects to your CMS instance to download,
+        process, and prepare data for AI training. It automates authentication, extracts pages,
+        VComponents, and template structures—transforming your CMS into a training-ready dataset.
+    </p>
+
+    <div class="card-grid">
+        <div class="feature-card">
+            <h3>Authentication</h3>
+            <p>Generate secure tokens for any CMS endpoint. Supports profile-based access and persistent credentials.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Data Extraction</h3>
+            <p>Download active pages, VComponents, template structures, and page categories in a single run.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Training Ready</h3>
+            <p>Output structured JSON optimized for AI model training and CMS content analysis.</p>
+        </div>
+    </div>
+
+    <a href="{{ url_for('training') }}" class="cta">Start Training →</a>
+</div>
+{% endblock %}

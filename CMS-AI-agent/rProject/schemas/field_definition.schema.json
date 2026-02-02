@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Field Definition Schema",
+  "description": "JSON schema for CMS field definitions",
+  "type": "object",
+  "properties": {
+    "PropertyName": {
+      "type": "string",
+      "description": "Human-readable display name (PascalCase with spaces)",
+      "pattern": "^[A-Z][A-Za-z0-9 ]*$",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "PropertyAliasName": {
+      "type": "string",
+      "description": "Code-friendly camelCase name",
+      "pattern": "^[a-z][a-zA-Z0-9]*$",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "ControlName": {
+      "type": "string",
+      "description": "Field control type",
+      "enum": ["Text", "RichText", "File", "Number", "Date", "Boolean"]
+    },
+    "IsIdentifier": {
+      "type": "boolean",
+      "description": "Whether this field is the identifier (only one per MiBlock)"
+    },
+    "IsMandatory": {
+      "type": "boolean",
+      "description": "Whether this field is required"
+    },
+    "DataType": {
+      "type": "string",
+      "description": "Data type of the field",
+      "enum": ["string", "number", "boolean"]
+    },
+    "ResourceTypeName": {
+      "type": "string",
+      "description": "Resource type for File fields only",
+      "enum": ["Image", "Document", "Video"]
+    },
+    "PropertyMaxLength": {
+      "type": "integer",
+      "description": "Maximum length for Text/File fields",
+      "minimum": 1,
+      "maximum": 10000
+    }
+  },
+  "required": [
+    "PropertyName",
+    "PropertyAliasName",
+    "ControlName",
+    "IsIdentifier",
+    "IsMandatory",
+    "DataType"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "ControlName": {"const": "File"}
+        }
+      },
+      "then": {
+        "required": ["ResourceTypeName", "PropertyMaxLength"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "ControlName": {"const": "Text"}
+        }
+      },
+      "then": {
+        "required": ["PropertyMaxLength"]
+      }
+    }
+  ]
+}

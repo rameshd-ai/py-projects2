@@ -1,0 +1,760 @@
+{% extends "base.html" %}
+
+{% block title %}CMS AI Agent - Training{% endblock %}
+
+{% block extra_css %}
+<style>
+    .training-container {
+        max-width: 640px;
+        margin: 0 auto;
+    }
+
+    /* Step indicator */
+    .steps {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 2.5rem;
+    }
+    .step {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .step-num {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: rgba(0, 245, 255, 0.1);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        transition: all 0.3s ease;
+    }
+    .step.active .step-num {
+        background: var(--cyan);
+        border-color: var(--cyan);
+        color: #0a0a0f;
+        box-shadow: 0 0 20px var(--cyan-dim);
+    }
+    .step.completed .step-num {
+        background: rgba(0, 245, 180, 0.2);
+        border-color: #00f5b4;
+        color: #00f5b4;
+    }
+    .step-label {
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+    }
+    .step.active .step-label { color: var(--cyan); }
+    .step-divider {
+        width: 40px;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .card {
+        background: var(--bg-card);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 2.5rem;
+        box-shadow: var(--glow), inset 0 1px 0 rgba(255,255,255,0.05);
+        position: relative;
+        overflow: hidden;
+    }
+    .card::before {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        border-radius: 17px;
+        padding: 1px;
+        background: linear-gradient(135deg, var(--cyan), var(--magenta), var(--cyan));
+        background-size: 200% 200%;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: borderFlow 4s ease infinite;
+        pointer-events: none;
+    }
+    @keyframes borderFlow {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+    }
+
+    .step-content { display: none; }
+    .step-content.active { display: block; }
+
+    .step-header {
+        margin-bottom: 1.75rem;
+    }
+    .step-header h2 {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 1.1rem;
+        color: var(--cyan);
+        letter-spacing: 0.1em;
+        margin-bottom: 0.35rem;
+    }
+    .step-header .subtitle {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+    }
+
+    label {
+        display: block;
+        font-size: 0.75rem;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--cyan-dim);
+        margin-bottom: 0.5rem;
+    }
+    input {
+        width: 100%;
+        padding: 0.9rem 1rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+        margin-bottom: 1.25rem;
+        transition: all 0.3s ease;
+    }
+    input::placeholder { color: var(--text-muted); }
+    input:focus {
+        outline: none;
+        border-color: var(--cyan);
+        box-shadow: 0 0 20px var(--cyan-dim);
+    }
+    .actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.75rem;
+    }
+    button {
+        flex: 1;
+        padding: 0.9rem 1.25rem;
+        border: none;
+        border-radius: 8px;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    button::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 245, 255, 0.25);
+    }
+    button:hover::before { opacity: 1; }
+    button[name="action"][value="token"] {
+        background: linear-gradient(135deg, #00d4aa, #00f5ff);
+        color: #0a0a0f;
+    }
+    button[name="action"][value="download"] {
+        background: linear-gradient(135deg, #b026ff, #ff00ff);
+        color: #fff;
+    }
+    .btn-next {
+        background: linear-gradient(135deg, #00d4aa, #00f5ff) !important;
+        color: #0a0a0f !important;
+    }
+    .btn-prev {
+        background: rgba(0, 245, 255, 0.15) !important;
+        color: var(--cyan) !important;
+        border: 1px solid var(--border);
+    }
+    .btn-retry {
+        width: 100%;
+        padding: 0.65rem;
+        background: rgba(255, 165, 0, 0.15);
+        border: 1px solid rgba(255, 165, 0, 0.5);
+        color: #ffa500;
+        font-size: 0.8rem;
+    }
+    .btn-retry:hover {
+        background: rgba(255, 165, 0, 0.25);
+        border-color: #ffa500;
+    }
+    .btn-stop {
+        padding: 0.65rem 1rem;
+        background: rgba(255, 80, 80, 0.15);
+        border: 1px solid rgba(255, 80, 80, 0.5);
+        color: #ff5050;
+        font-size: 0.8rem;
+    }
+    .btn-stop:hover {
+        background: rgba(255, 80, 80, 0.25);
+        border-color: #ff5050;
+    }
+    .btn-delete {
+        padding: 0.65rem 1rem;
+        background: rgba(128, 128, 128, 0.15);
+        border: 1px solid rgba(128, 128, 128, 0.5);
+        color: #aaa;
+        font-size: 0.8rem;
+    }
+    .btn-delete:hover {
+        background: rgba(255, 80, 80, 0.2);
+        border-color: #ff5050;
+        color: #ff5050;
+    }
+    .step-nav { margin-top: 2rem; }
+
+    .step-placeholder {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .flash {
+        padding: 1rem 1.25rem;
+        border-radius: 8px;
+        margin-bottom: 1.25rem;
+        font-size: 0.85rem;
+        border: 1px solid;
+        animation: flashIn 0.6s ease;
+        transition: opacity 0.5s ease;
+    }
+    .flash.fade-out { opacity: 0; pointer-events: none; }
+    @keyframes flashIn {
+        0% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+        30% { opacity: 1; transform: translateY(0) scale(1.06); }
+        50% { transform: scale(0.98); }
+        70% { transform: scale(1.02); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .flash.success {
+        background: rgba(0, 245, 180, 0.15);
+        border-color: rgba(0, 245, 180, 0.5);
+        color: #00f5b4;
+        box-shadow: 0 0 20px rgba(0, 245, 180, 0.25);
+    }
+    .flash.error {
+        background: rgba(255, 80, 80, 0.15);
+        border-color: rgba(255, 80, 80, 0.5);
+        color: #ff5050;
+        box-shadow: 0 0 20px rgba(255, 80, 80, 0.25);
+    }
+
+    .accordion-item {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+    }
+    .accordion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+    .accordion-header:hover {
+        background: rgba(0, 245, 255, 0.05);
+    }
+    .accordion-header-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .accordion-chevron {
+        font-size: 0.7rem;
+        color: var(--cyan-dim);
+        transition: transform 0.25s ease;
+    }
+    .accordion-item.expanded .accordion-chevron {
+        transform: rotate(90deg);
+    }
+    .site-row-label {
+        font-size: 0.75rem;
+        letter-spacing: 0.15em;
+        color: var(--cyan-dim);
+        text-transform: uppercase;
+    }
+    .accordion-item.expanded .site-row-label {
+        color: var(--cyan);
+    }
+    .accordion-body {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    .accordion-item.expanded .accordion-body {
+        max-height: 500px;
+    }
+    .accordion-body-inner {
+        padding: 0 1.25rem 1.25rem;
+        border-top: 1px solid var(--border);
+    }
+    .btn-remove {
+        background: transparent;
+        border: 1px solid rgba(255, 80, 80, 0.5);
+        color: #ff5050;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.7rem;
+        cursor: pointer;
+        border-radius: 6px;
+        flex: none;
+    }
+    .btn-remove:hover {
+        background: rgba(255, 80, 80, 0.15);
+        transform: none;
+        box-shadow: none;
+    }
+    .btn-add {
+        width: 100%;
+        padding: 0.75rem;
+        background: rgba(0, 245, 255, 0.1);
+        border: 1px dashed var(--border);
+        color: var(--cyan-dim);
+        font-size: 0.8rem;
+        margin-bottom: 1.5rem;
+    }
+    .btn-add:hover {
+        background: rgba(0, 245, 255, 0.15);
+        border-color: var(--cyan-dim);
+        color: var(--cyan);
+    }
+    .download-progress {
+        padding: 1.5rem 0;
+    }
+    .progress-status {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 1.1rem;
+        color: var(--cyan);
+        margin-bottom: 0.5rem;
+    }
+    .progress-detail {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+    .progress-bar-wrap {
+        height: 8px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--cyan), #00f5b4);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+    .progress-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid rgba(0, 245, 255, 0.25);
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.2);
+        overflow: hidden;
+    }
+    .progress-list-header {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        padding: 0.6rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid rgba(0, 245, 255, 0.2);
+    }
+    .progress-list-item {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(0, 245, 255, 0.12);
+        font-size: 0.95rem;
+    }
+    .progress-list-item:last-child {
+        border-bottom: none;
+    }
+    .progress-list-item .item-site {
+        color: var(--cyan);
+        font-family: 'JetBrains Mono', monospace;
+        word-break: break-all;
+    }
+    .progress-list-item .item-progress {
+        color: var(--text-muted);
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .progress-list-item.running .item-progress { color: #00f5b4; }
+    .progress-list-item.done .item-progress { color: #00f5b4; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="training-container">
+    <!-- Step indicator -->
+    <div class="steps">
+        <div class="step active" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-label">Download Data</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-label">Process</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-label">Train</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div id="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        </div>
+
+        <!-- Step 1: Download Data -->
+        <div class="step-content active" id="step-1">
+            <div class="step-header">
+                <h2>Step 1: Download Data</h2>
+                <p class="subtitle">Connect to CMS and download training data</p>
+            </div>
+
+            <form method="post" action="{{ url_for('submit') }}" id="sites-form">
+                <div id="site-rows">
+                    {% if last_sites %}
+                        {% for site in last_sites %}
+                        <div class="accordion-item {{ 'expanded' if loop.first else '' }}" data-index="{{ loop.index0 }}">
+                            <div class="accordion-header" data-action="toggle-accordion">
+                                <div class="accordion-header-left">
+                                    <span class="accordion-chevron">▶</span>
+                                    <span class="site-row-label">Site {{ loop.index }}</span>
+                                </div>
+                                <button type="button" class="btn-remove" data-action="remove-site" title="Remove site">Remove</button>
+                            </div>
+                            <div class="accordion-body">
+                                <div class="accordion-body-inner">
+                                    <label>CMS Base URL</label>
+                                    <input type="url" name="cms_url" value="{{ site.cms_url or '' }}" placeholder="https://example.cms.milestoneinternet.info" required />
+                                    <label>Profile Alias</label>
+                                    <input type="text" name="profile_alias" value="{{ site.profile_alias or '' }}" placeholder="123.45" />
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="accordion-item expanded" data-index="0">
+                            <div class="accordion-header" data-action="toggle-accordion">
+                                <div class="accordion-header-left">
+                                    <span class="accordion-chevron">▶</span>
+                                    <span class="site-row-label">Site 1</span>
+                                </div>
+                                <button type="button" class="btn-remove" data-action="remove-site" title="Remove site">Remove</button>
+                            </div>
+                            <div class="accordion-body">
+                                <div class="accordion-body-inner">
+                                    <label>CMS Base URL</label>
+                                    <input type="url" name="cms_url" placeholder="https://example.cms.milestoneinternet.info" required />
+                                    <label>Profile Alias</label>
+                                    <input type="text" name="profile_alias" placeholder="123.45" />
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <button type="button" class="btn-add" onclick="addSite()">+ Add Another Site</button>
+
+                <div class="actions">
+                    <button type="submit" name="action" value="download">Download Data</button>
+                    <button type="button" class="btn-next" onclick="goToStep(2)">Next</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 2: Process (download progress) -->
+        <div class="step-content" id="step-2">
+            <div class="step-header">
+                <h2>Step 2: Process</h2>
+                <p class="subtitle">Download progress – VComponent HTML + PNG</p>
+            </div>
+            <div id="download-progress" class="download-progress">
+                <ul id="progress-list" class="progress-list">
+                    <li class="progress-list-header">
+                        <span>Site URL</span>
+                        <span>Progress</span>
+                    </li>
+                    <li class="progress-list-item" id="progress-row">
+                        <span class="item-site" id="progress-site">—</span>
+                        <span class="item-progress" id="progress-count">—</span>
+                    </li>
+                </ul>
+                <div class="progress-bar-wrap" style="margin-top: 1rem;">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+            </div>
+            <div class="process-actions" style="display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <form method="post" action="{{ url_for('retry_download') }}" style="margin: 0;">
+                    <button type="submit" class="btn-retry">Retry Failed</button>
+                </form>
+                <form method="post" action="{{ url_for('cancel_download') }}" style="margin: 0;">
+                    <button type="submit" class="btn-stop">Stop Download</button>
+                </form>
+                <form method="post" action="{{ url_for('delete_downloaded') }}" style="margin: 0;" onsubmit="return confirm('Delete entire site folders and all downloaded data (HTML, PNG, GetSiteVComponents.json)?');">
+                    <button type="submit" class="btn-delete">Delete Downloaded</button>
+                </form>
+            </div>
+            <div class="actions step-nav">
+                <button type="button" class="btn-prev" onclick="goToStep(1)">Previous</button>
+                <button type="button" class="btn-next" onclick="goToStep(3)">Next</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Train (placeholder) -->
+        <div class="step-content" id="step-3">
+            <div class="step-header">
+                <h2>Step 3: Train</h2>
+                <p class="subtitle">Train your AI model</p>
+            </div>
+            <div class="step-placeholder">Coming soon</div>
+            <div class="actions step-nav">
+                <button type="button" class="btn-prev" onclick="goToStep(2)">Previous</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let progressPoll = null;
+    let doneAlertShown = false;
+    let wasRunningThisSession = false;
+    function goToStep(stepNum) {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.step-content').forEach(c => c.classList.remove('active'));
+        const stepEl = document.querySelector('.step[data-step="' + stepNum + '"]');
+        const content = document.getElementById('step-' + stepNum);
+        if (stepEl) stepEl.classList.add('active');
+        if (content) content.classList.add('active');
+        if (stepNum === 2) startProgressPoll(); else stopProgressPoll();
+    }
+    function startProgressPoll() {
+        stopProgressPoll();
+        doneAlertShown = false;
+        wasRunningThisSession = false;
+        function poll() {
+            if (document.hidden) return;
+            fetch('/api/download-progress').then(r => r.json()).then(d => {
+                const siteEl = document.getElementById('progress-site');
+                const countEl = document.getElementById('progress-count');
+                const barEl = document.getElementById('progress-bar');
+                const rowEl = document.getElementById('progress-row');
+                if (rowEl) rowEl.classList.remove('running', 'done', 'idle');
+                if (d.status === 'idle') {
+                    const last = d.last_completed;
+                    if (rowEl) rowEl.classList.add('idle');
+                    if (last && (last.fetched > 0 || last.total > 0)) {
+                        siteEl.textContent = last.site_url || '—';
+                        countEl.textContent = last.fetched + '/' + last.total + (last.failed ? ' (Failed: ' + last.failed + ')' : '');
+                        barEl.style.width = '100%';
+                    } else {
+                        siteEl.textContent = '—';
+                        countEl.textContent = 'Idle';
+                        barEl.style.width = '0%';
+                    }
+                    stopProgressPoll();
+                    return;
+                }
+                if (d.status === 'starting') {
+                    wasRunningThisSession = true;
+                    if (rowEl) rowEl.classList.add('running');
+                    siteEl.textContent = '—';
+                    countEl.textContent = 'Starting...';
+                    barEl.style.width = '0%';
+                    return;
+                }
+                if (d.status === 'running') {
+                    wasRunningThisSession = true;
+                    if (rowEl) rowEl.classList.add('running');
+                    siteEl.textContent = d.site_url || '—';
+                    countEl.textContent = d.current + '/' + d.total;
+                    barEl.style.width = (d.total ? (d.current / d.total * 100) : 0) + '%';
+                }
+                if (d.status === 'done') {
+                    if (rowEl) rowEl.classList.add('done');
+                    siteEl.textContent = d.site_url || '—';
+                    countEl.textContent = d.fetched + '/' + d.total + (d.failed ? ' (Failed: ' + d.failed + ')' : '');
+                    barEl.style.width = '100%';
+                    var isLastSite = (d.site_total && d.site_index >= d.site_total);
+                    if (isLastSite && wasRunningThisSession && !doneAlertShown) {
+                        doneAlertShown = true;
+                        alert('The process is over.');
+                    }
+                    stopProgressPoll();
+                    return;
+                }
+            }).catch(() => {});
+        }
+        poll();
+        progressPoll = setInterval(function() {
+            if (!document.hidden) poll();
+        }, 2000);
+    }
+    function stopProgressPoll() {
+        if (progressPoll) { clearInterval(progressPoll); progressPoll = null; }
+    }
+    document.querySelectorAll('.step').forEach(step => {
+        step.addEventListener('click', () => goToStep(parseInt(step.dataset.step)));
+    });
+
+    let siteCount = 1;
+    function toggleAccordion(headerEl) {
+        const item = headerEl.closest('.accordion-item');
+        const wasExpanded = item.classList.contains('expanded');
+        document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('expanded'));
+        if (!wasExpanded) item.classList.add('expanded');
+    }
+    function addSite() {
+        document.querySelectorAll('.accordion-item').forEach(i => i.classList.remove('expanded'));
+        siteCount++;
+        const container = document.getElementById('site-rows');
+        const row = document.createElement('div');
+        row.className = 'accordion-item expanded';
+        row.dataset.index = siteCount - 1;
+        row.innerHTML = `
+            <div class="accordion-header" data-action="toggle-accordion">
+                <div class="accordion-header-left">
+                    <span class="accordion-chevron">▶</span>
+                    <span class="site-row-label">Site ${siteCount}</span>
+                </div>
+                <button type="button" class="btn-remove" data-action="remove-site" title="Remove site">Remove</button>
+            </div>
+            <div class="accordion-body">
+                <div class="accordion-body-inner">
+                    <label>CMS Base URL</label>
+                    <input type="url" name="cms_url" placeholder="https://example.cms.milestoneinternet.info" required />
+                    <label>Profile Alias</label>
+                    <input type="text" name="profile_alias" placeholder="123.45" />
+                </div>
+            </div>
+        `;
+        container.appendChild(row);
+    }
+    function removeSite(btn) {
+        const row = btn.closest('.accordion-item');
+        if (!row) return;
+        const cmsUrlInput = row.querySelector('input[name="cms_url"]');
+        let cmsUrl = cmsUrlInput ? (cmsUrlInput.value || '').trim().replace(/\/+$/, '') : '';
+        if (cmsUrl && !/^https?:\/\//i.test(cmsUrl)) cmsUrl = 'https://' + cmsUrl;
+        if (cmsUrl) {
+            fetch('/api/delete-site', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cms_url: cmsUrl })
+            }).then(function(r) { return r.json(); }).then(function() {}).catch(function() {});
+        }
+        row.remove();
+        const rows = document.querySelectorAll('#site-rows .accordion-item');
+        rows.forEach((el, i) => {
+            const label = el.querySelector('.site-row-label');
+            if (label) label.textContent = 'Site ' + (i + 1);
+            el.dataset.index = i;
+        });
+        if (rows.length === 0) {
+            siteCount = 1;
+            const container = document.getElementById('site-rows');
+            const newRow = document.createElement('div');
+            newRow.className = 'accordion-item expanded';
+            newRow.dataset.index = '0';
+            newRow.innerHTML = `
+                <div class="accordion-header" data-action="toggle-accordion">
+                    <div class="accordion-header-left">
+                        <span class="accordion-chevron">▶</span>
+                        <span class="site-row-label">Site 1</span>
+                    </div>
+                    <button type="button" class="btn-remove" data-action="remove-site" title="Remove site">Remove</button>
+                </div>
+                <div class="accordion-body">
+                    <div class="accordion-body-inner">
+                        <label>CMS Base URL</label>
+                        <input type="url" name="cms_url" placeholder="https://example.cms.milestoneinternet.info" required />
+                        <label>Profile Alias</label>
+                        <input type="text" name="profile_alias" placeholder="123.45" />
+                    </div>
+                </div>
+            `;
+            container.appendChild(newRow);
+        } else {
+            siteCount = rows.length;
+        }
+    }
+    function autoDismissFlashes() {
+        const flashes = document.querySelectorAll('#flash-container .flash');
+        flashes.forEach(function(el) {
+            setTimeout(function() {
+                el.classList.add('fade-out');
+                setTimeout(function() { el.remove(); }, 500);
+            }, 20000);
+        });
+    }
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) stopProgressPoll();
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        autoDismissFlashes();
+        siteCount = document.querySelectorAll('#site-rows .accordion-item').length || 1;
+        const stepFromUrl = new URLSearchParams(window.location.search).get('step');
+        const stepFromServer = {{ initial_step|default(1)|tojson }};
+        const step = stepFromUrl ? parseInt(stepFromUrl) : stepFromServer;
+        if (step && step >= 1 && step <= 3) goToStep(step);
+        
+        // Step 1: Remove site – use delegation so Remove always works
+        var siteRowsContainer = document.getElementById('site-rows');
+        if (siteRowsContainer) {
+            siteRowsContainer.addEventListener('click', function(e) {
+                // Remove button
+                var removeBtn = e.target.closest('.btn-remove[data-action="remove-site"]');
+                if (removeBtn) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeSite(removeBtn);
+                    return;
+                }
+                // Accordion toggle (only if not clicking remove button)
+                var accordionHeader = e.target.closest('[data-action="toggle-accordion"]');
+                if (accordionHeader) {
+                    toggleAccordion(accordionHeader);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

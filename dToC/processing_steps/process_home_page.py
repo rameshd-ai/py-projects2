@@ -722,7 +722,7 @@ def _process_home_page_components(
                     start_t = time.time()
                     # Use the exact same component processing pipeline as inner pages
                     section_payload = add_records_for_page(
-                        page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias
+                        page_name, vComponentId, componentId, api_base_url, site_id, api_headers, alias, main_count, sub_count
                     )
                     elapsed = time.time() - start_t
                     HOMEPAGE_TIMING_TRACKER.setdefault("add_records_for_page(home)", []).append(elapsed)

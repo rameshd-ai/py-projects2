@@ -1,0 +1,38 @@
+[
+    {
+        "recordJsonString": {
+            "menu-title": null,
+            "menu-sub-title": null,
+            "enable-menu-time": null,
+            "menu-time-from-hour": null,
+            "menu-time-from-minutes": null,
+            "menu-time-from-ampm": null,
+            "menu-time-to-hour": null,
+            "menu-time-to-minutes": null,
+            "menu-time-to-ampm": null,
+            "menu-description": null,
+            "menu-currency": null,
+            "menu-price": null,
+            "menu-price-description": null,
+            "menu-image": null,
+            "menu-image-alt-text": null,
+            "menu-type": null,
+            "menu-icon-class-name": null,
+            "menu-icon-image": null,
+            "menu-icon-image-alt-text": null,
+            "menu-url": null,
+            "menu-booking-url": null,
+            "menu-disclaimer": null,
+            "displayorder": 1,
+            "status": 0
+        },
+        "ParentRecordId": "",
+        "ParentComponentId": null,
+        "MainParentComponentid": 240027,
+        "status": "",
+        "componentName": "Menu",
+        "MenuSections": [],
+        "EnableClientEdit": true,
+        "ComponentId": 240027
+    }
+]

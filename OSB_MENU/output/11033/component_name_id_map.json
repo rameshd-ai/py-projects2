@@ -1,0 +1,32 @@
+{
+    "Menu": {
+        "ComponentId": 240027,
+        "ParentId": null,
+        "MainParentComponentid": 240027
+    },
+    "Menu Section": {
+        "ComponentId": 240029,
+        "ParentId": 240027,
+        "MainParentComponentid": 240027
+    },
+    "Menu Section Item": {
+        "ComponentId": 240031,
+        "ParentId": 240029,
+        "MainParentComponentid": 240027
+    },
+    "Menu Section Item Option": {
+        "ComponentId": 240032,
+        "ParentId": 240031,
+        "MainParentComponentid": 240027
+    },
+    "Menu Section Item Price Options": {
+        "ComponentId": 240033,
+        "ParentId": 240031,
+        "MainParentComponentid": 240027
+    },
+    "Menu Section Item Addons": {
+        "ComponentId": 240074,
+        "ParentId": 240031,
+        "MainParentComponentid": 240027
+    }
+}
