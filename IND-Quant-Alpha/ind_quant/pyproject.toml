@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "ind-quant-alpha"
+version = "0.1.0"
+description = "High-conviction intraday automation engine (INDmoney API + Python)"
+authors = ["IND-Quant-Alpha"]
+readme = "README.md"
+packages = [{ include = "engine", from = "." }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^3.0"
+pandas = "^2.0"
+yfinance = "^0.2"
+python-dotenv = "^1.0"
+requests = "^2.31"
+transformers = "^4.36"
+torch = { version = "^2.0", optional = true }
+vaderSentiment = "^3.3"
+textblob = "^0.18"
+ta = "^0.11"
+apscheduler = "^3.10"
+flask-login = "^0.6"
+
+[tool.poetry.extras]
+finbert = ["torch"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4"
+black = "^24.0"
+
+[tool.poetry.scripts]
+run = "app:main"
+
+[tool.black]
+line-length = 100
+target-ersion = ["py310"]
