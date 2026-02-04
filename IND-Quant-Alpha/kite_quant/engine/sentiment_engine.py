@@ -82,7 +82,7 @@ def score_headline(text: str, use_finbert: bool = True) -> float:
 
 
 def fetch_news(symbol: str, query: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
-    """Fetch latest headlines (News API or fallback)."""
+    """Fetch latest headlines (News API or fallback). Optimized with shorter timeout."""
     api_key = os.getenv("NEWS_API_KEY")
     query = query or f"{symbol} stock NSE India"
     headlines = []
@@ -97,14 +97,21 @@ def fetch_news(symbol: str, query: str | None = None, limit: int = 10) -> list[d
                 "sortBy": "publishedAt",
                 "language": "en",
             }
-            r = requests.get(url, params=params, timeout=10)
+            # Reduced timeout for faster response
+            r = requests.get(url, params=params, timeout=5)
             r.raise_for_status()
             data = r.json()
             for a in data.get("articles", [])[:limit]:
                 title = (a.get("title") or "").strip()
                 if title:
-                    headlines.append({"title": title, "source": a.get("source", {}).get("name", "")})
-        except Exception:
+                    headlines.append({
+                        "title": title, 
+                        "source": a.get("source", {}).get("name", ""),
+                        "url": a.get("url", "#"),
+                        "publishedAt": a.get("publishedAt", "")
+                    })
+        except Exception as e:
+            # Silently fail - will show "No news" message
             pass
 
     if not headlines:

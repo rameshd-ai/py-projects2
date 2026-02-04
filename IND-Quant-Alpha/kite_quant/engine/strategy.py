@@ -24,6 +24,7 @@ class USBias:
     pct_change: float | None
     bias: int  # -1 block long first hour, 0 neutral, +1 bullish
     block_long_first_hour: bool
+    date_str: str | None = None
 
 
 def compute_us_bias() -> USBias:
@@ -32,12 +33,12 @@ def compute_us_bias() -> USBias:
     Down > 0.5% -> block Long first hour.
     Up > 1% -> Bullish +1.
     """
-    prev, pct = data_fetcher.fetch_sp500_previous_close()
+    prev, pct, date_str = data_fetcher.fetch_sp500_previous_close()
     if pct is None:
-        return USBias(prev, None, 0, False)
+        return USBias(prev, None, 0, False, None)
     block = pct < -0.5
     bias = 1 if pct > 1.0 else (0 if pct >= -0.5 else -1)
-    return USBias(prev, pct, bias, block)
+    return USBias(prev, pct, bias, block, date_str)
 
 
 def _rsi(series: pd.Series, period: int = 14) -> pd.Series:

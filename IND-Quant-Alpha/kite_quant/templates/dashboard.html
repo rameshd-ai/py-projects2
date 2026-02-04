@@ -1,651 +1,685 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kite Quant — Dashboard</title>
+  
+  <!-- Fonts: Roboto (Material standard) -->
+  <link href="{{ url_for('static', filename='css/roboto.css') }}" rel="stylesheet">
+  
+  <!-- Icons: Material Icons -->
+  <link href="{{ url_for('static', filename='css/material-icons.css') }}" rel="stylesheet">
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+  
   <style>
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --danger: #f85149;
-      --success: #3fb950;
-      --warn: #d29922;
+      /* Material Dark Palette */
+      --md-bg: #121212;
+      --md-surface: #1e1e1e;
+      --md-surface-2: #252525;
+      --md-primary: #a8c7fa;
+      --md-on-primary: #062e6f;
+      --md-secondary: #c2c7cf;
+      --md-error: #ffb4ab;
+      --md-success: #6dd58c;
+      --md-warning: #fdc400;
+      --md-text: #e2e2e2;
+      --md-text-muted: #c4c7c5;
+      --md-border: #444746;
+      
+      --bs-body-bg: var(--md-bg);
+      --bs-body-color: var(--md-text);
+      --bs-border-color: var(--md-border);
     }
-    * { box-sizing: border-box; }
+
     body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      min-height: 100vh;
+      font-family: 'Roboto', sans-serif;
+      background-color: var(--md-bg);
+      overflow-x: hidden;
     }
-    .top {
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 260px;
+      background-color: var(--md-surface);
+      border-right: 1px solid var(--md-border);
+      padding-top: 1rem;
+      z-index: 1000;
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .sidebar-brand {
+      padding: 0 1.5rem 1.5rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--md-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--md-border);
+    }
+
+    .nav-link {
+      color: var(--md-text-muted);
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+      border-radius: 0 50px 50px 0;
+      margin-right: 1rem;
+      transition: all 0.2s;
+    }
+
+    .nav-link:hover {
+      background-color: rgba(168, 199, 250, 0.08);
+      color: var(--md-text);
+    }
+
+    .nav-link.active {
+      background-color: rgba(168, 199, 250, 0.16);
+      color: var(--md-primary);
+    }
+
+    .nav-link .material-icons-round {
+      font-size: 24px;
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 260px;
+      padding: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .main-content { margin-left: 0; }
+      .sidebar.show { transform: translateX(0); }
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--md-surface);
+      border: 1px solid var(--md-border);
+      border-radius: 16px;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .card-header {
+      background-color: transparent;
+      border-bottom: 1px solid var(--md-border);
+      padding: 1.25rem 1.5rem;
+      font-weight: 500;
+      font-size: 1.1rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
     }
-    .top h1 { font-size: 1.125rem; margin: 0; font-weight: 600; }
-    .top a {
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 0.875rem;
-      margin-left: 1rem;
+
+    /* Metrics */
+    .metric-item {
+      background-color: var(--md-surface-2);
+      padding: 1.25rem;
+      border-radius: 12px;
+      height: 100%;
     }
-    .top a:hover { color: var(--accent); }
     
-    .nav {
-      display: flex;
-      gap: 0.25rem;
-      padding: 0.5rem 1.5rem;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    .nav-item {
-      padding: 0.75rem 1.25rem;
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 0.875rem;
+    .metric-label {
+      color: var(--md-text-muted);
+      font-size: 0.85rem;
       font-weight: 500;
-      border-radius: 6px 6px 0 0;
-      transition: all 0.2s ease;
-      position: relative;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 6px;
     }
-    .nav-item::before {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--accent);
-      transform: scaleX(0);
-      transition: transform 0.2s ease;
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--md-text);
     }
-    .nav-item:hover {
-      color: var(--accent);
-      background: rgba(88, 166, 255, 0.05);
-    }
-    .nav-item.active {
-      color: var(--accent);
-      background: rgba(88, 166, 255, 0.1);
-    }
-    .nav-item.active::before {
-      transform: scaleX(1);
-    }
-    .nav-icon {
-      font-size: 1rem;
-      opacity: 0.8;
-    }
-    
-    .main {
-      padding: 1.5rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    .section {
-      display: none;
-    }
-    .section.active {
-      display: block;
-    }
-    
-    .info-box {
-      background: rgba(88, 166, 255, 0.1);
-      border: 1px solid rgba(88, 166, 255, 0.3);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      font-size: 0.875rem;
-      line-height: 1.6;
-    }
-    .info-box.warn {
-      background: rgba(210, 153, 34, 0.1);
-      border-color: rgba(210, 153, 34, 0.3);
-    }
-    .info-box.danger {
-      background: rgba(248, 81, 73, 0.1);
-      border-color: rgba(248, 81, 73, 0.3);
-    }
-    
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1rem;
-    }
-    .card h3 {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--muted);
-      margin: 0 0 0.5rem 0;
-    }
-    .card .val { font-size: 1.25rem; font-weight: 600; }
-    .card .val.positive { color: var(--success); }
-    .card .val.negative { color: var(--danger); }
-    .card .val.warn { color: var(--warn); }
-    
-    .actions {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-bottom: 1.5rem;
-    }
+
+    /* Text Colors */
+    .text-success-custom { color: var(--md-success) !important; }
+    .text-danger-custom { color: var(--md-error) !important; }
+    .text-warning-custom { color: var(--md-warning) !important; }
+    .text-primary-custom { color: var(--md-primary) !important; }
+
+    /* Buttons */
     .btn {
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      font-size: 0.9375rem;
+      border-radius: 50px;
+      padding: 0.5rem 1.25rem;
       font-weight: 500;
-      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background-color: var(--md-primary);
+      color: var(--md-on-primary);
       border: none;
     }
-    .btn-primary {
-      background: var(--success);
-      color: #fff;
+    .btn-primary:hover {
+      background-color: #8ab4f8; /* Lighter shade */
+      color: var(--md-on-primary);
     }
-    .btn-primary:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+
+    .btn-outline-secondary {
+      color: var(--md-text-muted);
+      border-color: var(--md-border);
     }
-    .btn-secondary {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
+    .btn-outline-secondary:hover {
+      background-color: var(--md-surface-2);
+      color: var(--md-text);
+      border-color: var(--md-text);
     }
-    .btn-danger {
-      background: var(--danger);
-      color: #fff;
-    }
-    .btn:hover:not(:disabled) { opacity: 0.9; }
-    
-    .pane {
-      background: var(--surface);
-      border: 1px solid var(--border);
+
+    /* Chips/Badges */
+    .badge-material {
+      padding: 0.5em 1em;
       border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    .pane h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
-    
-    .countdown {
-      font-size: 1.125rem;
-      color: var(--muted);
-    }
-    .countdown span { color: var(--accent); font-weight: 600; }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.875rem;
-    }
-    th, td {
-      text-align: left;
-      padding: 0.5rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-    }
-    th { color: var(--muted); font-weight: 500; }
-    
-    .status-badge {
-      display: inline-block;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
       font-weight: 500;
-    }
-    .status-running { background: rgba(63, 185, 80, 0.2); color: var(--success); }
-    .status-stopped { background: rgba(139, 148, 158, 0.2); color: var(--muted); }
-    .status-auto { background: rgba(210, 153, 34, 0.2); color: var(--warn); }
-    
-    .news-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .news-item {
-      padding: 0.75rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.875rem;
-    }
-    .news-item:last-child { border-bottom: none; }
-    .news-title {
-      color: var(--text);
-      margin: 0 0 0.25rem 0;
-      line-height: 1.4;
-    }
-    .news-source {
-      color: var(--muted);
       font-size: 0.75rem;
     }
-    
-    .form-group {
-      margin-bottom: 1rem;
-    }
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-size: 0.875rem;
-      color: var(--muted);
-    }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 0.5rem;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text);
-      font-size: 0.875rem;
-    }
-    .form-group input:focus, .form-group select:focus {
-      outline: none;
-      border-color: var(--accent);
-    }
-    
-    .backtest-results {
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .backtest-result-item {
-      padding: 0.5rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.875rem;
-    }
-    .prediction-block {
-      text-align: center;
-      padding: 1.5rem 1rem;
-    }
-    .prediction-large {
-      font-size: 2.5rem;
+    .bg-success-subtle { background-color: rgba(109, 213, 140, 0.15) !important; color: var(--md-success) !important; }
+    .bg-danger-subtle { background-color: rgba(255, 180, 171, 0.15) !important; color: var(--md-error) !important; }
+    .bg-warning-subtle { background-color: rgba(253, 196, 0, 0.15) !important; color: var(--md-warning) !important; }
+
+    /* Prediction Block */
+    .prediction-value {
+      font-size: 3rem;
       font-weight: 700;
       margin: 1rem 0;
-      text-transform: uppercase;
     }
-    .prediction-bullish { color: var(--success); }
-    .prediction-bearish { color: var(--danger); }
-    .prediction-neutral { color: var(--muted); }
-    .accuracy-badge {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      border-radius: 6px;
-      font-weight: 600;
-      margin: 0.5rem 0;
+
+    /* Info Tooltip */
+    .info-icon {
+      font-size: 18px;
+      color: var(--md-text-muted);
+      cursor: help;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    .accuracy-correct {
-      background: rgba(63, 185, 80, 0.2);
-      color: var(--success);
+    .info-icon:hover { color: var(--md-primary); }
+
+    /* Inputs */
+    .form-control {
+      background-color: var(--md-surface-2);
+      border: 1px solid var(--md-border);
+      color: var(--md-text);
+      border-radius: 8px;
+      padding: 0.75rem;
     }
-    .accuracy-partial {
-      background: rgba(210, 153, 34, 0.2);
-      color: var(--warn);
+    .form-control:focus {
+      background-color: var(--md-surface-2);
+      border-color: var(--md-primary);
+      color: var(--md-text);
+      box-shadow: 0 0 0 2px rgba(168, 199, 250, 0.25);
     }
-    .accuracy-incorrect {
-      background: rgba(248, 81, 73, 0.2);
-      color: var(--danger);
-    }
+
+    /* Animations */
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .section { display: none; }
+    .section.active { display: block; }
   </style>
 </head>
 <body>
-  <header class="top">
-    <h1>Kite Quant</h1>
-    <div>
-      <a href="{{ url_for('settings') }}">Settings</a>
+
+  <!-- Sidebar -->
+  <div class="sidebar d-flex flex-column">
+    <div class="sidebar-brand">
+      <span class="material-icons-round text-primary-custom">trending_up</span> Kite Quant
     </div>
-  </header>
-  
-  <nav class="nav">
-    <a href="#" class="nav-item active" onclick="showSection('overview', this); return false;">
-      <span class="nav-icon">📊</span>
-      <span>Overview</span>
-    </a>
-    <a href="#" class="nav-item" onclick="showSection('testing', this); return false;">
-      <span class="nav-icon">🧪</span>
-      <span>Testing & Backtest</span>
-    </a>
-    <a href="#" class="nav-item" onclick="showSection('live', this); return false;">
-      <span class="nav-icon">⚡</span>
-      <span>Live Trading</span>
-    </a>
-  </nav>
-  
-  <div class="main">
-    <!-- Overview Section -->
-    <div id="section-overview" class="section active">
-      <div class="info-box">
-        <strong>Welcome to Kite Quant</strong><br>
-        This is your trading dashboard. Use the menu above to navigate:
-        <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
-          <li><strong>Overview</strong> - Quick summary of current status and market data</li>
-          <li><strong>Testing & Backtest</strong> - Test your strategy with historical data (no real money)</li>
-          <li><strong>Live Trading</strong> - Start actual trading with real money (use with caution!)</li>
-        </ul>
+    <ul class="nav flex-column mt-3">
+      <li class="nav-item mb-2">
+        <a href="#" class="nav-link active" onclick="showSection('overview', this); return false;">
+          <span class="material-icons-round">dashboard</span> Overview
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="#" class="nav-link" onclick="showSection('testing', this); return false;">
+          <span class="material-icons-round">science</span> Testing
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="#" class="nav-link" onclick="showSection('live', this); return false;">
+          <span class="material-icons-round">flash_on</span> Live Trading
+        </a>
+      </li>
+      <li class="nav-item mt-auto mb-3">
+        <a href="{{ url_for('settings') }}" class="nav-link">
+          <span class="material-icons-round">settings</span> Settings
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="mb-0 fw-bold" id="page-title">Overview</h4>
+      <div class="d-flex align-items-center gap-3">
+        <span class="badge bg-primary bg-opacity-10 text-primary-custom px-3 py-2 rounded-pill d-flex align-items-center">
+          <span class="material-icons-round fs-6 me-2">schedule</span>
+          <span id="current-time">—</span>
+        </span>
+      </div>
       </div>
       
-      <div class="grid">
-        <div class="card">
-          <h3>Status</h3>
-          <div class="val" id="overview-status">—</div>
+    <!-- OVERVIEW SECTION -->
+    <div id="section-overview" class="section active fade-in">
+      
+      <!-- Metrics Grid -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Status <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Current trading status (Running, Stopped, Auto-Closed)">info</span></div>
+            <div class="metric-value" id="overview-status">—</div>
         </div>
-        <div class="card">
-          <h3>Mode</h3>
-          <div class="val" id="overview-mode">Backtest</div>
         </div>
-        <div class="card">
-          <h3>US Bias</h3>
-          <div class="val" id="overview-usBias">—</div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Mode <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Backtest or Live Trading mode">info</span></div>
+            <div class="metric-value" id="overview-mode">BACKTEST</div>
         </div>
-        <div class="card">
-          <h3>Sentiment</h3>
-          <div class="val" id="overview-sentiment">—</div>
         </div>
-        <div class="card">
-          <h3>Price</h3>
-          <div class="val" id="overview-price">—</div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">USA Bias <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="S&P 500 influence on Indian market sentiment">info</span></div>
+            <div class="metric-value" id="overview-usBias">—</div>
+            <div class="small text-muted mt-1" id="overview-usBiasDate" style="font-size: 0.7rem;"></div>
         </div>
-        <div class="card">
-          <h3>P&L</h3>
-          <div class="val" id="overview-pnl">—</div>
         </div>
-        <div class="card">
-          <h3>Trades today</h3>
-          <div class="val" id="overview-tradesToday">0 / 3</div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">USA Live (Fut) <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Live S&P 500 Futures (ES=F) - Real-time market sentiment">info</span></div>
+            <div class="metric-value" id="overview-usFutures">—</div>
+            <div class="small text-muted mt-1" id="overview-usFuturesDate" style="font-size: 0.7rem;"></div>
         </div>
-        <div class="card">
-          <h3>Max Trades/Day</h3>
-          <div class="val" id="overview-maxTrades">3</div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Sentiment <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Aggregate news sentiment score (-1 to +1)">info</span></div>
+            <div class="metric-value" id="overview-sentiment">—</div>
         </div>
       </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-        <div class="pane" style="margin: 0;">
-          <h2>📈 Today's Market Prediction</h2>
-          <div style="text-align: center; padding: 1rem 0;">
-            <div id="market-prediction" style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">—</div>
-            <div id="prediction-confidence" style="font-size: 0.875rem; color: var(--muted); margin: 0.5rem 0;">Confidence: —</div>
-            <div id="prediction-factors" style="font-size: 0.75rem; color: var(--muted); margin-top: 1rem; text-align: left;">
-              <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
-                <li>Loading factors...</li>
-              </ul>
-            </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Price</div>
+            <div class="metric-value" id="overview-price">—</div>
           </div>
         </div>
-        
-        <div class="pane" style="margin: 0;">
-          <h2>🎯 Prediction vs Actual</h2>
-          <div style="text-align: center; padding: 1rem 0;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
-              <div>
-                <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem;">Predicted</div>
-                <div id="predicted-direction" style="font-size: 1.25rem; font-weight: 600;">—</div>
-              </div>
-              <div>
-                <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem;">Actual</div>
-                <div id="actual-direction" style="font-size: 1.25rem; font-weight: 600;">—</div>
-              </div>
-            </div>
-            <div id="prediction-result" style="font-size: 1rem; font-weight: 600; margin: 1rem 0; padding: 0.5rem; border-radius: 4px;">—</div>
-            <div style="font-size: 0.875rem; color: var(--muted); margin-top: 1rem;">
-              <div>Price Change: <span id="price-change-pct">—</span>%</div>
-              <div style="margin-top: 0.5rem;">Overall Accuracy: <span id="overall-accuracy">—</span>%</div>
-            </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">P&L</div>
+            <div class="metric-value" id="overview-pnl">—</div>
           </div>
         </div>
-      </div>
-      
-      <div class="pane">
-        <h2>News Headlines</h2>
-        <ul class="news-list" id="overview-newsList">
-          <li class="news-item"><div class="news-title">Loading news...</div></li>
-        </ul>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Trades</div>
+            <div class="metric-value" id="overview-tradesToday">0 / 3</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Max Trades</div>
+            <div class="metric-value" id="overview-maxTrades">3</div>
+          </div>
       </div>
     </div>
     
-    <!-- Testing & Backtest Section -->
-    <div id="section-testing" class="section">
-      <div class="info-box warn">
-        <strong>⚠️ Testing Mode</strong><br>
-        This section is for testing your strategy with historical data. No real trades will be executed. 
-        Use this to validate your strategy before going live.
+      <div class="row g-4 mb-4">
+        <!-- Prediction Card -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <span>Today's Prediction</span>
+              <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Daily market direction forecast based on US bias, sentiment, and technical indicators.">info</span>
+            </div>
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+              <div class="d-flex justify-content-center align-items-center gap-2">
+                <div id="market-prediction" class="prediction-value text-muted">—</div>
+                <span class="material-icons-round info-icon" id="prediction-reasoning-icon" style="display: none; font-size: 24px;" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="Loading factors...">
+                  help_outline
+                </span>
+              </div>
+              <div id="prediction-confidence" class="text-muted small">Confidence: —</div>
+              <div id="prediction-factors" class="mt-3 text-start bg-body-tertiary p-3 rounded small text-muted">
+                Loading factors...
+              </div>
+            </div>
+          </div>
       </div>
       
-      <div class="pane">
-        <h2>Backtest Configuration</h2>
-        <div class="form-group">
-          <label for="backtestSymbol">Symbol</label>
-          <input type="text" id="backtestSymbol" value="RELIANCE" placeholder="e.g., RELIANCE, HDFCBANK" onchange="loadTradeSuggestions()">
-          <button type="button" class="btn btn-secondary" onclick="loadTradeSuggestions()" style="margin-top: 0.5rem;">Get Trade Suggestions</button>
+        <!-- Prediction vs Actual -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">Prediction vs Actual</div>
+            <div class="card-body">
+              <div class="row text-center my-3">
+                <div class="col-6 border-end border-secondary">
+                  <div class="metric-label justify-content-center">Predicted</div>
+                  <div id="predicted-direction" class="fs-3 fw-normal text-white">—</div>
         </div>
-        <div class="form-group">
-          <label for="backtestDays">Days to Backtest</label>
-          <input type="number" id="backtestDays" value="60" min="1" max="365">
+                <div class="col-6">
+                  <div class="metric-label justify-content-center">Actual</div>
+                  <div id="actual-direction" class="fs-3 fw-normal text-white">—</div>
         </div>
-        <div id="tradeSuggestions" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px;">
-          <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; color: var(--accent);">Trade Suggestions for <span id="suggestionSymbol">—</span></h3>
-          <div style="font-size: 0.875rem; line-height: 1.6;">
-            <div><strong>Minimum Trades:</strong> <span id="suggestionMin">—</span></div>
-            <div><strong>Suggested Max:</strong> <span id="suggestionMax">—</span></div>
-            <div><strong>Current Max:</strong> <span id="suggestionCurrent">—</span></div>
-            <div style="margin-top: 0.5rem; color: var(--muted);"><em id="suggestionReasoning">—</em></div>
-            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted);">
-              <strong>Analysis Factors:</strong>
-              <ul style="margin: 0.25rem 0 0 1.5rem; padding: 0;">
-                <li>Volatility: <span id="factorVolatility">—</span>%</li>
-                <li>Avg Daily Range: <span id="factorRange">—</span>%</li>
-                <li>Volume Score: <span id="factorVolume">—</span></li>
-              </ul>
+            </div>
+              <div class="text-center mb-4">
+                <span id="prediction-result" class="badge bg-secondary p-2 fw-normal">Waiting for close...</span>
+          </div>
+              <div class="d-flex justify-content-between px-3 text-muted small">
+                <span>Change: <span id="price-change-pct" class="text-white fw-bold">—</span></span>
+                <span>Accuracy: <span id="overall-accuracy" class="text-white fw-bold">—</span></span>
+        </div>
             </div>
           </div>
         </div>
-        <button type="button" class="btn btn-primary" onclick="runBacktest()">Run Backtest</button>
       </div>
       
-      <div class="pane" id="backtestResultsPane" style="display: none;">
-        <h2>Backtest Results</h2>
-        <div id="backtestResults" class="backtest-results"></div>
-      </div>
-      
-      <div class="pane">
-        <h2>Current Market Data (Backtest Mode)</h2>
-        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
-          <div class="card">
-            <h3>Symbol</h3>
-            <div class="val" id="test-symbol">RELIANCE</div>
-          </div>
-          <div class="card">
-            <h3>Price</h3>
-            <div class="val" id="test-price">—</div>
-          </div>
-          <div class="card">
-            <h3>US Bias</h3>
-            <div class="val" id="test-usBias">—</div>
-          </div>
-          <div class="card">
-            <h3>Sentiment</h3>
-            <div class="val" id="test-sentiment">—</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Live Trading Section -->
-    <div id="section-live" class="section">
-      <div class="info-box danger">
-        <strong>🚨 Live Trading Mode</strong><br>
-        This section controls REAL trading with REAL money. Only use this after thoroughly testing your strategy. 
-        Make sure you understand the risks and have proper stop-losses configured.
-      </div>
-      
-      <div class="pane">
-        <h2>Stock Selection & Trade Suggestions</h2>
-        <div class="form-group">
-          <label for="liveSymbol">Trading Symbol</label>
-          <input type="text" id="liveSymbol" value="RELIANCE" placeholder="e.g., RELIANCE, HDFCBANK, TCS" onchange="updateLiveSymbol()">
-          <div class="hint" style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
-            Enter the stock symbol you want to trade. This will update the live data below.
-          </div>
-          <button type="button" class="btn btn-secondary" onclick="loadLiveTradeSuggestions()" style="margin-top: 0.5rem;">Get Trade Suggestions</button>
-          <div class="hint" style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
-            Click to see suggested min/max trades based on stock analysis. Suggestions appear below.
-          </div>
-        </div>
-        <div id="liveTradeSuggestions" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px;">
-          <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; color: var(--accent);">Trade Suggestions for <span id="liveSuggestionSymbol">—</span></h3>
-          <div style="font-size: 0.875rem; line-height: 1.6;">
-            <div><strong>Minimum Trades:</strong> <span id="liveSuggestionMin">—</span></div>
-            <div><strong>Suggested Max:</strong> <span id="liveSuggestionMax">—</span></div>
-            <div><strong>Current Max:</strong> <span id="liveSuggestionCurrent">—</span></div>
-            <div style="margin-top: 0.5rem; color: var(--muted);"><em id="liveSuggestionReasoning">—</em></div>
-            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted);">
-              <strong>Analysis Factors:</strong>
-              <ul style="margin: 0.25rem 0 0 1.5rem; padding: 0;">
-                <li>Volatility: <span id="liveFactorVolatility">—</span>%</li>
-                <li>Avg Daily Range: <span id="liveFactorRange">—</span>%</li>
-                <li>Volume Score: <span id="liveFactorVolume">—</span></li>
-              </ul>
+      <div class="row g-4">
+        <!-- News -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <span class="d-flex align-items-center gap-2"><span class="material-icons-round fs-5 text-warning-custom">newspaper</span> Headlines</span>
             </div>
-            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
-              <button type="button" class="btn btn-primary" onclick="applySuggestedMax()" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
-                Apply Suggested Max to Settings
-              </button>
-              <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted);">
-                This will update your Max Trades Per Day setting. Go to Settings to save permanently.
+            <ul class="list-group list-group-flush" id="overview-newsList" style="max-height: 400px; overflow-y: auto;">
+              <li class="list-group-item bg-transparent text-muted text-center py-4">Loading news...</li>
+            </ul>
+          </div>
+      </div>
+      
+        <!-- History -->
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header">
+              <span class="d-flex align-items-center gap-2"><span class="material-icons-round fs-5 text-primary-custom">history</span> History</span>
+              <div>
+                <button class="btn btn-sm btn-outline-secondary py-1" onclick="loadPredictionHistory()">Refresh</button>
+                <button class="btn btn-sm btn-outline-secondary py-1" id="excel-download-btn" onclick="downloadPredictionHistoryExcel()" style="display: none;">CSV</button>
+          </div>
+          </div>
+            <div class="card-body p-0">
+              <div id="history-loading" class="text-center py-4 d-none">
+                <div class="spinner-border text-primary" role="status"></div>
+          </div>
+              <div id="prediction-history" style="display: none;">
+                <div class="table-responsive">
+                  <table class="table table-dark table-hover mb-0 align-middle small">
+                    <thead>
+                      <tr class="border-bottom border-secondary border-opacity-25 text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                        <th class="fw-medium py-3">Date</th>
+                        <th class="fw-medium py-3">Pred</th>
+                        <th class="fw-medium py-3">USA Bias</th>
+                        <th class="fw-medium py-3">Actual</th>
+                        <th class="fw-medium py-3">Res</th>
+                        <th class="fw-medium py-3">Day Δ%</th>
+                        <th class="fw-medium py-3">Analysis</th>
+                      </tr>
+                    </thead>
+                    <tbody id="prediction-history-body"></tbody>
+                  </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3">
+                  <span class="text-muted small" id="pagination-info">0-0 of 0</span>
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" id="prev-page-btn" onclick="changePredictionHistoryPage(-1)">&lt;</button>
+                    <button class="btn btn-outline-secondary" id="next-page-btn" onclick="changePredictionHistoryPage(1)">&gt;</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <div class="pane">
-        <h2>Trading Controls</h2>
-        <div class="actions">
-          <button type="button" class="btn btn-primary" id="btnStart" onclick="startTrading()">Start Trading</button>
-          <button type="button" class="btn btn-secondary" id="btnStop" onclick="stopTrading()" disabled>Stop Trading</button>
-          <button type="button" class="btn btn-danger" id="btnKill" onclick="killSwitch()">Kill Switch (Close All)</button>
+    </div>
+
+    <!-- TESTING SECTION -->
+    <div id="section-testing" class="section fade-in">
+      <div class="alert bg-warning-subtle border-0 d-flex align-items-center mb-4" role="alert">
+        <span class="material-icons-round me-2 text-warning-custom">warning</span>
+        <div class="text-warning-custom small">Testing Mode - No real trades will be executed.</div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-header">Config</div>
+            <div class="card-body d-grid gap-3">
+              <div>
+                <label class="form-label small text-muted">Symbol</label>
+                <input type="text" class="form-control" id="backtestSymbol" value="RELIANCE">
+          </div>
+              <div>
+                <label class="form-label small text-muted">Days</label>
+                <input type="number" class="form-control" id="backtestDays" value="60">
         </div>
-        <p class="countdown" style="margin-top: 1rem;">
-          Auto-close: <span id="live-autoCloseTime">14:30</span> IST — <span id="live-countdown">—</span>
-        </p>
+              <button class="btn btn-outline-secondary w-100 justify-content-center" onclick="loadTradeSuggestions()">Get Suggestions</button>
+              <button class="btn btn-primary w-100 justify-content-center" onclick="runBacktest()">Run Backtest</button>
+      </div>
+    </div>
+    
+          <div id="tradeSuggestions" class="card bg-primary bg-opacity-10 border-0 mt-3" style="display: none;">
+            <div class="card-body">
+              <h6 class="text-primary-custom fw-bold mb-3">Suggestions for <span id="suggestionSymbol"></span></h6>
+              <div class="d-flex justify-content-between small mb-2"><span>Min:</span> <strong id="suggestionMin">—</strong></div>
+              <div class="d-flex justify-content-between small mb-2"><span>Max:</span> <strong id="suggestionMax">—</strong></div>
+              <div class="d-flex justify-content-between small mb-3"><span>Current:</span> <strong id="suggestionCurrent">—</strong></div>
+              <div class="text-muted small fst-italic border-top border-secondary pt-2" id="suggestionReasoning">—</div>
+            </div>
+          </div>
       </div>
       
-      <div class="pane">
-        <h2>Live Status</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>Status</h3>
-            <div class="val" id="live-status">—</div>
+        <div class="col-md-8">
+          <div class="card h-100">
+            <div class="card-header">Results</div>
+            <div class="card-body">
+              <div id="backtestResultsPane" style="display: none;">
+                <div id="backtestResults" style="max-height: 400px; overflow-y: auto;"></div>
           </div>
-          <div class="card">
-            <h3>Symbol</h3>
-            <div class="val" id="live-symbol">RELIANCE</div>
+              <div id="backtestPlaceholder" class="text-center py-5 text-muted">
+                <span class="material-icons-round fs-1 opacity-25">bar_chart</span>
+                <p>Run a backtest to see results</p>
           </div>
-          <div class="card">
-            <h3>Price</h3>
-            <div class="val" id="live-price">—</div>
+        </div>
+            </div>
+              </div>
+            </div>
           </div>
-          <div class="card">
-            <h3>US Bias</h3>
-            <div class="val" id="live-usBias">—</div>
+
+    <!-- LIVE SECTION -->
+    <div id="section-live" class="section fade-in">
+      <div class="alert bg-danger-subtle border-0 d-flex align-items-center mb-4" role="alert">
+        <span class="material-icons-round me-2 text-danger-custom">dangerous</span>
+        <div class="text-danger-custom small">Live Trading Mode - Real money will be used. Ensure stop-losses are set.</div>
+        </div>
+
+      <div class="row g-4">
+        <!-- Controls -->
+        <div class="col-lg-4">
+          <div class="card mb-4">
+            <div class="card-header">Controls</div>
+            <div class="card-body d-grid gap-3">
+              <div>
+                <label class="form-label small text-muted">Trading Symbol</label>
+                <input type="text" class="form-control" id="liveSymbol" value="RELIANCE" onchange="updateLiveSymbol()">
+      </div>
+              <button class="btn btn-outline-secondary justify-content-center" onclick="loadLiveTradeSuggestions()">Get Suggestions</button>
+              
+              <div id="liveTradeSuggestions" class="bg-primary bg-opacity-10 p-3 rounded" style="display: none;">
+                <div class="d-flex justify-content-between small mb-2">
+                  <span>Suggested Max:</span> <strong id="liveSuggestionMax" class="text-primary-custom">—</strong>
+        </div>
+                <button class="btn btn-sm btn-primary w-100 justify-content-center" onclick="applySuggestedMax()">Apply</button>
+      </div>
+      
+              <div class="d-grid gap-2 pt-3 border-top border-secondary">
+                <button class="btn btn-success justify-content-center text-white" id="btnStart" onclick="startTrading()">
+                  <span class="material-icons-round fs-5">play_arrow</span> Start
+                </button>
+                <button class="btn btn-warning justify-content-center text-dark" id="btnStop" onclick="stopTrading()" disabled>
+                  <span class="material-icons-round fs-5">stop</span> Stop
+                </button>
+                <button class="btn btn-danger justify-content-center" id="btnKill" onclick="killSwitch()">
+                  <span class="material-icons-round fs-5">cancel</span> Kill Switch
+                </button>
           </div>
-          <div class="card">
-            <h3>Sentiment</h3>
-            <div class="val" id="live-sentiment">—</div>
+              
+              <div class="text-center mt-2 small">
+                <div class="text-muted">Auto-close: <span class="text-white" id="auto-close-time-display">2:30 PM</span> IST</div>
+                <div class="text-primary-custom fw-bold" id="live-countdown">—</div>
           </div>
-          <div class="card">
-            <h3>P&L</h3>
-            <div class="val" id="live-pnl">—</div>
           </div>
-          <div class="card">
-            <h3>Trades today</h3>
-            <div class="val" id="live-tradesToday">0 / 3</div>
           </div>
-          <div class="card">
-            <h3>Max Trades/Day</h3>
-            <div class="val" id="live-maxTrades">3</div>
+          </div>
+
+        <!-- Live Data -->
+        <div class="col-lg-8">
+          <!-- Mini Metrics -->
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="metric-item py-2">
+                <div class="metric-label">Status</div>
+                <div class="metric-value fs-5" id="live-status">—</div>
+          </div>
+          </div>
+            <div class="col-6 col-md-3">
+              <div class="metric-item py-2">
+                <div class="metric-label">Price</div>
+                <div class="metric-value fs-5" id="live-price">—</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="metric-item py-2">
+                <div class="metric-label">P&L</div>
+                <div class="metric-value fs-5" id="live-pnl">—</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="metric-item py-2">
+                <div class="metric-label">Trades</div>
+                <div class="metric-value fs-5" id="live-tradesToday">0 / 3</div>
           </div>
         </div>
       </div>
       
-      <div class="pane">
-        <h2>Open Positions</h2>
-        <table>
+          <div class="card mb-4">
+            <div class="card-header">Open Positions</div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle">
           <thead>
-            <tr>
-              <th>Symbol</th>
-              <th>Qty</th>
-              <th>P&L</th>
-            </tr>
+                    <tr><th class="ps-4">Symbol</th><th>Qty</th><th>P&L</th></tr>
           </thead>
           <tbody id="live-positionsBody">
-            <tr><td colspan="3">No positions</td></tr>
+                    <tr><td colspan="3" class="ps-4 text-muted">No positions</td></tr>
           </tbody>
         </table>
+              </div>
+            </div>
       </div>
       
-      <div class="pane">
-        <h2>News Headlines</h2>
-        <ul class="news-list" id="live-newsList">
-          <li class="news-item"><div class="news-title">Loading news...</div></li>
+          <div class="card">
+            <div class="card-header">News Headlines</div>
+            <ul class="list-group list-group-flush" id="live-newsList" style="max-height: 400px; overflow-y: auto;">
+              <li class="list-group-item bg-transparent text-muted ps-4 py-3">Loading...</li>
         </ul>
+          </div>
       </div>
     </div>
   </div>
 
+  </div>
+
+<!-- Bootstrap Bundle JS -->
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
   <script>
-    const POLL_MS = 8000;
+    // Helper function to convert 24-hour time to 12-hour format with AM/PM
+    function convertTo12Hour(time24) {
+        if (!time24) return time24;
+        const [hours24, minutes] = time24.split(':');
+        let hours = parseInt(hours24);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${hours}:${minutes} ${ampm}`;
+    }
+    
+    // Update current time clock (12-hour format with AM/PM)
+    function updateClock() {
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        
+        // Convert to 12-hour format
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 should be 12
+        
+        const timeString = `${hours}:${minutes}:${seconds} ${ampm} IST`;
+        const clockEl = document.getElementById('current-time');
+        if (clockEl) clockEl.textContent = timeString;
+    }
+    
+    // Update clock every second
+    updateClock();
+    setInterval(updateClock, 1000);
+    
+    // Logic Scripts
+    const POLL_MS = 3000;
     let pollTimer = null;
     let currentMode = 'backtest';
     let currentSymbol = 'RELIANCE';
 
+    // Global pagination data
+    let allHistoryData = [];
+    let currentHistoryPage = 1;
+    const HISTORY_PER_PAGE = 5;
+
+    // Page Navigation
     function showSection(sectionName, clickedElement) {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+        
       document.getElementById('section-' + sectionName).classList.add('active');
+        if(clickedElement) clickedElement.classList.add('active');
       
-      // Find the nav-item that was clicked (could be the anchor or a child element)
-      let navItem = clickedElement;
-      if (clickedElement && !clickedElement.classList.contains('nav-item')) {
-        navItem = clickedElement.closest('.nav-item');
-      }
-      if (navItem) {
-        navItem.classList.add('active');
-      }
-      
-      // Update polling based on active section
+        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading' };
+        document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
+
       if (sectionName === 'live') {
         currentMode = 'live';
-        // Sync symbol input with current symbol
-        const liveSymbolInput = document.getElementById('liveSymbol');
-        if (liveSymbolInput) {
-          liveSymbolInput.value = currentSymbol;
-        }
-        if (!pollTimer) {
-          poll();
-          pollTimer = setInterval(poll, POLL_MS);
-        }
+            if(document.getElementById('liveSymbol')) document.getElementById('liveSymbol').value = currentSymbol;
+            if (!pollTimer) { poll(); pollTimer = setInterval(poll, POLL_MS); }
       } else {
         currentMode = 'backtest';
-        if (pollTimer) {
-          clearInterval(pollTimer);
-          pollTimer = null;
-        }
-        poll(); // One-time poll for overview/testing
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            poll();
       }
     }
 
@@ -656,331 +690,382 @@
     function updateUI(data, prefix = '') {
       const p = prefix ? prefix + '-' : '';
       
-      // Update status
+        // Status
       const statusEl = document.getElementById(p + 'status') || document.getElementById('overview-status');
       if (statusEl) {
         statusEl.textContent = data.status || '—';
-        statusEl.className = 'val status-badge ' + (
-          data.status === 'RUNNING' ? 'status-running' :
-          data.status === 'AUTO_CLOSED' ? 'status-auto' : 'status-stopped'
-        );
+            statusEl.className = 'metric-value ' + (data.status === 'RUNNING' ? 'text-success-custom' : data.status === 'AUTO_CLOSED' ? 'text-warning-custom' : 'text-muted');
       }
       
-      // Update mode
+        // Mode
       const modeEl = document.getElementById(p + 'mode') || document.getElementById('overview-mode');
       if (modeEl) modeEl.textContent = (data.mode || 'backtest').toUpperCase();
       
-      // Update values
-      const maxTrades = data.max_trades_per_day ?? 3;
-      const updates = {
-        'usBias': data.us_bias != null ? (data.us_bias === 1 ? 'Bullish' : data.us_bias === -1 ? 'Bearish' : 'Neutral') : '—',
-        'sentiment': data.sentiment_score != null ? data.sentiment_score.toFixed(2) : '—',
-        'price': data.price != null ? data.price.toFixed(2) : '—',
-        'pnl': data.pnl != null ? data.pnl.toFixed(2) : '—',
-        'tradesToday': (data.trade_count_today ?? 0) + ' / ' + maxTrades,
-        'symbol': data.symbol || 'RELIANCE'
-      };
-      
-      Object.keys(updates).forEach(key => {
-        const el = document.getElementById(p + key) || document.getElementById('overview-' + key);
-        if (el) {
-          el.textContent = updates[key];
-          if (key === 'pnl') {
-            el.className = 'val ' + (data.pnl > 0 ? 'positive' : data.pnl < 0 ? 'negative' : '');
-          }
+        // US Bias
+        let usBiasText = '—';
+        let usBiasClass = 'text-muted';
+        let usBiasIcon = '';
+        
+        // Check if US market is still open
+        if (data.us_market_status === 'open') {
+            usBiasText = 'Market Open';
+            usBiasClass = 'text-warning-custom';
+            usBiasIcon = '⏳';
+        } else if (data.us_bias != null) {
+            if (data.us_bias === 1) { usBiasText = 'Bullish'; usBiasClass = 'text-success-custom'; usBiasIcon = '↗'; }
+            else if (data.us_bias === -1) { usBiasText = 'Bearish'; usBiasClass = 'text-danger-custom'; usBiasIcon = '↘'; }
+            else { usBiasText = 'Neutral'; usBiasClass = 'text-warning-custom'; usBiasIcon = '→'; }
+            
+            if (data.us_market_pct_change != null) {
+                const sign = data.us_market_pct_change >= 0 ? '+' : '';
+                usBiasText += ` (${sign}${data.us_market_pct_change.toFixed(2)}%)`;
+            }
         }
-      });
-      
-      // Update max trades display
-      const maxTradesEl = document.getElementById(p + 'maxTrades') || document.getElementById('overview-maxTrades');
-      if (maxTradesEl) maxTradesEl.textContent = maxTrades;
-      
-      // Update countdown
-      const countdownEl = document.getElementById(p + 'countdown') || document.getElementById('live-countdown');
-      if (countdownEl) {
-        const mins = data.minutes_until_auto_close;
-        countdownEl.textContent = mins != null ? (mins + ' min left') : '—';
-      }
-      const autoCloseEl = document.getElementById(p + 'autoCloseTime') || document.getElementById('live-autoCloseTime');
-      if (autoCloseEl) autoCloseEl.textContent = data.auto_close_time || '14:30';
-      
-      // Update buttons (live section only)
+        const usBiasEls = document.querySelectorAll('[id$="usBias"]');
+        usBiasEls.forEach(el => { 
+            el.innerHTML = usBiasIcon ? `<span style="font-size: 1.2em;">${usBiasIcon}</span> ${usBiasText}` : usBiasText; 
+            el.className = 'metric-value ' + usBiasClass; 
+        });
+        
+        // US Bias Date
+        const dateEl = document.getElementById(p + 'usBiasDate') || document.getElementById('overview-usBiasDate');
+        if (dateEl) {
+            if (data.us_market_status === 'open') {
+                dateEl.textContent = 'Waiting for US close (~1:30 AM IST)';
+                dateEl.className = 'small text-warning-custom mt-1';
+            } else if (data.us_market_date) {
+                const dateStr = new Date(data.us_market_date).toLocaleDateString();
+                dateEl.textContent = `Date: ${dateStr}`;
+                dateEl.className = 'small text-muted mt-1';
+            }
+        }
+        
+        // US Futures
+        if (data.us_futures_pct_change != null) {
+            const futEl = document.getElementById(p + 'usFutures') || document.getElementById('overview-usFutures');
+            const futDateEl = document.getElementById(p + 'usFuturesDate') || document.getElementById('overview-usFuturesDate');
+            
+            if(futEl) {
+                const sign = data.us_futures_pct_change >= 0 ? '+' : '';
+                const futIcon = data.us_futures_pct_change >= 0 ? '↗' : '↘';
+                futEl.innerHTML = `<span style="font-size: 1.2em;">${futIcon}</span> ${sign}${data.us_futures_pct_change.toFixed(2)}%`;
+                futEl.className = 'metric-value ' + (data.us_futures_pct_change >= 0 ? 'text-success-custom' : 'text-danger-custom');
+            }
+            if(futDateEl && data.us_futures_date) {
+                futDateEl.textContent = `Updated: ${data.us_futures_date}`;
+            }
+        } else {
+             const futEl = document.getElementById(p + 'usFutures') || document.getElementById('overview-usFutures');
+             if(futEl) futEl.textContent = '—';
+        }
+
+        // Basic fields
+        const map = {
+            'sentiment': data.sentiment_score != null ? data.sentiment_score.toFixed(2) : '—',
+            'price': data.price != null ? data.price.toFixed(2) : '—',
+            'tradesToday': (data.trade_count_today ?? 0) + ' / ' + (data.max_trades_per_day ?? 3),
+            'maxTrades': data.max_trades_per_day ?? 3
+        };
+        for(let k in map) {
+            const el = document.getElementById(p + k) || document.getElementById('overview-' + k);
+            if(el) el.textContent = map[k];
+        }
+
+        // P&L
+        const pnlEl = document.getElementById(p + 'pnl') || document.getElementById('overview-pnl');
+        if(pnlEl) {
+            pnlEl.textContent = data.pnl != null ? data.pnl.toFixed(2) : '—';
+            pnlEl.className = 'metric-value ' + (data.pnl > 0 ? 'text-success-custom' : data.pnl < 0 ? 'text-danger-custom' : '');
+        }
+
+        // Countdown
+        const cdEl = document.getElementById(p + 'countdown') || document.getElementById('live-countdown');
+        if(cdEl) cdEl.textContent = data.minutes_until_auto_close != null ? data.minutes_until_auto_close + ' min left' : '—';
+        
+        // Auto-close time display (convert to 12-hour format)
+        const autoCloseTimeEl = document.getElementById('auto-close-time-display');
+        if (autoCloseTimeEl && data.auto_close_time) {
+            autoCloseTimeEl.textContent = convertTo12Hour(data.auto_close_time);
+        }
+
+        // Buttons
       if (prefix === 'live') {
         const running = data.trading_on === true;
         document.getElementById('btnStart').disabled = running || data.status === 'AUTO_CLOSED';
         document.getElementById('btnStop').disabled = !running;
       }
       
-      // Update positions (live section only)
+        // Live Positions
       if (prefix === 'live') {
-        const positions = data.positions || [];
         const tbody = document.getElementById('live-positionsBody');
-        if (positions.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="3">No positions</td></tr>';
-        } else {
-          tbody.innerHTML = positions.map(p =>
-            '<tr><td>' + (p.symbol || '—') + '</td><td>' + (p.quantity ?? p.qty ?? '—') + '</td><td>' + (p.pnl ?? p.unrealized ?? '—') + '</td></tr>'
+            if(data.positions && data.positions.length > 0) {
+                tbody.innerHTML = data.positions.map(p => 
+                    `<tr><td class="ps-4">${p.symbol}</td><td>${p.quantity}</td><td class="${(p.pnl >= 0 ? 'text-success-custom' : 'text-danger-custom')}">${p.pnl}</td></tr>`
           ).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="3" class="ps-4 text-muted">No positions</td></tr>';
         }
       }
       
-      // Update news
+        // News with Links
       const newsList = document.getElementById(p + 'newsList') || document.getElementById('overview-newsList');
-      if (newsList) {
-        const headlines = data.news_headlines || [];
-        if (headlines.length === 0) {
-          newsList.innerHTML = '<li class="news-item"><div class="news-title">No news available</div></li>';
-        } else {
-          newsList.innerHTML = headlines.map(h =>
-            '<li class="news-item"><div class="news-title">' + (h.title || '—') + '</div><div class="news-source">' + (h.source || 'Unknown') + '</div></li>'
+        if(newsList && data.news_headlines) {
+            if(data.news_headlines.length === 0) newsList.innerHTML = '<li class="list-group-item bg-transparent text-muted text-center py-3">No news available</li>';
+            else newsList.innerHTML = data.news_headlines.map(h => 
+                `<li class="list-group-item bg-transparent text-muted border-bottom border-secondary border-opacity-10 py-3">
+                    <a href="${h.url || '#'}" target="_blank" class="fw-bold text-light mb-1 text-decoration-none d-block hover-primary">${h.title}</a>
+                    <div class="small d-flex justify-content-between">
+                        <span>${h.source || 'Unknown'}</span>
+                        <span>${h.publishedAt ? new Date(h.publishedAt).toLocaleDateString() : ''}</span>
+                    </div>
+                </li>`
           ).join('');
         }
-      }
-      
-      // Update market prediction (overview only)
-      if (prefix === 'overview' || !prefix) {
-        const prediction = data.market_prediction || 'NEUTRAL';
-        const confidence = data.prediction_confidence || 50;
-        const factors = data.prediction_factors || [];
-        
-        const predEl = document.getElementById('market-prediction');
-        if (predEl) {
-          predEl.textContent = prediction;
-          predEl.className = 'prediction-large ' + 
-            (prediction === 'BULLISH' ? 'prediction-bullish' : 
-             prediction === 'BEARISH' ? 'prediction-bearish' : 'prediction-neutral');
+
+        // Prediction (Overview only)
+        if(prefix === 'overview' || !prefix) {
+            const pred = data.market_prediction || 'NEUTRAL';
+            const predEl = document.getElementById('market-prediction');
+            if(predEl) {
+                // Handle WAITING status
+                if(pred === 'WAITING') {
+                    predEl.textContent = '⏳ WAITING';
+                    predEl.className = 'fs-1 fw-bold text-warning-custom';
+                } else {
+                    predEl.textContent = pred;
+                }
+                predEl.className = 'prediction-value ' + (pred === 'BULLISH' ? 'text-success-custom' : pred === 'BEARISH' ? 'text-danger-custom' : 'text-muted');
+            }
+            // Only show confidence if prediction is not WAITING
+            if(document.getElementById('prediction-confidence')) {
+                if(pred === 'WAITING' || data.prediction_confidence == null) {
+                    document.getElementById('prediction-confidence').textContent = 'Confidence: —';
+                } else {
+                    document.getElementById('prediction-confidence').textContent = 'Confidence: ' + data.prediction_confidence + '%';
+                }
+            }
+            
+            // Factors
+            const factorsEl = document.getElementById('prediction-factors');
+            const icon = document.getElementById('prediction-reasoning-icon');
+            
+            if(data.prediction_factors && data.prediction_factors.length > 0) {
+                factorsEl.innerHTML = '<div class="fw-bold mb-2">Analysis Factors:</div>' + data.prediction_factors.map(f => `<div class="mb-1">• ${f}</div>`).join('');
+                if(icon) {
+                    icon.style.display = 'inline-flex';
+                    const tooltipContent = '<strong>Prediction Basis:</strong><br>' + data.prediction_factors.map(f => '• ' + f).join('<br>');
+                    // Update Bootstrap tooltip
+                    icon.setAttribute('data-bs-title', tooltipContent);
+                    const tooltip = bootstrap.Tooltip.getInstance(icon);
+                    if (tooltip) { tooltip.setContent({ '.tooltip-inner': tooltipContent }); }
+                    else { new bootstrap.Tooltip(icon); }
+                }
+            } else {
+                factorsEl.innerHTML = '<div class="text-muted fst-italic">No factors available</div>';
+                if(icon) icon.style.display = 'none';
+            }
+
+            // Prediction vs Actual
+            const predIcon = pred === 'WAITING' ? '⏳' : pred === 'BULLISH' ? '↗' : pred === 'BEARISH' ? '↘' : '→';
+            document.getElementById('predicted-direction').innerHTML = `<span style="font-size: 1.5rem;">${predIcon}</span> ${pred}`;
+            document.getElementById('predicted-direction').className = 'fs-3 fw-normal d-flex align-items-center justify-content-center gap-2 ' + (pred === 'WAITING' ? 'text-warning-custom' : pred === 'BULLISH' ? 'text-success-custom' : pred === 'BEARISH' ? 'text-danger-custom' : 'text-muted');
+            
+            // Actual - only show if available and not null
+            const actual = (data.actual_direction && data.actual_direction !== 'None' && data.actual_direction !== 'null') ? data.actual_direction : '—';
+            const actualIcon = actual === 'BULLISH' ? '↗' : actual === 'BEARISH' ? '↘' : actual === '—' ? '' : '→';
+            document.getElementById('actual-direction').innerHTML = actualIcon ? `<span style="font-size: 1.5rem;">${actualIcon}</span> ${actual}` : actual;
+            document.getElementById('actual-direction').className = 'fs-3 fw-normal d-flex align-items-center justify-content-center gap-2 ' + (actual === 'BULLISH' ? 'text-success-custom' : actual === 'BEARISH' ? 'text-danger-custom' : 'text-muted');
+            
+            const resEl = document.getElementById('prediction-result');
+            // Only show result badge if both prediction and actual are available
+            if(pred === 'WAITING') {
+                resEl.textContent = 'Waiting for US market close...';
+                resEl.className = 'badge bg-warning-subtle p-2 fw-normal';
+            } else if(!data.actual_direction || data.actual_direction === '—') {
+                resEl.textContent = 'Waiting for market close...';
+                resEl.className = 'badge bg-secondary p-2 fw-normal';
+            } else if(data.prediction_accuracy === 'CORRECT') {
+                resEl.textContent = 'Correct Prediction';
+                resEl.className = 'badge bg-success-subtle p-2 fw-normal';
+            } else if(data.prediction_accuracy === 'INCORRECT') {
+                resEl.textContent = 'Incorrect Prediction';
+                resEl.className = 'badge bg-danger-subtle p-2 fw-normal';
+            } else if(data.prediction_accuracy === 'PARTIAL') {
+                resEl.textContent = 'Partial Match';
+                resEl.className = 'badge bg-warning-subtle p-2 fw-normal';
+            } else {
+                resEl.textContent = 'Calculating...';
+                resEl.className = 'badge bg-secondary p-2 fw-normal';
+            }
+
+            // Price change - only show if market closed and actual is available
+            const priceChange = (actual !== '—' && data.price_change_pct) ? data.price_change_pct + '%' : '—';
+            document.getElementById('price-change-pct').textContent = priceChange;
+            document.getElementById('overall-accuracy').textContent = (data.overall_accuracy || 0) + '%';
         }
-        
-        const confEl = document.getElementById('prediction-confidence');
-        if (confEl) confEl.textContent = 'Confidence: ' + confidence + '%';
-        
-        const factorsEl = document.getElementById('prediction-factors');
-        if (factorsEl && factors.length > 0) {
-          factorsEl.innerHTML = '<ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">' +
-            factors.map(f => '<li>' + f + '</li>').join('') + '</ul>';
-        }
-        
-        // Update prediction vs actual
-        const predictedDir = data.market_prediction || '—';
-        const actualDir = data.actual_direction || '—';
-        const accuracy = data.prediction_accuracy || '—';
-        const priceChange = data.price_change_pct || 0;
-        const overallAcc = data.overall_accuracy || 0;
-        
-        const predDirEl = document.getElementById('predicted-direction');
-        if (predDirEl) {
-          predDirEl.textContent = predictedDir;
-          predDirEl.style.color = predictedDir === 'BULLISH' ? 'var(--success)' : 
-                                   predictedDir === 'BEARISH' ? 'var(--danger)' : 'var(--muted)';
-        }
-        
-        const actualDirEl = document.getElementById('actual-direction');
-        if (actualDirEl) {
-          actualDirEl.textContent = actualDir;
-          actualDirEl.style.color = actualDir === 'BULLISH' ? 'var(--success)' : 
-                                     actualDir === 'BEARISH' ? 'var(--danger)' : 'var(--muted)';
-        }
-        
-        const resultEl = document.getElementById('prediction-result');
-        if (resultEl) {
-          if (accuracy === 'CORRECT') {
-            resultEl.textContent = '✓ Correct Prediction';
-            resultEl.className = 'accuracy-badge accuracy-correct';
-          } else if (accuracy === 'PARTIAL') {
-            resultEl.textContent = '○ Partial Match';
-            resultEl.className = 'accuracy-badge accuracy-partial';
-          } else if (accuracy === 'INCORRECT') {
-            resultEl.textContent = '✗ Incorrect Prediction';
-            resultEl.className = 'accuracy-badge accuracy-incorrect';
-          } else {
-            resultEl.textContent = 'Waiting for market close...';
-            resultEl.className = 'accuracy-badge';
-            resultEl.style.background = 'rgba(139, 148, 158, 0.2)';
-            resultEl.style.color = 'var(--muted)';
-          }
-        }
-        
-        const priceChangeEl = document.getElementById('price-change-pct');
-        if (priceChangeEl) {
-          priceChangeEl.textContent = priceChange > 0 ? '+' + priceChange.toFixed(2) : priceChange.toFixed(2);
-          priceChangeEl.style.color = priceChange > 0 ? 'var(--success)' : priceChange < 0 ? 'var(--danger)' : 'var(--muted)';
-        }
-        
-        const overallAccEl = document.getElementById('overall-accuracy');
-        if (overallAccEl) overallAccEl.textContent = overallAcc.toFixed(1);
-      }
     }
 
     function poll() {
-      const symbol = currentSymbol;
-      const mode = currentMode;
-      api(`/api/live?symbol=${symbol}&mode=${mode}`)
-        .then(r => r.json())
-        .then(data => {
-          // Update all sections
-          updateUI(data, 'overview');
-          updateUI(data, 'test');
-          updateUI(data, 'live');
-        })
-        .catch(() => {});
+        api(`/api/live?symbol=${currentSymbol}&mode=${currentMode}`).then(r => r.json()).then(d => {
+            updateUI(d, 'overview');
+            updateUI(d, 'testing');
+            updateUI(d, 'live');
+        });
     }
 
-    function startTrading() {
-      api('/api/start', { method: 'POST' })
-        .then(r => r.json())
-        .then(d => { 
-          if (d.ok) {
-            poll();
-            if (!pollTimer) {
-              pollTimer = setInterval(poll, POLL_MS);
-            }
-          }
-        })
-        .catch(() => {});
-    }
-
-    function stopTrading() {
-      api('/api/stop', { method: 'POST' }).then(() => {
-        poll();
-      });
-    }
-
-    function killSwitch() {
-      if (!confirm('Close ALL open positions immediately? This cannot be undone!')) return;
-      api('/api/kill', { method: 'POST' })
-        .then(r => r.json())
-        .then(() => { stopTrading(); poll(); });
-    }
-
-    function updateLiveSymbol() {
-      const symbol = document.getElementById('liveSymbol').value || 'RELIANCE';
-      currentSymbol = symbol.toUpperCase();
-      // Update display immediately
-      const symbolEl = document.getElementById('live-symbol');
-      if (symbolEl) symbolEl.textContent = currentSymbol;
-      // Refresh data
-      poll();
-    }
-
-    function loadLiveTradeSuggestions() {
-      const symbol = document.getElementById('liveSymbol').value || 'RELIANCE';
-      const suggestionsDiv = document.getElementById('liveTradeSuggestions');
-      suggestionsDiv.style.display = 'none';
-      
-      api(`/api/trade-suggestions?symbol=${symbol}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.ok) {
-            document.getElementById('liveSuggestionSymbol').textContent = data.symbol;
-            document.getElementById('liveSuggestionMin').textContent = data.min_trades;
-            document.getElementById('liveSuggestionMax').textContent = data.suggested_max;
-            document.getElementById('liveSuggestionCurrent').textContent = data.current_max;
-            document.getElementById('liveSuggestionReasoning').textContent = data.reasoning;
-            
-            const factors = data.factors || {};
-            document.getElementById('liveFactorVolatility').textContent = factors.volatility_pct || '—';
-            document.getElementById('liveFactorRange').textContent = factors.avg_daily_range_pct || '—';
-            document.getElementById('liveFactorVolume').textContent = factors.volume_score || '—';
-            
-            // Store suggested max for apply function
-            window.suggestedMaxTrades = data.suggested_max;
-            
-            suggestionsDiv.style.display = 'block';
-          } else {
-            alert('Could not load trade suggestions: ' + (data.error || 'Unknown error'));
-          }
-        })
-        .catch(err => {
-          alert('Error loading trade suggestions: ' + err.message);
+    function startTrading() { api('/api/start', {method:'POST'}).then(r=>r.json()).then(d=>{ if(d.ok) { poll(); if(!pollTimer) pollTimer=setInterval(poll, POLL_MS); } }); }
+    function stopTrading() { api('/api/stop', {method:'POST'}).then(()=>{ poll(); }); }
+    function killSwitch() { if(confirm('Close all positions?')) api('/api/kill', {method:'POST'}).then(()=>{ stopTrading(); }); }
+    function updateLiveSymbol() { currentSymbol = document.getElementById('liveSymbol').value || 'RELIANCE'; poll(); }
+    
+    // Trade Suggestions logic
+    function loadTradeSuggestions() { return _loadSuggestions('backtestSymbol', 'tradeSuggestions', 'suggestion'); }
+    function loadLiveTradeSuggestions() { return _loadSuggestions('liveSymbol', 'liveTradeSuggestions', 'liveSuggestion'); }
+    
+    function _loadSuggestions(inpId, divId, pfx) {
+        const sym = document.getElementById(inpId).value;
+        document.getElementById(divId).style.display = 'none';
+        api(`/api/trade-suggestions?symbol=${sym}`).then(r=>r.json()).then(d=>{
+            if(d.ok) {
+                document.getElementById(divId).style.display = 'block';
+                document.getElementById(pfx+'Max').textContent = d.suggested_max;
+                if(pfx==='suggestion') {
+                    document.getElementById('suggestionMin').textContent = d.min_trades;
+                    document.getElementById('suggestionCurrent').textContent = d.current_max;
+                    document.getElementById('suggestionReasoning').textContent = d.reasoning;
+                }
+                window.suggestedMaxTrades = d.suggested_max;
+            } else alert(d.error);
         });
     }
 
     function applySuggestedMax() {
-      if (!window.suggestedMaxTrades) {
-        alert('Please load trade suggestions first');
-        return;
-      }
-      const maxTrades = window.suggestedMaxTrades;
-      if (confirm(`Apply suggested max trades of ${maxTrades} to your settings?`)) {
-        // Update the settings form if it exists, or show instructions
-        alert(`Suggested max: ${maxTrades}\n\nGo to Settings → Max Trades Per Day → Enter ${maxTrades} → Save`);
-      }
-    }
-
-    function loadTradeSuggestions() {
-      const symbol = document.getElementById('backtestSymbol').value || 'RELIANCE';
-      const suggestionsDiv = document.getElementById('tradeSuggestions');
-      suggestionsDiv.style.display = 'none';
-      
-      api(`/api/trade-suggestions?symbol=${symbol}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.ok) {
-            document.getElementById('suggestionSymbol').textContent = data.symbol;
-            document.getElementById('suggestionMin').textContent = data.min_trades;
-            document.getElementById('suggestionMax').textContent = data.suggested_max;
-            document.getElementById('suggestionCurrent').textContent = data.current_max;
-            document.getElementById('suggestionReasoning').textContent = data.reasoning;
-            
-            const factors = data.factors || {};
-            document.getElementById('factorVolatility').textContent = factors.volatility_pct || '—';
-            document.getElementById('factorRange').textContent = factors.avg_daily_range_pct || '—';
-            document.getElementById('factorVolume').textContent = factors.volume_score || '—';
-            
-            suggestionsDiv.style.display = 'block';
-          } else {
-            alert('Could not load trade suggestions: ' + (data.error || 'Unknown error'));
-          }
-        })
-        .catch(err => {
-          alert('Error loading trade suggestions: ' + err.message);
-        });
+        if(!window.suggestedMaxTrades) return;
+        if(confirm(`Apply max trades: ${window.suggestedMaxTrades}?`)) alert(`Set Max Trades to ${window.suggestedMaxTrades} in settings.`);
     }
 
     function runBacktest() {
-      const symbol = document.getElementById('backtestSymbol').value || 'RELIANCE';
-      const days = parseInt(document.getElementById('backtestDays').value) || 60;
-      currentSymbol = symbol;
-      
-      const resultsPane = document.getElementById('backtestResultsPane');
-      const resultsDiv = document.getElementById('backtestResults');
-      resultsPane.style.display = 'block';
-      resultsDiv.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--muted);">Running backtest...</div>';
-      
-      api('/api/backtest', {
-        method: 'POST',
-        body: JSON.stringify({ symbol, days })
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.ok) {
-            const results = data.results || [];
-            if (results.length === 0) {
-              resultsDiv.innerHTML = '<div style="padding: 1rem; color: var(--muted);">No backtest results found.</div>';
-            } else {
-              resultsDiv.innerHTML = '<div style="padding: 0.5rem; font-weight: 600; border-bottom: 1px solid var(--border);">Total Trades: ' + data.count + '</div>' +
-                results.map(r => 
-                  '<div class="backtest-result-item">' +
-                  '<strong>' + (r.symbol || 'N/A') + '</strong> - ' +
-                  (r.action || 'N/A') + ' @ ' + (r.price || 'N/A') + 
-                  (r.pnl ? ' (P&L: ' + r.pnl + ')' : '') +
-                  '</div>'
+        const s = document.getElementById('backtestSymbol').value;
+        const d = document.getElementById('backtestDays').value;
+        document.getElementById('backtestResultsPane').style.display='block';
+        document.getElementById('backtestResults').innerHTML = 'Running...';
+        api('/api/backtest', {method:'POST', body:JSON.stringify({symbol:s, days:d})}).then(r=>r.json()).then(res=>{
+            if(res.ok && res.results.length) {
+                document.getElementById('backtestResults').innerHTML = res.results.map(r=>
+                    `<div class="border-bottom border-secondary border-opacity-10 p-2 fs-7">
+                        <strong class="text-light">${r.symbol}</strong> ${r.action} @ ${r.price} 
+                        <span class="${parseFloat(r.pnl)>=0?'text-success-custom':'text-danger-custom'}">(P&L: ${r.pnl})</span>
+                    </div>`
                 ).join('');
-            }
-          } else {
-            resultsDiv.innerHTML = '<div style="padding: 1rem; color: var(--danger);">Error: ' + (data.error || 'Unknown error') + '</div>';
-          }
-        })
-        .catch(err => {
-          resultsDiv.innerHTML = '<div style="padding: 1rem; color: var(--danger);">Error running backtest: ' + err.message + '</div>';
+            } else document.getElementById('backtestResults').textContent = 'No trades found.';
         });
-      
-      // Update test section with current data
-      poll();
     }
 
-    // Initial poll
+    // Prediction History & Pagination
+    function loadPredictionHistory() {
+        const histDiv = document.getElementById('prediction-history');
+        const loading = document.getElementById('history-loading');
+        
+        histDiv.style.display='none'; loading.classList.remove('d-none');
+        document.getElementById('excel-download-btn').style.display = 'none';
+        
+        api(`/api/prediction-history?symbol=${currentSymbol}&limit=30`).then(r=>r.json()).then(d=>{
+            loading.classList.add('d-none'); histDiv.style.display='block';
+            if(d.ok && d.history.length) {
+                allHistoryData = d.history;
+                currentHistoryPage = 1;
+                renderPredictionHistoryTable();
+                document.getElementById('excel-download-btn').style.display = 'inline-block';
+          } else {
+                allHistoryData = [];
+                renderPredictionHistoryTable();
+            }
+        });
+    }
+
+    function renderPredictionHistoryTable() {
+        const body = document.getElementById('prediction-history-body');
+        const info = document.getElementById('pagination-info');
+        const prevBtn = document.getElementById('prev-page-btn');
+        const nextBtn = document.getElementById('next-page-btn');
+
+        if (allHistoryData.length === 0) {
+            body.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No history</td></tr>';
+            info.textContent = '0-0 of 0';
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+        return;
+        }
+
+        const start = (currentHistoryPage - 1) * HISTORY_PER_PAGE;
+        const end = Math.min(start + HISTORY_PER_PAGE, allHistoryData.length);
+        const pageData = allHistoryData.slice(start, end);
+
+        body.innerHTML = pageData.map(h => {
+            // Format USA Bias with color coding
+            const usaBiasVal = h.usa_bias_value || 0;
+            const usaBiasClass = usaBiasVal > 0 ? 'text-success-custom' : usaBiasVal < 0 ? 'text-danger-custom' : 'text-muted';
+            const usaBiasDisplay = h.usa_bias || 'N/A';
+            
+            // Add icons for prediction and actual
+            const predIcon = h.prediction==='BULLISH'?'↗':h.prediction==='BEARISH'?'↘':'→';
+            const actualIcon = h.actual==='BULLISH'?'↗':h.actual==='BEARISH'?'↘':h.actual==='-'?'':'→';
+            
+            // Format analysis - truncate if too long and add tooltip
+            const analysis = h.analysis || 'N/A';
+            const analysisShort = analysis.length > 30 ? analysis.substring(0, 30) + '...' : analysis;
+            
+            return `<tr>
+                <td>${h.date}</td>
+                <td class="${h.prediction==='BULLISH'?'text-success-custom':h.prediction==='BEARISH'?'text-danger-custom':''}">${predIcon} ${h.prediction}</td>
+                <td class="${usaBiasClass}">${usaBiasDisplay}</td>
+                <td class="${h.actual==='BULLISH'?'text-success-custom':h.actual==='BEARISH'?'text-danger-custom':''}">${actualIcon} ${h.actual||'-'}</td>
+                <td>${h.accuracy||'-'}</td>
+                <td>${h.price_change_pct}%</td>
+                <td class="small" title="${analysis}">${analysisShort}</td>
+            </tr>`;
+        }).join('');
+
+        info.textContent = `${start + 1}-${end} of ${allHistoryData.length}`;
+        prevBtn.disabled = currentHistoryPage === 1;
+        nextBtn.disabled = end >= allHistoryData.length;
+    }
+
+    function changePredictionHistoryPage(delta) {
+        currentHistoryPage += delta;
+        renderPredictionHistoryTable();
+    }
+    
+    function downloadPredictionHistoryExcel() {
+        // Simple CSV export
+        if (!allHistoryData.length) return;
+        
+        let csv = 'Date,Prediction,USA Bias,Actual,Accuracy,Price Change %,Analysis,Confidence,Factors\n';
+        allHistoryData.forEach(row => {
+            const factors = row.factors ? row.factors.join('; ').replace(/,/g, '') : '';
+            const usaBias = row.usa_bias || 'N/A';
+            const analysis = row.analysis || 'N/A';
+            csv += `${row.date},${row.prediction},"${usaBias}",${row.actual||''},${row.accuracy||''},${row.price_change_pct},"${analysis}",${row.confidence},"${factors}"\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('hidden', '');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `prediction_history_${currentSymbol}.csv`);
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // Init
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+
     poll();
+    setTimeout(() => { if(document.getElementById('section-overview').classList.contains('active')) loadPredictionHistory(); }, 1500);
+
   </script>
 </body>
 </html>
