@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IND-Quant-Alpha — Settings</title>
+  <title>Kite Quant — Settings</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -109,30 +109,34 @@
     <h1>Settings</h1>
     <div>
       <a href="{{ url_for('dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('logout') }}">Log out</a>
     </div>
   </header>
   <div class="main">
     <div id="msg"></div>
     <form id="settingsForm">
       <div class="section">
-        <h2>INDmoney / INDstocks API</h2>
+        <h2>Zerodha Kite Connect API</h2>
         <div class="form-group">
-          <label for="IND_API_KEY">IND API Key</label>
-          <input type="password" id="IND_API_KEY" name="IND_API_KEY" value="{{ config.get('IND_API_KEY', '') }}" placeholder="Leave blank to keep current">
-          <div class="hint">From INDstocks developer dashboard; whitelist your Static IP.</div>
+          <label for="ZERODHA_API_KEY">Zerodha API Key</label>
+          <input type="password" id="ZERODHA_API_KEY" name="ZERODHA_API_KEY" value="{{ config.get('ZERODHA_API_KEY', '') }}" placeholder="Leave blank to keep current">
+          <div class="hint">Get from Zerodha Kite Connect developer console: <a href="https://kite.trade/apps/" target="_blank" style="color: var(--accent);">kite.trade/apps</a></div>
         </div>
         <div class="form-group">
-          <label for="IND_SECRET">IND Secret</label>
-          <input type="password" id="IND_SECRET" name="IND_SECRET" value="{{ config.get('IND_SECRET', '') }}" placeholder="Leave blank to keep current">
+          <label for="ZERODHA_API_SECRET">Zerodha API Secret</label>
+          <input type="password" id="ZERODHA_API_SECRET" name="ZERODHA_API_SECRET" value="{{ config.get('ZERODHA_API_SECRET', '') }}" placeholder="Leave blank to keep current">
+          <div class="hint">API Secret from Kite Connect app settings.</div>
         </div>
         <div class="form-group">
-          <label for="IND_BASE_URL">IND Base URL</label>
-          <input type="text" id="IND_BASE_URL" name="IND_BASE_URL" value="{{ config.get('IND_BASE_URL', 'https://api.indstocks.com') }}" placeholder="https://api.indstocks.com">
+          <label for="ZERODHA_ACCESS_TOKEN">Zerodha Access Token</label>
+          <input type="password" id="ZERODHA_ACCESS_TOKEN" name="ZERODHA_ACCESS_TOKEN" value="{{ config.get('ZERODHA_ACCESS_TOKEN', '') }}" placeholder="Leave blank to keep current">
+          <div class="hint">Access token obtained after login. Generate using Kite Connect login flow. Token is valid until logout.</div>
         </div>
-        <div class="form-group">
-          <label for="STATIC_IP">Static IP</label>
-          <input type="text" id="STATIC_IP" name="STATIC_IP" value="{{ config.get('STATIC_IP', '') }}" placeholder="Whitelisted IP for API">
+        <div class="info-box" style="margin-top: 1rem; padding: 0.75rem; background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px; font-size: 0.875rem;">
+          <strong>How to get Access Token:</strong><br>
+          1. Create app at <a href="https://kite.trade/apps/" target="_blank" style="color: var(--accent);">kite.trade/apps</a><br>
+          2. Use API Key & Secret to login via Kite Connect<br>
+          3. After successful login, you'll receive an access token<br>
+          4. Paste the access token here. It remains valid until you logout.
         </div>
       </div>
       <div class="section">
@@ -161,6 +165,11 @@
           <input type="text" id="AUTO_CLOSE_TIME" name="AUTO_CLOSE_TIME" value="{{ config.get('AUTO_CLOSE_TIME', '14:30') }}" placeholder="14:30">
           <div class="hint">Trading stops at this time (IST).</div>
         </div>
+        <div class="form-group">
+          <label for="MAX_TRADES_PER_DAY">Max Trades Per Day</label>
+          <input type="number" id="MAX_TRADES_PER_DAY" name="MAX_TRADES_PER_DAY" value="{{ config.get('MAX_TRADES_PER_DAY', '3') }}" placeholder="3" min="1" max="20">
+          <div class="hint">Maximum number of trades allowed per day (1-20). Use trade suggestions in dashboard for optimal value.</div>
+        </div>
       </div>
       <button type="submit" class="btn">Save settings</button>
     </form>
@@ -182,8 +191,8 @@
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       const data = {};
-      ['IND_API_KEY', 'IND_SECRET', 'IND_BASE_URL', 'STATIC_IP', 'NEWS_API_KEY',
-       'FLASK_SECRET_KEY', 'FLASK_ENV', 'TZ', 'AUTO_CLOSE_TIME'].forEach(function(k) {
+      ['ZERODHA_API_KEY', 'ZERODHA_API_SECRET', 'ZERODHA_ACCESS_TOKEN', 'NEWS_API_KEY',
+       'FLASK_SECRET_KEY', 'FLASK_ENV', 'TZ', 'AUTO_CLOSE_TIME', 'MAX_TRADES_PER_DAY'].forEach(function(k) {
         const el = document.getElementById(k);
         if (el && el.value !== null && el.value !== undefined) {
           const v = String(el.value).trim();

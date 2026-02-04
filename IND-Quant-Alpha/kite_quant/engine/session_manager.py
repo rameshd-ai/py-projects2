@@ -1,11 +1,13 @@
 """
-Trading on/off, 2:30 PM IST auto-close, trade count (max 3/day).
+Trading on/off, 2:30 PM IST auto-close, trade count (configurable max/day).
 """
 from __future__ import annotations
 
 import os
 from datetime import datetime, time
 from typing import Any
+
+from .config_store import load_config
 
 # Use Asia/Kolkata for 2:30 PM IST
 TZ_NAME = os.getenv("TZ", "Asia/Kolkata")
@@ -20,8 +22,17 @@ def _parse_auto_close_time() -> time:
         return time(14, 30)
 
 
+def _get_max_trades_per_day() -> int:
+    """Get max trades per day from config, default to 3."""
+    try:
+        cfg = load_config()
+        max_trades = cfg.get("MAX_TRADES_PER_DAY", "3")
+        return int(max_trades) if max_trades else 3
+    except Exception:
+        return 3
+
+
 AUTO_CLOSE_TIME = _parse_auto_close_time()
-MAX_TRADES_PER_DAY = 3
 STOP_LOSS_PCT = 1.5
 TAKE_PROFIT_PCT = 3.0
 
@@ -54,14 +65,20 @@ class SessionManager:
             self._last_reset_date = today
 
     def can_trade(self) -> bool:
-        """Max 3 trades per day."""
+        """Check if can trade based on configurable max trades per day."""
         self._reset_trade_count_if_new_day()
-        return self._trade_count_today < MAX_TRADES_PER_DAY
+        max_trades = _get_max_trades_per_day()
+        return self._trade_count_today < max_trades
 
     def record_trade(self) -> None:
         self._reset_trade_count_if_new_day()
-        if self._trade_count_today < MAX_TRADES_PER_DAY:
+        max_trades = _get_max_trades_per_day()
+        if self._trade_count_today < max_trades:
             self._trade_count_today += 1
+    
+    def get_max_trades_per_day(self) -> int:
+        """Get current max trades per day setting."""
+        return _get_max_trades_per_day()
 
     def trade_count_today(self) -> int:
         self._reset_trade_count_if_new_day()

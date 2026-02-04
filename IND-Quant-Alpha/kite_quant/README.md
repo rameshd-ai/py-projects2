@@ -1,6 +1,6 @@
-# IND-Quant-Alpha (ind_quant)
+# Kite Quant
 
-High-conviction intraday automation engine: INDmoney API + Python.
+High-conviction intraday automation engine: Zerodha Kite Connect + Python.
 
 ## Setup
 
@@ -27,7 +27,7 @@ High-conviction intraday automation engine: INDmoney API + Python.
 All API keys and app config can be set from the app:
 
 - **Dashboard** → **Settings**
-- Set: IND API Key, IND Secret, IND Base URL, Static IP, News API Key, Flask Secret Key, Flask Env, Timezone, Auto-close time (HH:MM)
+- Set: Zerodha API Key, Zerodha API Secret, Zerodha Access Token, News API Key, Flask Secret Key, Flask Env, Timezone, Auto-close time (HH:MM)
 - Values are stored in `config.json` and override `.env`; leave a field blank to keep the current value.
 
 ## Features
@@ -39,6 +39,6 @@ All API keys and app config can be set from the app:
 - **Backtest** — Historical run → `results.csv`; no real orders.
 - **Guards** — Max 3 trades/day, 1.5% SL, 3% TP.
 
-## INDstocks API
+## Zerodha Kite Connect API
 
-Use [INDstocks API docs](https://api-docs.indstocks.com) and whitelist your Static IP. Endpoints in `engine/indstocks_client.py` are stubs; adjust paths to match the official API.
+Use [Zerodha Kite Connect](https://kite.trade/) for live trading. Get API credentials from [Kite Connect Apps](https://kite.trade/apps/). The system uses `kiteconnect` Python library for all trading operations.

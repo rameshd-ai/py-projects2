@@ -8,22 +8,22 @@ import os
 from pathlib import Path
 
 CONFIG_KEYS = [
-    "IND_API_KEY",
-    "IND_SECRET",
-    "IND_BASE_URL",
-    "STATIC_IP",
+    "ZERODHA_API_KEY",
+    "ZERODHA_API_SECRET",
+    "ZERODHA_ACCESS_TOKEN",
     "NEWS_API_KEY",
     "FLASK_ENV",
     "FLASK_SECRET_KEY",
     "TZ",
     "AUTO_CLOSE_TIME",
+    "MAX_TRADES_PER_DAY",
 ]
 
 DEFAULTS = {
-    "IND_BASE_URL": "https://api.indstocks.com",
     "FLASK_ENV": "development",
     "TZ": "Asia/Kolkata",
     "AUTO_CLOSE_TIME": "14:30",
+    "MAX_TRADES_PER_DAY": "3",
 }
 
 

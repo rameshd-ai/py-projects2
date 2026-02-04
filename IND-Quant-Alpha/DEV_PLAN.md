@@ -1,6 +1,6 @@
-# IND-Quant-Alpha — Final Development Plan
+# Kite Quant — Final Development Plan
 
-**High-Conviction Intraday Automation Engine (INDmoney API + Python)**
+**High-Conviction Intraday Automation Engine (Zerodha Kite Connect + Python)**
 
 ---
 

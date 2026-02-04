@@ -120,3 +120,83 @@ def consensus_signal(
     if tech_sig == Signal.SELL:
         return Signal.SELL
     return Signal.HOLD
+
+
+def suggest_min_trades(df: pd.DataFrame, symbol: str) -> dict[str, Any]:
+    """
+    Suggest minimum number of trades per day based on stock analysis.
+    Factors: volatility, average daily range, volume, price level.
+    Returns: {min_trades: int, suggested_max: int, reasoning: str, factors: dict}
+    """
+    if df.empty or len(df) < 20:
+        return {
+            "min_trades": 1,
+            "suggested_max": 3,
+            "reasoning": "Insufficient data for analysis",
+            "factors": {}
+        }
+    
+    close = df["Close"] if "Close" in df.columns else df["close"]
+    high = df["High"] if "High" in df.columns else df["high"]
+    low = df["Low"] if "Low" in df.columns else df["low"]
+    volume = df["Volume"] if "Volume" in df.columns else df.get("volume", pd.Series([0] * len(df)))
+    
+    close = pd.Series(close).astype(float)
+    high = pd.Series(high).astype(float)
+    low = pd.Series(low).astype(float)
+    volume = pd.Series(volume).astype(float)
+    
+    # Calculate volatility (standard deviation of returns)
+    returns = close.pct_change().dropna()
+    volatility = returns.std() * 100  # As percentage
+    
+    # Average daily range (High - Low) as percentage
+    daily_range = ((high - low) / close) * 100
+    avg_daily_range = daily_range.mean()
+    
+    # Average volume (normalized)
+    avg_volume = volume.mean()
+    volume_std = volume.std()
+    volume_score = min(100, (avg_volume / (volume_std + 1)) * 10) if volume_std > 0 else 50
+    
+    # Price level factor (higher price = more stable typically)
+    current_price = float(close.iloc[-1])
+    price_factor = 1.0 if current_price > 1000 else (1.2 if current_price > 500 else 1.5)
+    
+    # Calculate score (0-100)
+    volatility_score = min(100, volatility * 20)  # Higher volatility = more opportunities
+    range_score = min(100, avg_daily_range * 5)  # Higher range = more opportunities
+    
+    # Combined score
+    combined_score = (volatility_score * 0.4 + range_score * 0.3 + min(volume_score, 50) * 0.3) * price_factor
+    
+    # Suggest min trades (1-5) and max trades (3-10)
+    if combined_score > 70:
+        min_trades = 3
+        suggested_max = 8
+        reasoning = "High volatility and good range - multiple trading opportunities expected"
+    elif combined_score > 50:
+        min_trades = 2
+        suggested_max = 5
+        reasoning = "Moderate volatility - decent trading opportunities"
+    elif combined_score > 30:
+        min_trades = 1
+        suggested_max = 4
+        reasoning = "Lower volatility - fewer but quality opportunities"
+    else:
+        min_trades = 1
+        suggested_max = 3
+        reasoning = "Low volatility - conservative approach recommended"
+    
+    return {
+        "min_trades": min_trades,
+        "suggested_max": suggested_max,
+        "reasoning": reasoning,
+        "factors": {
+            "volatility_pct": round(volatility, 2),
+            "avg_daily_range_pct": round(avg_daily_range, 2),
+            "volume_score": round(volume_score, 1),
+            "combined_score": round(combined_score, 1),
+            "current_price": round(current_price, 2),
+        }
+    }

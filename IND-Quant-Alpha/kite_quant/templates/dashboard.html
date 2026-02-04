@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kite Quant — Dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --danger: #f85149;
+      --success: #3fb950;
+      --warn: #d29922;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .top h1 { font-size: 1.125rem; margin: 0; font-weight: 600; }
+    .top a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      margin-left: 1rem;
+    }
+    .top a:hover { color: var(--accent); }
+    
+    .nav {
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.5rem 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .nav-item {
+      padding: 0.75rem 1.25rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: 6px 6px 0 0;
+      transition: all 0.2s ease;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .nav-item::before {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+      transform: scaleX(0);
+      transition: transform 0.2s ease;
+    }
+    .nav-item:hover {
+      color: var(--accent);
+      background: rgba(88, 166, 255, 0.05);
+    }
+    .nav-item.active {
+      color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+    }
+    .nav-item.active::before {
+      transform: scaleX(1);
+    }
+    .nav-icon {
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+    
+    .main {
+      padding: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .section {
+      display: none;
+    }
+    .section.active {
+      display: block;
+    }
+    
+    .info-box {
+      background: rgba(88, 166, 255, 0.1);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    .info-box.warn {
+      background: rgba(210, 153, 34, 0.1);
+      border-color: rgba(210, 153, 34, 0.3);
+    }
+    .info-box.danger {
+      background: rgba(248, 81, 73, 0.1);
+      border-color: rgba(248, 81, 73, 0.3);
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .card h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin: 0 0 0.5rem 0;
+    }
+    .card .val { font-size: 1.25rem; font-weight: 600; }
+    .card .val.positive { color: var(--success); }
+    .card .val.negative { color: var(--danger); }
+    .card .val.warn { color: var(--warn); }
+    
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--success);
+      color: #fff;
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.9; }
+    
+    .pane {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .pane h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
+    
+    .countdown {
+      font-size: 1.125rem;
+      color: var(--muted);
+    }
+    .countdown span { color: var(--accent); font-weight: 600; }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 500; }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .status-running { background: rgba(63, 185, 80, 0.2); color: var(--success); }
+    .status-stopped { background: rgba(139, 148, 158, 0.2); color: var(--muted); }
+    .status-auto { background: rgba(210, 153, 34, 0.2); color: var(--warn); }
+    
+    .news-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .news-item {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-title {
+      color: var(--text);
+      margin: 0 0 0.25rem 0;
+      line-height: 1.4;
+    }
+    .news-source {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-size: 0.875rem;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    
+    .backtest-results {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .backtest-result-item {
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    .prediction-block {
+      text-align: center;
+      padding: 1.5rem 1rem;
+    }
+    .prediction-large {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 1rem 0;
+      text-transform: uppercase;
+    }
+    .prediction-bullish { color: var(--success); }
+    .prediction-bearish { color: var(--danger); }
+    .prediction-neutral { color: var(--muted); }
+    .accuracy-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      margin: 0.5rem 0;
+    }
+    .accuracy-correct {
+      background: rgba(63, 185, 80, 0.2);
+      color: var(--success);
+    }
+    .accuracy-partial {
+      background: rgba(210, 153, 34, 0.2);
+      color: var(--warn);
+    }
+    .accuracy-incorrect {
+      background: rgba(248, 81, 73, 0.2);
+      color: var(--danger);
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>Kite Quant</h1>
+    <div>
+      <a href="{{ url_for('settings') }}">Settings</a>
+    </div>
+  </header>
+  
+  <nav class="nav">
+    <a href="#" class="nav-item active" onclick="showSection('overview', this); return false;">
+      <span class="nav-icon">📊</span>
+      <span>Overview</span>
+    </a>
+    <a href="#" class="nav-item" onclick="showSection('testing', this); return false;">
+      <span class="nav-icon">🧪</span>
+      <span>Testing & Backtest</span>
+    </a>
+    <a href="#" class="nav-item" onclick="showSection('live', this); return false;">
+      <span class="nav-icon">⚡</span>
+      <span>Live Trading</span>
+    </a>
+  </nav>
+  
+  <div class="main">
+    <!-- Overview Section -->
+    <div id="section-overview" class="section active">
+      <div class="info-box">
+        <strong>Welcome to Kite Quant</strong><br>
+        This is your trading dashboard. Use the menu above to navigate:
+        <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+          <li><strong>Overview</strong> - Quick summary of current status and market data</li>
+          <li><strong>Testing & Backtest</strong> - Test your strategy with historical data (no real money)</li>
+          <li><strong>Live Trading</strong> - Start actual trading with real money (use with caution!)</li>
+        </ul>
+      </div>
+      
+      <div class="grid">
+        <div class="card">
+          <h3>Status</h3>
+          <div class="val" id="overview-status">—</div>
+        </div>
+        <div class="card">
+          <h3>Mode</h3>
+          <div class="val" id="overview-mode">Backtest</div>
+        </div>
+        <div class="card">
+          <h3>US Bias</h3>
+          <div class="val" id="overview-usBias">—</div>
+        </div>
+        <div class="card">
+          <h3>Sentiment</h3>
+          <div class="val" id="overview-sentiment">—</div>
+        </div>
+        <div class="card">
+          <h3>Price</h3>
+          <div class="val" id="overview-price">—</div>
+        </div>
+        <div class="card">
+          <h3>P&L</h3>
+          <div class="val" id="overview-pnl">—</div>
+        </div>
+        <div class="card">
+          <h3>Trades today</h3>
+          <div class="val" id="overview-tradesToday">0 / 3</div>
+        </div>
+        <div class="card">
+          <h3>Max Trades/Day</h3>
+          <div class="val" id="overview-maxTrades">3</div>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="pane" style="margin: 0;">
+          <h2>📈 Today's Market Prediction</h2>
+          <div style="text-align: center; padding: 1rem 0;">
+            <div id="market-prediction" style="font-size: 2rem; font-weight: 700; margin: 0.5rem 0;">—</div>
+            <div id="prediction-confidence" style="font-size: 0.875rem; color: var(--muted); margin: 0.5rem 0;">Confidence: —</div>
+            <div id="prediction-factors" style="font-size: 0.75rem; color: var(--muted); margin-top: 1rem; text-align: left;">
+              <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+                <li>Loading factors...</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <div class="pane" style="margin: 0;">
+          <h2>🎯 Prediction vs Actual</h2>
+          <div style="text-align: center; padding: 1rem 0;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+              <div>
+                <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem;">Predicted</div>
+                <div id="predicted-direction" style="font-size: 1.25rem; font-weight: 600;">—</div>
+              </div>
+              <div>
+                <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem;">Actual</div>
+                <div id="actual-direction" style="font-size: 1.25rem; font-weight: 600;">—</div>
+              </div>
+            </div>
+            <div id="prediction-result" style="font-size: 1rem; font-weight: 600; margin: 1rem 0; padding: 0.5rem; border-radius: 4px;">—</div>
+            <div style="font-size: 0.875rem; color: var(--muted); margin-top: 1rem;">
+              <div>Price Change: <span id="price-change-pct">—</span>%</div>
+              <div style="margin-top: 0.5rem;">Overall Accuracy: <span id="overall-accuracy">—</span>%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <h2>News Headlines</h2>
+        <ul class="news-list" id="overview-newsList">
+          <li class="news-item"><div class="news-title">Loading news...</div></li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Testing & Backtest Section -->
+    <div id="section-testing" class="section">
+      <div class="info-box warn">
+        <strong>⚠️ Testing Mode</strong><br>
+        This section is for testing your strategy with historical data. No real trades will be executed. 
+        Use this to validate your strategy before going live.
+      </div>
+      
+      <div class="pane">
+        <h2>Backtest Configuration</h2>
+        <div class="form-group">
+          <label for="backtestSymbol">Symbol</label>
+          <input type="text" id="backtestSymbol" value="RELIANCE" placeholder="e.g., RELIANCE, HDFCBANK" onchange="loadTradeSuggestions()">
+          <button type="button" class="btn btn-secondary" onclick="loadTradeSuggestions()" style="margin-top: 0.5rem;">Get Trade Suggestions</button>
+        </div>
+        <div class="form-group">
+          <label for="backtestDays">Days to Backtest</label>
+          <input type="number" id="backtestDays" value="60" min="1" max="365">
+        </div>
+        <div id="tradeSuggestions" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px;">
+          <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; color: var(--accent);">Trade Suggestions for <span id="suggestionSymbol">—</span></h3>
+          <div style="font-size: 0.875rem; line-height: 1.6;">
+            <div><strong>Minimum Trades:</strong> <span id="suggestionMin">—</span></div>
+            <div><strong>Suggested Max:</strong> <span id="suggestionMax">—</span></div>
+            <div><strong>Current Max:</strong> <span id="suggestionCurrent">—</span></div>
+            <div style="margin-top: 0.5rem; color: var(--muted);"><em id="suggestionReasoning">—</em></div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted);">
+              <strong>Analysis Factors:</strong>
+              <ul style="margin: 0.25rem 0 0 1.5rem; padding: 0;">
+                <li>Volatility: <span id="factorVolatility">—</span>%</li>
+                <li>Avg Daily Range: <span id="factorRange">—</span>%</li>
+                <li>Volume Score: <span id="factorVolume">—</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="runBacktest()">Run Backtest</button>
+      </div>
+      
+      <div class="pane" id="backtestResultsPane" style="display: none;">
+        <h2>Backtest Results</h2>
+        <div id="backtestResults" class="backtest-results"></div>
+      </div>
+      
+      <div class="pane">
+        <h2>Current Market Data (Backtest Mode)</h2>
+        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));">
+          <div class="card">
+            <h3>Symbol</h3>
+            <div class="val" id="test-symbol">RELIANCE</div>
+          </div>
+          <div class="card">
+            <h3>Price</h3>
+            <div class="val" id="test-price">—</div>
+          </div>
+          <div class="card">
+            <h3>US Bias</h3>
+            <div class="val" id="test-usBias">—</div>
+          </div>
+          <div class="card">
+            <h3>Sentiment</h3>
+            <div class="val" id="test-sentiment">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Live Trading Section -->
+    <div id="section-live" class="section">
+      <div class="info-box danger">
+        <strong>🚨 Live Trading Mode</strong><br>
+        This section controls REAL trading with REAL money. Only use this after thoroughly testing your strategy. 
+        Make sure you understand the risks and have proper stop-losses configured.
+      </div>
+      
+      <div class="pane">
+        <h2>Stock Selection & Trade Suggestions</h2>
+        <div class="form-group">
+          <label for="liveSymbol">Trading Symbol</label>
+          <input type="text" id="liveSymbol" value="RELIANCE" placeholder="e.g., RELIANCE, HDFCBANK, TCS" onchange="updateLiveSymbol()">
+          <div class="hint" style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
+            Enter the stock symbol you want to trade. This will update the live data below.
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="loadLiveTradeSuggestions()" style="margin-top: 0.5rem;">Get Trade Suggestions</button>
+          <div class="hint" style="font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem;">
+            Click to see suggested min/max trades based on stock analysis. Suggestions appear below.
+          </div>
+        </div>
+        <div id="liveTradeSuggestions" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px;">
+          <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; color: var(--accent);">Trade Suggestions for <span id="liveSuggestionSymbol">—</span></h3>
+          <div style="font-size: 0.875rem; line-height: 1.6;">
+            <div><strong>Minimum Trades:</strong> <span id="liveSuggestionMin">—</span></div>
+            <div><strong>Suggested Max:</strong> <span id="liveSuggestionMax">—</span></div>
+            <div><strong>Current Max:</strong> <span id="liveSuggestionCurrent">—</span></div>
+            <div style="margin-top: 0.5rem; color: var(--muted);"><em id="liveSuggestionReasoning">—</em></div>
+            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted);">
+              <strong>Analysis Factors:</strong>
+              <ul style="margin: 0.25rem 0 0 1.5rem; padding: 0;">
+                <li>Volatility: <span id="liveFactorVolatility">—</span>%</li>
+                <li>Avg Daily Range: <span id="liveFactorRange">—</span>%</li>
+                <li>Volume Score: <span id="liveFactorVolume">—</span></li>
+              </ul>
+            </div>
+            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+              <button type="button" class="btn btn-primary" onclick="applySuggestedMax()" style="font-size: 0.875rem; padding: 0.5rem 1rem;">
+                Apply Suggested Max to Settings
+              </button>
+              <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted);">
+                This will update your Max Trades Per Day setting. Go to Settings to save permanently.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <h2>Trading Controls</h2>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="btnStart" onclick="startTrading()">Start Trading</button>
+          <button type="button" class="btn btn-secondary" id="btnStop" onclick="stopTrading()" disabled>Stop Trading</button>
+          <button type="button" class="btn btn-danger" id="btnKill" onclick="killSwitch()">Kill Switch (Close All)</button>
+        </div>
+        <p class="countdown" style="margin-top: 1rem;">
+          Auto-close: <span id="live-autoCloseTime">14:30</span> IST — <span id="live-countdown">—</span>
+        </p>
+      </div>
+      
+      <div class="pane">
+        <h2>Live Status</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Status</h3>
+            <div class="val" id="live-status">—</div>
+          </div>
+          <div class="card">
+            <h3>Symbol</h3>
+            <div class="val" id="live-symbol">RELIANCE</div>
+          </div>
+          <div class="card">
+            <h3>Price</h3>
+            <div class="val" id="live-price">—</div>
+          </div>
+          <div class="card">
+            <h3>US Bias</h3>
+            <div class="val" id="live-usBias">—</div>
+          </div>
+          <div class="card">
+            <h3>Sentiment</h3>
+            <div class="val" id="live-sentiment">—</div>
+          </div>
+          <div class="card">
+            <h3>P&L</h3>
+            <div class="val" id="live-pnl">—</div>
+          </div>
+          <div class="card">
+            <h3>Trades today</h3>
+            <div class="val" id="live-tradesToday">0 / 3</div>
+          </div>
+          <div class="card">
+            <h3>Max Trades/Day</h3>
+            <div class="val" id="live-maxTrades">3</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="pane">
+        <h2>Open Positions</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Qty</th>
+              <th>P&L</th>
+            </tr>
+          </thead>
+          <tbody id="live-positionsBody">
+            <tr><td colspan="3">No positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="pane">
+        <h2>News Headlines</h2>
+        <ul class="news-list" id="live-newsList">
+          <li class="news-item"><div class="news-title">Loading news...</div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const POLL_MS = 8000;
+    let pollTimer = null;
+    let currentMode = 'backtest';
+    let currentSymbol = 'RELIANCE';
+
+    function showSection(sectionName, clickedElement) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('section-' + sectionName).classList.add('active');
+      
+      // Find the nav-item that was clicked (could be the anchor or a child element)
+      let navItem = clickedElement;
+      if (clickedElement && !clickedElement.classList.contains('nav-item')) {
+        navItem = clickedElement.closest('.nav-item');
+      }
+      if (navItem) {
+        navItem.classList.add('active');
+      }
+      
+      // Update polling based on active section
+      if (sectionName === 'live') {
+        currentMode = 'live';
+        // Sync symbol input with current symbol
+        const liveSymbolInput = document.getElementById('liveSymbol');
+        if (liveSymbolInput) {
+          liveSymbolInput.value = currentSymbol;
+        }
+        if (!pollTimer) {
+          poll();
+          pollTimer = setInterval(poll, POLL_MS);
+        }
+      } else {
+        currentMode = 'backtest';
+        if (pollTimer) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+        poll(); // One-time poll for overview/testing
+      }
+    }
+
+    function api(path, options = {}) {
+      return fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
+    }
+
+    function updateUI(data, prefix = '') {
+      const p = prefix ? prefix + '-' : '';
+      
+      // Update status
+      const statusEl = document.getElementById(p + 'status') || document.getElementById('overview-status');
+      if (statusEl) {
+        statusEl.textContent = data.status || '—';
+        statusEl.className = 'val status-badge ' + (
+          data.status === 'RUNNING' ? 'status-running' :
+          data.status === 'AUTO_CLOSED' ? 'status-auto' : 'status-stopped'
+        );
+      }
+      
+      // Update mode
+      const modeEl = document.getElementById(p + 'mode') || document.getElementById('overview-mode');
+      if (modeEl) modeEl.textContent = (data.mode || 'backtest').toUpperCase();
+      
+      // Update values
+      const maxTrades = data.max_trades_per_day ?? 3;
+      const updates = {
+        'usBias': data.us_bias != null ? (data.us_bias === 1 ? 'Bullish' : data.us_bias === -1 ? 'Bearish' : 'Neutral') : '—',
+        'sentiment': data.sentiment_score != null ? data.sentiment_score.toFixed(2) : '—',
+        'price': data.price != null ? data.price.toFixed(2) : '—',
+        'pnl': data.pnl != null ? data.pnl.toFixed(2) : '—',
+        'tradesToday': (data.trade_count_today ?? 0) + ' / ' + maxTrades,
+        'symbol': data.symbol || 'RELIANCE'
+      };
+      
+      Object.keys(updates).forEach(key => {
+        const el = document.getElementById(p + key) || document.getElementById('overview-' + key);
+        if (el) {
+          el.textContent = updates[key];
+          if (key === 'pnl') {
+            el.className = 'val ' + (data.pnl > 0 ? 'positive' : data.pnl < 0 ? 'negative' : '');
+          }
+        }
+      });
+      
+      // Update max trades display
+      const maxTradesEl = document.getElementById(p + 'maxTrades') || document.getElementById('overview-maxTrades');
+      if (maxTradesEl) maxTradesEl.textContent = maxTrades;
+      
+      // Update countdown
+      const countdownEl = document.getElementById(p + 'countdown') || document.getElementById('live-countdown');
+      if (countdownEl) {
+        const mins = data.minutes_until_auto_close;
+        countdownEl.textContent = mins != null ? (mins + ' min left') : '—';
+      }
+      const autoCloseEl = document.getElementById(p + 'autoCloseTime') || document.getElementById('live-autoCloseTime');
+      if (autoCloseEl) autoCloseEl.textContent = data.auto_close_time || '14:30';
+      
+      // Update buttons (live section only)
+      if (prefix === 'live') {
+        const running = data.trading_on === true;
+        document.getElementById('btnStart').disabled = running || data.status === 'AUTO_CLOSED';
+        document.getElementById('btnStop').disabled = !running;
+      }
+      
+      // Update positions (live section only)
+      if (prefix === 'live') {
+        const positions = data.positions || [];
+        const tbody = document.getElementById('live-positionsBody');
+        if (positions.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="3">No positions</td></tr>';
+        } else {
+          tbody.innerHTML = positions.map(p =>
+            '<tr><td>' + (p.symbol || '—') + '</td><td>' + (p.quantity ?? p.qty ?? '—') + '</td><td>' + (p.pnl ?? p.unrealized ?? '—') + '</td></tr>'
+          ).join('');
+        }
+      }
+      
+      // Update news
+      const newsList = document.getElementById(p + 'newsList') || document.getElementById('overview-newsList');
+      if (newsList) {
+        const headlines = data.news_headlines || [];
+        if (headlines.length === 0) {
+          newsList.innerHTML = '<li class="news-item"><div class="news-title">No news available</div></li>';
+        } else {
+          newsList.innerHTML = headlines.map(h =>
+            '<li class="news-item"><div class="news-title">' + (h.title || '—') + '</div><div class="news-source">' + (h.source || 'Unknown') + '</div></li>'
+          ).join('');
+        }
+      }
+      
+      // Update market prediction (overview only)
+      if (prefix === 'overview' || !prefix) {
+        const prediction = data.market_prediction || 'NEUTRAL';
+        const confidence = data.prediction_confidence || 50;
+        const factors = data.prediction_factors || [];
+        
+        const predEl = document.getElementById('market-prediction');
+        if (predEl) {
+          predEl.textContent = prediction;
+          predEl.className = 'prediction-large ' + 
+            (prediction === 'BULLISH' ? 'prediction-bullish' : 
+             prediction === 'BEARISH' ? 'prediction-bearish' : 'prediction-neutral');
+        }
+        
+        const confEl = document.getElementById('prediction-confidence');
+        if (confEl) confEl.textContent = 'Confidence: ' + confidence + '%';
+        
+        const factorsEl = document.getElementById('prediction-factors');
+        if (factorsEl && factors.length > 0) {
+          factorsEl.innerHTML = '<ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">' +
+            factors.map(f => '<li>' + f + '</li>').join('') + '</ul>';
+        }
+        
+        // Update prediction vs actual
+        const predictedDir = data.market_prediction || '—';
+        const actualDir = data.actual_direction || '—';
+        const accuracy = data.prediction_accuracy || '—';
+        const priceChange = data.price_change_pct || 0;
+        const overallAcc = data.overall_accuracy || 0;
+        
+        const predDirEl = document.getElementById('predicted-direction');
+        if (predDirEl) {
+          predDirEl.textContent = predictedDir;
+          predDirEl.style.color = predictedDir === 'BULLISH' ? 'var(--success)' : 
+                                   predictedDir === 'BEARISH' ? 'var(--danger)' : 'var(--muted)';
+        }
+        
+        const actualDirEl = document.getElementById('actual-direction');
+        if (actualDirEl) {
+          actualDirEl.textContent = actualDir;
+          actualDirEl.style.color = actualDir === 'BULLISH' ? 'var(--success)' : 
+                                     actualDir === 'BEARISH' ? 'var(--danger)' : 'var(--muted)';
+        }
+        
+        const resultEl = document.getElementById('prediction-result');
+        if (resultEl) {
+          if (accuracy === 'CORRECT') {
+            resultEl.textContent = '✓ Correct Prediction';
+            resultEl.className = 'accuracy-badge accuracy-correct';
+          } else if (accuracy === 'PARTIAL') {
+            resultEl.textContent = '○ Partial Match';
+            resultEl.className = 'accuracy-badge accuracy-partial';
+          } else if (accuracy === 'INCORRECT') {
+            resultEl.textContent = '✗ Incorrect Prediction';
+            resultEl.className = 'accuracy-badge accuracy-incorrect';
+          } else {
+            resultEl.textContent = 'Waiting for market close...';
+            resultEl.className = 'accuracy-badge';
+            resultEl.style.background = 'rgba(139, 148, 158, 0.2)';
+            resultEl.style.color = 'var(--muted)';
+          }
+        }
+        
+        const priceChangeEl = document.getElementById('price-change-pct');
+        if (priceChangeEl) {
+          priceChangeEl.textContent = priceChange > 0 ? '+' + priceChange.toFixed(2) : priceChange.toFixed(2);
+          priceChangeEl.style.color = priceChange > 0 ? 'var(--success)' : priceChange < 0 ? 'var(--danger)' : 'var(--muted)';
+        }
+        
+        const overallAccEl = document.getElementById('overall-accuracy');
+        if (overallAccEl) overallAccEl.textContent = overallAcc.toFixed(1);
+      }
+    }
+
+    function poll() {
+      const symbol = currentSymbol;
+      const mode = currentMode;
+      api(`/api/live?symbol=${symbol}&mode=${mode}`)
+        .then(r => r.json())
+        .then(data => {
+          // Update all sections
+          updateUI(data, 'overview');
+          updateUI(data, 'test');
+          updateUI(data, 'live');
+        })
+        .catch(() => {});
+    }
+
+    function startTrading() {
+      api('/api/start', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { 
+          if (d.ok) {
+            poll();
+            if (!pollTimer) {
+              pollTimer = setInterval(poll, POLL_MS);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
+    function stopTrading() {
+      api('/api/stop', { method: 'POST' }).then(() => {
+        poll();
+      });
+    }
+
+    function killSwitch() {
+      if (!confirm('Close ALL open positions immediately? This cannot be undone!')) return;
+      api('/api/kill', { method: 'POST' })
+        .then(r => r.json())
+        .then(() => { stopTrading(); poll(); });
+    }
+
+    function updateLiveSymbol() {
+      const symbol = document.getElementById('liveSymbol').value || 'RELIANCE';
+      currentSymbol = symbol.toUpperCase();
+      // Update display immediately
+      const symbolEl = document.getElementById('live-symbol');
+      if (symbolEl) symbolEl.textContent = currentSymbol;
+      // Refresh data
+      poll();
+    }
+
+    function loadLiveTradeSuggestions() {
+      const symbol = document.getElementById('liveSymbol').value || 'RELIANCE';
+      const suggestionsDiv = document.getElementById('liveTradeSuggestions');
+      suggestionsDiv.style.display = 'none';
+      
+      api(`/api/trade-suggestions?symbol=${symbol}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            document.getElementById('liveSuggestionSymbol').textContent = data.symbol;
+            document.getElementById('liveSuggestionMin').textContent = data.min_trades;
+            document.getElementById('liveSuggestionMax').textContent = data.suggested_max;
+            document.getElementById('liveSuggestionCurrent').textContent = data.current_max;
+            document.getElementById('liveSuggestionReasoning').textContent = data.reasoning;
+            
+            const factors = data.factors || {};
+            document.getElementById('liveFactorVolatility').textContent = factors.volatility_pct || '—';
+            document.getElementById('liveFactorRange').textContent = factors.avg_daily_range_pct || '—';
+            document.getElementById('liveFactorVolume').textContent = factors.volume_score || '—';
+            
+            // Store suggested max for apply function
+            window.suggestedMaxTrades = data.suggested_max;
+            
+            suggestionsDiv.style.display = 'block';
+          } else {
+            alert('Could not load trade suggestions: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(err => {
+          alert('Error loading trade suggestions: ' + err.message);
+        });
+    }
+
+    function applySuggestedMax() {
+      if (!window.suggestedMaxTrades) {
+        alert('Please load trade suggestions first');
+        return;
+      }
+      const maxTrades = window.suggestedMaxTrades;
+      if (confirm(`Apply suggested max trades of ${maxTrades} to your settings?`)) {
+        // Update the settings form if it exists, or show instructions
+        alert(`Suggested max: ${maxTrades}\n\nGo to Settings → Max Trades Per Day → Enter ${maxTrades} → Save`);
+      }
+    }
+
+    function loadTradeSuggestions() {
+      const symbol = document.getElementById('backtestSymbol').value || 'RELIANCE';
+      const suggestionsDiv = document.getElementById('tradeSuggestions');
+      suggestionsDiv.style.display = 'none';
+      
+      api(`/api/trade-suggestions?symbol=${symbol}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            document.getElementById('suggestionSymbol').textContent = data.symbol;
+            document.getElementById('suggestionMin').textContent = data.min_trades;
+            document.getElementById('suggestionMax').textContent = data.suggested_max;
+            document.getElementById('suggestionCurrent').textContent = data.current_max;
+            document.getElementById('suggestionReasoning').textContent = data.reasoning;
+            
+            const factors = data.factors || {};
+            document.getElementById('factorVolatility').textContent = factors.volatility_pct || '—';
+            document.getElementById('factorRange').textContent = factors.avg_daily_range_pct || '—';
+            document.getElementById('factorVolume').textContent = factors.volume_score || '—';
+            
+            suggestionsDiv.style.display = 'block';
+          } else {
+            alert('Could not load trade suggestions: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(err => {
+          alert('Error loading trade suggestions: ' + err.message);
+        });
+    }
+
+    function runBacktest() {
+      const symbol = document.getElementById('backtestSymbol').value || 'RELIANCE';
+      const days = parseInt(document.getElementById('backtestDays').value) || 60;
+      currentSymbol = symbol;
+      
+      const resultsPane = document.getElementById('backtestResultsPane');
+      const resultsDiv = document.getElementById('backtestResults');
+      resultsPane.style.display = 'block';
+      resultsDiv.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--muted);">Running backtest...</div>';
+      
+      api('/api/backtest', {
+        method: 'POST',
+        body: JSON.stringify({ symbol, days })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            const results = data.results || [];
+            if (results.length === 0) {
+              resultsDiv.innerHTML = '<div style="padding: 1rem; color: var(--muted);">No backtest results found.</div>';
+            } else {
+              resultsDiv.innerHTML = '<div style="padding: 0.5rem; font-weight: 600; border-bottom: 1px solid var(--border);">Total Trades: ' + data.count + '</div>' +
+                results.map(r => 
+                  '<div class="backtest-result-item">' +
+                  '<strong>' + (r.symbol || 'N/A') + '</strong> - ' +
+                  (r.action || 'N/A') + ' @ ' + (r.price || 'N/A') + 
+                  (r.pnl ? ' (P&L: ' + r.pnl + ')' : '') +
+                  '</div>'
+                ).join('');
+            }
+          } else {
+            resultsDiv.innerHTML = '<div style="padding: 1rem; color: var(--danger);">Error: ' + (data.error || 'Unknown error') + '</div>';
+          }
+        })
+        .catch(err => {
+          resultsDiv.innerHTML = '<div style="padding: 1rem; color: var(--danger);">Error running backtest: ' + err.message + '</div>';
+        });
+      
+      // Update test section with current data
+      poll();
+    }
+
+    // Initial poll
+    poll();
+  </script>
+</body>
+</html>

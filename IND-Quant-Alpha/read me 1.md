@@ -2,9 +2,9 @@ Here is the comprehensive **Project Blueprint and Developer Manifest** formatted
 
 ---
 
-# **Project: IND-Quant-Alpha**
+# **Project: Kite Quant**
 
-### **High-Conviction Intraday Automation Engine (INDmoney API + Python)**
+### **High-Conviction Intraday Automation Engine (Zerodha Kite Connect + Python)**
 
 ## **1. Project Overview**
 

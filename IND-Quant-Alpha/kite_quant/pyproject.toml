@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "ind-quant-alpha"
+name = "kite-quant"
 version = "0.1.0"
-description = "High-conviction intraday automation engine (INDmoney API + Python)"
-authors = ["IND-Quant-Alpha"]
+description = "High-conviction intraday automation engine (Zerodha Kite Connect + Python)"
+authors = ["Kite Quant"]
 readme = "README.md"
 packages = [{ include = "engine", from = "." }]
 
@@ -20,6 +20,7 @@ textblob = "^0.18"
 ta = "^0.11"
 apscheduler = "^3.10"
 flask-login = "^0.6"
+kiteconnect = "^4.0"
 
 [tool.poetry.extras]
 finbert = ["torch"]
