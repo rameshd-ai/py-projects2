@@ -15,8 +15,24 @@
     "actual": "BULLISH",
     "accuracy": "INCORRECT",
     "actual_change_pct": 0.89,
-    "analysis": "✗ USA bearish bias failed; ✗ Market resilience overcame indicators",
+    "analysis": "\u2717 USA bearish bias failed; \u2717 Market resilience overcame indicators",
     "actual_frozen": true,
     "actual_frozen_at": "2026-02-04T18:12:35.218159"
+  },
+  "2026-02-05": {
+    "symbol": "RELIANCE",
+    "prediction": "BEARISH",
+    "confidence": 70,
+    "score": -0.4,
+    "factors": [
+      "US Market: Bearish (<-0.5%)",
+      "Sentiment: Neutral (0.29)"
+    ],
+    "timestamp": "2026-02-05T04:14:54.537579",
+    "usa_bias": "-1 (-0.84%)",
+    "usa_bias_value": -1,
+    "usa_bias_pct": -0.8403983020698361,
+    "actual": null,
+    "accuracy": null
   }
 }

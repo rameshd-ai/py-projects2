@@ -237,6 +237,22 @@
     .fade-in { animation: fadeIn 0.3s ease-in; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
+    /* Live indicator dot */
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background-color: #6dd58c;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    
     .section { display: none; }
     .section.active { display: block; }
   </style>
@@ -262,6 +278,11 @@
       <li class="nav-item mb-2">
         <a href="#" class="nav-link" onclick="showSection('live', this); return false;">
           <span class="material-icons-round">flash_on</span> Live Trading
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="#" class="nav-link" onclick="showSection('analytics', this); return false;">
+          <span class="material-icons-round">insights</span> Analytics
         </a>
       </li>
       <li class="nav-item mt-auto mb-3">
@@ -293,58 +314,90 @@
       <div class="row g-3 mb-4">
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Status <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Current trading status (Running, Stopped, Auto-Closed)">info</span></div>
+            <div class="metric-label">Status <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Trading Status</strong><br/>Shows if your bot is:<br/>• Running - Actively trading<br/>• Stopped - Paused by you<br/>• Auto-Closed - Market closed">info</span></div>
             <div class="metric-value" id="overview-status">—</div>
         </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Mode <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Backtest or Live Trading mode">info</span></div>
+            <div class="metric-label">Mode <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Trading Mode</strong><br/>• <strong>Backtest:</strong> Test strategy with past data (no real money)<br/>• <strong>Live:</strong> Real trading with actual money">info</span></div>
             <div class="metric-value" id="overview-mode">BACKTEST</div>
         </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">USA Bias <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="S&P 500 influence on Indian market sentiment">info</span></div>
+            <div class="metric-label">USA Bias <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>USA Market Influence</strong><br/>How yesterday's US market (S&P 500) affects today's Indian market<br/>• Bullish ↗: US went up (positive for India)<br/>• Bearish ↘: US went down (negative for India)<br/>• Neutral →: No strong impact">info</span></div>
             <div class="metric-value" id="overview-usBias">—</div>
             <div class="small text-muted mt-1" id="overview-usBiasDate" style="font-size: 0.7rem;"></div>
         </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">USA Live (Fut) <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Live S&P 500 Futures (ES=F) - Real-time market sentiment">info</span></div>
+            <div class="metric-label">USA Live (Fut) <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>S&P 500 Futures (Real-time)</strong><br/>Live US market sentiment during trading hours<br/>Futures = Contract to buy/sell index later<br/>Helps predict how US market will open">info</span></div>
             <div class="metric-value" id="overview-usFutures">—</div>
             <div class="small text-muted mt-1" id="overview-usFuturesDate" style="font-size: 0.7rem;"></div>
         </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Sentiment <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Aggregate news sentiment score (-1 to +1)">info</span></div>
+            <div class="metric-label">Nifty 50 Index (India) <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Nifty 50</strong> - India's benchmark stock index<br/>Tracks top 50 companies on NSE<br/>Real-time market performance indicator">info</span></div>
+            <div class="metric-value" id="overview-niftyLive">—</div>
+            <div class="small text-muted mt-1" id="overview-niftyLiveDate" style="font-size: 0.7rem;"></div>
+        </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Bank Nifty <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Bank Nifty Index</strong><br/>Tracks top banking stocks on NSE<br/>Important for banking sector sentiment<br/>Shows live price and trend">info</span></div>
+            <div class="metric-value" id="overview-bankNifty">—</div>
+            <div class="small text-muted mt-1" id="overview-bankNiftyDate" style="font-size: 0.7rem;"></div>
+        </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">India VIX <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>India VIX (Volatility Index)</strong><br/>Fear gauge of Indian market<br/>• Low (<15): Calm market<br/>• Medium (15-25): Normal volatility<br/>• High (>25): High fear/uncertainty<br/>Higher VIX = Higher risk">info</span></div>
+            <div class="metric-value" id="overview-indiaVix">—</div>
+        </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Market Status <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Market Condition</strong><br/>Current market behavior:<br/>• Trending: Clear direction (bullish/bearish)<br/>• Sideways: Range-bound, no clear trend<br/>• Volatile: High fluctuations, unpredictable<br/>Helps choose right trading strategy">info</span></div>
+            <div class="metric-value" id="overview-marketStatus">—</div>
+        </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Sentiment <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>News Sentiment Score</strong><br/>AI analyzes recent news articles<br/>• Positive (>0): Good news, market optimism<br/>• Negative (<0): Bad news, market pessimism<br/>• Range: -1 (very negative) to +1 (very positive)">info</span></div>
             <div class="metric-value" id="overview-sentiment">—</div>
         </div>
       </div>
       
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Price</div>
+            <div class="metric-label">Stock Price <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Current Stock Price</strong><br/>Live price of the selected stock<br/>Updates every second during market hours">info</span></div>
             <div class="metric-value" id="overview-price">—</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">P&L</div>
+            <div class="metric-label">Today's P&L <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Today's Profit & Loss</strong><br/>Profit or loss for today's trading session only<br/>• Green (+): Today's profit<br/>• Red (-): Today's loss<br/>Resets at market open each day">info</span></div>
+            <div class="metric-value" id="overview-todayPnl">₹0.00</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Total P&L <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Total Profit & Loss</strong><br/>Cumulative profit or loss from all your trades<br/>• Green (+): Overall making profit<br/>• Red (-): Overall in loss<br/>Includes realized + unrealized gains">info</span></div>
             <div class="metric-value" id="overview-pnl">—</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Trades</div>
+            <div class="metric-label">Trades Today <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Daily Trade Count</strong><br/>Number of trades executed today vs maximum allowed<br/>Example: 2/5 means 2 trades done, 3 remaining<br/>Prevents overtrading">info</span></div>
             <div class="metric-value" id="overview-tradesToday">0 / 3</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Max Trades</div>
+            <div class="metric-label">Max Trades/Day <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Daily Trade Limit</strong><br/>Maximum trades allowed per day<br/>Risk management feature<br/>Prevents overtrading and excessive losses<br/>Configure in Settings">info</span></div>
             <div class="metric-value" id="overview-maxTrades">3</div>
           </div>
       </div>
@@ -355,8 +408,8 @@
         <div class="col-lg-6">
           <div class="card h-100">
             <div class="card-header">
-              <span>Today's Prediction</span>
-              <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-title="Daily market direction forecast based on US bias, sentiment, and technical indicators.">info</span>
+              <span>Today's Market Prediction</span>
+              <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>AI Market Prediction</strong><br/>Predicts if market will go up (Bullish ↗) or down (Bearish ↘) today<br/><br/>Based on:<br/>• USA market impact<br/>• News sentiment analysis<br/>• Technical indicators (RSI, EMA, VWAP)<br/><br/>Generated after US market closes">info</span>
             </div>
             <div class="card-body text-center d-flex flex-column justify-content-center">
               <div class="d-flex justify-content-center align-items-center gap-2">
@@ -376,7 +429,10 @@
         <!-- Prediction vs Actual -->
         <div class="col-lg-6">
           <div class="card h-100">
-            <div class="card-header">Prediction vs Actual</div>
+            <div class="card-header">
+              <span>Prediction Accuracy</span>
+              <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>How Accurate Was the Prediction?</strong><br/><br/>Compares morning prediction with actual market movement<br/><br/>• <strong>Predicted:</strong> What AI forecasted<br/>• <strong>Actual:</strong> What really happened<br/>• <strong>Change %:</strong> How much market moved<br/>• <strong>Overall Accuracy:</strong> Success rate of all predictions">info</span>
+            </div>
             <div class="card-body">
               <div class="row text-center my-3">
                 <div class="col-6 border-end border-secondary">
@@ -602,18 +658,189 @@
               </div>
             </div>
       </div>
-      
-          <div class="card">
-            <div class="card-header">News Headlines</div>
-            <ul class="list-group list-group-flush" id="live-newsList" style="max-height: 400px; overflow-y: auto;">
-              <li class="list-group-item bg-transparent text-muted ps-4 py-3">Loading...</li>
-        </ul>
-          </div>
       </div>
     </div>
   </div>
 
+    <!-- Analytics Section -->
+    <div id="section-analytics" class="section fade-in">
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Profit Analysis</h5>
+            <div class="d-flex gap-2">
+              <select class="form-select form-select-sm" id="analyticsTimeRange" onchange="loadAnalytics()" style="width: auto;">
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="all">All Time</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <!-- Profit by Weekday Chart -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header d-flex align-items-center">
+              <span class="material-icons-round me-2">calendar_today</span>
+              Profit by Weekday
+            </div>
+            <div class="card-body">
+              <canvas id="chartWeekday" style="max-height: 300px;"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profit by Time of Day Chart -->
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header d-flex align-items-center">
+              <span class="material-icons-round me-2">schedule</span>
+              Profit by Time of Day
+            </div>
+            <div class="card-body">
+              <canvas id="chartTimeOfDay" style="max-height: 300px;"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Stats -->
+      <div class="row g-4 mb-5">
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Best Day</div>
+            <div class="metric-value text-success-custom" id="analytics-bestDay">—</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Worst Day</div>
+            <div class="metric-value text-danger-custom" id="analytics-worstDay">—</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Best Time</div>
+            <div class="metric-value text-success-custom" id="analytics-bestTime">—</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="metric-item">
+            <div class="metric-label">Total Trades</div>
+            <div class="metric-value" id="analytics-totalTrades">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Backtest vs Live Comparison -->
+      <div class="row mb-3">
+        <div class="col-12">
+          <h5 class="mb-3">Backtest vs Live Performance</h5>
+        </div>
+      </div>
+
+      <div class="row g-4 mb-4">
+        <!-- Comparison Chart -->
+        <div class="col-lg-8">
+          <div class="card">
+            <div class="card-header d-flex align-items-center">
+              <span class="material-icons-round me-2">compare_arrows</span>
+              Performance Comparison
+            </div>
+            <div class="card-body">
+              <canvas id="chartComparison" style="max-height: 300px;"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Win Rate Comparison -->
+        <div class="col-lg-4">
+          <div class="card h-100">
+            <div class="card-header">Win Rate</div>
+            <div class="card-body d-flex flex-column justify-content-center">
+              <div class="mb-4 text-center">
+                <div class="small text-muted mb-1">Backtest</div>
+                <div class="display-6 text-primary-custom" id="comparison-backtestWinRate">—</div>
+              </div>
+              <div class="text-center">
+                <div class="small text-muted mb-1">Live Trading</div>
+                <div class="display-6 text-success-custom" id="comparison-liveWinRate">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Comparison Table -->
+      <div class="row g-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">Detailed Metrics Comparison</div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                  <thead>
+                    <tr>
+                      <th>Metric</th>
+                      <th class="text-center">Backtest</th>
+                      <th class="text-center">Live</th>
+                      <th class="text-center">Difference</th>
+                    </tr>
+                  </thead>
+                  <tbody id="comparisonTableBody">
+                    <tr>
+                      <td>Total P&L</td>
+                      <td class="text-center" id="comparison-backtest-pnl">—</td>
+                      <td class="text-center" id="comparison-live-pnl">—</td>
+                      <td class="text-center" id="comparison-diff-pnl">—</td>
+                    </tr>
+                    <tr>
+                      <td>Avg Profit/Trade</td>
+                      <td class="text-center" id="comparison-backtest-avgProfit">—</td>
+                      <td class="text-center" id="comparison-live-avgProfit">—</td>
+                      <td class="text-center" id="comparison-diff-avgProfit">—</td>
+                    </tr>
+                    <tr>
+                      <td>Total Trades</td>
+                      <td class="text-center" id="comparison-backtest-trades">—</td>
+                      <td class="text-center" id="comparison-live-trades">—</td>
+                      <td class="text-center" id="comparison-diff-trades">—</td>
+                    </tr>
+                    <tr>
+                      <td>Max Drawdown</td>
+                      <td class="text-center" id="comparison-backtest-drawdown">—</td>
+                      <td class="text-center" id="comparison-live-drawdown">—</td>
+                      <td class="text-center" id="comparison-diff-drawdown">—</td>
+                    </tr>
+                    <tr>
+                      <td>Sharpe Ratio</td>
+                      <td class="text-center" id="comparison-backtest-sharpe">—</td>
+                      <td class="text-center" id="comparison-live-sharpe">—</td>
+                      <td class="text-center" id="comparison-diff-sharpe">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="alert bg-info-subtle border-0 mt-3 d-flex align-items-start">
+                <span class="material-icons-round me-2 text-info">info</span>
+                <small class="text-muted">
+                  <strong>Note:</strong> Live trading data will populate once you start real trading. 
+                  Backtest data is based on historical strategy performance. Differences help identify slippage, fees, and execution challenges.
+                </small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
+
+<!-- Chart.js -->
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
 
 <!-- Bootstrap Bundle JS -->
 <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
@@ -635,26 +862,66 @@
         let hours = now.getHours();
         const minutes = now.getMinutes().toString().padStart(2, '0');
         const seconds = now.getSeconds().toString().padStart(2, '0');
+        const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
         
         // Convert to 12-hour format
         hours = hours % 12;
         hours = hours ? hours : 12; // 0 should be 12
+        hours = hours.toString().padStart(2, '0'); // Zero-pad hours
         
-        const timeString = `${hours}:${minutes}:${seconds} ${ampm} IST`;
+        const timeString = `${hours}:${minutes}:${seconds}.${milliseconds} ${ampm} IST`;
         const clockEl = document.getElementById('current-time');
         if (clockEl) clockEl.textContent = timeString;
     }
     
-    // Update clock every second
+    // Update live market timestamps
+    function updateLiveTimestamps() {
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        
+        // Convert to 12-hour format
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        hours = hours.toString().padStart(2, '0');
+        
+        const timeStr = `${hours}:${minutes}:${seconds}.${milliseconds} ${ampm}`;
+        
+        // Update Nifty timestamp if market is live
+        if (niftyIsLive) {
+            const niftyDateEl = document.getElementById('overview-niftyLiveDate');
+            if (niftyDateEl) {
+                niftyDateEl.innerHTML = `<span class="live-dot"></span>Live: ${timeStr}`;
+            }
+        }
+        
+        // Update USA Futures timestamp if market is live
+        if (usaFuturesIsLive) {
+            const futDateEl = document.getElementById('overview-usFuturesDate');
+            if (futDateEl) {
+                futDateEl.innerHTML = `<span class="live-dot"></span>Live: ${timeStr}`;
+            }
+        }
+    }
+    
+    // Update clock every 10ms to show milliseconds
     updateClock();
-    setInterval(updateClock, 1000);
+    setInterval(updateClock, 10);
+    
+    // Update live market timestamps every 10ms
+    setInterval(updateLiveTimestamps, 10);
     
     // Logic Scripts
-    const POLL_MS = 3000;
+    const POLL_MS = 1000; // 1 second for real-time updates
     let pollTimer = null;
     let currentMode = 'backtest';
     let currentSymbol = 'RELIANCE';
+    let niftyIsLive = false;
+    let usaFuturesIsLive = false;
 
     // Global pagination data
     let allHistoryData = [];
@@ -669,13 +936,20 @@
       document.getElementById('section-' + sectionName).classList.add('active');
         if(clickedElement) clickedElement.classList.add('active');
       
-        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading' };
+        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading', 'analytics': 'Analytics' };
         document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
 
       if (sectionName === 'live') {
         currentMode = 'live';
             if(document.getElementById('liveSymbol')) document.getElementById('liveSymbol').value = currentSymbol;
             if (!pollTimer) { poll(); pollTimer = setInterval(poll, POLL_MS); }
+      } else if (sectionName === 'overview') {
+        currentMode = 'backtest';
+            // Start continuous polling for Overview section too (for real-time Nifty data)
+            if (!pollTimer) { poll(); pollTimer = setInterval(poll, POLL_MS); }
+      } else if (sectionName === 'analytics') {
+        // Load analytics data when switching to analytics section
+        loadAnalytics();
       } else {
         currentMode = 'backtest';
             if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -743,7 +1017,6 @@
         // US Futures
         if (data.us_futures_pct_change != null) {
             const futEl = document.getElementById(p + 'usFutures') || document.getElementById('overview-usFutures');
-            const futDateEl = document.getElementById(p + 'usFuturesDate') || document.getElementById('overview-usFuturesDate');
             
             if(futEl) {
                 const sign = data.us_futures_pct_change >= 0 ? '+' : '';
@@ -751,17 +1024,153 @@
                 futEl.innerHTML = `<span style="font-size: 1.2em;">${futIcon}</span> ${sign}${data.us_futures_pct_change.toFixed(2)}%`;
                 futEl.className = 'metric-value ' + (data.us_futures_pct_change >= 0 ? 'text-success-custom' : 'text-danger-custom');
             }
-            if(futDateEl && data.us_futures_date) {
-                futDateEl.textContent = `Updated: ${data.us_futures_date}`;
+            
+            // Set flag to enable live timestamp updates
+            usaFuturesIsLive = true;
+        } else {
+            usaFuturesIsLive = false;
+            const futEl = document.getElementById(p + 'usFutures') || document.getElementById('overview-usFutures');
+            const futDateEl = document.getElementById(p + 'usFuturesDate') || document.getElementById('overview-usFuturesDate');
+            if(futEl) {
+                futEl.textContent = 'Market Closed';
+                futEl.className = 'metric-value text-muted';
+            }
+            if(futDateEl) {
+                futDateEl.textContent = '';
+            }
+        }
+        
+        // Nifty 50 Live
+        if (data.nifty_live_pct_change != null) {
+            console.log('Nifty Live Update:', data.nifty_live_pct_change, data.nifty_live_date); // Debug log
+            const niftyEl = document.getElementById(p + 'niftyLive') || document.getElementById('overview-niftyLive');
+            
+            if(niftyEl) {
+                const sign = data.nifty_live_pct_change >= 0 ? '+' : '';
+                const niftyIcon = data.nifty_live_pct_change >= 0 ? '↗' : '↘';
+                const priceDisplay = data.nifty_live_price ? `<div style="font-size: 0.6em; opacity: 0.8;">${data.nifty_live_price.toFixed(2)}</div>` : '';
+                niftyEl.innerHTML = `<span style="font-size: 1.2em;">${niftyIcon}</span> ${sign}${data.nifty_live_pct_change.toFixed(2)}%${priceDisplay}`;
+                niftyEl.className = 'metric-value ' + (data.nifty_live_pct_change >= 0 ? 'text-success-custom' : 'text-danger-custom');
+            }
+            
+            // Set flag to enable live timestamp updates
+            niftyIsLive = true;
+        } else {
+            niftyIsLive = false;
+             const niftyEl = document.getElementById(p + 'niftyLive') || document.getElementById('overview-niftyLive');
+             const niftyDateEl = document.getElementById(p + 'niftyLiveDate') || document.getElementById('overview-niftyLiveDate');
+             if(niftyEl) {
+                 niftyEl.textContent = 'Market Closed';
+                 niftyEl.className = 'metric-value text-muted';
+             }
+             if(niftyDateEl) {
+                 niftyDateEl.textContent = '';
+             }
+        }
+
+        // Bank Nifty
+        if (data.bank_nifty_pct_change != null) {
+            const bankNiftyEl = document.getElementById(p + 'bankNifty') || document.getElementById('overview-bankNifty');
+            const bankNiftyDateEl = document.getElementById(p + 'bankNiftyDate') || document.getElementById('overview-bankNiftyDate');
+            
+            if(bankNiftyEl) {
+                const sign = data.bank_nifty_pct_change >= 0 ? '+' : '';
+                const icon = data.bank_nifty_pct_change >= 0 ? '↗' : '↘';
+                const priceDisplay = data.bank_nifty_price ? `<div style="font-size: 0.6em; opacity: 0.8;">${data.bank_nifty_price.toFixed(2)}</div>` : '';
+                bankNiftyEl.innerHTML = `<span style="font-size: 1.2em;">${icon}</span> ${sign}${data.bank_nifty_pct_change.toFixed(2)}%${priceDisplay}`;
+                bankNiftyEl.className = 'metric-value ' + (data.bank_nifty_pct_change >= 0 ? 'text-success-custom' : 'text-danger-custom');
+            }
+            if(bankNiftyDateEl && data.bank_nifty_date) {
+                bankNiftyDateEl.innerHTML = `<span class="live-dot"></span>Live`;
             }
         } else {
-             const futEl = document.getElementById(p + 'usFutures') || document.getElementById('overview-usFutures');
-             if(futEl) futEl.textContent = '—';
+            const bankNiftyEl = document.getElementById(p + 'bankNifty') || document.getElementById('overview-bankNifty');
+            if(bankNiftyEl) {
+                bankNiftyEl.textContent = 'Market Closed';
+                bankNiftyEl.className = 'metric-value text-muted';
+            }
+        }
+
+        // India VIX
+        if (data.india_vix != null) {
+            const vixEl = document.getElementById(p + 'indiaVix') || document.getElementById('overview-indiaVix');
+            if(vixEl) {
+                const vixValue = data.india_vix;
+                let vixColor = '';
+                let vixLabel = '';
+                
+                if (vixValue < 15) {
+                    vixColor = 'text-success-custom';
+                    vixLabel = 'Low';
+                } else if (vixValue < 25) {
+                    vixColor = '';
+                    vixLabel = 'Medium';
+                } else {
+                    vixColor = 'text-danger-custom';
+                    vixLabel = 'High';
+                }
+                
+                vixEl.innerHTML = `${vixValue.toFixed(2)} <span style="font-size: 0.6em; opacity: 0.8;">(${vixLabel})</span>`;
+                vixEl.className = 'metric-value ' + vixColor;
+            }
+        } else {
+            const vixEl = document.getElementById(p + 'indiaVix') || document.getElementById('overview-indiaVix');
+            if(vixEl) vixEl.textContent = '—';
+        }
+
+        // Market Status
+        if (data.market_status_type) {
+            const statusEl = document.getElementById(p + 'marketStatus') || document.getElementById('overview-marketStatus');
+            if(statusEl) {
+                const statusMap = {
+                    'trending': { icon: '📈', color: 'text-primary-custom', label: 'Trending' },
+                    'sideways': { icon: '↔️', color: '', label: 'Sideways' },
+                    'volatile': { icon: '⚠️', color: 'text-warning-custom', label: 'Volatile' }
+                };
+                const status = statusMap[data.market_status_type] || { icon: '', color: '', label: 'Unknown' };
+                statusEl.innerHTML = `${status.icon} ${status.label}`;
+                statusEl.className = 'metric-value ' + status.color;
+            }
+        } else {
+            const statusEl = document.getElementById(p + 'marketStatus') || document.getElementById('overview-marketStatus');
+            if(statusEl) statusEl.textContent = '—';
+        }
+
+        // Sentiment with label
+        if (data.sentiment_score != null) {
+            const sentimentEl = document.getElementById(p + 'sentiment') || document.getElementById('overview-sentiment');
+            if(sentimentEl) {
+                const score = data.sentiment_score;
+                let label = '';
+                let color = '';
+                
+                if (score > 0.3) {
+                    label = 'Good';
+                    color = 'text-success-custom';
+                } else if (score > 0.1) {
+                    label = 'Positive';
+                    color = 'text-success-custom';
+                } else if (score < -0.3) {
+                    label = 'Bad';
+                    color = 'text-danger-custom';
+                } else if (score < -0.1) {
+                    label = 'Negative';
+                    color = 'text-danger-custom';
+                } else {
+                    label = 'Neutral';
+                    color = '';
+                }
+                
+                sentimentEl.innerHTML = `${score.toFixed(2)} <span style="font-size: 0.6em; opacity: 0.8;">(${label})</span>`;
+                sentimentEl.className = 'metric-value ' + color;
+            }
+        } else {
+            const sentimentEl = document.getElementById(p + 'sentiment') || document.getElementById('overview-sentiment');
+            if(sentimentEl) sentimentEl.textContent = '—';
         }
 
         // Basic fields
         const map = {
-            'sentiment': data.sentiment_score != null ? data.sentiment_score.toFixed(2) : '—',
             'price': data.price != null ? data.price.toFixed(2) : '—',
             'tradesToday': (data.trade_count_today ?? 0) + ' / ' + (data.max_trades_per_day ?? 3),
             'maxTrades': data.max_trades_per_day ?? 3
@@ -771,11 +1180,20 @@
             if(el) el.textContent = map[k];
         }
 
-        // P&L
+        // Total P&L
         const pnlEl = document.getElementById(p + 'pnl') || document.getElementById('overview-pnl');
         if(pnlEl) {
             pnlEl.textContent = data.pnl != null ? data.pnl.toFixed(2) : '—';
             pnlEl.className = 'metric-value ' + (data.pnl > 0 ? 'text-success-custom' : data.pnl < 0 ? 'text-danger-custom' : '');
+        }
+
+        // Today's P&L
+        const todayPnlEl = document.getElementById(p + 'todayPnl') || document.getElementById('overview-todayPnl');
+        if(todayPnlEl) {
+            const todayPnl = data.today_pnl != null ? data.today_pnl : 0;
+            const sign = todayPnl >= 0 ? '+' : '';
+            todayPnlEl.textContent = '₹' + sign + todayPnl.toFixed(2);
+            todayPnlEl.className = 'metric-value ' + (todayPnl > 0 ? 'text-success-custom' : todayPnl < 0 ? 'text-danger-custom' : '');
         }
 
         // Countdown
@@ -1063,8 +1481,360 @@
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
 
+    // Start polling immediately and continuously (every 3 seconds)
     poll();
+    pollTimer = setInterval(poll, POLL_MS);
+    
     setTimeout(() => { if(document.getElementById('section-overview').classList.contains('active')) loadPredictionHistory(); }, 1500);
+
+    // Analytics Charts
+    let weekdayChart = null;
+    let timeOfDayChart = null;
+    let comparisonChart = null;
+
+    function loadAnalytics() {
+        const timeRange = document.getElementById('analyticsTimeRange').value;
+        
+        api('/api/analytics?range=' + timeRange)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Analytics error:', data.error);
+                    return;
+                }
+                
+                // Update summary stats
+                document.getElementById('analytics-bestDay').textContent = data.best_day || '—';
+                document.getElementById('analytics-worstDay').textContent = data.worst_day || '—';
+                document.getElementById('analytics-bestTime').textContent = data.best_time || '—';
+                document.getElementById('analytics-totalTrades').textContent = data.total_trades || '0';
+                
+                // Render Weekday Chart
+                renderWeekdayChart(data.by_weekday);
+                
+                // Render Time of Day Chart
+                renderTimeOfDayChart(data.by_time_of_day);
+                
+                // Load comparison data
+                loadComparison();
+            })
+            .catch(err => {
+                console.error('Failed to load analytics:', err);
+            });
+    }
+
+    function loadComparison() {
+        api('/api/comparison')
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Comparison error:', data.error);
+                    return;
+                }
+                
+                // Update win rates
+                document.getElementById('comparison-backtestWinRate').textContent = 
+                    data.backtest.win_rate != null ? data.backtest.win_rate.toFixed(1) + '%' : '—';
+                document.getElementById('comparison-liveWinRate').textContent = 
+                    data.live.win_rate != null ? data.live.win_rate.toFixed(1) + '%' : '—';
+                
+                // Update comparison table
+                updateComparisonTable(data);
+                
+                // Render comparison chart
+                renderComparisonChart(data);
+            })
+            .catch(err => {
+                console.error('Failed to load comparison:', err);
+            });
+    }
+
+    function updateComparisonTable(data) {
+        const formatValue = (val, suffix = '') => val != null ? val.toFixed(2) + suffix : '—';
+        const formatDiff = (backtest, live, suffix = '', inverse = false) => {
+            if (backtest == null || live == null) return '—';
+            const diff = live - backtest;
+            const sign = diff >= 0 ? '+' : '';
+            const color = inverse ? (diff <= 0 ? 'text-success-custom' : 'text-danger-custom') 
+                                  : (diff >= 0 ? 'text-success-custom' : 'text-danger-custom');
+            return `<span class="${color}">${sign}${diff.toFixed(2)}${suffix}</span>`;
+        };
+        
+        // P&L
+        document.getElementById('comparison-backtest-pnl').textContent = '₹' + formatValue(data.backtest.total_pnl);
+        document.getElementById('comparison-live-pnl').textContent = '₹' + formatValue(data.live.total_pnl);
+        document.getElementById('comparison-diff-pnl').innerHTML = formatDiff(data.backtest.total_pnl, data.live.total_pnl, '');
+        
+        // Avg Profit
+        document.getElementById('comparison-backtest-avgProfit').textContent = '₹' + formatValue(data.backtest.avg_profit);
+        document.getElementById('comparison-live-avgProfit').textContent = '₹' + formatValue(data.live.avg_profit);
+        document.getElementById('comparison-diff-avgProfit').innerHTML = formatDiff(data.backtest.avg_profit, data.live.avg_profit, '');
+        
+        // Total Trades
+        document.getElementById('comparison-backtest-trades').textContent = data.backtest.total_trades || '0';
+        document.getElementById('comparison-live-trades').textContent = data.live.total_trades || '0';
+        const tradeDiff = (data.live.total_trades || 0) - (data.backtest.total_trades || 0);
+        document.getElementById('comparison-diff-trades').textContent = tradeDiff >= 0 ? '+' + tradeDiff : tradeDiff;
+        
+        // Max Drawdown (inverse - lower is better)
+        document.getElementById('comparison-backtest-drawdown').textContent = formatValue(data.backtest.max_drawdown, '%');
+        document.getElementById('comparison-live-drawdown').textContent = formatValue(data.live.max_drawdown, '%');
+        document.getElementById('comparison-diff-drawdown').innerHTML = formatDiff(data.backtest.max_drawdown, data.live.max_drawdown, '%', true);
+        
+        // Sharpe Ratio
+        document.getElementById('comparison-backtest-sharpe').textContent = formatValue(data.backtest.sharpe_ratio);
+        document.getElementById('comparison-live-sharpe').textContent = formatValue(data.live.sharpe_ratio);
+        document.getElementById('comparison-diff-sharpe').innerHTML = formatDiff(data.backtest.sharpe_ratio, data.live.sharpe_ratio, '');
+    }
+
+    function renderWeekdayChart(data) {
+        const ctx = document.getElementById('chartWeekday').getContext('2d');
+        
+        if (weekdayChart) {
+            weekdayChart.destroy();
+        }
+        
+        const labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const profits = labels.map(day => data[day] || 0);
+        
+        weekdayChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Profit (₹)',
+                    data: profits,
+                    backgroundColor: profits.map(p => p >= 0 ? 'rgba(109, 213, 140, 0.7)' : 'rgba(255, 180, 171, 0.7)'),
+                    borderColor: profits.map(p => p >= 0 ? 'rgb(109, 213, 140)' : 'rgb(255, 180, 171)'),
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                        titleColor: '#e2e2e2',
+                        bodyColor: '#e2e2e2',
+                        borderColor: '#444746',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Profit: ₹' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(68, 71, 70, 0.3)'
+                        },
+                        ticks: {
+                            color: '#c4c7c5',
+                            callback: function(value) {
+                                return '₹' + value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#c4c7c5'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderTimeOfDayChart(data) {
+        const ctx = document.getElementById('chartTimeOfDay').getContext('2d');
+        
+        if (timeOfDayChart) {
+            timeOfDayChart.destroy();
+        }
+        
+        const labels = ['9-10 AM', '10-11 AM', '11-12 PM', '12-1 PM', '1-2 PM', '2-3 PM', '3-4 PM'];
+        const profits = labels.map(time => data[time] || 0);
+        
+        timeOfDayChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Profit (₹)',
+                    data: profits,
+                    borderColor: 'rgb(168, 199, 250)',
+                    backgroundColor: 'rgba(168, 199, 250, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointBackgroundColor: 'rgb(168, 199, 250)',
+                    pointBorderColor: '#1e1e1e',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                        titleColor: '#e2e2e2',
+                        bodyColor: '#e2e2e2',
+                        borderColor: '#444746',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Profit: ₹' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(68, 71, 70, 0.3)'
+                        },
+                        ticks: {
+                            color: '#c4c7c5',
+                            callback: function(value) {
+                                return '₹' + value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(68, 71, 70, 0.3)'
+                        },
+                        ticks: {
+                            color: '#c4c7c5'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderComparisonChart(data) {
+        const ctx = document.getElementById('chartComparison').getContext('2d');
+        
+        if (comparisonChart) {
+            comparisonChart.destroy();
+        }
+        
+        const metrics = ['Win Rate (%)', 'Avg Profit (₹)', 'Max Drawdown (%)', 'Sharpe Ratio'];
+        const backtestData = [
+            data.backtest.win_rate || 0,
+            data.backtest.avg_profit || 0,
+            data.backtest.max_drawdown || 0,
+            data.backtest.sharpe_ratio || 0
+        ];
+        const liveData = [
+            data.live.win_rate || 0,
+            data.live.avg_profit || 0,
+            data.live.max_drawdown || 0,
+            data.live.sharpe_ratio || 0
+        ];
+        
+        comparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: metrics,
+                datasets: [
+                    {
+                        label: 'Backtest',
+                        data: backtestData,
+                        backgroundColor: 'rgba(168, 199, 250, 0.7)',
+                        borderColor: 'rgb(168, 199, 250)',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Live',
+                        data: liveData,
+                        backgroundColor: 'rgba(109, 213, 140, 0.7)',
+                        borderColor: 'rgb(109, 213, 140)',
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#e2e2e2',
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                        titleColor: '#e2e2e2',
+                        bodyColor: '#e2e2e2',
+                        borderColor: '#444746',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                const value = context.parsed.y;
+                                // Format based on metric type
+                                if (context.dataIndex === 1) { // Avg Profit
+                                    label += '₹' + value.toFixed(2);
+                                } else if (context.dataIndex === 0 || context.dataIndex === 2) { // Percentages
+                                    label += value.toFixed(2) + '%';
+                                } else {
+                                    label += value.toFixed(2);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(68, 71, 70, 0.3)'
+                        },
+                        ticks: {
+                            color: '#c4c7c5'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#c4c7c5'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
 
   </script>
 </body>

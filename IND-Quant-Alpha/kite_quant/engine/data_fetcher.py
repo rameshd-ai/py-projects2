@@ -133,6 +133,43 @@ def fetch_us_futures() -> dict[str, Any]:
         return {}
 
 
+def fetch_nifty50_live() -> dict[str, Any]:
+    """
+    Fetch live Nifty 50 index data (^NSEI) from yfinance with real-time updates.
+    Returns {"price": float, "pct_change": float, "date": str, "open": float} or empty dict on error.
+    """
+    try:
+        ticker = yf.Ticker("^NSEI")  # Nifty 50 index
+        
+        # Get intraday data (1-minute intervals) for real-time updates
+        data = ticker.history(period="1d", interval="1m")
+        if data.empty:
+            # Fallback to daily data if intraday fails
+            data = ticker.history(period="1d")
+            if data.empty:
+                return {}
+        
+        latest_candle = data.iloc[-1]
+        first_candle = data.iloc[0]  # First candle of the day for open price
+        
+        current_price = latest_candle["Close"]
+        open_price = first_candle["Open"]  # Day's opening price
+        
+        pct_change = ((current_price - open_price) / open_price) * 100 if open_price else None
+        
+        date_obj = latest_candle.name  # The index is the timestamp
+        date_str = date_obj.strftime("%Y-%m-%d %H:%M:%S")
+        
+        return {
+            "price": float(current_price),
+            "open": float(open_price),
+            "pct_change": float(pct_change) if pct_change is not None else None,
+            "date": date_str
+        }
+    except Exception:
+        return {}
+
+
 def fetch_nse_ohlc(
     symbol: str,
     interval: str = "5m",
