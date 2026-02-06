@@ -83,7 +83,7 @@ def score_headline(text: str, use_finbert: bool = True) -> float:
 
 def fetch_news(symbol: str, query: str | None = None, limit: int = 10) -> list[dict[str, Any]]:
     """Fetch latest headlines (News API or fallback). Optimized with shorter timeout."""
-    api_key = os.getenv("NEWS_API_KEY")
+    api_key = (os.getenv("NEWS_API_KEY") or "").strip()
     query = query or f"{symbol} stock NSE India"
     headlines = []
 
@@ -97,25 +97,31 @@ def fetch_news(symbol: str, query: str | None = None, limit: int = 10) -> list[d
                 "sortBy": "publishedAt",
                 "language": "en",
             }
-            # Reduced timeout for faster response
-            r = requests.get(url, params=params, timeout=5)
+            r = requests.get(url, params=params, timeout=8)
             r.raise_for_status()
             data = r.json()
             for a in data.get("articles", [])[:limit]:
                 title = (a.get("title") or "").strip()
                 if title:
                     headlines.append({
-                        "title": title, 
+                        "title": title,
                         "source": a.get("source", {}).get("name", ""),
                         "url": a.get("url", "#"),
-                        "publishedAt": a.get("publishedAt", "")
+                        "publishedAt": a.get("publishedAt", ""),
                     })
-        except Exception as e:
-            # Silently fail - will show "No news" message
-            pass
+        except Exception:
+            headlines.append({
+                "title": "News API error. Check your News API key in Settings.",
+                "source": "N/A",
+            })
+    else:
+        headlines.append({
+            "title": "Add News API key in Settings to load headlines.",
+            "source": "newsapi.org",
+        })
 
     if not headlines:
-        headlines.append({"title": f"No news fetched for {symbol}", "source": "N/A"})
+        headlines.append({"title": f"No news found for {symbol}", "source": "N/A"})
 
     return headlines
 

@@ -313,6 +313,7 @@ def _clear_trading_caches_if_new_day() -> None:
 @app.route("/api/live")
 def api_live():
     """Current price(s), signal, positions, P&L, status. Poll every 5–10 s. Balance/positions/price are never cached."""
+    apply_config_to_env()  # so NEWS_API_KEY and Zerodha token from Settings are used this request
     _clear_trading_caches_if_new_day()
     global _accuracy_cache, _prediction_cache
     today = date.today().isoformat()
@@ -359,8 +360,6 @@ def api_live():
     if quote.get("last", 0) == 0 and mode == "live":
         quote = {"symbol": symbol, "last": 0, "open": 0, "high": 0, "low": 0}
 
-    # Reload config so Zerodha token is up to date before any Kite calls
-    apply_config_to_env()
     positions = []
     balance = 0.0
     if mode == "live":
