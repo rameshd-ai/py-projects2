@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, render_template, request, url_for
 from apscheduler.schedulers.background import BackgroundScheduler
 
 load_dotenv()
@@ -15,13 +15,22 @@ from engine.config_store import CONFIG_KEYS, apply_config_to_env, load_config, s
 apply_config_to_env()
 
 from engine.strategy import compute_us_bias, suggest_min_trades, consensus_signal, compute_technicals
-from engine.data_fetcher import fetch_nse_quote, get_historical_for_backtest, fetch_nse_ohlc
+from engine.data_fetcher import (
+    fetch_nse_quote,
+    get_historical_for_backtest,
+    get_historical_for_prediction,
+    fetch_nifty50_live,
+    fetch_bank_nifty_live,
+    fetch_india_vix,
+    fetch_nse_ohlc,
+)
 from engine.sentiment_engine import get_sentiment_for_symbol
 from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
-from engine.zerodha_client import get_positions, kill_switch
+from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk
 import json
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timedelta, time
 from functools import lru_cache
 from threading import Lock
@@ -31,14 +40,17 @@ except ImportError:
     # Fallback for Python < 3.9
     from backports.zoneinfo import ZoneInfo
 
-# Cache for news and predictions
+# --- CACHING (real money: no room for stale data) ---
+# NEVER CACHED: balance, positions, live price, orders — always fresh from Zerodha/poll.
+# Cached only for performance, with short TTL + cleared at start of each calendar day (IST).
 _news_cache: dict[str, tuple[list, datetime]] = {}
 _prediction_cache: dict[str, tuple[dict, datetime]] = {}
 _us_bias_cache: tuple[Any, datetime] | None = None
+_last_cache_clear_date_ist: str | None = None  # ISO date (IST); clear all caches when this changes
 _cache_lock = Lock()
-NEWS_CACHE_TTL = timedelta(minutes=10)  # Cache news for 10 minutes
-PREDICTION_CACHE_TTL = timedelta(minutes=5)  # Cache prediction for 5 minutes
-US_BIAS_CACHE_TTL = timedelta(hours=12)  # Cache US bias for 12 hours (constant during Indian session)
+NEWS_CACHE_TTL = timedelta(minutes=5)  # 5 min max — affects sentiment
+PREDICTION_CACHE_TTL = timedelta(minutes=3)  # 3 min during market — trading decisions
+US_BIAS_CACHE_TTL = timedelta(hours=2)  # 2h so India morning gets latest US close
 US_BIAS_ERROR_CACHE_TTL = timedelta(minutes=1)  # Retry quickly if fetch failed
 
 app = Flask(__name__)
@@ -47,10 +59,14 @@ app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-in-p
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for development
 
-# Disable caching in development mode
+# Never cache API responses (real money: avoid any stale data in browser)
 @app.after_request
 def after_request(response):
-    if os.getenv("FLASK_ENV", "development").lower() == "development":
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    elif os.getenv("FLASK_ENV", "development").lower() == "development":
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
@@ -112,7 +128,14 @@ def api_settings():
     data = request.get_json()
     if data is None:
         return {"ok": False, "error": "Invalid JSON or missing Content-Type: application/json"}, 400
-    payload = {k: str(v).strip() for k, v in data.items() if k in CONFIG_KEYS and v}
+    # Allow TRADING_AMOUNT even when empty or "0"
+    payload = {}
+    for k, v in data.items():
+        if k not in CONFIG_KEYS:
+            continue
+        v_str = str(v).strip() if v is not None else ""
+        if k == "TRADING_AMOUNT" or v_str:
+            payload[k] = v_str
     if not payload:
         return {"ok": False, "error": "No valid settings to save"}, 400
     try:
@@ -120,6 +143,24 @@ def api_settings():
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "error": str(e)}, 500
+
+
+@app.route("/api/trading-amount", methods=["GET", "POST"])
+def api_trading_amount():
+    """GET: return current trading amount from config. POST: save to config.json and return success."""
+    if request.method == "GET":
+        amount = load_config().get("TRADING_AMOUNT", "").strip()
+        return jsonify({"ok": True, "trading_amount": amount})
+    data = request.get_json()
+    if data is None:
+        return jsonify({"ok": False, "error": "Invalid JSON or missing Content-Type: application/json"}), 400
+    val = data.get("amount") if data.get("amount") is not None else data.get("TRADING_AMOUNT")
+    val_str = str(val).strip() if val is not None else ""
+    try:
+        save_config({"TRADING_AMOUNT": val_str})
+        return jsonify({"ok": True, "message": "Saved", "trading_amount": val_str})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/start", methods=["POST"])
@@ -183,7 +224,7 @@ def _get_cached_prediction(symbol: str) -> dict[str, Any]:
         # If not frozen, use cache for performance during market hours
         if cache_key in _prediction_cache:
             prediction, cached_time = _prediction_cache[cache_key]
-            # Use shorter cache during market hours (5 min), longer after close
+            # Short TTL during market (3 min); longer after close. Real money: avoid stale predictions.
             cache_ttl = PREDICTION_CACHE_TTL if _is_indian_market_open() else timedelta(hours=1)
             if datetime.now() - cached_time < cache_ttl:
                 return prediction
@@ -243,21 +284,42 @@ def _get_cached_us_bias():
         return us_bias_data
 
 
+def _clear_trading_caches_if_new_day() -> None:
+    """Clear all trading-related caches at start of each calendar day (IST). Prevents stale data with real money."""
+    global _news_cache, _prediction_cache, _us_bias_cache, _last_cache_clear_date_ist
+    try:
+        today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+    except Exception:
+        today_ist = date.today().isoformat()
+    with _cache_lock:
+        if _last_cache_clear_date_ist == today_ist:
+            return
+        _news_cache.clear()
+        _prediction_cache.clear()
+        _us_bias_cache = None
+        _last_cache_clear_date_ist = today_ist
+    # Clear caches defined later in this module (exist when this runs on first request of the day)
+    try:
+        globals()["_accuracy_cache"].clear()
+    except (KeyError, AttributeError):
+        pass
+    try:
+        globals()["_intraday_picks_cache"] = None
+        globals()["_intraday_picks_cache_time"] = None
+    except (KeyError, AttributeError):
+        pass
+
+
 @app.route("/api/live")
 def api_live():
-    """Current price(s), signal, positions, P&L, status. Poll every 5–10 s."""
-    # Clear old caches at start of new day
+    """Current price(s), signal, positions, P&L, status. Poll every 5–10 s. Balance/positions/price are never cached."""
+    _clear_trading_caches_if_new_day()
     global _accuracy_cache, _prediction_cache
     today = date.today().isoformat()
     with _cache_lock:
-        # Clear accuracy cache if it contains old data
-        to_delete = []
-        for key, (data, cached_time) in _accuracy_cache.items():
-            if cached_time.date().isoformat() != today:
-                to_delete.append(key)
+        to_delete = [k for k, (_, ct) in _accuracy_cache.items() if ct.date().isoformat() != today]
         for key in to_delete:
             del _accuracy_cache[key]
-    
     sm = get_session_manager()
     symbol = request.args.get("symbol", "RELIANCE")
     mode = request.args.get("mode", "backtest")
@@ -282,8 +344,8 @@ def api_live():
     if _is_indian_market_open():
         nifty_live = fetch_nifty50_live()
         # Fetch Bank Nifty, India VIX, and market status
-        bank_nifty_live = _fetch_bank_nifty_live()
-        india_vix_data = _fetch_india_vix()
+        bank_nifty_live = fetch_bank_nifty_live()
+        india_vix_data = fetch_india_vix()
         market_status = _determine_market_status(nifty_live)
     # If market is closed, all will be empty dicts
     
@@ -297,12 +359,18 @@ def api_live():
     if quote.get("last", 0) == 0 and mode == "live":
         quote = {"symbol": symbol, "last": 0, "open": 0, "high": 0, "low": 0}
 
+    # Reload config so Zerodha token is up to date before any Kite calls
+    apply_config_to_env()
     positions = []
+    balance = 0.0
     if mode == "live":
         positions = get_positions()
         sm.set_positions(positions)
     else:
         positions = sm.get_positions()
+    # Always fetch balance from Zerodha when connected; show — if call fails (e.g. not connected)
+    balance_val, balance_ok = get_balance()
+    balance = balance_val if balance_ok else None
 
     pnl = 0.0
     today_pnl = 0.0
@@ -366,6 +434,7 @@ def api_live():
         "sentiment_blacklist": sent.get("blacklist_24h", False),
         "news_headlines": sent.get("headlines", []),
         "positions": positions,
+        "balance": balance,
         "pnl": pnl,
         "today_pnl": today_pnl,
         "trade_count_today": sm.trade_count_today(),
@@ -379,6 +448,7 @@ def api_live():
         "actual_direction": actual_direction,
         "overall_accuracy": accuracy_data.get("overall_accuracy", 0),
         "price_change_pct": price_change,
+        "trading_amount": load_config().get("TRADING_AMOUNT", "").strip(),
     }
 
 
@@ -420,18 +490,71 @@ def _save_predictions(data: dict) -> None:
     _predictions_cache_time = datetime.now()
 
 
+def _get_opening_range_file() -> Path:
+    """Path for storing today's opening price per symbol (for intraday price-vs-open factor)."""
+    return Path(__file__).resolve().parent / "opening_range.json"
+
+
+def _load_opening_range() -> dict:
+    today = date.today().isoformat()
+    path = _get_opening_range_file()
+    if not path.exists():
+        return {"date": today, "symbols": {}}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("date") != today:
+            return {"date": today, "symbols": {}}
+        return data
+    except Exception:
+        return {"date": today, "symbols": {}}
+
+
+def _save_opening_range(data: dict) -> None:
+    path = _get_opening_range_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def _get_todays_open(symbol: str) -> float | None:
+    """Return stored opening price for symbol today, or None."""
+    data = _load_opening_range()
+    val = data.get("symbols", {}).get(symbol.upper())
+    return float(val) if val is not None else None
+
+
+def _update_todays_open(symbol: str, open_price: float) -> None:
+    """Store today's open for symbol (only if valid and we're early in session or not yet stored)."""
+    if not open_price or open_price <= 0:
+        return
+    ist = ZoneInfo("Asia/Kolkata")
+    now_ist = datetime.now(ist)
+    if now_ist.weekday() >= 5:
+        return
+    current_time = now_ist.time()
+    market_open = time(9, 15)
+    market_close = time(15, 30)
+    if not (market_open <= current_time <= market_close):
+        return
+    data = _load_opening_range()
+    sym_key = symbol.upper()
+    if sym_key in data.get("symbols", {}):
+        return
+    data.setdefault("symbols", {})[sym_key] = open_price
+    _save_opening_range(data)
+
+
 def _get_market_prediction(symbol: str = "RELIANCE") -> dict[str, Any]:
-    """Predict today's market direction (bullish/bearish) based on multiple factors."""
+    """Predict today's market direction (bullish/bearish). Uses Zerodha when connected for better data."""
     try:
         us_bias = compute_us_bias()
         
         # Get sentiment (this is fast, no need to cache separately)
         sent = get_sentiment_for_symbol(symbol)
         
-        # Get recent data for technical analysis - use yfinance directly for speed
-        # Skip Zerodha API call for prediction to speed things up
-        df = get_historical_for_backtest(symbol, days=5)
-        
+        # Technicals: prefer Zerodha historical (exchange data) when connected; need 60d for RSI/EMA
+        df = get_historical_for_prediction(symbol, days=60)
         tech = compute_technicals(df) if not df.empty else {}
         
         # Calculate prediction score
@@ -459,7 +582,7 @@ def _get_market_prediction(symbol: str = "RELIANCE") -> dict[str, Any]:
         else:
             factors.append(f"Sentiment: Neutral ({sentiment_score:.2f})")
         
-        # Technical indicators (30% weight)
+        # Technical indicators (30% weight) – from Zerodha or yfinance
         if tech:
             rsi = tech.get("rsi")
             if rsi:
@@ -479,6 +602,83 @@ def _get_market_prediction(symbol: str = "RELIANCE") -> dict[str, Any]:
                 score -= 0.15
                 factors.append("EMA: Bearish Cross")
         
+        # Index alignment (Nifty & Bank Nifty) – ~5% when both agree
+        try:
+            nifty = fetch_nifty50_live()
+            bank_nifty = fetch_bank_nifty_live()
+            nifty_pct = nifty.get("pct_change")
+            bank_pct = bank_nifty.get("pct_change")
+            if nifty_pct is not None and bank_pct is not None:
+                if nifty_pct > 0.3 and bank_pct > 0.3:
+                    score += 0.05
+                    factors.append("Indices: Bullish (Nifty & Bank Nifty up)")
+                elif nifty_pct < -0.3 and bank_pct < -0.3:
+                    score -= 0.05
+                    factors.append("Indices: Bearish (Nifty & Bank Nifty down)")
+        except Exception:
+            pass
+        
+        # India VIX: high VIX -> add cautious factor (confidence reduced later)
+        vix_high = False
+        try:
+            vix_data = fetch_india_vix()
+            vix_val = vix_data.get("vix_value")
+            if vix_val is not None and float(vix_val) > 18:
+                vix_high = True
+                factors.append(f"High VIX: cautious ({vix_val:.1f})")
+        except Exception:
+            pass
+        
+        # Intraday: opening range (price vs open) and live quote for depth
+        if _is_indian_market_open():
+            try:
+                quote = fetch_nse_quote(symbol)
+                open_p = quote.get("open") or 0
+                last_p = quote.get("last") or 0
+                if open_p > 0:
+                    _update_todays_open(symbol, open_p)
+                stored_open = _get_todays_open(symbol) or open_p
+                if stored_open and stored_open > 0 and last_p > 0:
+                    pct_vs_open = ((last_p - stored_open) / stored_open) * 100
+                    if pct_vs_open > 0.2:
+                        score += 0.03
+                        factors.append(f"Price vs open: above (+{pct_vs_open:.2f}%)")
+                    elif pct_vs_open < -0.2:
+                        score -= 0.03
+                        factors.append(f"Price vs open: below ({pct_vs_open:.2f}%)")
+                buy_q = quote.get("buy_quantity") or 0
+                sell_q = quote.get("sell_quantity") or 0
+                if buy_q and sell_q:
+                    total = buy_q + sell_q
+                    imbalance = (buy_q - sell_q) / total if total else 0
+                    if imbalance > 0.1:
+                        score += 0.02
+                        factors.append("Depth: bid bias")
+                    elif imbalance < -0.1:
+                        score -= 0.02
+                        factors.append("Depth: ask bias")
+            except Exception:
+                pass
+        
+        # Intraday 15m trend (Zerodha) – only when market is open
+        if _is_indian_market_open():
+            try:
+                df_15 = fetch_nse_ohlc(symbol, interval="15m", period="1d")
+                if df_15 is not None and not df_15.empty and len(df_15) >= 1:
+                    row0 = df_15.iloc[0]
+                    open_15 = float(row0.get("Open", 0))
+                    close_15 = float(row0.get("Close", 0))
+                    if open_15 and close_15:
+                        chg = ((close_15 - open_15) / open_15) * 100
+                        if chg > 0.15:
+                            score += 0.02
+                            factors.append("Intraday 15m: bullish")
+                        elif chg < -0.15:
+                            score -= 0.02
+                            factors.append("Intraday 15m: bearish")
+            except Exception:
+                pass
+        
         # Determine prediction
         if score > 0.2:
             prediction = "BULLISH"
@@ -489,6 +689,9 @@ def _get_market_prediction(symbol: str = "RELIANCE") -> dict[str, Any]:
         else:
             prediction = "NEUTRAL"
             confidence = 50
+        
+        if vix_high:
+            confidence = min(confidence, 72)
         
         return {
             "prediction": prediction,
@@ -566,75 +769,40 @@ def _is_after_market_close() -> bool:
     return current_time > market_close
 
 
-def _fetch_bank_nifty_live() -> dict:
-    """Fetch live Bank Nifty data."""
-    try:
-        import yfinance as yf
-        ticker = yf.Ticker("^NSEBANK")
-        data = ticker.history(period="1d", interval="1m")
-        
-        if not data.empty:
-            latest = data.iloc[-1]
-            open_price = data.iloc[0]['Close']
-            current_price = latest['Close']
-            pct_change = ((current_price - open_price) / open_price) * 100
-            
-            return {
-                "price": current_price,
-                "pct_change": pct_change,
-                "date": datetime.now().isoformat()
-            }
-    except Exception as e:
-        print(f"Error fetching Bank Nifty: {e}")
-    
-    return {}
-
-
-def _fetch_india_vix() -> dict:
-    """Fetch India VIX (volatility index)."""
-    try:
-        import yfinance as yf
-        ticker = yf.Ticker("^INDIAVIX")
-        data = ticker.history(period="1d")
-        
-        if not data.empty:
-            vix_value = data.iloc[-1]['Close']
-            return {"vix_value": vix_value}
-    except Exception as e:
-        print(f"Error fetching India VIX: {e}")
-    
-    # Return dummy data for demonstration
-    return {"vix_value": 16.5}
-
-
 def _determine_market_status(nifty_data: dict) -> dict:
-    """Determine if market is trending, sideways, or volatile."""
+    """Determine if market is trending, sideways, or volatile. Prefers Zerodha Nifty 50 history."""
     try:
-        import yfinance as yf
-        ticker = yf.Ticker("^NSEI")
-        # Get last 5 days of data to analyze trend
-        data = ticker.history(period="5d", interval="1d")
-        
-        if len(data) >= 3:
-            closes = data['Close'].values
-            highs = data['High'].values
-            lows = data['Low'].values
-            
-            # Calculate metrics
+        # Prefer Zerodha 5d Nifty 50 OHLC when connected
+        df = fetch_nse_ohlc("NIFTY 50", interval="1d", period="5d")
+        if df is not None and not df.empty and len(df) >= 3:
+            closes = df["Close"].values
+            highs = df["High"].values
+            lows = df["Low"].values
             price_range = (max(closes) - min(closes)) / min(closes) * 100
             avg_daily_range = sum((highs[i] - lows[i]) / lows[i] for i in range(len(lows))) / len(lows) * 100
-            
-            # Determine status
-            if avg_daily_range > 3:  # High volatility
+            if avg_daily_range > 3:
                 return {"status_type": "volatile"}
-            elif price_range < 2:  # Low range = sideways
+            if price_range < 2:
                 return {"status_type": "sideways"}
-            else:  # Clear direction = trending
-                return {"status_type": "trending"}
-    except Exception as e:
-        print(f"Error determining market status: {e}")
-    
-    # Default to trending
+            return {"status_type": "trending"}
+    except Exception:
+        pass
+    try:
+        import yfinance as yf
+        data = yf.Ticker("^NSEI").history(period="5d", interval="1d")
+        if len(data) >= 3:
+            closes = data["Close"].values
+            highs = data["High"].values
+            lows = data["Low"].values
+            price_range = (max(closes) - min(closes)) / min(closes) * 100
+            avg_daily_range = sum((highs[i] - lows[i]) / lows[i] for i in range(len(lows))) / len(lows) * 100
+            if avg_daily_range > 3:
+                return {"status_type": "volatile"}
+            if price_range < 2:
+                return {"status_type": "sideways"}
+            return {"status_type": "trending"}
+    except Exception:
+        pass
     return {"status_type": "trending"}
 
 
@@ -1351,6 +1519,351 @@ def _do_auto_close():
     sm = get_session_manager()
     if sm.is_trading_on() and sm.is_past_auto_close():
         sm.auto_close()
+
+
+# Zerodha OAuth Token Generation Endpoints
+@app.route("/api/zerodha/start-auth")
+def start_zerodha_auth():
+    """Start Zerodha OAuth flow - redirects user to Zerodha login"""
+    try:
+        from kiteconnect import KiteConnect
+        api_key = os.getenv("ZERODHA_API_KEY")
+        
+        if not api_key:
+            return {"error": "ZERODHA_API_KEY not configured", "ok": False}
+        
+        kite = KiteConnect(api_key=api_key)
+        login_url = kite.login_url()
+        
+        return {"login_url": login_url, "ok": True}
+    except Exception as e:
+        return {"error": str(e), "ok": False}
+
+
+@app.route("/kite/callback")
+def zerodha_callback():
+    """Handle Zerodha OAuth callback and generate access token"""
+    request_token = request.args.get('request_token')
+    status = request.args.get('status')
+    
+    if status != 'success' or not request_token:
+        return render_template('oauth_result.html', 
+                             success=False, 
+                             message="Authorization failed. Please try again.")
+    
+    try:
+        from kiteconnect import KiteConnect
+        api_key = os.getenv("ZERODHA_API_KEY")
+        api_secret = os.getenv("ZERODHA_API_SECRET")
+        
+        if not api_key or not api_secret:
+            return render_template('oauth_result.html',
+                                 success=False,
+                                 message="API credentials not configured")
+        
+        kite = KiteConnect(api_key=api_key)
+        data = kite.generate_session(request_token, api_secret=api_secret)
+        access_token = data["access_token"]
+        
+        # Save to config with timestamp
+        from engine.config_store import save_config
+        config = load_config()
+        config["ZERODHA_ACCESS_TOKEN"] = access_token
+        config["ZERODHA_TOKEN_GENERATED_AT"] = datetime.now().isoformat()
+        save_config(config)
+        
+        # Also set in environment for immediate use
+        os.environ["ZERODHA_ACCESS_TOKEN"] = access_token
+        
+        return render_template('oauth_result.html',
+                             success=True,
+                             message="Access token generated successfully!",
+                             token=access_token)
+    except Exception as e:
+        return render_template('oauth_result.html',
+                             success=False,
+                             message=f"Error: {str(e)}")
+
+
+@app.route("/api/zerodha/check-auth")
+def check_zerodha_auth():
+    """Check if Zerodha is authenticated. Returns user_name and email for 'Logged in as' display."""
+    try:
+        apply_config_to_env()
+        from kiteconnect import KiteConnect
+        api_key = os.getenv("ZERODHA_API_KEY")
+        access_token = os.getenv("ZERODHA_ACCESS_TOKEN")
+        
+        if not api_key or not access_token:
+            return {"authenticated": False, "ok": True}
+        
+        # Get token generation timestamp from config (reload from file to get latest)
+        config_path = Path(__file__).resolve().parent / "config.json"
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        
+        token_generated_at = config.get("ZERODHA_TOKEN_GENERATED_AT")
+        
+        # Calculate time remaining (tokens valid for 24 hours)
+        time_remaining = None
+        expires_at = None
+        if token_generated_at:
+            try:
+                generated_time = datetime.fromisoformat(token_generated_at)
+                expires_time = generated_time + timedelta(hours=24)
+                expires_at = expires_time.isoformat()
+                time_diff = expires_time - datetime.now()
+                
+                # Convert to seconds
+                time_remaining = int(time_diff.total_seconds())
+                
+                print(f"[DEBUG] Token generated at: {token_generated_at}")
+                print(f"[DEBUG] Expires at: {expires_at}")
+                print(f"[DEBUG] Time remaining: {time_remaining} seconds ({time_remaining/3600:.2f} hours)")
+                
+                # If expired, mark as not authenticated
+                if time_remaining <= 0:
+                    return {
+                        "authenticated": False,
+                        "ok": True,
+                        "expired": True,
+                        "message": "Token has expired. Please generate a new one."
+                    }
+            except Exception as e:
+                print(f"[ERROR] Error parsing token timestamp: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Must successfully call Zerodha API to show "Connected" — otherwise token may be invalid/expired
+        profile = {}
+        try:
+            kite = KiteConnect(api_key=api_key)
+            kite.set_access_token(access_token)
+            import socket
+            socket.setdefaulttimeout(10)
+            profile = kite.profile()
+        except Exception as profile_err:
+            print(f"[WARN] Zerodha profile failed (token invalid or network): {profile_err}")
+            return {
+                "authenticated": False,
+                "ok": True,
+                "message": "Token invalid or connection failed. Generate a new token from Settings."
+            }
+        
+        # Prefer user_name, fallback to user_shortname or user_id
+        user_name = (profile.get("user_name") or profile.get("user_shortname") or "").strip()
+        if not user_name:
+            user_name = profile.get("user_id") or "Zerodha User"
+        email = (profile.get("email") or "").strip()
+        
+        return {
+            "authenticated": True,
+            "ok": True,
+            "user_name": user_name,
+            "email": email,
+            "time_remaining_seconds": time_remaining,
+            "expires_at": expires_at
+        }
+    except Exception as e:
+        print(f"[ERROR] Auth check error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"authenticated": False, "ok": True}
+
+
+@app.route("/api/zerodha/profile")
+def api_zerodha_profile():
+    """Return full Zerodha profile, margins, and positions summary for the My Zerodha page. Always JSON."""
+    try:
+        data = get_zerodha_profile_info()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"connected": False, "error": str(e)})
+
+
+@app.route("/api/zerodha/search-symbols")
+def api_zerodha_search_symbols():
+    """Search NSE equity symbols from Zerodha with live price, OHLC, change% (Kite-style)."""
+    apply_config_to_env()
+    q = (request.args.get("q") or "").strip()
+    limit = min(30, max(5, int(request.args.get("limit", 20))))
+    if len(q) < 2:
+        return jsonify({"ok": True, "symbols": []})
+    try:
+        results = search_instruments(q, limit=limit)
+        if not results:
+            return jsonify({"ok": True, "symbols": []})
+        nse_symbols = [r.get("symbol") or r.get("tradingsymbol", "") for r in results if (r.get("exchange") or "NSE") == "NSE" and (r.get("symbol") or r.get("tradingsymbol"))]
+        quotes = get_quotes_bulk(nse_symbols)
+        for r in results:
+            sym = (r.get("symbol") or r.get("tradingsymbol") or "").strip().upper()
+            r["exchange"] = r.get("exchange", "NSE")
+            if sym and sym in quotes:
+                r["last"] = quotes[sym].get("last")
+                r["open"] = quotes[sym].get("open")
+                r["high"] = quotes[sym].get("high")
+                r["low"] = quotes[sym].get("low")
+                r["change"] = quotes[sym].get("change")
+                r["change_pct"] = quotes[sym].get("change_pct")
+            else:
+                r["last"] = r.get("last", 0)
+                r["open"] = r.get("open", 0)
+                r["high"] = r.get("high", 0)
+                r["low"] = r.get("low", 0)
+                r["change"] = r.get("change", 0)
+                r["change_pct"] = r.get("change_pct", 0)
+        return jsonify({"ok": True, "symbols": results})
+    except Exception as e:
+        return jsonify({"ok": False, "symbols": [], "error": str(e)})
+
+
+# Top intraday/F&O picks: liquid NSE stocks (futures & options). Score first N for faster response.
+LIQUID_FNO_STOCKS = [
+    "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "SBIN", "BHARTIARTL",
+    "TATAMOTORS", "KOTAKBANK", "LT", "HINDUNILVR", "ITC", "AXISBANK", "MARUTI",
+    "BAJFINANCE", "WIPRO", "HCLTECH", "ASIANPAINT", "TITAN", "SUNPHARMA",
+]
+INTRADAY_PICKS_STOCK_COUNT = 12  # Score 12 stocks in parallel for faster response
+INTRADAY_PICKS_WORKERS = 6  # Parallel workers for scoring
+INTRADAY_PICKS_CACHE_TTL = timedelta(minutes=5)
+_intraday_picks_cache: dict | None = None
+_intraday_picks_cache_time: datetime | None = None
+
+
+def _score_stock_for_intraday(symbol: str) -> dict[str, Any]:
+    """Score one stock using the same Today's Market Prediction logic (US bias, sentiment, technicals, indices, VIX, price vs open, depth, 15m). Data from Zerodha when connected."""
+    try:
+        pred = _get_market_prediction(symbol)
+        score = pred.get("score", 0) or 0
+        factors = pred.get("factors", [])
+        prediction = pred.get("prediction", "NEUTRAL")
+        return {
+            "symbol": symbol,
+            "score": round(float(score), 3),
+            "tags": factors[:6],
+            "prediction": prediction,
+        }
+    except Exception:
+        return {"symbol": symbol, "score": 0.0, "tags": ["Error"], "prediction": "NEUTRAL"}
+
+
+def _get_ai_trade_suggestion(picks: list[dict]) -> dict[str, Any]:
+    """Combine picks with AI (OpenAI) or rule-based logic to suggest best 1-3 stocks to trade."""
+    if not picks:
+        return {"suggested_symbols": [], "reasoning": "No picks available.", "source": "none"}
+    top_for_prompt = picks[:10]
+    summary = "\n".join(
+        f"- {p.get('symbol', '?')}: {p.get('prediction', 'NEUTRAL')}, score={p.get('score', 0):.2f}, factors: {', '.join((p.get('tags') or [])[:4])}"
+        for p in top_for_prompt
+    )
+    api_key = (os.getenv("OPENAI_API_KEY") or load_config().get("OPENAI_API_KEY") or "").strip()
+    if api_key:
+        try:
+            import requests as req
+            r = req.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a concise intraday trading assistant for Indian NSE F&O. Reply in 1-3 short sentences. Suggest only from the given list.",
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Based on these intraday picks (Today's Market Prediction + Zerodha data), which 1-3 stocks are the BEST to trade today for intraday/F&O? Reply with: (1) comma-separated symbols e.g. RELIANCE, TCS (2) one short reason.\n\n{summary}",
+                        },
+                    ],
+                    "max_tokens": 200,
+                    "temperature": 0.3,
+                },
+                timeout=15,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                text = (data.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
+                symbols = []
+                for s in top_for_prompt:
+                    if (s.get("symbol") or "").upper() in text.upper():
+                        symbols.append((s.get("symbol") or "").upper())
+                if not symbols:
+                    symbols = [p.get("symbol", "").upper() for p in top_for_prompt[:3] if p.get("symbol")]
+                return {"suggested_symbols": symbols[:3], "reasoning": text.strip() or "AI suggested based on scores.", "source": "openai"}
+        except Exception as e:
+            pass
+    bullish = [p for p in top_for_prompt if (p.get("prediction") or "").upper() == "BULLISH" and (p.get("score") or 0) > 0.2]
+    if bullish:
+        suggested = [p.get("symbol", "").upper() for p in bullish[:3]]
+        reasoning = f"Top BULLISH picks by score: {', '.join(suggested)}. Strong sentiment/technicals and positive intraday factors."
+    else:
+        suggested = [p.get("symbol", "").upper() for p in top_for_prompt[:3] if p.get("symbol")]
+        reasoning = f"Top by combined score (no BULLISH above threshold): {', '.join(suggested)}. Consider lower conviction or wait for clearer setup."
+    return {"suggested_symbols": suggested[:3], "reasoning": reasoning, "source": "rules"}
+
+
+@app.route("/api/gpt-status")
+def api_gpt_status():
+    """Check if OpenAI API key works. Returns working=True/False and message."""
+    api_key = (os.getenv("OPENAI_API_KEY") or load_config().get("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        return jsonify({"working": False, "message": "No OPENAI_API_KEY set. Add it in Settings → AI (optional)."})
+    try:
+        import requests as req
+        r = req.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": "Say OK"}],
+                "max_tokens": 5,
+            },
+            timeout=10,
+        )
+        if r.status_code == 200:
+            return jsonify({"working": True, "message": "GPT is working. AI suggestions will use OpenAI."})
+        err = r.json().get("error", {}) if r.headers.get("content-type", "").startswith("application/json") else {}
+        msg = err.get("message", r.text or f"HTTP {r.status_code}")
+        return jsonify({"working": False, "message": f"OpenAI error: {msg}"})
+    except Exception as e:
+        return jsonify({"working": False, "message": str(e)})
+
+
+@app.route("/api/intraday-picks")
+def api_intraday_picks():
+    """Top 15 intraday/F&O picks + AI/rules-based best-to-trade suggestion. Cached 5 min."""
+    global _intraday_picks_cache, _intraday_picks_cache_time
+    force = request.args.get("refresh", "").lower() in ("1", "true", "yes")
+    now = datetime.now()
+    if not force and _intraday_picks_cache is not None and _intraday_picks_cache_time is not None:
+        if now - _intraday_picks_cache_time < INTRADAY_PICKS_CACHE_TTL:
+            return jsonify(_intraday_picks_cache)
+    symbols = LIQUID_FNO_STOCKS[:INTRADAY_PICKS_STOCK_COUNT]
+    results = []
+    with ThreadPoolExecutor(max_workers=INTRADAY_PICKS_WORKERS) as executor:
+        future_to_sym = {executor.submit(_score_stock_for_intraday, sym): sym for sym in symbols}
+        for future in as_completed(future_to_sym, timeout=75):
+            sym = future_to_sym[future]
+            try:
+                results.append(future.result())
+            except Exception:
+                results.append({"symbol": sym, "score": 0.0, "tags": ["Error"], "prediction": "NEUTRAL"})
+    # If as_completed timed out, add placeholders for any missing symbols
+    got = {r.get("symbol") for r in results}
+    for sym in symbols:
+        if sym not in got:
+            results.append({"symbol": sym, "score": 0.0, "tags": ["Timeout"], "prediction": "NEUTRAL"})
+    results.sort(key=lambda x: -(x.get("score") or 0))
+    picks = results[:15]
+    ai_suggestion = _get_ai_trade_suggestion(picks)
+    payload = {
+        "picks": picks,
+        "ai_suggestion": ai_suggestion,
+        "cached_at": now.isoformat(),
+    }
+    _intraday_picks_cache = payload
+    _intraday_picks_cache_time = now
+    return jsonify(payload)
 
 
 scheduler = BackgroundScheduler(timezone=os.getenv("TZ", "Asia/Kolkata"))

@@ -1,5 +1,6 @@
 .env
 config.json
+opening_range.json
 __pycache__/
 *.pyc
 results.csv

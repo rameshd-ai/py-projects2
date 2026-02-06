@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zerodha Authentication</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #121212;
+      color: #e2e2e2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: #1e1e1e;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    .success { color: #6dd58c; }
+    .error { color: #ffb4ab; }
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 28px;
+    }
+    .message {
+      font-size: 16px;
+      color: #c4c7c5;
+      margin: 20px 0;
+      line-height: 1.6;
+    }
+    .token-box {
+      background: #252525;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      word-break: break-all;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #a8c7fa;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 30px;
+      background: #a8c7fa;
+      color: #062e6f;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      margin-top: 20px;
+      transition: all 0.3s;
+    }
+    .btn:hover {
+      background: #8fb4f0;
+      transform: translateY(-2px);
+    }
+    .countdown {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    {% if success %}
+      <div class="icon success">✓</div>
+      <h1 class="success">Authentication Successful!</h1>
+      <div class="message">{{ message }}</div>
+      {% if token %}
+      <div class="token-box">{{ token }}</div>
+      <div class="message" style="font-size: 14px;">Token saved to config.json</div>
+      {% endif %}
+    {% else %}
+      <div class="icon error">✕</div>
+      <h1 class="error">Authentication Failed</h1>
+      <div class="message">{{ message }}</div>
+    {% endif %}
+    
+    <a href="/" class="btn">Return to Dashboard</a>
+    <div class="countdown">This window will redirect in <span id="countdown">5</span> seconds...</div>
+  </div>
+
+  <script>
+    let seconds = 5;
+    const countdownEl = document.getElementById('countdown');
+    
+    const interval = setInterval(() => {
+      seconds--;
+      countdownEl.textContent = seconds;
+      
+      if (seconds <= 0) {
+        clearInterval(interval);
+        window.location.href = '/';
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

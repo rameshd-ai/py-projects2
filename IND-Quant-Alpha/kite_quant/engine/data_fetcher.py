@@ -1,5 +1,6 @@
 """
-Data fetcher: S&P 500 (yfinance), NSE/INDstocks (REST).
+Data fetcher: Zerodha preferred for all NSE data (quotes, indices, history).
+yfinance fallback for NSE when Zerodha unavailable; yfinance only for US (S&P 500, ES futures).
 """
 from __future__ import annotations
 
@@ -14,8 +15,9 @@ import requests
 
 def fetch_sp500_previous_close() -> tuple[float | None, float | None, str | None]:
     """
-    Fetch S&P 500 (^GSPC) previous close, % change, and date.
+    Fetch S&P 500 (^GSPC) previous close, % change, and date (US session date).
     Returns (prev_close, pct_change, date_str) or (None, None, None) on error.
+    Uses US Eastern to decide "last closed" session so India morning sees latest US close.
     """
     try:
         ticker = yf.Ticker("^GSPC")
@@ -23,51 +25,43 @@ def fetch_sp500_previous_close() -> tuple[float | None, float | None, str | None
         if hist.empty or len(hist) < 2:
             return None, None, None
         
-        # Get data
-        # We need the last CLOSED session.
-        # If we are running this on Feb 4th IST (which is Feb 3rd/4th night in US),
-        # hist.index[-1] might be today's date if yfinance has started a new candle or timezone issues.
-        # We want to ensure we take the candle that represents the full previous session.
-        
-        # Check the last available date
-        last_date = hist.index[-1]
-        
-        # Ensure we don't take "today's" candle if it's not closed.
-        # Simple heuristic: if today is Feb 4, and last candle is Feb 4, ignore it.
-        # But we need "today" in US time.
-        
-        today_us = pd.Timestamp.now(tz="America/New_York").date()
-        
-        # Filter out any data that is >= today_us
-        # This ensures we only get closed sessions (yesterday and before)
-        closed_hist = hist[hist.index.date < today_us]
+        # yfinance index is often UTC; convert to US Eastern to get correct "last closed" session
+        idx = hist.index
+        if idx.tz is None:
+            idx = idx.tz_localize("UTC", ambiguous="infer")
+        idx_us = idx.tz_convert("America/New_York")
+        now_et = pd.Timestamp.now(tz="America/New_York")
+        today_us = now_et.date()
+        # After 4 PM ET on a weekday, today's US session is closed — include it so date shows 5th when it's 5th in USA
+        market_closed_today = (now_et.hour > 16 or (now_et.hour == 16 and now_et.minute >= 0)) and now_et.weekday() < 5
+        if market_closed_today:
+            closed_mask = pd.Series(idx_us.date, index=hist.index) <= today_us
+        else:
+            closed_mask = pd.Series(idx_us.date, index=hist.index) < today_us
+        closed_hist = hist.loc[closed_mask]
         
         if closed_hist.empty:
-             # Fallback if everything is filtered out (e.g. very early morning?)
-             # Just take the last one available
-             closed_hist = hist.iloc[[-1]]
+            closed_hist = hist.iloc[[-1]]
+        last_ts = closed_hist.index[-1]
+        if getattr(last_ts, "tz", None) is None:
+            last_ts = pd.Timestamp(last_ts).tz_localize("UTC", ambiguous="infer").tz_convert("America/New_York")
+        else:
+            last_ts = last_ts.tz_convert("America/New_York")
+        last_us_date = last_ts.date()
+        # Sanity: never show a future date (e.g. bad yfinance year or TZ edge case)
+        if last_us_date > today_us or last_us_date.year > datetime.now().year:
+            last_us_date = today_us - timedelta(days=1)
+        date_str = last_us_date.strftime("%Y-%m-%d")
         
-        last_date = closed_hist.index[-1]
         last_close = closed_hist["Close"].iloc[-1]
         
-        date_str = last_date.strftime("%Y-%m-%d")
-        
-        # Calculate change from the day BEFORE that.
-        # We need to find the row in original 'hist' that corresponds to 'last_date'
-        # and take the one before it.
-        
-        # Or simpler: just take the last 2 rows of 'closed_hist' if available
         if len(closed_hist) >= 2:
             prev_close = closed_hist["Close"].iloc[-2]
             pct = ((last_close - prev_close) / prev_close) * 100
         else:
-            # Need to look at original hist to find the previous day
-            # (e.g. if closed_hist has only 1 row because period=5d and holidays?)
-            # But hist has 5 days.
-            # Find index of last_date in hist
-            loc = hist.index.get_loc(last_date)
+            loc = hist.index.get_loc(closed_hist.index[-1])
             if loc > 0:
-                prev_close = hist["Close"].iloc[loc-1]
+                prev_close = hist["Close"].iloc[loc - 1]
                 pct = ((last_close - prev_close) / prev_close) * 100
             else:
                 pct = None
@@ -133,41 +127,107 @@ def fetch_us_futures() -> dict[str, Any]:
         return {}
 
 
+def _quote_to_live_index(quote: dict, name: str) -> dict[str, Any]:
+    """Build {price, pct_change, date, open} from Zerodha quote dict."""
+    last = quote.get("last", 0) or 0
+    open_p = quote.get("open", 0) or 0
+    if not last and not open_p:
+        return {}
+    pct = ((float(last) - float(open_p)) / float(open_p)) * 100 if open_p else None
+    return {
+        "price": float(last),
+        "open": float(open_p),
+        "pct_change": round(pct, 4) if pct is not None else None,
+        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
 def fetch_nifty50_live() -> dict[str, Any]:
     """
-    Fetch live Nifty 50 index data (^NSEI) from yfinance with real-time updates.
-    Returns {"price": float, "pct_change": float, "date": str, "open": float} or empty dict on error.
+    Fetch live Nifty 50. Prefers Zerodha (NSE:NIFTY 50); falls back to yfinance.
+    Returns {"price", "pct_change", "date", "open"} or {}.
     """
     try:
-        ticker = yf.Ticker("^NSEI")  # Nifty 50 index
-        
-        # Get intraday data (1-minute intervals) for real-time updates
+        from . import zerodha_client
+        q = zerodha_client.get_quote("NIFTY 50")
+        if q and (q.get("last") or q.get("open")):
+            return _quote_to_live_index(q, "Nifty 50")
+    except Exception:
+        pass
+    try:
+        ticker = yf.Ticker("^NSEI")
         data = ticker.history(period="1d", interval="1m")
         if data.empty:
-            # Fallback to daily data if intraday fails
             data = ticker.history(period="1d")
-            if data.empty:
-                return {}
-        
+        if data.empty:
+            return {}
         latest_candle = data.iloc[-1]
-        first_candle = data.iloc[0]  # First candle of the day for open price
-        
+        first_candle = data.iloc[0]
         current_price = latest_candle["Close"]
-        open_price = first_candle["Open"]  # Day's opening price
-        
+        open_price = first_candle["Open"]
         pct_change = ((current_price - open_price) / open_price) * 100 if open_price else None
-        
-        date_obj = latest_candle.name  # The index is the timestamp
-        date_str = date_obj.strftime("%Y-%m-%d %H:%M:%S")
-        
         return {
             "price": float(current_price),
             "open": float(open_price),
             "pct_change": float(pct_change) if pct_change is not None else None,
-            "date": date_str
+            "date": latest_candle.name.strftime("%Y-%m-%d %H:%M:%S"),
         }
     except Exception:
         return {}
+
+
+def fetch_bank_nifty_live() -> dict[str, Any]:
+    """
+    Fetch live Bank Nifty. Prefers Zerodha (NSE:NIFTY BANK); falls back to yfinance.
+    """
+    try:
+        from . import zerodha_client
+        q = zerodha_client.get_quote("NIFTY BANK")
+        if q and (q.get("last") or q.get("open")):
+            return _quote_to_live_index(q, "Bank Nifty")
+    except Exception:
+        pass
+    try:
+        ticker = yf.Ticker("^NSEBANK")
+        data = ticker.history(period="1d", interval="1m")
+        if data.empty:
+            data = ticker.history(period="1d")
+        if data.empty:
+            return {}
+        latest = data.iloc[-1]
+        open_p = data.iloc[0]["Open"] if "Open" in data.columns else data.iloc[0]["Close"]
+        curr = latest["Close"]
+        pct = ((curr - open_p) / open_p) * 100 if open_p else None
+        return {
+            "price": float(curr),
+            "pct_change": float(pct) if pct is not None else None,
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "open": float(open_p),
+        }
+    except Exception:
+        return {}
+
+
+def fetch_india_vix() -> dict[str, Any]:
+    """
+    Fetch India VIX. Prefers Zerodha (NSE:INDIA VIX); falls back to yfinance.
+    Returns {"vix_value": float}.
+    """
+    try:
+        from . import zerodha_client
+        q = zerodha_client.get_quote("INDIA VIX")
+        if q and q.get("last"):
+            return {"vix_value": float(q["last"])}
+    except Exception:
+        pass
+    try:
+        ticker = yf.Ticker("^INDIAVIX")
+        data = ticker.history(period="1d")
+        if not data.empty:
+            return {"vix_value": float(data.iloc[-1]["Close"])}
+    except Exception:
+        pass
+    return {"vix_value": 16.5}
 
 
 def fetch_nse_ohlc(
@@ -219,6 +279,10 @@ def fetch_nse_ohlc(
             from_date = to_date - timedelta(days=1)
         elif period == "5d":
             from_date = to_date - timedelta(days=5)
+        elif period == "30d":
+            from_date = to_date - timedelta(days=30)
+        elif period == "60d":
+            from_date = to_date - timedelta(days=60)
         else:
             from_date = to_date - timedelta(days=60)
         
@@ -267,9 +331,16 @@ def fetch_nse_quote(
 
 def get_historical_for_backtest(symbol: str, days: int = 60) -> pd.DataFrame:
     """
-    Get historical daily/5m data for backtest when INDstocks not used.
-    Uses yfinance with NSE symbol (e.g. RELIANCE.NS).
+    Get historical daily data for backtest. Prefers Zerodha when connected;
+    falls back to yfinance (NSE symbol e.g. RELIANCE.NS).
     """
+    period = "1d" if days <= 1 else ("5d" if days <= 5 else ("30d" if days <= 30 else "60d"))
+    try:
+        df = fetch_nse_ohlc(symbol, interval="1d", period=period)
+        if df is not None and not df.empty and len(df) >= 1:
+            return df
+    except Exception:
+        pass
     nse_symbol = f"{symbol}.NS" if not symbol.endswith(".NS") else symbol
     try:
         t = yf.Ticker(nse_symbol)
@@ -281,3 +352,17 @@ def get_historical_for_backtest(symbol: str, days: int = 60) -> pd.DataFrame:
         return df
     except Exception:
         return pd.DataFrame()
+
+
+def get_historical_for_prediction(symbol: str, days: int = 60) -> pd.DataFrame:
+    """
+    Get historical daily data for prediction (RSI, EMA). Prefers Zerodha when
+    connected (exchange data); falls back to yfinance. Use 60+ days so
+    compute_technicals() has enough rows (needs >= 20).
+    """
+    period_map = {"1d": "1d", "5d": "5d", "30d": "30d", "60d": "60d"}
+    period = period_map.get(f"{days}d", "60d")
+    df = fetch_nse_ohlc(symbol, interval="1d", period=period)
+    if df is not None and not df.empty and len(df) >= 20:
+        return df
+    return get_historical_for_backtest(symbol, days=days)

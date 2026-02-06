@@ -5,6 +5,7 @@ Uses kiteconnect library for Zerodha API.
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 try:
@@ -13,6 +14,19 @@ try:
 except ImportError:
     KITE_AVAILABLE = False
     KiteConnect = None
+
+# Cache for NSE instruments (symbol search). TTL 24 hours.
+_instruments_cache: list[dict[str, Any]] = []
+_instruments_cache_time: float = 0
+INSTRUMENTS_CACHE_TTL_SEC = 24 * 3600
+
+# Standard indices (F&O underlyings) - always searchable even if not in NSE dump
+_FNO_INDEX_LIST = [
+    {"symbol": "NIFTY 50", "name": "Nifty 50 Index", "instrument_type": "INDEX", "exchange": "NSE"},
+    {"symbol": "NIFTY BANK", "name": "Nifty Bank Index", "instrument_type": "INDEX", "exchange": "NSE"},
+    {"symbol": "FINNIFTY", "name": "Nifty Financial Services", "instrument_type": "INDEX", "exchange": "NSE"},
+    {"symbol": "MIDCPNIFTY", "name": "Nifty Midcap Select", "instrument_type": "INDEX", "exchange": "NSE"},
+]
 
 
 def _get_kite() -> KiteConnect | None:
@@ -50,6 +64,104 @@ def _get_instrument_token(symbol: str) -> int | None:
         return None
     except Exception:
         return None
+
+
+def _load_instruments_cache(force: bool = False) -> list[dict[str, Any]]:
+    """Load NSE instruments from Zerodha and cache. Returns EQ (equity) + INDEX (Nifty, Bank Nifty, etc.) for search/F&O."""
+    global _instruments_cache, _instruments_cache_time
+    now = time.time()
+    if not force and _instruments_cache and (now - _instruments_cache_time) < INSTRUMENTS_CACHE_TTL_SEC:
+        return _instruments_cache
+    kite = _get_kite()
+    if not kite:
+        return _instruments_cache
+    try:
+        import socket
+        socket.setdefaulttimeout(30)
+        raw = kite.instruments("NSE")
+        out = []
+        seen = set()
+        for i in _FNO_INDEX_LIST:
+            s = (i.get("symbol") or "").strip()
+            if s and s not in seen:
+                seen.add(s)
+                out.append({**i, "symbol": s})
+        for inst in raw:
+            seg = inst.get("segment") or ""
+            itype = (inst.get("instrument_type") or "").upper()
+            if seg == "NSE" and (itype == "EQ" or itype == "INDEX"):
+                s = (inst.get("tradingsymbol") or "").strip()
+                if s and s not in seen:
+                    seen.add(s)
+                    out.append({
+                        "symbol": s,
+                        "name": (inst.get("name") or "").strip(),
+                        "instrument_type": itype,
+                        "exchange": "NSE",
+                    })
+        # Load NFO (F&O) futures for main indices so "nifty" shows Nifty futures
+        try:
+            nfo_raw = kite.instruments("NFO")
+            fno_keywords = ("NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY")
+            nfo_count = 0
+            for inst in nfo_raw:
+                if nfo_count >= 40:
+                    break
+                itype = (inst.get("instrument_type") or "").upper()
+                if itype != "FUT":
+                    continue
+                s = (inst.get("tradingsymbol") or "").strip()
+                if not s or s in seen:
+                    continue
+                if any(kw in s for kw in fno_keywords):
+                    seen.add(s)
+                    out.append({
+                        "symbol": s,
+                        "name": (inst.get("name") or "").strip() or s,
+                        "instrument_type": "FUT",
+                        "exchange": "NFO",
+                    })
+                    nfo_count += 1
+        except Exception:
+            pass
+        _instruments_cache = out
+        _instruments_cache_time = now
+        return out
+    except Exception:
+        return _instruments_cache
+
+
+def search_instruments(query: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Search NSE equity and index symbols. INDEX (Nifty, Bank Nifty, F&O underlyings) always first, then EQ."""
+    q = (query or "").strip().upper()
+    if not q or len(q) < 2:
+        return []
+    instruments = _load_instruments_cache()
+    q_lower = query.strip().lower()
+    index_results = []
+    fut_results = []
+    eq_results = []
+    for inst in instruments:
+        sym = inst.get("symbol") or ""
+        name = inst.get("name") or ""
+        if not (q in sym or q_lower in name.lower() or sym.startswith(q) or q in (name or "").upper()):
+            continue
+        itype = (inst.get("instrument_type") or "").upper()
+        if itype == "INDEX":
+            index_results.append(inst)
+        elif itype == "FUT":
+            fut_results.append(inst)
+        else:
+            eq_results.append(inst)
+    # Order: INDEX (F&O underlyings) first, then FUT (futures), then EQ
+    def prefix_sort_key(x):
+        s = x.get("symbol") or ""
+        return (0 if s.startswith(q) else 1, s)
+    index_results.sort(key=prefix_sort_key)
+    fut_results.sort(key=prefix_sort_key)
+    eq_results.sort(key=prefix_sort_key)
+    combined = index_results + fut_results + eq_results
+    return combined[:limit]
 
 
 def place_order(
@@ -137,8 +249,120 @@ def get_positions() -> list[dict[str, Any]]:
         return []
 
 
+def get_balance() -> tuple[float, bool]:
+    """Fetch available trading balance from Zerodha (equity segment). Returns (balance, success). Use success to show — when disconnected."""
+    kite = _get_kite()
+    if not kite:
+        return (0.0, False)
+    
+    try:
+        import socket
+        socket.setdefaulttimeout(8)
+        margins = kite.margins("equity")
+        avail = margins.get("available") if isinstance(margins.get("available"), dict) else {}
+        raw = avail.get("live_balance") or avail.get("cash") or 0
+        try:
+            return (float(raw), True)
+        except (TypeError, ValueError):
+            return (0.0, True)
+    except Exception:
+        return (0.0, False)
+
+
+def get_zerodha_profile_info() -> dict[str, Any]:
+    """
+    Fetch all important Zerodha profile and account info for trading:
+    profile (user, email, broker), equity margins (available, utilised, net), positions summary.
+    """
+    kite = _get_kite()
+    if not kite:
+        return {"connected": False, "error": "Zerodha not connected"}
+
+    try:
+        import socket
+        socket.setdefaulttimeout(5)
+        out: dict[str, Any] = {"connected": True, "profile": {}, "margins": {}, "positions_summary": {}}
+
+        # Profile
+        try:
+            profile = kite.profile()
+            out["profile"] = {
+                "user_name": profile.get("user_name", ""),
+                "user_id": profile.get("user_id", ""),
+                "user_type": profile.get("user_type", ""),
+                "email": profile.get("email", ""),
+                "broker": profile.get("broker", "Zerodha"),
+                "exchanges": profile.get("exchanges", []),
+                "products": profile.get("products", []),
+                "order_types": profile.get("order_types", []),
+            }
+        except Exception as e:
+            out["profile"] = {"error": str(e)}
+
+        # Equity margins (available, utilised, net)
+        try:
+            margins = kite.margins("equity")
+            if not isinstance(margins, dict):
+                margins = {}
+            avail = margins.get("available")
+            utilised = margins.get("utilised")
+            if not isinstance(avail, dict):
+                avail = {}
+            if not isinstance(utilised, dict):
+                utilised = {}
+            net_val = margins.get("net")
+            if net_val is not None and not isinstance(net_val, (int, float)):
+                net_val = 0
+            elif net_val is None:
+                net_val = 0
+            # Normalise to numbers for JSON
+            def _float(v, default=0):
+                try:
+                    return float(v) if v is not None else default
+                except (TypeError, ValueError):
+                    return default
+            out["margins"] = {
+                "available": {
+                    "cash": _float(avail.get("cash")),
+                    "live_balance": _float(avail.get("live_balance")),
+                    "opening_balance": _float(avail.get("opening_balance")),
+                    "collateral": _float(avail.get("collateral")),
+                    "adhoc_margin": _float(avail.get("adhoc_margin")),
+                    "intraday_payin": _float(avail.get("intraday_payin")),
+                },
+                "utilised": {
+                    "debits": _float(utilised.get("debits")),
+                    "span": _float(utilised.get("span")),
+                    "exposure": _float(utilised.get("exposure")),
+                    "option_premium": _float(utilised.get("option_premium")),
+                    "m2m_unrealised": _float(utilised.get("m2m_unrealised")),
+                    "m2m_realised": _float(utilised.get("m2m_realised")),
+                    "delivery": _float(utilised.get("delivery")),
+                },
+                "net": float(net_val),
+            }
+        except Exception as e:
+            out["margins"] = {"error": str(e)}
+
+        # Positions summary
+        try:
+            positions = get_positions()
+            total_pnl = sum(float(p.get("pnl", 0)) for p in positions)
+            out["positions_summary"] = {
+                "count": len(positions),
+                "total_pnl": total_pnl,
+                "positions": positions,
+            }
+        except Exception as e:
+            out["positions_summary"] = {"error": str(e), "count": 0, "total_pnl": 0, "positions": []}
+
+        return out
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
+
+
 def get_quote(symbol: str) -> dict[str, Any]:
-    """Get current quote for symbol."""
+    """Get current quote for symbol. Includes depth (buy_quantity, sell_quantity) when available."""
     kite = _get_kite()
     if not kite:
         return {"symbol": symbol, "last": 0.0, "open": 0.0, "high": 0.0, "low": 0.0}
@@ -147,6 +371,12 @@ def get_quote(symbol: str) -> dict[str, Any]:
         nse_symbol = f"NSE:{symbol.upper()}"
         quote = kite.quote(nse_symbol)
         ltp_data = quote.get(nse_symbol, {})
+        depth = ltp_data.get("depth", {})
+        buy_qty = sum(item.get("quantity", 0) for item in (depth.get("buy") or []) if item.get("quantity"))
+        sell_qty = sum(item.get("quantity", 0) for item in (depth.get("sell") or []) if item.get("quantity"))
+        if not buy_qty and not sell_qty:
+            buy_qty = int(ltp_data.get("buy_quantity", 0))
+            sell_qty = int(ltp_data.get("sell_quantity", 0))
         
         return {
             "symbol": symbol,
@@ -154,9 +384,51 @@ def get_quote(symbol: str) -> dict[str, Any]:
             "open": float(ltp_data.get("ohlc", {}).get("open", 0)),
             "high": float(ltp_data.get("ohlc", {}).get("high", 0)),
             "low": float(ltp_data.get("ohlc", {}).get("low", 0)),
+            "buy_quantity": buy_qty,
+            "sell_quantity": sell_qty,
         }
     except Exception:
         return {"symbol": symbol, "last": 0.0, "open": 0.0, "high": 0.0, "low": 0.0}
+
+
+def get_quotes_bulk(symbols: list[str]) -> dict[str, dict[str, Any]]:
+    """Get quotes for multiple NSE symbols in one call. Returns dict keyed by symbol with last, open, high, low, change, change_pct."""
+    kite = _get_kite()
+    if not kite or not symbols:
+        return {}
+    instruments = [f"NSE:{s.upper()}" for s in symbols if s and isinstance(s, str)]
+    if not instruments:
+        return {}
+    try:
+        import socket
+        socket.setdefaulttimeout(10)
+        raw = kite.quote(instruments)
+        out = {}
+        for sym in symbols:
+            sym = (sym or "").strip().upper()
+            if not sym:
+                continue
+            key = f"NSE:{sym}"
+            ltp_data = raw.get(key, {})
+            last = float(ltp_data.get("last_price", 0))
+            ohlc = ltp_data.get("ohlc") or {}
+            open_p = float(ohlc.get("open", 0))
+            high = float(ohlc.get("high", 0))
+            low = float(ohlc.get("low", 0))
+            change = last - open_p if open_p else 0
+            change_pct = (change / open_p * 100) if open_p else 0
+            out[sym] = {
+                "symbol": sym,
+                "last": last,
+                "open": open_p,
+                "high": high,
+                "low": low,
+                "change": round(change, 2),
+                "change_pct": round(change_pct, 2),
+            }
+        return out
+    except Exception:
+        return {}
 
 
 def close_position(symbol: str, quantity: int | None = None) -> dict[str, Any]:

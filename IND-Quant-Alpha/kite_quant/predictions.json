@@ -32,7 +32,30 @@
     "usa_bias": "-1 (-0.84%)",
     "usa_bias_value": -1,
     "usa_bias_pct": -0.8403983020698361,
+    "actual": "BEARISH",
+    "accuracy": "CORRECT",
+    "actual_change_pct": -1.04,
+    "actual_frozen": true,
+    "actual_frozen_at": "2026-02-05T10:00:10.781931",
+    "analysis": "\u2713 USA bearish bias confirmed"
+  },
+  "2026-02-06": {
+    "symbol": "RELIANCE",
+    "prediction": "BEARISH",
+    "confidence": 72,
+    "score": -0.45,
+    "factors": [
+      "US Market: Bearish (<-0.5%)",
+      "Sentiment: Neutral (-0.30)",
+      "RSI: Neutral (48.1)",
+      "Indices: Bearish (Nifty & Bank Nifty down)"
+    ],
+    "timestamp": "2026-02-06T00:43:23.665527",
+    "usa_bias": "-1 (-0.51%)",
+    "usa_bias_value": -1,
+    "usa_bias_pct": -0.5072391906223145,
     "actual": null,
-    "accuracy": null
+    "accuracy": null,
+    "frozen_at": "2026-02-06T00:43:23.762656"
   }
 }

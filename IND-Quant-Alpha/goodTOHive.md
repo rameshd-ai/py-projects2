@@ -1,0 +1,1 @@
+1)need a list to see today profit/loss and how much 
