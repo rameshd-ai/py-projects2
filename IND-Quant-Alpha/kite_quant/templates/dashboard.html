@@ -255,6 +255,80 @@
     
     .section { display: none; }
     .section.active { display: block; }
+
+    /* Event calendar: days on top, tall day boxes */
+    .calendar-event-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      border: 1px solid var(--md-border);
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 520px;
+    }
+    .calendar-event-grid .calendar-weekday {
+      background: var(--md-surface-2);
+      color: var(--md-text);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.7rem 0.4rem;
+      text-align: center;
+      border-bottom: 2px solid var(--md-border);
+      border-right: 1px solid var(--md-border);
+    }
+    .calendar-event-grid .calendar-weekday:nth-child(7) {
+      border-right: none;
+    }
+    .calendar-event-grid .calendar-day-cell {
+      min-height: 10rem;
+      border-right: 1px solid var(--md-border);
+      border-bottom: 1px solid var(--md-border);
+      padding: 0.5rem;
+      background: var(--md-surface);
+      cursor: pointer;
+      transition: background 0.15s;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .calendar-event-grid .calendar-day-cell:nth-child(7n) {
+      border-right: none;
+    }
+    .calendar-event-grid .calendar-day-cell:hover {
+      background: var(--md-surface-2);
+    }
+    .calendar-event-grid .calendar-day-cell.other-month {
+      background: var(--md-bg);
+      color: var(--md-text-muted);
+      opacity: 0.55;
+    }
+    .calendar-event-grid .calendar-day-cell.today {
+      outline: 2px solid var(--md-primary);
+      outline-offset: -2px;
+      z-index: 1;
+    }
+    .calendar-event-grid .calendar-day-cell.holiday {
+      background: rgba(255, 180, 171, 0.14);
+    }
+    .calendar-event-grid .calendar-day-num {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+    .calendar-event-grid .calendar-day-events {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-content: flex-start;
+    }
+    .calendar-event-grid .calendar-day-events .badge {
+      font-size: 0.65rem;
+      padding: 0.25em 0.5em;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   </style>
 </head>
 <body>
@@ -288,6 +362,11 @@
       <li class="nav-item mb-2">
         <a href="{{ url_for('dashboard') }}#zerodha" class="nav-link" data-section="zerodha" onclick="showSection('zerodha', this); return false;">
           <span class="material-icons-round">account_balance</span> My Zerodha
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard') }}#calendar" class="nav-link" data-section="calendar" onclick="showSection('calendar', this); return false;">
+          <span class="material-icons-round">calendar_month</span> Market Calendar
         </a>
       </li>
       <li class="nav-item mt-auto mb-3">
@@ -1029,6 +1108,51 @@
       </div>
     </div>
 
+    <!-- Market Intelligence Calendar (event calendar style) -->
+    <div id="section-calendar" class="section fade-in">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h5 class="mb-0">Market Calendar</h5>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="calendarPrevMonth()" title="Previous month"><span class="material-icons-round" style="font-size: 1.2rem;">chevron_left</span></button>
+          <input type="month" id="calendar-month-picker" class="form-control form-control-sm" style="width: 11rem;">
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="calendarNextMonth()" title="Next month"><span class="material-icons-round" style="font-size: 1.2rem;">chevron_right</span></button>
+          <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadMarketCalendar()">Refresh</button>
+        </div>
+      </div>
+      <p class="text-muted small mb-3">NSE holidays, expiry, events. Click a day for details.</p>
+      <div class="card mb-4 overflow-hidden">
+        <div class="card-body p-0">
+          <div id="calendar-month-title" class="text-center fw-bold py-2 border-bottom" style="background: var(--md-surface-2); font-size: 1rem;"></div>
+          <div id="calendar-grid" class="calendar-event-grid"></div>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-3 small text-muted mb-2">
+        <span><span class="badge bg-danger me-1">Holiday</span> Market closed</span>
+        <span><span class="badge bg-primary me-1">Expiry</span> F&O expiry</span>
+        <span><span class="badge bg-info me-1">Event</span> Market event</span>
+        <span><span class="badge bg-warning text-dark me-1">Earnings</span> Results</span>
+        <span><span class="badge bg-secondary me-1">Mood</span> AI outlook</span>
+      </div>
+      <div class="small text-muted mb-3">
+        <strong>Mood tags (for trading freshers):</strong>
+        <ul class="mb-1 mt-1 ps-3">
+          <li><span class="badge bg-secondary">RANGE</span> — Price moves in a band; good for selling options, avoid big directional bets.</li>
+          <li><span class="badge bg-secondary">VOLATILE</span> — Big swings; option buyers/breakouts OK, use stop-loss.</li>
+          <li><span class="badge bg-secondary">EVENT_RISK</span> — News/earnings day; wait or trade small.</li>
+          <li><span class="badge bg-secondary">TRENDING</span> — Clear direction; trend-following works.</li>
+        </ul>
+        <em>Hover a mood badge or click a day for full explanation.</em>
+      </div>
+      <!-- Date detail side panel (offcanvas) -->
+      <div class="offcanvas offcanvas-end" tabindex="-1" id="calendarDetailOffcanvas">
+        <div class="offcanvas-header border-bottom">
+          <h6 class="offcanvas-title" id="calendarDetailTitle">Market Outlook</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body small" id="calendarDetailBody"></div>
+      </div>
+    </div>
+
   </div>
 
 <!-- Chart.js -->
@@ -1128,7 +1252,7 @@
       document.getElementById('section-' + sectionName).classList.add('active');
         if(clickedElement) clickedElement.classList.add('active');
       
-        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading', 'analytics': 'Analytics', 'zerodha': 'My Zerodha' };
+        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading', 'analytics': 'Analytics', 'zerodha': 'My Zerodha', 'calendar': 'Market Calendar' };
         document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
 
       // Update URL to /dashboard#section so the address bar reflects current section
@@ -1137,6 +1261,8 @@
 
       if (sectionName === 'zerodha') {
         loadZerodhaProfile();
+      } else if (sectionName === 'calendar') {
+        loadMarketCalendar();
       } else if (sectionName === 'live') {
         currentMode = 'live';
             if(document.getElementById('liveSymbol')) document.getElementById('liveSymbol').value = currentSymbol;
@@ -1159,7 +1285,7 @@
     // On load: if URL has a hash (#overview, #live, etc.), show that section
     function applyHashToSection() {
       var hash = window.location.hash.replace('#', '');
-      var valid = ['overview', 'testing', 'live', 'analytics', 'zerodha'];
+      var valid = ['overview', 'testing', 'live', 'analytics', 'zerodha', 'calendar'];
       if (hash && valid.indexOf(hash) !== -1) {
         var link = document.querySelector('.nav-link[data-section="' + hash + '"]');
         showSection(hash, link);
@@ -2543,6 +2669,167 @@
         });
     }
 
+    // ---------- Market Intelligence Calendar ----------
+    const MOOD_ICONS = { TRENDING: '🚀', RANGE: '🔄', VOLATILE: '⚡', EVENT_RISK: '⚠️' };
+    /** Beginner-friendly explanations for each market mood (for calendar tooltips & day detail). */
+    const MOOD_EXPLAIN = {
+      RANGE: 'Range-bound day: Price usually moves between a clear high and low without a strong one-way trend. Good for: selling options (collect premium), straddles within the range. Avoid: big directional bets or aggressive option buying.',
+      VOLATILE: 'Volatile day: Expect bigger price swings and fast moves (e.g. expiry). Good for: option buyers if you have a view, breakout trades. Higher risk — use strict stop-loss.',
+      EVENT_RISK: 'Event-risk day: Important news (earnings, RBI, CPI, etc.) can cause sudden moves. Good for: waiting until after the event, or trading with smaller size. Reduce exposure.',
+      TRENDING: 'Trending day: Market or index has a clear direction (up or down). Good for: trend-following, momentum strategies, riding the move. Avoid fighting the trend.'
+    };
+    let calendarDaysCache = [];
+
+    function getCalendarMonth() {
+      const picker = document.getElementById('calendar-month-picker');
+      if (picker && picker.value) return picker.value;
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    function loadMarketCalendar() {
+      const month = getCalendarMonth();
+      const picker = document.getElementById('calendar-month-picker');
+      if (picker && !picker.value) picker.value = month;
+      const grid = document.getElementById('calendar-grid');
+      if (!grid) return;
+      grid.innerHTML = '<span class="text-muted">Loading…</span>';
+      api('/api/market-calendar?month=' + encodeURIComponent(month))
+        .then(r => r.json())
+        .then(data => {
+          if (!data.ok || !Array.isArray(data.days)) {
+            grid.innerHTML = '<span class="text-danger">Failed to load calendar</span>';
+            return;
+          }
+          calendarDaysCache = data.days;
+          renderCalendarGrid(data.days, month);
+        })
+        .catch(e => {
+          grid.innerHTML = '<span class="text-danger">Error: ' + (e.message || 'Network error') + '</span>';
+        });
+    }
+
+    function renderCalendarGrid(days, month) {
+      const grid = document.getElementById('calendar-grid');
+      const titleEl = document.getElementById('calendar-month-title');
+      if (!grid) return;
+      const [y, m] = month.split('-').map(Number);
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      if (titleEl) titleEl.textContent = monthNames[m - 1] + ' ' + y;
+
+      const firstDay = new Date(y, m - 1, 1);
+      const lastDay = new Date(y, m, 0);
+      const daysInMonth = lastDay.getDate();
+      const startWeekday = firstDay.getDay();
+      const dayMap = {};
+      (days || []).forEach(d => { dayMap[d.date] = d; });
+
+      const today = new Date();
+      const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+      let html = '';
+      ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(w) { html += '<div class="calendar-weekday">' + w + '</div>'; });
+
+      var totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+      for (var i = 0; i < totalCells; i++) {
+        var cellIndex = i - startWeekday;
+        var otherMonth = cellIndex < 0 || cellIndex >= daysInMonth;
+        var dayNum = cellIndex + 1;
+        var dateStr = otherMonth ? '' : (y + '-' + String(m).padStart(2, '0') + '-' + String(dayNum).padStart(2, '0'));
+        var dayObj = dateStr ? (dayMap[dateStr] || { date: dateStr, isHoliday: false, isExpiry: null, events: [], earnings: [], aiMarketMood: { type: 'RANGE', confidence: 50, reason: '' } }) : null;
+        var mood = dayObj && dayObj.aiMarketMood ? dayObj.aiMarketMood : {};
+        var moodIcon = MOOD_ICONS[mood.type] || '🔄';
+        var badges = [];
+        if (dayObj) {
+          if (dayObj.isHoliday) badges.push('<span class="badge bg-danger" title="Holiday">Holiday</span>');
+          if (dayObj.isExpiry) badges.push('<span class="badge bg-primary" title="' + (dayObj.isExpiry === 'MONTHLY' ? 'Monthly' : 'Weekly') + ' expiry">' + (dayObj.isExpiry === 'MONTHLY' ? 'M-Exp' : 'W-Exp') + '</span>');
+          if ((dayObj.events || []).length) badges.push('<span class="badge bg-info">Event</span>');
+          if ((dayObj.earnings || []).length) badges.push('<span class="badge bg-warning text-dark">Earnings</span>');
+          var moodType = mood.type || 'RANGE';
+          var moodTip = MOOD_EXPLAIN[moodType] || (mood.reason || moodType);
+          badges.push('<span class="badge bg-secondary" title="' + moodTip.replace(/'/g, "&#39;") + '">' + moodIcon + ' ' + moodType + '</span>');
+        }
+        var classes = 'calendar-day-cell';
+        if (otherMonth) classes += ' other-month';
+        if (dateStr === todayStr) classes += ' today';
+        if (dayObj && dayObj.isHoliday) classes += ' holiday';
+        var clickHandler = dateStr ? ('openCalendarDetail(\'' + dateStr + '\')') : '';
+        html += '<div class="' + classes + '" onclick="' + clickHandler + '" title="' + (dateStr || '') + '">';
+        html += '<div class="calendar-day-num">' + (otherMonth ? '' : dayNum) + '</div>';
+        html += '<div class="calendar-day-events">' + badges.join('') + '</div>';
+        html += '</div>';
+      }
+      grid.innerHTML = html || '<span class="text-muted">No data</span>';
+    }
+
+    function calendarPrevMonth() {
+      const picker = document.getElementById('calendar-month-picker');
+      if (!picker || !picker.value) return;
+      const [y, m] = picker.value.split('-').map(Number);
+      const d = new Date(y, m - 2, 1);
+      picker.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      loadMarketCalendar();
+    }
+    function calendarNextMonth() {
+      const picker = document.getElementById('calendar-month-picker');
+      if (!picker || !picker.value) return;
+      const [y, m] = picker.value.split('-').map(Number);
+      const d = new Date(y, m, 1);
+      picker.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      loadMarketCalendar();
+    }
+
+    function openCalendarDetail(dateStr) {
+      const dayObj = calendarDaysCache.find(d => d.date === dateStr);
+      const d = dayObj || { date: dateStr, isHoliday: false, isExpiry: null, events: [], earnings: [], aiMarketMood: { type: 'RANGE', confidence: 50, reason: 'No data' } };
+      const mood = d.aiMarketMood || {};
+      const moodIcon = MOOD_ICONS[mood.type] || '🔄';
+      const titleEl = document.getElementById('calendarDetailTitle');
+      const bodyEl = document.getElementById('calendarDetailBody');
+      if (titleEl) titleEl.textContent = 'Market Outlook – ' + dateStr;
+      let strategy = '';
+      if (d.isHoliday) strategy = 'Market closed. No trading.';
+      else if (mood.type === 'VOLATILE') strategy = 'Option buying / Breakout trades suitable.';
+      else if (mood.type === 'EVENT_RISK') strategy = 'Delay trades until after event; reduce size.';
+      else if (mood.type === 'RANGE') strategy = 'Avoid aggressive option buying; range-bound strategies.';
+      else if (mood.type === 'TRENDING') strategy = 'Trend-following and momentum strategies.';
+      else strategy = 'Check events and expiry before taking positions.';
+      var expiryLabel = !d.isExpiry ? 'None' : (d.isExpiry === 'MONTHLY' ? 'Monthly expiry' : 'Weekly expiry');
+      let body = '<p><strong>Expiry:</strong> ' + expiryLabel + '</p>';
+      body += '<p><strong>Events:</strong> ' + ((d.events || []).length ? d.events.map(e => e.type + ' (' + (e.impact || '') + ')').join(', ') : 'None') + '</p>';
+      body += '<p><strong>Earnings:</strong></p>';
+      if (!(d.earnings && d.earnings.length)) {
+        body += '<p class="text-muted">None</p>';
+      } else {
+        (d.earnings || []).forEach(function(e) {
+          body += '<div class="mb-2"><strong>' + (e.symbol || '') + ' (' + (e.impact || '') + ')</strong>';
+          if (e.summary) body += '<p class="text-muted mb-1 mt-1">' + e.summary + '</p>';
+          if (e.info_url) body += '<a href="' + e.info_url + '" target="_blank" rel="noopener" class="small">More info ↗</a>';
+          body += '</div>';
+        });
+      }
+      body += '<p><strong>AI Mood:</strong> ' + moodIcon + ' ' + (mood.type || 'RANGE') + ' (confidence ' + (mood.confidence != null ? mood.confidence : 50) + '%)</p>';
+      if (mood.reason) body += '<p class="text-muted">' + mood.reason + '</p>';
+      var moodType = mood.type || 'RANGE';
+      var explain = MOOD_EXPLAIN[moodType];
+      if (explain) body += '<p class="mb-2"><strong>What this means for you:</strong><br><span class="text-muted">' + explain + '</span></p>';
+      body += '<hr><p><strong>Suggested strategy:</strong> ' + strategy + '</p>';
+      if (bodyEl) bodyEl.innerHTML = body;
+      const offcanvas = document.getElementById('calendarDetailOffcanvas');
+      if (offcanvas && typeof bootstrap !== 'undefined') {
+        const bs = bootstrap.Offcanvas.getOrCreateInstance(offcanvas);
+        bs.show();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const picker = document.getElementById('calendar-month-picker');
+      if (picker) {
+        const d = new Date();
+        if (!picker.value) picker.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        picker.addEventListener('change', loadMarketCalendar);
+      }
+    });
 
   </script>
 </body>

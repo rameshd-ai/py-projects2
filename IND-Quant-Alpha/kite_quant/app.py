@@ -29,6 +29,7 @@ from engine.sentiment_engine import get_sentiment_for_symbol
 from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
 from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk
+from engine.market_calendar import get_calendar_for_month
 import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1832,6 +1833,20 @@ def api_zerodha_profile():
         return jsonify(data)
     except Exception as e:
         return jsonify({"connected": False, "error": str(e)})
+
+
+@app.route("/api/market-calendar")
+def api_market_calendar():
+    """Market Intelligence Calendar for a given month. Returns holidays, expiry, events, earnings, AI mood."""
+    month = request.args.get("month", "")
+    if not month:
+        from datetime import datetime
+        month = datetime.now().strftime("%Y-%m")
+    try:
+        days = get_calendar_for_month(month)
+        return jsonify({"ok": True, "month": month, "days": days})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "days": []}), 500
 
 
 @app.route("/api/zerodha/search-symbols")
