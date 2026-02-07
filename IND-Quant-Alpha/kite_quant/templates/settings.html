@@ -1,241 +1,283 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kite Quant — Settings</title>
+  <link href="{{ url_for('static', filename='css/roboto.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
   <style>
     :root {
-      --bg: #0d1117;
-      --surface: #161b22;
-      --border: #30363d;
-      --text: #e6edf3;
-      --muted: #8b949e;
-      --accent: #58a6ff;
-      --success: #3fb950;
-      --danger: #f85149;
+      --md-bg: #121212;
+      --md-surface: #1e1e1e;
+      --md-surface-2: #252525;
+      --md-primary: #a8c7fa;
+      --md-border: #444746;
+      --md-text: #e2e2e2;
+      --md-muted: #c4c7c5;
+      --md-success: #6dd58c;
+      --md-error: #ffb4ab;
     }
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      min-height: 100vh;
-    }
-    .top {
+    body { font-family: 'Roboto', sans-serif; background: var(--md-bg); color: var(--md-text); min-height: 100vh; }
+    .settings-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      border-bottom: 1px solid var(--md-border);
+      background: var(--md-surface);
     }
-    .top h1 { font-size: 1.125rem; margin: 0; font-weight: 600; }
-    .top a {
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 0.875rem;
-      margin-left: 1rem;
-    }
-    .top a:hover { color: var(--accent); }
-    .main {
-      padding: 1.5rem;
-      max-width: 560px;
+    .settings-header h1 { font-size: 1.25rem; font-weight: 600; margin: 0; color: var(--md-primary); }
+    .settings-header a { color: var(--md-muted); text-decoration: none; font-size: 0.875rem; }
+    .settings-header a:hover { color: var(--md-primary); }
+    .settings-main {
+      max-width: 640px;
       margin: 0 auto;
+      padding: 2rem 1.5rem;
     }
-    .main h2 { font-size: 1rem; margin: 0 0 1rem 0; color: var(--muted); }
-    .form-group {
-      margin-bottom: 1rem;
+    .nav-tabs {
+      border-bottom: 1px solid var(--md-border);
+      gap: 0.25rem;
+      margin-bottom: 1.5rem;
     }
+    .nav-tabs .nav-link {
+      color: var(--md-muted);
+      border: 1px solid transparent;
+      border-radius: 8px 8px 0 0;
+      padding: 0.6rem 1rem;
+      font-weight: 500;
+    }
+    .nav-tabs .nav-link:hover { color: var(--md-text); border-color: var(--md-border); background: var(--md-surface-2); }
+    .nav-tabs .nav-link.active {
+      color: var(--md-primary);
+      background: var(--md-surface);
+      border-color: var(--md-border) var(--md-border) var(--md-bg);
+      border-bottom-color: var(--md-bg);
+    }
+    .tab-pane { padding-top: 0.5rem; }
+    .form-group { margin-bottom: 1.25rem; }
     .form-group label {
       display: block;
-      font-size: 0.875rem;
-      color: var(--muted);
-      margin-bottom: 0.25rem;
+      font-size: 0.8125rem;
+      color: var(--md-muted);
+      margin-bottom: 0.35rem;
+      font-weight: 500;
     }
     .form-group input {
       width: 100%;
-      padding: 0.5rem 0.75rem;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
+      padding: 0.6rem 0.85rem;
+      background: var(--md-surface-2);
+      border: 1px solid var(--md-border);
+      border-radius: 8px;
+      color: var(--md-text);
       font-size: 0.9375rem;
     }
     .form-group input:focus {
       outline: none;
-      border-color: var(--accent);
+      border-color: var(--md-primary);
+      box-shadow: 0 0 0 2px rgba(168, 199, 250, 0.2);
     }
     .form-group .hint {
       font-size: 0.75rem;
-      color: var(--muted);
-      margin-top: 0.25rem;
+      color: var(--md-muted);
+      margin-top: 0.35rem;
+      line-height: 1.4;
     }
-    .btn {
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      font-size: 0.9375rem;
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      background: var(--accent);
-      color: #fff;
+    .form-group .hint a { color: var(--md-primary); }
+    .info-box {
+      padding: 1rem;
+      background: rgba(168, 199, 250, 0.08);
+      border: 1px solid rgba(168, 199, 250, 0.2);
+      border-radius: 10px;
+      font-size: 0.875rem;
+      margin-top: 1rem;
+      line-height: 1.5;
     }
-    .btn:hover { opacity: 0.9; }
-    .msg {
-      padding: 0.75rem 1rem;
+    .info-box strong { color: var(--md-primary); }
+    .info-box a { color: var(--md-primary); }
+    .btn-save {
+      padding: 0.65rem 1.5rem;
       border-radius: 8px;
-      font-size: 1rem;
-      margin-bottom: 1rem;
       font-weight: 500;
-      border: 1px solid;
+      background: var(--md-primary);
+      color: #062e6f;
+      border: none;
+      margin-top: 0.5rem;
     }
-    .msg.success {
-      background: rgba(63, 185, 80, 0.25);
-      color: var(--success);
-      border-color: var(--success);
+    .btn-save:hover { background: #8ab4f8; color: #062e6f; }
+    .msg {
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      font-size: 0.9375rem;
+      margin-bottom: 1.25rem;
+      font-weight: 500;
+      display: none;
     }
-    .msg.error {
-      background: rgba(248, 81, 73, 0.25);
-      color: var(--danger);
-      border-color: var(--danger);
-    }
-    .section { margin-bottom: 1.5rem; }
+    .msg.show { display: block; }
+    .msg.success { background: rgba(109, 213, 140, 0.15); color: var(--md-success); border: 1px solid var(--md-success); }
+    .msg.error { background: rgba(255, 180, 171, 0.15); color: var(--md-error); border: 1px solid var(--md-error); }
+    .tab-section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--md-muted); margin-bottom: 1rem; }
   </style>
 </head>
 <body>
-  <header class="top">
+  <header class="settings-header">
     <h1>Settings</h1>
-    <div>
-      <a href="{{ url_for('dashboard') }}">Dashboard</a>
-    </div>
+    <a href="{{ url_for('dashboard') }}">← Dashboard</a>
   </header>
-  <div class="main">
-    <div id="msg"></div>
+
+  <div class="settings-main">
+    <div id="msg" class="msg"></div>
+
+    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="zerodha-tab" data-bs-toggle="tab" data-bs-target="#zerodha-pane" type="button" role="tab">Zerodha</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="trading-tab" data-bs-toggle="tab" data-bs-target="#trading-pane" type="button" role="tab">Trading</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="apis-tab" data-bs-toggle="tab" data-bs-target="#apis-pane" type="button" role="tab">APIs & AI</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="app-tab" data-bs-toggle="tab" data-bs-target="#app-pane" type="button" role="tab">App</button>
+      </li>
+    </ul>
+
     <form id="settingsForm">
-      <div class="section">
-        <h2>Zerodha Kite Connect API</h2>
-        <div class="form-group">
-          <label for="ZERODHA_API_KEY">Zerodha API Key</label>
-          <input type="password" id="ZERODHA_API_KEY" name="ZERODHA_API_KEY" value="{{ config.get('ZERODHA_API_KEY', '') }}" placeholder="Leave blank to keep current">
-          <div class="hint">Get from Zerodha Kite Connect developer console: <a href="https://kite.trade/apps/" target="_blank" style="color: var(--accent);">kite.trade/apps</a></div>
+      <div class="tab-content" id="settingsTabContent">
+        <!-- Zerodha -->
+        <div class="tab-pane fade show active" id="zerodha-pane" role="tabpanel">
+          <div class="tab-section-title">Kite Connect credentials</div>
+          <div class="form-group">
+            <label for="ZERODHA_API_KEY">API Key</label>
+            <input type="password" id="ZERODHA_API_KEY" name="ZERODHA_API_KEY" value="{{ config.get('ZERODHA_API_KEY', '') }}" placeholder="Leave blank to keep current">
+            <div class="hint">From <a href="https://kite.trade/apps/" target="_blank">kite.trade/apps</a></div>
+          </div>
+          <div class="form-group">
+            <label for="ZERODHA_API_SECRET">API Secret</label>
+            <input type="password" id="ZERODHA_API_SECRET" name="ZERODHA_API_SECRET" value="{{ config.get('ZERODHA_API_SECRET', '') }}" placeholder="Leave blank to keep current">
+          </div>
+          <div class="form-group">
+            <label for="ZERODHA_ACCESS_TOKEN">Access Token</label>
+            <input type="password" id="ZERODHA_ACCESS_TOKEN" name="ZERODHA_ACCESS_TOKEN" value="{{ config.get('ZERODHA_ACCESS_TOKEN', '') }}" placeholder="Leave blank to keep current">
+            <div class="hint">From Kite Connect login flow. Valid until logout.</div>
+          </div>
+          <div class="info-box">
+            <strong>Get Access Token:</strong><br>
+            1. Create app at <a href="https://kite.trade/apps/" target="_blank">kite.trade/apps</a><br>
+            2. Use API Key & Secret to login via Kite Connect<br>
+            3. Paste the token here after login.
+          </div>
         </div>
-        <div class="form-group">
-          <label for="ZERODHA_API_SECRET">Zerodha API Secret</label>
-          <input type="password" id="ZERODHA_API_SECRET" name="ZERODHA_API_SECRET" value="{{ config.get('ZERODHA_API_SECRET', '') }}" placeholder="Leave blank to keep current">
-          <div class="hint">API Secret from Kite Connect app settings.</div>
+
+        <!-- Trading -->
+        <div class="tab-pane fade" id="trading-pane" role="tabpanel">
+          <div class="tab-section-title">Daily limits & schedule</div>
+          <div class="form-group">
+            <label for="MAX_TRADES_PER_DAY">Max trades per day</label>
+            <input type="number" id="MAX_TRADES_PER_DAY" name="MAX_TRADES_PER_DAY" value="{{ config.get('MAX_TRADES_PER_DAY', '3') }}" placeholder="3" min="1" max="20">
+            <div class="hint">Maximum trades allowed per day (1–20).</div>
+          </div>
+          <div class="form-group">
+            <label for="AUTO_CLOSE_TIME">Auto-close time (HH:MM)</label>
+            <input type="text" id="AUTO_CLOSE_TIME" name="AUTO_CLOSE_TIME" value="{{ config.get('AUTO_CLOSE_TIME', '14:30') }}" placeholder="14:30">
+            <div class="hint">Trading stops at this time (IST).</div>
+          </div>
+          <div class="form-group">
+            <label for="TRADING_AMOUNT">Trading amount (₹)</label>
+            <input type="text" id="TRADING_AMOUNT" name="TRADING_AMOUNT" value="{{ config.get('TRADING_AMOUNT', '') }}" placeholder="e.g. 50000">
+            <div class="hint">Capital used for risk calculations. Can also set from dashboard.</div>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="ZERODHA_ACCESS_TOKEN">Zerodha Access Token</label>
-          <input type="password" id="ZERODHA_ACCESS_TOKEN" name="ZERODHA_ACCESS_TOKEN" value="{{ config.get('ZERODHA_ACCESS_TOKEN', '') }}" placeholder="Leave blank to keep current">
-          <div class="hint">Access token obtained after login. Generate using Kite Connect login flow. Token is valid until logout.</div>
+
+        <!-- APIs & AI -->
+        <div class="tab-pane fade" id="apis-pane" role="tabpanel">
+          <div class="tab-section-title">External API keys</div>
+          <div class="form-group">
+            <label for="NEWS_API_KEY">News API Key</label>
+            <input type="password" id="NEWS_API_KEY" name="NEWS_API_KEY" value="{{ config.get('NEWS_API_KEY', '') }}" placeholder="Leave blank to keep current">
+            <div class="hint">For news headlines and sentiment.</div>
+          </div>
+          <div class="form-group">
+            <label for="OPENAI_API_KEY">OpenAI API Key (optional)</label>
+            <input type="password" id="OPENAI_API_KEY" name="OPENAI_API_KEY" value="{{ config.get('OPENAI_API_KEY', '') }}" placeholder="For AI suggestions">
+            <div class="hint">If set, GPT is used for “best to trade” suggestions. Otherwise rule-based.</div>
+          </div>
         </div>
-        <div class="info-box" style="margin-top: 1rem; padding: 0.75rem; background: rgba(88, 166, 255, 0.1); border: 1px solid rgba(88, 166, 255, 0.3); border-radius: 6px; font-size: 0.875rem;">
-          <strong>How to get Access Token:</strong><br>
-          1. Create app at <a href="https://kite.trade/apps/" target="_blank" style="color: var(--accent);">kite.trade/apps</a><br>
-          2. Use API Key & Secret to login via Kite Connect<br>
-          3. After successful login, you'll receive an access token<br>
-          4. Paste the access token here. It remains valid until you logout.
+
+        <!-- App -->
+        <div class="tab-pane fade" id="app-pane" role="tabpanel">
+          <div class="tab-section-title">Server & environment</div>
+          <div class="form-group">
+            <label for="FLASK_SECRET_KEY">Flask secret key</label>
+            <input type="password" id="FLASK_SECRET_KEY" name="FLASK_SECRET_KEY" value="{{ config.get('FLASK_SECRET_KEY', '') }}" placeholder="Leave blank to keep current">
+          </div>
+          <div class="form-group">
+            <label for="FLASK_ENV">Flask env</label>
+            <input type="text" id="FLASK_ENV" name="FLASK_ENV" value="{{ config.get('FLASK_ENV', 'development') }}" placeholder="development or production">
+          </div>
+          <div class="form-group">
+            <label for="TZ">Timezone</label>
+            <input type="text" id="TZ" name="TZ" value="{{ config.get('TZ', 'Asia/Kolkata') }}" placeholder="Asia/Kolkata">
+          </div>
         </div>
       </div>
-      <div class="section">
-        <h2>News API</h2>
-        <div class="form-group">
-          <label for="NEWS_API_KEY">News API Key</label>
-          <input type="password" id="NEWS_API_KEY" name="NEWS_API_KEY" value="{{ config.get('NEWS_API_KEY', '') }}" placeholder="Leave blank to keep current">
-        </div>
-      </div>
-      <div class="section">
-        <h2>AI (optional)</h2>
-        <div class="form-group">
-          <label for="OPENAI_API_KEY">OpenAI API Key</label>
-          <input type="password" id="OPENAI_API_KEY" name="OPENAI_API_KEY" value="{{ config.get('OPENAI_API_KEY', '') }}" placeholder="For AI 'Best to trade' suggestion on Intraday Picks">
-          <div class="hint">If set, Intraday Picks will use GPT to suggest best 1–3 stocks. Otherwise rule-based suggestion is used.</div>
-        </div>
-      </div>
-      <div class="section">
-        <h2>App</h2>
-        <div class="form-group">
-          <label for="FLASK_SECRET_KEY">Flask Secret Key</label>
-          <input type="password" id="FLASK_SECRET_KEY" name="FLASK_SECRET_KEY" value="{{ config.get('FLASK_SECRET_KEY', '') }}" placeholder="Leave blank to keep current">
-        </div>
-        <div class="form-group">
-          <label for="FLASK_ENV">Flask Env</label>
-          <input type="text" id="FLASK_ENV" name="FLASK_ENV" value="{{ config.get('FLASK_ENV', 'development') }}" placeholder="development or production">
-        </div>
-        <div class="form-group">
-          <label for="TZ">Timezone</label>
-          <input type="text" id="TZ" name="TZ" value="{{ config.get('TZ', 'Asia/Kolkata') }}" placeholder="Asia/Kolkata">
-        </div>
-        <div class="form-group">
-          <label for="AUTO_CLOSE_TIME">Auto-close time (HH:MM)</label>
-          <input type="text" id="AUTO_CLOSE_TIME" name="AUTO_CLOSE_TIME" value="{{ config.get('AUTO_CLOSE_TIME', '14:30') }}" placeholder="14:30">
-          <div class="hint">Trading stops at this time (IST).</div>
-        </div>
-        <div class="form-group">
-          <label for="MAX_TRADES_PER_DAY">Max Trades Per Day</label>
-          <input type="number" id="MAX_TRADES_PER_DAY" name="MAX_TRADES_PER_DAY" value="{{ config.get('MAX_TRADES_PER_DAY', '3') }}" placeholder="3" min="1" max="20">
-          <div class="hint">Maximum number of trades allowed per day (1-20). Use trade suggestions in dashboard for optimal value.</div>
-        </div>
-      </div>
-      <button type="submit" class="btn">Save settings</button>
+
+      <button type="submit" class="btn btn-save">Save settings</button>
     </form>
   </div>
+
+  <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
   <script>
-    const form = document.getElementById('settingsForm');
-    const msgEl = document.getElementById('msg');
+    (function() {
+      var form = document.getElementById('settingsForm');
+      var msgEl = document.getElementById('msg');
+      var keys = [
+        'ZERODHA_API_KEY', 'ZERODHA_API_SECRET', 'ZERODHA_ACCESS_TOKEN',
+        'NEWS_API_KEY', 'OPENAI_API_KEY', 'FLASK_SECRET_KEY', 'FLASK_ENV',
+        'TZ', 'AUTO_CLOSE_TIME', 'MAX_TRADES_PER_DAY', 'TRADING_AMOUNT'
+      ];
 
-    function showMsg(text, type, alsoAlert) {
-      msgEl.textContent = text;
-      msgEl.className = 'msg ' + type;
-      msgEl.style.display = 'block';
-      if (alsoAlert !== false) alert(text);
-      if (type === 'success') {
-        setTimeout(function() { msgEl.style.display = 'none'; }, 5000);
+      function showMsg(text, type) {
+        msgEl.textContent = text;
+        msgEl.className = 'msg show ' + type;
+        if (type === 'success') setTimeout(function() { msgEl.classList.remove('show'); }, 4000);
       }
-    }
 
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      const data = {};
-      ['ZERODHA_API_KEY', 'ZERODHA_API_SECRET', 'ZERODHA_ACCESS_TOKEN', 'NEWS_API_KEY', 'OPENAI_API_KEY',
-       'FLASK_SECRET_KEY', 'FLASK_ENV', 'TZ', 'AUTO_CLOSE_TIME', 'MAX_TRADES_PER_DAY'].forEach(function(k) {
-        const el = document.getElementById(k);
-        if (el && el.value !== null && el.value !== undefined) {
-          const v = String(el.value).trim();
-          if (v) data[k] = v;
-        }
-      });
-      if (Object.keys(data).length === 0) {
-        showMsg('Enter at least one value to save.', 'error', true);
-        return;
-      }
-      fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-        .then(function(r) {
-          return r.text().then(function(text) {
-            var d;
-            try { d = text ? JSON.parse(text) : {}; } catch (e) { d = {}; }
-            return { ok: r.ok, status: r.status, data: d };
-          });
-        })
-        .then(function(result) {
-          if (result.ok && result.data && result.data.ok) {
-            showMsg('Settings saved.', 'success', true);
-          } else {
-            var err = (result.data && result.data.error) ? result.data.error : 'Failed to save (status ' + result.status + ')';
-            showMsg(err, 'error', true);
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var data = {};
+        keys.forEach(function(k) {
+          var el = document.getElementById(k);
+          if (el && el.value !== null && el.value !== undefined) {
+            var v = String(el.value).trim();
+            if (v) data[k] = v;
           }
-        })
-        .catch(function(err) {
-          var errText = 'Failed to save: ' + (err.message || 'network error');
-          showMsg(errText, 'error', true);
         });
-    });
+        if (Object.keys(data).length === 0) {
+          showMsg('Enter at least one value to save.', 'error');
+          return;
+        }
+        fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        })
+          .then(function(r) {
+            return r.json().then(function(data) { return { ok: r.ok, data: data }; }).catch(function() { return { ok: r.ok, data: {} }; });
+          })
+          .then(function(result) {
+            if (result.ok && result.data && result.data.ok) {
+              showMsg('Settings saved.', 'success');
+            } else {
+              showMsg((result.data && result.data.error) ? result.data.error : 'Failed to save.', 'error');
+            }
+          })
+          .catch(function(err) {
+            showMsg('Failed to save: ' + (err.message || 'network error'), 'error');
+          });
+      });
+    })();
   </script>
 </body>
 </html>

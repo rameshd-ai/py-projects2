@@ -19,6 +19,7 @@ from engine.data_fetcher import (
     fetch_nse_quote,
     get_historical_for_backtest,
     get_historical_for_prediction,
+    get_ohlc_for_date,
     fetch_nifty50_live,
     fetch_bank_nifty_live,
     fetch_india_vix,
@@ -80,7 +81,33 @@ def index():
 
 @app.route("/dashboard")
 def dashboard():
+    """Single-page dashboard (all sections in one page)."""
     return render_template("dashboard.html")
+
+
+@app.route("/dashboard/overview")
+def dashboard_overview():
+    return render_template("dashboard/overview.html", active_page="overview", page_title="Overview")
+
+
+@app.route("/dashboard/testing")
+def dashboard_testing():
+    return render_template("dashboard/testing.html", active_page="testing", page_title="Testing")
+
+
+@app.route("/dashboard/live")
+def dashboard_live():
+    return render_template("dashboard/live.html", active_page="live", page_title="Live Trading")
+
+
+@app.route("/dashboard/analytics")
+def dashboard_analytics():
+    return render_template("dashboard/analytics.html", active_page="analytics", page_title="Analytics")
+
+
+@app.route("/dashboard/zerodha")
+def dashboard_zerodha():
+    return render_template("dashboard/zerodha.html", active_page="zerodha", page_title="My Zerodha")
 
 
 def _config_for_template() -> dict[str, str]:
@@ -399,12 +426,12 @@ def api_live():
     price_change = 0
     accuracy = None
     
-    if _is_after_market_close():
-        # Market closed - can show actual data
+    if _can_show_actual_for_today():
+        # Trading day and market closed - can show actual data (never on NSE holidays)
         actual_direction = accuracy_data.get("today_actual")
         price_change = accuracy_data.get("price_change_pct", 0)
         accuracy = accuracy_data.get("today_accuracy")
-    # else: leave as None (market still open or not started yet)
+    # else: leave as None (market still open, or today is holiday/weekend)
     
     return {
         "status": sm.get_status(),
@@ -460,14 +487,50 @@ def api_backtest():
     return {"ok": True, "count": len(results), "results": results[:50]}
 
 
+def _get_log_dir() -> Path:
+    """Log folder for prediction history and other tracking data."""
+    log_dir = Path(__file__).resolve().parent / "log"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir
+
+
 def _get_predictions_file() -> Path:
-    """Get path to predictions storage file."""
-    return Path(__file__).resolve().parent / "predictions.json"
+    """Get path to predictions history file (inside log folder)."""
+    return _get_log_dir() / "prediction_history.json"
+
+
+def _get_nse_holidays() -> set[str]:
+    """Load NSE (India) trading holidays as set of 'YYYY-MM-DD' strings. Cached for process."""
+    path = Path(__file__).resolve().parent / "nse_holidays.json"
+    if not path.exists():
+        return set()
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return set(data.get("holidays") or [])
+    except Exception:
+        return set()
+
+
+def _is_nse_trading_day(d: date) -> bool:
+    """True if the given date is an NSE trading day (weekday and not a holiday)."""
+    if d.weekday() >= 5:  # Saturday=5, Sunday=6
+        return False
+    return d.isoformat() not in _get_nse_holidays()
 
 
 def _load_predictions() -> dict:
-    """Load predictions history."""
+    """Load predictions history from log folder. Migrates from old location if needed."""
     path = _get_predictions_file()
+    old_path = Path(__file__).resolve().parent / "predictions.json"
+    if not path.exists() and old_path.exists():
+        # One-time migration: move history from old file to log folder
+        try:
+            with open(old_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            _save_predictions(data)
+        except Exception:
+            pass
     if not path.exists():
         return {}
     try:
@@ -490,13 +553,21 @@ def _save_predictions(data: dict) -> None:
 
 
 def _get_opening_range_file() -> Path:
-    """Path for storing today's opening price per symbol (for intraday price-vs-open factor)."""
-    return Path(__file__).resolve().parent / "opening_range.json"
+    """Path for storing today's opening price per symbol (inside log folder)."""
+    return _get_log_dir() / "opening_range.json"
 
 
 def _load_opening_range() -> dict:
     today = date.today().isoformat()
     path = _get_opening_range_file()
+    old_path = Path(__file__).resolve().parent / "opening_range.json"
+    if not path.exists() and old_path.exists():
+        try:
+            with open(old_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            _save_opening_range(data)
+        except Exception:
+            pass
     if not path.exists():
         return {"date": today, "symbols": {}}
     try:
@@ -737,16 +808,14 @@ def _is_us_market_closed() -> bool:
 
 
 def _is_indian_market_open() -> bool:
-    """Check if Indian stock market (NSE) is currently open."""
+    """Check if Indian stock market (NSE) is currently open (trading day + time)."""
     ist = ZoneInfo('Asia/Kolkata')
     now_ist = datetime.now(ist)
+    if not _is_nse_trading_day(now_ist.date()):
+        return False
     current_time = now_ist.time()
     market_open = time(9, 15)  # 9:15 AM IST
     market_close = time(15, 30)  # 3:30 PM IST
-    
-    # Market is open between 9:15 AM and 3:30 PM IST on weekdays
-    if now_ist.weekday() >= 5:  # Saturday = 5, Sunday = 6
-        return False
     return market_open <= current_time <= market_close
 
 
@@ -766,6 +835,12 @@ def _is_after_market_close() -> bool:
     current_time = now_ist.time()
     market_close = time(15, 30)  # 3:30 PM IST
     return current_time > market_close
+
+
+def _can_show_actual_for_today() -> bool:
+    """True only if today is an NSE trading day AND market has closed (so we can compute/freeze actual)."""
+    today = date.today()
+    return _is_nse_trading_day(today) and _is_after_market_close()
 
 
 def _determine_market_status(nifty_data: dict) -> dict:
@@ -851,7 +926,7 @@ def _get_or_create_todays_prediction(symbol: str = "RELIANCE") -> dict[str, Any]
     
     # US market is closed - check if prediction already exists for today
     if today in predictions and predictions[today].get("prediction") and predictions[today].get("prediction") != "WAITING":
-        is_frozen = predictions[today].get("frozen_at") is not None or _is_after_market_close()
+        is_frozen = predictions[today].get("frozen_at") is not None or _can_show_actual_for_today()
         return {
             "prediction": predictions[today]["prediction"],
             "confidence": predictions[today].get("confidence", 50),
@@ -922,10 +997,28 @@ def _update_prediction_accuracy(symbol: str = "RELIANCE") -> dict[str, Any]:
         
         predictions = _load_predictions()
         today = date.today().isoformat()
+        today_date = date.today()
+        
+        # On NSE holiday/weekend: never compute or show actual for today
+        if not _is_nse_trading_day(today_date):
+            base = {
+                "overall_accuracy": _calculate_overall_accuracy(predictions),
+                "correct_predictions": sum(1 for p in predictions.values() if p.get("accuracy") == "CORRECT"),
+                "total_predictions": sum(1 for p in predictions.values() if p.get("accuracy") is not None),
+            }
+            if today in predictions:
+                return {
+                    "today_prediction": predictions[today].get("prediction", "NEUTRAL"),
+                    "today_actual": None,
+                    "today_accuracy": None,
+                    "price_change_pct": 0,
+                    **base,
+                }
+            return {"today_prediction": "WAITING", "today_actual": None, "today_accuracy": None, "price_change_pct": 0, **base}
         
         # If actual is already frozen (calculated after market close), return it
         if today in predictions and predictions[today].get("actual") is not None:
-            if _is_after_market_close() or predictions[today].get("actual_frozen"):
+            if _can_show_actual_for_today() or predictions[today].get("actual_frozen"):
                 accuracy_data = {
                     "today_prediction": predictions[today].get("prediction", "NEUTRAL"),
                     "today_actual": predictions[today]["actual"],
@@ -939,8 +1032,8 @@ def _update_prediction_accuracy(symbol: str = "RELIANCE") -> dict[str, Any]:
                     _accuracy_cache[cache_key] = (accuracy_data, datetime.now())
                 return accuracy_data
         
-        # Only calculate actual if market is closed
-        if not _is_after_market_close():
+        # Only calculate actual if today was a trading day and market is closed
+        if not _can_show_actual_for_today():
             # Market still open - return existing data or placeholder
             if today in predictions:
                 return {
@@ -1159,6 +1252,40 @@ def api_market_prediction():
     }
 
 
+def _backfill_actual_for_date(date_str: str, symbol: str, pred_data: dict, predictions: dict) -> dict:
+    """For a past trading day with no stored actual, fetch OHLC and compute actual/accuracy/analysis; persist and return updated pred_data."""
+    if pred_data.get("actual") is not None or pred_data.get("actual_frozen"):
+        return pred_data
+    try:
+        d = date.fromisoformat(date_str)
+    except (ValueError, TypeError):
+        return pred_data
+    if d >= date.today():
+        return pred_data
+    ohlc = get_ohlc_for_date(symbol, d)
+    if not ohlc or "pct_change" not in ohlc:
+        return pred_data
+    price_change_pct = ohlc["pct_change"]
+    actual_direction = "BULLISH" if price_change_pct > 0.5 else ("BEARISH" if price_change_pct < -0.5 else "NEUTRAL")
+    predicted = pred_data.get("prediction", "NEUTRAL")
+    if predicted == actual_direction:
+        accuracy = "CORRECT"
+    elif predicted == "NEUTRAL" or actual_direction == "NEUTRAL":
+        accuracy = "PARTIAL"
+    else:
+        accuracy = "INCORRECT"
+    analysis = _analyze_prediction_failure(pred_data, actual_direction, price_change_pct)
+    pred_data = dict(pred_data)
+    pred_data["actual"] = actual_direction
+    pred_data["actual_change_pct"] = price_change_pct
+    pred_data["actual_frozen"] = True
+    pred_data["accuracy"] = accuracy
+    pred_data["analysis"] = analysis
+    predictions[date_str] = pred_data
+    _save_predictions(predictions)
+    return pred_data
+
+
 @app.route("/api/prediction-history")
 def api_prediction_history():
     """Get historical predictions with dates."""
@@ -1173,7 +1300,17 @@ def api_prediction_history():
         today = date.today().isoformat()
         
         for date_str, pred_data in predictions.items():
-            if pred_data.get("symbol", "RELIANCE").upper() == symbol.upper():
+            if pred_data.get("symbol", "RELIANCE").upper() != symbol.upper():
+                continue
+            try:
+                d = date.fromisoformat(date_str)
+                is_trading = _is_nse_trading_day(d)
+            except (ValueError, TypeError):
+                is_trading = True
+            if is_trading:
+                # Backfill actual for past trading days that have no stored actual
+                if pred_data.get("actual") is None and date_str < today:
+                    pred_data = _backfill_actual_for_date(date_str, symbol, pred_data, predictions)
                 history.append({
                     "date": date_str,
                     "prediction": pred_data.get("prediction", "NEUTRAL"),
@@ -1185,12 +1322,28 @@ def api_prediction_history():
                     "price_change_pct": pred_data.get("actual_change_pct", 0),
                     "analysis": pred_data.get("analysis", "N/A"),
                     "factors": pred_data.get("factors", []),
+                    "market_closed": False,
+                })
+            else:
+                # NSE holiday or weekend: do not show stored actual/accuracy; show Market closed
+                history.append({
+                    "date": date_str,
+                    "prediction": pred_data.get("prediction", "NEUTRAL"),
+                    "confidence": pred_data.get("confidence", 50),
+                    "usa_bias": pred_data.get("usa_bias", "N/A"),
+                    "usa_bias_value": pred_data.get("usa_bias_value", 0),
+                    "actual": None,
+                    "accuracy": None,
+                    "price_change_pct": 0,
+                    "analysis": "Market closed",
+                    "factors": pred_data.get("factors", []),
+                    "market_closed": True,
                 })
         
         # Add today's incomplete record if not already present
         if not any(h["date"] == today for h in history):
-            # Get today's prediction (might be WAITING)
             today_pred = _get_or_create_todays_prediction(symbol)
+            today_is_trading = _is_nse_trading_day(date.today())
             history.append({
                 "date": today,
                 "prediction": today_pred.get("prediction", "—"),
@@ -1200,8 +1353,9 @@ def api_prediction_history():
                 "actual": None,
                 "accuracy": None,
                 "price_change_pct": 0,
-                "analysis": "⏳ In progress...",
+                "analysis": "Market closed" if not today_is_trading else "⏳ In progress...",
                 "factors": today_pred.get("factors", []),
+                "market_closed": not today_is_trading,
             })
         
         # Sort by date descending (newest first)

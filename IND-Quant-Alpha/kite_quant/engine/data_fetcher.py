@@ -5,7 +5,7 @@ yfinance fallback for NSE when Zerodha unavailable; yfinance only for US (S&P 50
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import pandas as pd
@@ -366,3 +366,39 @@ def get_historical_for_prediction(symbol: str, days: int = 60) -> pd.DataFrame:
     if df is not None and not df.empty and len(df) >= 20:
         return df
     return get_historical_for_backtest(symbol, days=days)
+
+
+def get_ohlc_for_date(symbol: str, target_date) -> dict:
+    """
+    Get open/close and % change for a specific calendar date (for backfilling actual).
+    Uses yfinance with start/end window. Returns {"open", "close", "pct_change"} or {} if not found.
+    """
+    if isinstance(target_date, str):
+        target_date = date.fromisoformat(target_date)
+    start = (target_date - timedelta(days=10)).isoformat()
+    end = (target_date + timedelta(days=3)).isoformat()
+    nse_symbol = f"{symbol}.NS" if not symbol.endswith(".NS") else symbol
+    try:
+        t = yf.Ticker(nse_symbol)
+        df = t.history(start=start, end=end, interval="1d")
+        if df.empty or len(df) < 1:
+            return {}
+        df = df.reset_index()
+        if "Date" not in df.columns and "Datetime" in df.columns:
+            df["Date"] = pd.to_datetime(df["Datetime"]).dt.date
+        elif "Date" in df.columns:
+            df["Date"] = pd.to_datetime(df["Date"]).dt.date
+        else:
+            return {}
+        row = df[df["Date"].astype(str) == target_date.isoformat()]
+        if row.empty:
+            return {}
+        r = row.iloc[0]
+        o = float(r.get("Open", 0))
+        c = float(r.get("Close", 0))
+        if not o or o == 0:
+            return {}
+        pct = ((c - o) / o) * 100
+        return {"open": o, "close": c, "pct_change": round(pct, 2)}
+    except Exception:
+        return {}

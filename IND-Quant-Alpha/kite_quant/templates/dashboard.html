@@ -266,33 +266,28 @@
     </div>
     <ul class="nav flex-column mt-3">
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link active" onclick="showSection('overview', this); return false;">
+        <a href="{{ url_for('dashboard') }}#overview" class="nav-link active" data-section="overview" onclick="showSection('overview', this); return false;">
           <span class="material-icons-round">dashboard</span> Overview
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link" onclick="showSection('testing', this); return false;">
+        <a href="{{ url_for('dashboard') }}#testing" class="nav-link" data-section="testing" onclick="showSection('testing', this); return false;">
           <span class="material-icons-round">science</span> Testing
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link" onclick="showSection('live', this); return false;">
+        <a href="{{ url_for('dashboard') }}#live" class="nav-link" data-section="live" onclick="showSection('live', this); return false;">
           <span class="material-icons-round">flash_on</span> Live Trading
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link" onclick="showSection('analytics', this); return false;">
+        <a href="{{ url_for('dashboard') }}#analytics" class="nav-link" data-section="analytics" onclick="showSection('analytics', this); return false;">
           <span class="material-icons-round">insights</span> Analytics
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link" onclick="showSection('zerodha', this); return false;">
+        <a href="{{ url_for('dashboard') }}#zerodha" class="nav-link" data-section="zerodha" onclick="showSection('zerodha', this); return false;">
           <span class="material-icons-round">account_balance</span> My Zerodha
-        </a>
-      </li>
-      <li class="nav-item mb-2">
-        <a href="#" class="nav-link" onclick="showSection('intraday', this); return false;">
-          <span class="material-icons-round">leaderboard</span> Intraday Picks
         </a>
       </li>
       <li class="nav-item mt-auto mb-3">
@@ -1034,56 +1029,6 @@
       </div>
     </div>
 
-    <!-- Top 15 Intraday Picks Section -->
-    <div id="section-intraday" class="section fade-in">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h5 class="mb-1">Top 15 Intraday Picks (F&O)</h5>
-          <p class="text-muted small mb-0">Uses <strong>Today's Market Prediction</strong> for each stock (US bias, news, technicals, indices, VIX, price vs open, depth, 15m). Data from Zerodha when connected. Refresh to recalculate (cached 5 min).</p>
-        </div>
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="loadIntradayPicks(true)">
-          <span class="material-icons-round align-middle me-1" style="font-size: 1rem;">refresh</span> Refresh
-        </button>
-      </div>
-      <div id="intraday-picks-error" class="alert alert-warning border-0 d-none mb-4"></div>
-      <div class="card mb-4 border-primary-custom border-opacity-25" id="intraday-ai-card">
-        <div class="card-header d-flex align-items-center justify-content-between">
-          <span><span class="material-icons-round me-2">auto_awesome</span> Best to trade (AI + analysis)</span>
-          <span class="badge bg-primary bg-opacity-25 text-primary-custom" id="intraday-ai-source">—</span>
-        </div>
-        <div class="card-body">
-          <p class="mb-2"><strong>Suggested:</strong> <span id="intraday-ai-symbols" class="text-primary-custom">—</span></p>
-          <p class="text-muted small mb-0" id="intraday-ai-reasoning">Load picks to see AI suggestion.</p>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-dark table-hover">
-              <thead>
-                <tr>
-                  <th style="width: 4rem;">#</th>
-                  <th>Symbol</th>
-                  <th class="text-center">Today's Prediction</th>
-                  <th class="text-end">Score</th>
-                  <th>Reasons / Tags</th>
-                </tr>
-              </thead>
-              <tbody id="intraday-picks-tbody">
-                <tr><td colspan="5" class="text-muted text-center">Click Refresh to load picks…</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="alert bg-primary bg-opacity-10 border-0 mt-3 d-flex align-items-start">
-            <span class="material-icons-round me-2 text-primary-custom">info</span>
-            <small class="text-muted">
-              <strong>Disclaimer:</strong> Same logic as Today's Market Prediction per stock. Not investment advice. Trade at your own risk. Suitable for intraday and F&O; verify liquidity and margins on Zerodha.
-            </small>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
 
 <!-- Chart.js -->
@@ -1183,13 +1128,15 @@
       document.getElementById('section-' + sectionName).classList.add('active');
         if(clickedElement) clickedElement.classList.add('active');
       
-        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading', 'analytics': 'Analytics', 'zerodha': 'My Zerodha', 'intraday': 'Top 15 Intraday Picks' };
+        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading', 'analytics': 'Analytics', 'zerodha': 'My Zerodha' };
         document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
+
+      // Update URL to /dashboard#section so the address bar reflects current section
+      var baseUrl = '{{ url_for("dashboard") }}' || '/dashboard';
+      history.pushState(null, '', baseUrl + '#' + sectionName);
 
       if (sectionName === 'zerodha') {
         loadZerodhaProfile();
-      } else if (sectionName === 'intraday') {
-        loadIntradayPicks();
       } else if (sectionName === 'live') {
         currentMode = 'live';
             if(document.getElementById('liveSymbol')) document.getElementById('liveSymbol').value = currentSymbol;
@@ -1208,6 +1155,17 @@
             poll();
       }
     }
+
+    // On load: if URL has a hash (#overview, #live, etc.), show that section
+    function applyHashToSection() {
+      var hash = window.location.hash.replace('#', '');
+      var valid = ['overview', 'testing', 'live', 'analytics', 'zerodha'];
+      if (hash && valid.indexOf(hash) !== -1) {
+        var link = document.querySelector('.nav-link[data-section="' + hash + '"]');
+        showSection(hash, link);
+      }
+    }
+    window.addEventListener('hashchange', applyHashToSection);
 
     function api(path, options = {}) {
       return fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
@@ -1784,7 +1742,9 @@
             
             // Add icons for prediction and actual
             const predIcon = h.prediction==='BULLISH'?'↗':h.prediction==='BEARISH'?'↘':'→';
-            const actualIcon = h.actual==='BULLISH'?'↗':h.actual==='BEARISH'?'↘':h.actual==='-'?'':'→';
+            const actualDisplay = h.market_closed ? 'Market closed' : (h.actual || '—');
+            const actualIcon = h.market_closed ? '' : (h.actual==='BULLISH'?'↗':h.actual==='BEARISH'?'↘':'→');
+            const actualCellClass = h.market_closed ? 'text-muted' : (h.actual==='BULLISH'?'text-success-custom':h.actual==='BEARISH'?'text-danger-custom':'');
             
             // Format analysis - truncate if too long and add tooltip
             const analysis = h.analysis || 'N/A';
@@ -1794,9 +1754,9 @@
                 <td>${h.date}</td>
                 <td class="${h.prediction==='BULLISH'?'text-success-custom':h.prediction==='BEARISH'?'text-danger-custom':''}">${predIcon} ${h.prediction}</td>
                 <td class="${usaBiasClass}">${usaBiasDisplay}</td>
-                <td class="${h.actual==='BULLISH'?'text-success-custom':h.actual==='BEARISH'?'text-danger-custom':''}">${actualIcon} ${h.actual||'-'}</td>
-                <td>${h.accuracy||'-'}</td>
-                <td>${h.price_change_pct}%</td>
+                <td class="${actualCellClass}">${actualIcon} ${actualDisplay}</td>
+                <td>${h.market_closed ? '—' : (h.accuracy||'-')}</td>
+                <td>${h.market_closed ? '—' : (h.price_change_pct + '%')}</td>
                 <td class="small" title="${analysis}">${analysisShort}</td>
             </tr>`;
         }).join('');
@@ -1992,6 +1952,9 @@
                 btn.innerHTML = '<span class="material-icons-round fs-6 me-1">refresh</span> Generate Token';
             });
     }
+
+    // Apply URL hash on load (e.g. /dashboard#live -> show Live section)
+    applyHashToSection();
 
     // Check Zerodha auth on page load
     checkZerodhaAuth();

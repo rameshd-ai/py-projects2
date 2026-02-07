@@ -1,0 +1,11 @@
+{% extends "base_dashboard.html" %}
+{% block content %}
+<div class="fade-in">
+  <div class="alert bg-danger-subtle border-0 d-flex align-items-center mb-4" role="alert">
+    <span class="material-icons-round me-2 text-danger-custom">dangerous</span>
+    <div class="text-danger-custom small">Live Trading Mode - Real money will be used.</div>
+  </div>
+  <p class="text-muted">Live trading controls and suggestions. (Full content in single-page dashboard.)</p>
+  <p class="small"><a href="{{ url_for('dashboard') }}">Open single-page dashboard</a></p>
+</div>
+{% endblock %}

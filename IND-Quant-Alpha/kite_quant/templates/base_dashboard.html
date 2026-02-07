@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kite Quant — {{ page_title|default('Dashboard') }}</title>
+  <link href="{{ url_for('static', filename='css/roboto.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/material-icons.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+  <style>
+    :root {
+      --md-bg: #121212; --md-surface: #1e1e1e; --md-surface-2: #252525;
+      --md-primary: #a8c7fa; --md-on-primary: #062e6f; --md-secondary: #c2c7cf;
+      --md-error: #ffb4ab; --md-success: #6dd58c; --md-warning: #fdc400;
+      --md-text: #e2e2e2; --md-text-muted: #c4c7c5; --md-border: #444746;
+      --bs-body-bg: var(--md-bg); --bs-body-color: var(--md-text); --bs-border-color: var(--md-border);
+    }
+    body { font-family: 'Roboto', sans-serif; background-color: var(--md-bg); overflow-x: hidden; }
+    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 260px; background-color: var(--md-surface); border-right: 1px solid var(--md-border); padding-top: 1rem; z-index: 1000; transition: transform 0.3s ease-in-out; }
+    .sidebar-brand { padding: 0 1.5rem 1.5rem; font-size: 1.25rem; font-weight: 700; color: var(--md-primary); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--md-border); }
+    .nav-link { color: var(--md-text-muted); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 12px; font-weight: 500; border-radius: 0 50px 50px 0; margin-right: 1rem; transition: all 0.2s; }
+    .nav-link:hover { background-color: rgba(168, 199, 250, 0.08); color: var(--md-text); }
+    .nav-link.active { background-color: rgba(168, 199, 250, 0.16); color: var(--md-primary); }
+    .nav-link .material-icons-round { font-size: 24px; }
+    .main-content { margin-left: 260px; padding: 2rem; }
+    @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } .sidebar.show { transform: translateX(0); } }
+    .card { background-color: var(--md-surface); border: 1px solid var(--md-border); border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .card-header { background-color: transparent; border-bottom: 1px solid var(--md-border); padding: 1.25rem 1.5rem; font-weight: 500; font-size: 1.1rem; display: flex; align-items: center; justify-content: space-between; }
+    .metric-item { background-color: var(--md-surface-2); padding: 1.25rem; border-radius: 12px; height: 100%; }
+    .metric-label { color: var(--md-text-muted); font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+    .metric-value { font-size: 1.5rem; font-weight: 400; color: var(--md-text); }
+    .text-success-custom { color: var(--md-success) !important; } .text-danger-custom { color: var(--md-error) !important; } .text-warning-custom { color: var(--md-warning) !important; } .text-primary-custom { color: var(--md-primary) !important; }
+    .btn { border-radius: 50px; padding: 0.5rem 1.25rem; font-weight: 500; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary { background-color: var(--md-primary); color: var(--md-on-primary); border: none; } .btn-primary:hover { background-color: #8ab4f8; color: var(--md-on-primary); }
+    .btn-outline-secondary { color: var(--md-text-muted); border-color: var(--md-border); } .btn-outline-secondary:hover { background-color: var(--md-surface-2); color: var(--md-text); border-color: var(--md-text); }
+    .bg-success-subtle { background-color: rgba(109, 213, 140, 0.15) !important; color: var(--md-success) !important; }
+    .bg-danger-subtle { background-color: rgba(255, 180, 171, 0.15) !important; color: var(--md-error) !important; }
+    .bg-warning-subtle { background-color: rgba(253, 196, 0, 0.15) !important; color: var(--md-warning) !important; }
+    .prediction-value { font-size: 3rem; font-weight: 700; margin: 1rem 0; }
+    .info-icon { font-size: 18px; color: var(--md-text-muted); cursor: help; display: inline-flex; align-items: center; justify-content: center; } .info-icon:hover { color: var(--md-primary); }
+    .form-control { background-color: var(--md-surface-2); border: 1px solid var(--md-border); color: var(--md-text); border-radius: 8px; padding: 0.75rem; }
+    .form-control:focus { background-color: var(--md-surface-2); border-color: var(--md-primary); color: var(--md-text); box-shadow: 0 0 0 2px rgba(168, 199, 250, 0.25); }
+    .fade-in { animation: fadeIn 0.3s ease-in; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .live-dot { display: inline-block; width: 8px; height: 8px; background-color: #6dd58c; border-radius: 50%; margin-right: 6px; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  </style>
+</head>
+<body>
+  <div class="sidebar d-flex flex-column">
+    <div class="sidebar-brand">
+      <span class="material-icons-round text-primary-custom">trending_up</span> Kite Quant
+    </div>
+    <ul class="nav flex-column mt-3">
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_overview') }}" class="nav-link {{ 'active' if active_page == 'overview' else '' }}">
+          <span class="material-icons-round">dashboard</span> Overview
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_testing') }}" class="nav-link {{ 'active' if active_page == 'testing' else '' }}">
+          <span class="material-icons-round">science</span> Testing
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_live') }}" class="nav-link {{ 'active' if active_page == 'live' else '' }}">
+          <span class="material-icons-round">flash_on</span> Live Trading
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_analytics') }}" class="nav-link {{ 'active' if active_page == 'analytics' else '' }}">
+          <span class="material-icons-round">insights</span> Analytics
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_zerodha') }}" class="nav-link {{ 'active' if active_page == 'zerodha' else '' }}">
+          <span class="material-icons-round">account_balance</span> My Zerodha
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard') }}" class="nav-link">
+          <span class="material-icons-round">view_day</span> Single-page dashboard
+        </a>
+      </li>
+      <li class="nav-item mt-auto mb-3">
+        <a href="{{ url_for('settings') }}" class="nav-link">
+          <span class="material-icons-round">settings</span> Settings
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="mb-0 fw-bold" id="page-title">{{ page_title|default('Overview') }}</h4>
+      <div class="d-flex align-items-center gap-3">
+        <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center" id="gpt-status-btn" onclick="checkGptStatus()" title="Check if OpenAI (GPT) token is working">
+          <span class="material-icons-round fs-6 me-1">smart_toy</span>
+          <span id="gpt-status-text">GPT: Check</span>
+        </button>
+        <span class="badge bg-primary bg-opacity-10 text-primary-custom px-3 py-2 rounded-pill d-flex align-items-center">
+          <span class="material-icons-round fs-6 me-2">schedule</span>
+          <span id="current-time">—</span>
+        </span>
+      </div>
+    </div>
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
