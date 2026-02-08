@@ -20,11 +20,10 @@ _instruments_cache: list[dict[str, Any]] = []
 _instruments_cache_time: float = 0
 INSTRUMENTS_CACHE_TTL_SEC = 24 * 3600
 
-# Standard indices (F&O underlyings) - always searchable even if not in NSE dump
+# Standard indices (F&O underlyings) - always searchable even if not in NSE dump (FINNIFTY removed)
 _FNO_INDEX_LIST = [
     {"symbol": "NIFTY 50", "name": "Nifty 50 Index", "instrument_type": "INDEX", "exchange": "NSE"},
     {"symbol": "NIFTY BANK", "name": "Nifty Bank Index", "instrument_type": "INDEX", "exchange": "NSE"},
-    {"symbol": "FINNIFTY", "name": "Nifty Financial Services", "instrument_type": "INDEX", "exchange": "NSE"},
     {"symbol": "MIDCPNIFTY", "name": "Nifty Midcap Select", "instrument_type": "INDEX", "exchange": "NSE"},
 ]
 
@@ -102,7 +101,7 @@ def _load_instruments_cache(force: bool = False) -> list[dict[str, Any]]:
         # Load NFO (F&O) futures for main indices so "nifty" shows Nifty futures
         try:
             nfo_raw = kite.instruments("NFO")
-            fno_keywords = ("NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY")
+            fno_keywords = ("NIFTY", "BANKNIFTY", "MIDCPNIFTY")
             nfo_count = 0
             for inst in nfo_raw:
                 if nfo_count >= 40:

@@ -36,8 +36,8 @@
     </div>
   </div>
 
-  <!-- INDEX OPPORTUNITIES (Capital Friendly) — shown when capital < ₹15k or no stock fits budget -->
-  <div class="card mb-4 d-none" id="index-opportunities-block">
+  <!-- INDEX OPPORTUNITIES (Capital Friendly) — always shown on AI Trading Agent -->
+  <div class="card mb-4" id="index-opportunities-block">
     <div class="card-header d-flex align-items-center gap-2" style="background: rgba(156, 39, 176, 0.2); color: #ce93d8;">
       <span class="material-icons-round">show_chart</span>
       <span>Index Opportunities (Capital Friendly)</span>
@@ -225,26 +225,14 @@
   riskPctEl.addEventListener('input', updateMaxRiskDisplay);
   updateMaxRiskDisplay();
 
-  const INDEX_CAPITAL_THRESHOLD = 15000;
   let noStockFitsBudget = false;
 
   function getTotalCapital() {
     return parseFloat(totalCapitalEl.value) || 0;
   }
 
-  function shouldShowIndexBlock() {
-    return getTotalCapital() < INDEX_CAPITAL_THRESHOLD || noStockFitsBudget;
-  }
-
-  function updateIndexBlockVisibility() {
-    const block = document.getElementById('index-opportunities-block');
-    if (!block) return;
-    if (shouldShowIndexBlock()) {
-      block.classList.remove('d-none');
-      loadIndexOpportunities();
-    } else {
-      block.classList.add('d-none');
-    }
+  function refreshIndexOpportunities() {
+    loadIndexOpportunities();
   }
 
   async function loadIndexOpportunities() {
@@ -257,7 +245,8 @@
     if (contentEl) contentEl.classList.add('d-none');
     if (noDirectionEl) noDirectionEl.classList.add('d-none');
 
-    const maxRisk = getMaxRiskPerTrade();
+    // Index options: use TOTAL CAPITAL as budget (user pays premium × lot_size per contract)
+    const indexBudget = getTotalCapital() || 5000;
     try {
       const biasRes = await fetch('/api/index-bias');
       const biasData = await biasRes.json();
@@ -278,7 +267,7 @@
         return;
       }
 
-      function renderIndexTable(tbodyId, options, maxRiskRupee, isRecommendedIdx) {
+      function renderIndexTable(tbodyId, options, budgetRupee, isRecommendedIdx) {
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
         if (!options || options.length === 0) {
@@ -286,23 +275,25 @@
           return;
         }
         const rows = options.map((opt, idx) => {
-          const lotCost = opt.lotCost != null ? opt.lotCost : (opt.premium * opt.lotSize);
-          const withinBudget = lotCost <= maxRiskRupee;
-          const statusHtml = withinBudget ? '<span class="text-success-custom">Within Budget</span>' : '<span class="text-danger-custom">Over Budget</span>';
-          const btnDisabled = !withinBudget;
-          const tooltip = btnDisabled ? ' title="Requires ' + formatMoney(lotCost) + ', exceeds your risk limit"' : '';
+          const totalCost = opt.totalCost != null ? opt.totalCost : (opt.lotCost != null ? opt.lotCost : (opt.premium * opt.lotSize));
+          const canTrade = opt.canTrade != null ? opt.canTrade : (totalCost <= budgetRupee);
+          const statusLabel = (opt.status != null ? opt.status : (canTrade ? 'Affordable' : 'Over Budget'));
+          const statusHtml = canTrade ? '<span class="text-success-custom">' + statusLabel + '</span>' : '<span class="text-danger-custom">' + statusLabel + '</span>';
+          const btnDisabled = !canTrade;
+          const tooltip = btnDisabled ? ' title="Requires ' + formatMoney(totalCost) + ', exceeds your budget"' : '';
           const recommended = (isRecommendedIdx >= 0 && idx === isRecommendedIdx);
+          const btnText = canTrade ? ('Buy ' + opt.type) : 'Over Budget';
           return '<tr class="' + (recommended ? 'row-ai-recommended' : '') + '">' +
             '<td><span class="badge ' + (opt.type === 'CE' ? 'bg-success bg-opacity-25' : 'bg-danger bg-opacity-25') + '">' + opt.type + '</span></td>' +
             '<td>' + opt.strike + '</td><td>' + opt.premium + '</td><td>' + opt.lotSize + '</td>' +
-            '<td>' + formatMoney(lotCost) + '</td><td>' + statusHtml + '</td>' +
-            '<td><button type="button" class="btn btn-sm ' + (opt.type === 'CE' ? 'btn-success' : 'btn-danger') + (btnDisabled ? ' disabled' : '') + '"' + tooltip + '>Buy ' + opt.type + '</button></td></tr>';
+            '<td>' + formatMoney(totalCost) + '</td><td>' + statusHtml + '</td>' +
+            '<td><button type="button" class="btn btn-sm ' + (opt.type === 'CE' ? 'btn-success' : 'btn-danger') + (btnDisabled ? ' disabled' : '') + '"' + tooltip + '>' + btnText + '</button></td></tr>';
         });
         tbody.innerHTML = rows.join('');
       }
 
       if (niftyBias !== 'NEUTRAL') {
-        const niftyOptRes = await fetch('/api/index-options/NIFTY?max_risk=' + encodeURIComponent(maxRisk));
+        const niftyOptRes = await fetch('/api/index-options/NIFTY?max_risk=' + encodeURIComponent(indexBudget));
         const niftyOptData = await niftyOptRes.json();
         document.getElementById('index-nifty-label').textContent = 'NIFTY – ' + (niftyBias === 'BULLISH' ? 'Bullish' : 'Bearish') + ' Intraday Bias';
         document.getElementById('index-nifty-confidence').textContent = confidence;
@@ -310,13 +301,13 @@
         niftySection.classList.remove('d-none');
         const opts = niftyOptData.options || [];
         const recIdx = opts.findIndex(o => (niftyOptData.aiRecommendation || {}).direction === 'BUY ' + o.type);
-        renderIndexTable('index-nifty-tbody', opts, maxRisk, recIdx === -1 ? 0 : recIdx);
+        renderIndexTable('index-nifty-tbody', opts, indexBudget, recIdx === -1 ? 0 : recIdx);
       } else {
         niftySection.classList.add('d-none');
       }
 
       if (bankNiftyBias !== 'NEUTRAL') {
-        const bnOptRes = await fetch('/api/index-options/BANKNIFTY?max_risk=' + encodeURIComponent(maxRisk));
+        const bnOptRes = await fetch('/api/index-options/BANKNIFTY?max_risk=' + encodeURIComponent(indexBudget));
         const bnOptData = await bnOptRes.json();
         document.getElementById('index-banknifty-label').textContent = 'BANK NIFTY – ' + (bankNiftyBias === 'BULLISH' ? 'Bullish' : 'Bearish') + ' Intraday Bias';
         document.getElementById('index-banknifty-confidence').textContent = confidence;
@@ -324,7 +315,7 @@
         bankNiftySection.classList.remove('d-none');
         const opts = bnOptData.options || [];
         const recIdx = opts.findIndex(o => (bnOptData.aiRecommendation || {}).direction === 'BUY ' + o.type);
-        renderIndexTable('index-banknifty-tbody', opts, maxRisk, recIdx === -1 ? 0 : recIdx);
+        renderIndexTable('index-banknifty-tbody', opts, indexBudget, recIdx === -1 ? 0 : recIdx);
       } else {
         bankNiftySection.classList.add('d-none');
       }
@@ -339,9 +330,10 @@
     }
   }
 
-  totalCapitalEl.addEventListener('input', updateIndexBlockVisibility);
-  riskPctEl.addEventListener('input', updateIndexBlockVisibility);
-  updateIndexBlockVisibility();
+  totalCapitalEl.addEventListener('input', refreshIndexOpportunities);
+  riskPctEl.addEventListener('input', refreshIndexOpportunities);
+  // Load index opportunities on page load (block is always visible)
+  loadIndexOpportunities();
 
   function renderStockCard(item, listId) {
     const trendIcon = item.trend === 'up' ? '↑' : '↓';
@@ -475,7 +467,6 @@
       if (!anyWithinBudget && options.length > 0) {
         noOptionsWarning.classList.remove('d-none');
         noStockFitsBudget = true;
-        updateIndexBlockVisibility();
       }
       var recommendedRow = optionsTbody.querySelector('tr[data-recommended="true"]');
       if (recommendedRow) recommendedRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });

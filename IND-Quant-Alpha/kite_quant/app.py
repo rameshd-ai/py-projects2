@@ -2376,6 +2376,7 @@ def get_affordable_index_options(
         strikes = [base_strike, base_strike - strike_step, base_strike - 2 * strike_step]
 
     # Mock premiums (index options: typically tens to low hundreds)
+    # Budget check: total_cost = premium * lot_size (user pays this); compare total_cost <= budget
     options = []
     for i, strike in enumerate(strikes):
         if use_ce:
@@ -2383,22 +2384,23 @@ def get_affordable_index_options(
         else:
             prem = max(20, 80 + (spot - strike) / 2 + (30 if i == 0 else 0))
         prem = round(prem, 2)
-        lot_cost = prem * lot_size
+        total_cost = prem * lot_size
+        within_budget = total_cost <= max_risk_per_trade
         options.append({
             "type": "CE" if use_ce else "PE",
             "strike": strike,
             "premium": prem,
             "lotSize": lot_size,
-            "lotCost": lot_cost,
+            "lotCost": total_cost,
+            "totalCost": round(total_cost, 2),
             "distanceFromATM": i,
+            "status": "Affordable" if within_budget else "Over Budget",
+            "canTrade": within_budget,
         })
 
-    # Filter by budget and sort by closest to ATM
-    affordable = [o for o in options if o["lotCost"] <= max_risk_per_trade]
-    affordable.sort(key=lambda x: (x["distanceFromATM"], x["premium"]))
-    top = affordable[:3]
-    if not top and options:
-        top = options[:3]  # show anyway but frontend will mark Over Budget
+    # Sort by closest to ATM, then by premium; return all (frontend shows status per row)
+    options.sort(key=lambda x: (x["distanceFromATM"], x["premium"]))
+    top = options[:3]
 
     # AI recommendation text
     direction = "BUY CE" if use_ce else "BUY PE"
@@ -2419,9 +2421,9 @@ def get_affordable_index_options(
         "summary": summary,
     }
 
-    # Safe to show only if we have at least one affordable or bias is clear
+    # Safe to show only if bias is clear
     safe = bias != "NEUTRAL" and (float(max_risk_per_trade) > 0)
-    return top if top else options[:3], rec, safe
+    return top, rec, safe
 
 
 @app.route("/api/index-bias")
@@ -2441,10 +2443,10 @@ def api_index_bias():
 
 @app.route("/api/index-options/<index_name>")
 def api_index_options(index_name: str):
-    """GET /api/index-options/{index}: affordable options + AI recommendation. Query: max_risk (optional)."""
+    """GET /api/index-options/{index}: options + AI recommendation. Query: max_risk (= total capital for budget check; total_cost = premium * lot_size must be <= max_risk)."""
     max_risk = request.args.get("max_risk", type=float)
     if max_risk is None or max_risk <= 0:
-        max_risk = 3000.0  # default for small capital
+        max_risk = 5000.0  # default budget (total capital) for small capital
     bias_data = get_index_market_bias()
     nifty_bias = bias_data.get("niftyBias", "NEUTRAL")
     bank_nifty_bias = bias_data.get("bankNiftyBias", "NEUTRAL")
