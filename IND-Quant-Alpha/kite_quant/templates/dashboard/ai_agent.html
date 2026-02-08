@@ -1,6 +1,24 @@
 {% extends "base_dashboard.html" %}
 {% block content %}
 <div class="fade-in ai-agent-dashboard">
+  <!-- GLOBAL MODE SELECTOR -->
+  <div class="card mb-3">
+    <div class="card-body py-3">
+      <div class="row align-items-center g-3">
+        <div class="col-auto">
+          <label class="form-label small text-muted mb-0">Trading Mode</label>
+          <select class="form-select form-select-sm" id="trading-mode-select" style="min-width: 280px;">
+            <option value="agent">🤖 AI Mode (Auto Trade)</option>
+            <option value="manual" selected>🧍‍♂️ Manual Mode (User Selects Strikes)</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <span class="badge px-3 py-2 rounded-pill bg-secondary bg-opacity-50" id="trading-mode-badge">Manual Mode</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SECTION 1 — USER CAPITAL SETTINGS (TOP BAR) -->
   <div class="card mb-4">
     <div class="card-header d-flex flex-wrap align-items-center gap-3">
@@ -36,7 +54,7 @@
     </div>
   </div>
 
-  <!-- INDEX OPPORTUNITIES (Capital Friendly) — always shown on AI Trading Agent -->
+  <!-- INDEX OPPORTUNITIES (Capital Friendly) -->
   <div class="card mb-4" id="index-opportunities-block">
     <div class="card-header d-flex align-items-center gap-2" style="background: rgba(156, 39, 176, 0.2); color: #ce93d8;">
       <span class="material-icons-round">show_chart</span>
@@ -45,6 +63,10 @@
     <div class="card-body">
       <div id="index-opportunities-loading" class="text-center text-muted py-3">Loading index bias…</div>
       <div id="index-opportunities-content" class="d-none">
+        <div id="index-ai-mode-msg" class="alert border-0 small d-none mb-3" style="background: rgba(168, 199, 250, 0.12);">
+          AI will automatically select best strike based on capital, risk %, and live market conditions.
+          <div class="mt-2"><button type="button" class="btn btn-sm btn-primary" id="index-allow-ai-trade-btn">Allow AI to Trade Index</button></div>
+        </div>
         <div id="index-no-direction-msg" class="alert alert-secondary border-0 small d-none">
           Market lacks clear direction. Wait for better setup.
         </div>
@@ -55,8 +77,8 @@
           </h6>
           <p class="small text-muted mb-2" id="index-nifty-reason">—</p>
           <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0">
-              <thead class="table-dark"><tr><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
+            <table class="table table-sm table-hover align-middle mb-0 index-options-table">
+              <thead class="table-dark"><tr><th class="index-select-th">Select</th><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="index-nifty-tbody"></tbody>
             </table>
           </div>
@@ -68,8 +90,8 @@
           </h6>
           <p class="small text-muted mb-2" id="index-banknifty-reason">—</p>
           <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0">
-              <thead class="table-dark"><tr><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
+            <table class="table table-sm table-hover align-middle mb-0 index-options-table">
+              <thead class="table-dark"><tr><th class="index-select-th">Select</th><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
               <tbody id="index-banknifty-tbody"></tbody>
             </table>
           </div>
@@ -78,7 +100,7 @@
     </div>
   </div>
 
-  <!-- SECTION 2 — AI TRADE CATEGORIES (4 BLOCKS) -->
+  <!-- SECTION 2 — AI TRADE CATEGORIES (4 BLOCKS) — idea containers only, no checkboxes -->
   <div class="row g-4 mb-4">
     <div class="col-lg-3 col-md-6">
       <div class="card h-100">
@@ -130,6 +152,17 @@
     </div>
   </div>
 
+  <!-- EXECUTION (Manual mode only: strike-level selection in options popup) -->
+  <div class="card mb-4" id="execution-card">
+    <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span class="small text-muted" id="execution-hint">Open a stock or index, select strikes in the options view, then execute.</span>
+      <button type="button" class="btn btn-primary" id="execution-btn">
+        <span class="material-icons-round me-1" style="vertical-align: middle;">send</span>
+        <span id="execution-btn-text">Execute Selected Trades</span>
+      </button>
+    </div>
+  </div>
+
   <!-- OPTIONS PANEL (RIGHT-SIDE OFFCANVAS) -->
   <div class="offcanvas offcanvas-end" tabindex="-1" id="optionsPanel" aria-labelledby="optionsPanelLabel" style="width: min(100%, 520px);">
     <div class="offcanvas-header border-bottom">
@@ -156,6 +189,18 @@
           <p class="mb-0 text-muted" id="rec-reason">—</p>
         </div>
       </div>
+      <!-- AI SUGGESTED ALGOS (Manual mode only: Detected Market + clickable tags → Strategy Library) -->
+      <div class="px-3 pt-2 pb-2 border-bottom d-none" id="options-suggested-algos-block" style="background: rgba(168, 199, 250, 0.06);">
+        <p class="small mb-1"><strong>Detected Market:</strong> <span id="options-detected-market" class="text-primary-custom">—</span></p>
+        <p class="small text-muted mb-2"><strong>Recommended strategies for <span id="options-suggested-algos-stock">—</span>:</strong></p>
+        <div id="options-suggested-algos-tags" class="d-flex flex-wrap gap-2"></div>
+      </div>
+      <!-- AI MODE MESSAGE (shown only in AI Mode) -->
+      <div class="px-3 pt-2 pb-2 d-none" id="options-ai-mode-msg" style="background: rgba(168, 199, 250, 0.1);">
+        <p class="small text-muted mb-2" id="options-ai-mode-desc">AI will automatically select best strike based on capital, risk %, and live market conditions.</p>
+        <p class="small mb-2 d-none" id="options-ai-selected-algo-line">🤖 AI Active Strategy: <strong id="options-ai-selected-algo-name">—</strong> <span id="options-ai-selected-algo-group" class="text-muted">(—)</span></p>
+        <button type="button" class="btn btn-sm btn-primary" id="options-allow-ai-trade-btn">Allow AI to Trade This Strategy</button>
+      </div>
       <!-- OPTIONS TABLE -->
       <div class="flex-grow-1 overflow-auto px-3 pb-3">
         <div class="alert alert-warning border-0 small d-none" id="no-options-warning">
@@ -165,6 +210,7 @@
           <table class="table table-sm table-hover align-middle mb-0">
             <thead class="table-dark sticky-top">
               <tr>
+                <th class="option-select-th">Select</th>
                 <th>Type</th>
                 <th>Strike</th>
                 <th>Premium</th>
@@ -205,6 +251,81 @@
   const optionsPanelStock = document.getElementById('options-panel-stock');
   const optionsTbody = document.getElementById('options-tbody');
   const noOptionsWarning = document.getElementById('no-options-warning');
+
+  // Trading mode: "manual" | "agent" — selection exists ONLY at strike level (in options popup / index tables)
+  let tradingMode = 'manual';
+
+  function setTradingMode(mode) {
+    if (mode === tradingMode) return;
+    tradingMode = mode;
+    document.querySelectorAll('.trade-child-cb:checked').forEach(cb => { cb.checked = false; });
+    updateTradingModeUI();
+    refreshOptionsViewForMode();
+    loadIndexOpportunities();
+  }
+
+  function updateTradingModeUI() {
+    const badge = document.getElementById('trading-mode-badge');
+    const execCard = document.getElementById('execution-card');
+    const execHint = document.getElementById('execution-hint');
+    if (tradingMode === 'agent') {
+      if (badge) { badge.textContent = 'AI Mode'; badge.className = 'badge px-3 py-2 rounded-pill bg-primary bg-opacity-25 text-primary-custom'; }
+      if (execCard) execCard.classList.add('d-none');
+      if (execHint) execHint.textContent = 'Selections are made in each strategy\'s options view.';
+      document.getElementById('index-ai-mode-msg').classList.remove('d-none');
+      toggleIndexSelectColumn(false);
+    } else {
+      if (badge) { badge.textContent = 'Manual Mode'; badge.className = 'badge px-3 py-2 rounded-pill bg-secondary bg-opacity-50'; }
+      if (execCard) execCard.classList.remove('d-none');
+      if (execHint) execHint.textContent = 'Open a stock or index, select strikes in the options view, then execute.';
+      document.getElementById('index-ai-mode-msg').classList.add('d-none');
+      toggleIndexSelectColumn(true);
+    }
+  }
+
+  function refreshOptionsViewForMode() {
+    const stock = optionsPanelStock.textContent;
+    if (stock && stock !== '—') loadOptionsForStock(stock);
+  }
+
+  document.getElementById('trading-mode-select').addEventListener('change', function() {
+    setTradingMode(this.value);
+  });
+
+  document.getElementById('execution-btn').addEventListener('click', function() {
+    const selected = getSelectedManualTrades();
+    executeManualTrades(selected);
+  });
+
+  document.getElementById('options-allow-ai-trade-btn').addEventListener('click', function() {
+    alert('Allow AI to Trade This Strategy: ' + (optionsPanelStock.textContent || 'Stock') + '. (Backend integration pending.)');
+  });
+  document.getElementById('index-allow-ai-trade-btn').addEventListener('click', function() {
+    alert('Allow AI to Trade Index. (Backend integration pending.)');
+  });
+
+  function getSelectedManualTrades() {
+    const trades = [];
+    document.querySelectorAll('.trade-child-cb:checked').forEach(cb => {
+      trades.push({ stock: cb.dataset.stock, strike: cb.dataset.strike, type: cb.dataset.optType, index: cb.dataset.index, category: cb.dataset.category });
+    });
+    return trades;
+  }
+
+  function executeManualTrades(selectedTrades) {
+    if (selectedTrades.length === 0) {
+      alert('Select one or more strikes (checkboxes in the options view) first.');
+      return;
+    }
+    console.log('Execute manual trades:', selectedTrades);
+    alert('Execute Selected Trades: ' + selectedTrades.length + ' strike(s) selected. (Backend integration pending.)');
+  }
+
+  function toggleIndexSelectColumn(show) {
+    document.querySelectorAll('.index-select-th, .index-select-cell').forEach(function(el) {
+      el.style.display = show ? '' : 'none';
+    });
+  }
 
   function getMaxRiskPerTrade() {
     const capital = parseFloat(totalCapitalEl.value) || 0;
@@ -267,11 +388,13 @@
         return;
       }
 
-      function renderIndexTable(tbodyId, options, budgetRupee, isRecommendedIdx) {
+      function renderIndexTable(tbodyId, options, budgetRupee, isRecommendedIdx, indexLabel) {
         const tbody = document.getElementById(tbodyId);
         if (!tbody) return;
+        indexLabel = indexLabel || (tbodyId.indexOf('nifty') >= 0 && tbodyId.indexOf('bank') < 0 ? 'NIFTY' : 'BANKNIFTY');
+        const isManual = tradingMode === 'manual';
         if (!options || options.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="7" class="text-muted small">No options in range.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" class="text-muted small">No options in range.</td></tr>';
           return;
         }
         const rows = options.map((opt, idx) => {
@@ -279,17 +402,20 @@
           const canTrade = opt.canTrade != null ? opt.canTrade : (totalCost <= budgetRupee);
           const statusLabel = (opt.status != null ? opt.status : (canTrade ? 'Affordable' : 'Over Budget'));
           const statusHtml = canTrade ? '<span class="text-success-custom">' + statusLabel + '</span>' : '<span class="text-danger-custom">' + statusLabel + '</span>';
-          const btnDisabled = !canTrade;
-          const tooltip = btnDisabled ? ' title="Requires ' + formatMoney(totalCost) + ', exceeds your budget"' : '';
+          const btnDisabled = isManual ? !canTrade : true;
+          const tooltip = (isManual && !canTrade) ? ' title="Requires ' + formatMoney(totalCost) + ', exceeds your budget"' : '';
           const recommended = (isRecommendedIdx >= 0 && idx === isRecommendedIdx);
-          const btnText = canTrade ? ('Buy ' + opt.type) : 'Over Budget';
+          const btnText = isManual ? (canTrade ? ('Buy ' + opt.type) : 'Over Budget') : '—';
+          const selectTd = isManual ? '<td class="index-select-cell"><input type="checkbox" class="form-check-input trade-child-cb" data-strike="' + opt.strike + '" data-opt-type="' + opt.type + '" data-index="' + indexLabel + '" data-total-cost="' + totalCost + '" aria-label="Select"></td>' : '<td class="index-select-cell"></td>';
           return '<tr class="' + (recommended ? 'row-ai-recommended' : '') + '">' +
+            selectTd +
             '<td><span class="badge ' + (opt.type === 'CE' ? 'bg-success bg-opacity-25' : 'bg-danger bg-opacity-25') + '">' + opt.type + '</span></td>' +
             '<td>' + opt.strike + '</td><td>' + opt.premium + '</td><td>' + opt.lotSize + '</td>' +
             '<td>' + formatMoney(totalCost) + '</td><td>' + statusHtml + '</td>' +
             '<td><button type="button" class="btn btn-sm ' + (opt.type === 'CE' ? 'btn-success' : 'btn-danger') + (btnDisabled ? ' disabled' : '') + '"' + tooltip + '>' + btnText + '</button></td></tr>';
         });
         tbody.innerHTML = rows.join('');
+        toggleIndexSelectColumn(isManual);
       }
 
       if (niftyBias !== 'NEUTRAL') {
@@ -334,6 +460,8 @@
   riskPctEl.addEventListener('input', refreshIndexOpportunities);
   // Load index opportunities on page load (block is always visible)
   loadIndexOpportunities();
+  // Apply initial trading mode UI (manual by default)
+  updateTradingModeUI();
 
   function renderStockCard(item, listId) {
     const trendIcon = item.trend === 'up' ? '↑' : '↓';
@@ -417,7 +545,7 @@
   }
 
   async function loadOptionsForStock(stock) {
-    optionsTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Loading…</td></tr>';
+    optionsTbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading…</td></tr>';
     noOptionsWarning.classList.add('d-none');
     try {
       const r = await fetch('/api/options/' + encodeURIComponent(stock));
@@ -428,6 +556,38 @@
       document.getElementById('rec-confidence').textContent = (rec.confidence != null ? rec.confidence + '%' : '—');
       document.getElementById('rec-holding').textContent = rec.holdingTime || '—';
       document.getElementById('rec-reason').textContent = rec.reason || '—';
+
+      const suggestedAlgos = data.suggestedAlgos || [];
+      const selectedAlgoName = data.selectedAlgoName || null;
+      const selectedAlgoGroup = data.selectedAlgoGroup || '';
+      const detectedMarket = data.detectedMarket || [];
+      const isManual = tradingMode === 'manual';
+      const suggestedBlock = document.getElementById('options-suggested-algos-block');
+      const suggestedStockEl = document.getElementById('options-suggested-algos-stock');
+      const suggestedTagsEl = document.getElementById('options-suggested-algos-tags');
+      const detectedMarketEl = document.getElementById('options-detected-market');
+      const aiSelectedLine = document.getElementById('options-ai-selected-algo-line');
+      const aiSelectedName = document.getElementById('options-ai-selected-algo-name');
+      const aiSelectedGroupEl = document.getElementById('options-ai-selected-algo-group');
+      if (isManual) {
+        suggestedBlock.classList.remove('d-none');
+        suggestedStockEl.textContent = data.stock || stock;
+        if (detectedMarketEl) detectedMarketEl.textContent = detectedMarket.length ? detectedMarket.join(' + ') : '—';
+        suggestedTagsEl.innerHTML = suggestedAlgos.length ? suggestedAlgos.map(function(a) {
+          return '<a href="/dashboard/algo-library#' + (a.id || '') + '" class="badge bg-primary bg-opacity-25 text-primary-custom text-decoration-none" title="View strategy: ' + (a.name || a.id) + '">' + (a.name || a.id) + '</a>';
+        }).join('') : '<span class="small text-muted">No strategies suggested for this setup.</span>';
+      } else {
+        suggestedBlock.classList.add('d-none');
+        if (aiSelectedLine && aiSelectedName) {
+          if (selectedAlgoName) {
+            aiSelectedLine.classList.remove('d-none');
+            aiSelectedName.textContent = selectedAlgoName;
+            if (aiSelectedGroupEl) aiSelectedGroupEl.textContent = selectedAlgoGroup ? '(' + selectedAlgoGroup + ')' : '';
+          } else {
+            aiSelectedLine.classList.add('d-none');
+          }
+        }
+      }
 
       const options = data.options || [];
       const maxRisk = getMaxRiskPerTrade();
@@ -444,10 +604,13 @@
         const statusHtml = withinBudget
           ? '<span class="text-success-custom">Within Budget</span>'
           : '<span class="text-danger-custom">Over Budget</span>';
-        const btnDisabled = !withinBudget;
-        const tooltip = btnDisabled ? ' title="Requires ' + formatMoney(lotCost) + ', exceeds your risk limit"' : '';
+        const btnDisabled = isManual ? !withinBudget : true;
+        const tooltip = (isManual && !withinBudget) ? ' title="Requires ' + formatMoney(lotCost) + ', exceeds your risk limit"' : '';
+        const btnText = isManual ? (withinBudget ? ('Buy ' + opt.type) : 'Over Budget') : '—';
+        const rowSelectTd = isManual ? '<td class="option-select-cell"><input type="checkbox" class="form-check-input trade-child-cb" data-stock="' + stock + '" data-strike="' + opt.strike + '" data-opt-type="' + opt.type + '" data-category="stock" aria-label="Select"></td>' : '<td class="option-select-cell"></td>';
         return `
           <tr class="${isRecommended ? 'row-ai-recommended' : ''}" data-recommended="${isRecommended}">
+            ${rowSelectTd}
             <td><span class="badge ${opt.type === 'CE' ? 'bg-success bg-opacity-25' : 'bg-danger bg-opacity-25'}">${opt.type}</span></td>
             <td>${opt.strike}</td>
             <td>${opt.premium}</td>
@@ -457,13 +620,18 @@
             <td>${statusHtml}</td>
             <td>
               <button type="button" class="btn btn-sm ${opt.type === 'CE' ? 'btn-success' : 'btn-danger'} ${btnDisabled ? 'disabled' : ''}" ${tooltip}
-                ${btnDisabled ? 'aria-disabled="true"' : ''}>Buy ${opt.type}</button>
+                ${btnDisabled ? 'aria-disabled="true"' : ''}>${btnText}</button>
             </td>
           </tr>
         `;
       });
 
       optionsTbody.innerHTML = rows.join('');
+      document.querySelectorAll('.option-select-th, .option-select-cell').forEach(function(el) {
+        el.style.display = isManual ? '' : 'none';
+      });
+      const optionsAiMsg = document.getElementById('options-ai-mode-msg');
+      if (optionsAiMsg) optionsAiMsg.classList.toggle('d-none', isManual);
       if (!anyWithinBudget && options.length > 0) {
         noOptionsWarning.classList.remove('d-none');
         noStockFitsBudget = true;
@@ -471,7 +639,7 @@
       var recommendedRow = optionsTbody.querySelector('tr[data-recommended="true"]');
       if (recommendedRow) recommendedRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     } catch (e) {
-      optionsTbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading options.</td></tr>';
+      optionsTbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error loading options.</td></tr>';
     }
   }
 

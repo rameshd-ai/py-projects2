@@ -30,6 +30,7 @@ from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
 from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk
 from engine.market_calendar import get_calendar_for_month
+from engine.algo_engine import load_algos, get_algo_by_id, get_suggested_algos, load_strategy_groups, get_algos_grouped, get_primary_group
 import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -114,6 +115,32 @@ def dashboard_zerodha():
 @app.route("/dashboard/ai-agent")
 def dashboard_ai_agent():
     return render_template("dashboard/ai_agent.html", active_page="ai_agent", page_title="AI Trading Agent")
+
+
+@app.route("/dashboard/algo-library")
+def dashboard_algo_library():
+    """Strategy Library: strategies grouped by market behavior, collapsible sections."""
+    groups_meta = sorted(load_strategy_groups(), key=lambda g: g.get("order", 99))
+    grouped = get_algos_grouped()
+    groups_with_algos = [
+        {"group": g, "algos": grouped.get(g["id"], [])}
+        for g in groups_meta
+    ]
+    return render_template(
+        "dashboard/strategy_library.html",
+        active_page="algo_library",
+        page_title="Strategy Library",
+        groups_with_algos=groups_with_algos,
+    )
+
+
+@app.route("/dashboard/algo-library/<algo_id>")
+def dashboard_algo_detail(algo_id: str):
+    """Single algo detail page (educational)."""
+    algo = get_algo_by_id(algo_id)
+    if not algo:
+        return redirect(url_for("dashboard_algo_library"))
+    return render_template("dashboard/algo_detail.html", active_page="algo_library", page_title=algo.get("name", "Algo"), algo=algo)
 
 
 def _config_for_template() -> dict[str, str]:
@@ -768,13 +795,17 @@ def _get_market_prediction(symbol: str = "RELIANCE") -> dict[str, Any]:
         
         if vix_high:
             confidence = min(confidence, 72)
-        
+        # Extra fields for algo suggestion engine
+        rsi_val = tech.get("rsi") if tech else None
         return {
             "prediction": prediction,
             "confidence": confidence,
             "score": round(score, 2),
             "factors": factors,
             "timestamp": datetime.now().isoformat(),
+            "rsi": rsi_val,
+            "sentiment_score": sentiment_score,
+            "vix_high": vix_high,
         }
     except Exception as e:
         return {
@@ -783,6 +814,9 @@ def _get_market_prediction(symbol: str = "RELIANCE") -> dict[str, Any]:
             "score": 0.0,
             "factors": [f"Error: {str(e)}"],
             "timestamp": datetime.now().isoformat(),
+            "rsi": None,
+            "sentiment_score": 0,
+            "vix_high": False,
         }
 
 
@@ -2469,14 +2503,16 @@ def api_index_options(index_name: str):
     })
 
 
-def _mock_option_chain(stock: str) -> tuple[list, dict]:
-    """Return (options list, aiRecommendation) for a stock. Uses quote for ATM; mock CE/PE around it."""
+def _mock_option_chain(stock: str) -> tuple[list, dict, dict]:
+    """Return (options list, aiRecommendation, prediction_dict) for a stock. Uses quote for ATM; mock CE/PE around it."""
+    fallback_pred = {
+        "prediction": "NEUTRAL", "score": 0.0, "rsi": None, "sentiment_score": 0, "vix_high": False,
+    }
     try:
         quote = fetch_nse_quote(stock)
         spot = float(quote.get("last") or quote.get("close") or 0)
         if spot <= 0:
             spot = 500.0  # fallback
-        # Round to typical strike interval (e.g. 50 for mid-cap, 100 for large)
         step = 50 if spot < 2000 else 100
         base = round(spot / step) * step
         pred = _get_market_prediction(stock)
@@ -2485,10 +2521,9 @@ def _mock_option_chain(stock: str) -> tuple[list, dict]:
         factors = pred.get("factors", [])
         reason = " ".join(factors[:3]) if factors else "Trend + Volume + Sentiment"
         options = []
-        for i in range(-2, 3):  # 5 strikes
+        for i in range(-2, 3):
             strike = base + i * step
             for typ in ["CE", "PE"]:
-                # Mock premium: higher for OTM, lower for ITM
                 if typ == "CE":
                     prem = max(5, 30 - (strike - spot) / 10 + (20 if i == 0 else 0))
                 else:
@@ -2504,28 +2539,87 @@ def _mock_option_chain(stock: str) -> tuple[list, dict]:
             "holdingTime": "30-90 min",
             "reason": reason[:120] + ("..." if len(reason) > 120 else ""),
         }
-        return options, rec
+        return options, rec, pred
     except Exception:
         spot = 500.0
         base = 500
         return [
             {"type": "CE", "strike": base, "premium": 28, "lotSize": 250, "iv": 18},
             {"type": "PE", "strike": base, "premium": 30, "lotSize": 250, "iv": 18},
-        ], {"direction": "CE", "strikePreference": "ATM", "confidence": 60, "holdingTime": "30-90 min", "reason": "Trend + Volume"}
+        ], {"direction": "CE", "strikePreference": "ATM", "confidence": 60, "holdingTime": "30-90 min", "reason": "Trend + Volume"}, fallback_pred
+
+
+@app.route("/api/algos")
+def api_algos_list():
+    """GET /api/algos: list all algos (id, name, marketType, riskLevel, description)."""
+    algos = load_algos()
+    return jsonify([{
+        "id": a.get("id"),
+        "name": a.get("name"),
+        "marketType": a.get("marketType"),
+        "riskLevel": a.get("riskLevel"),
+        "goodFor": a.get("goodFor", []),
+        "description": a.get("description", "")[:200],
+        "bestUseCase": a.get("bestUseCase"),
+    } for a in algos])
+
+
+@app.route("/api/algos/<algo_id>")
+def api_algo_detail(algo_id: str):
+    """GET /api/algos/<id>: full algo detail for detail page."""
+    algo = get_algo_by_id(algo_id)
+    if not algo:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify(algo)
+
+
+@app.route("/api/strategy-groups")
+def api_strategy_groups():
+    """GET /api/strategy-groups: groups with algo counts for Strategy Library."""
+    groups_meta = sorted(load_strategy_groups(), key=lambda g: g.get("order", 99))
+    grouped = get_algos_grouped()
+    return jsonify([
+        {"id": g["id"], "name": g["name"], "description": g.get("description"), "icon": g.get("icon"), "color": g.get("color"), "order": g.get("order"), "count": len(grouped.get(g["id"], []))}
+        for g in groups_meta
+    ])
 
 
 @app.route("/api/options/<stock>")
 def api_options(stock: str):
-    """GET /api/options/{stock}: option chain + AI recommendation for budget filtering."""
+    """GET /api/options/{stock}: option chain + AI recommendation + suggested algos for budget filtering."""
     try:
-        options, ai_recommendation = _mock_option_chain(stock.upper())
+        options, ai_recommendation, pred = _mock_option_chain(stock.upper())
+        stock_indicators = {
+            "score": pred.get("score"),
+            "prediction": pred.get("prediction"),
+            "rsi": pred.get("rsi"),
+            "sentiment_score": pred.get("sentiment_score"),
+        }
+        market_indicators = {"vix_high": pred.get("vix_high", False)}
+        suggested_ids = get_suggested_algos(stock_indicators, market_indicators, top_n=3)
+        selected_algo = get_algo_by_id(suggested_ids[0]) if suggested_ids else None
+        suggested_algos = [{"id": aid, "name": (get_algo_by_id(aid) or {}).get("name", aid)} for aid in suggested_ids]
+        # Detected market for Manual mode: "TRENDING + HIGH VOLUME" etc.
+        pred_dir = (pred.get("prediction") or "").upper()
+        detected_market = ["TRENDING", "DIRECTIONAL"] if pred_dir in ("BULLISH", "BEARISH") else ["RANGE_BOUND"]
+        factors_str = " ".join(pred.get("factors") or [])
+        if "volume" in factors_str.lower() or "Volume" in factors_str:
+            detected_market.append("HIGH_VOLUME")
+        # Primary group name for selected algo (AI mode display)
+        selected_group_id = get_primary_group(selected_algo) if selected_algo else ""
+        groups_meta = {g["id"]: g["name"] for g in load_strategy_groups()}
+        selected_algo_group = groups_meta.get(selected_group_id, "")
         return jsonify({
             "aiRecommendation": ai_recommendation,
             "options": options,
             "stock": stock.upper(),
+            "suggestedAlgos": suggested_algos,
+            "selectedAlgoName": selected_algo.get("name") if selected_algo else None,
+            "selectedAlgoGroup": selected_algo_group,
+            "detectedMarket": detected_market,
         })
     except Exception as e:
-        return jsonify({"aiRecommendation": {}, "options": [], "stock": stock.upper(), "error": str(e)})
+        return jsonify({"aiRecommendation": {}, "options": [], "stock": stock.upper(), "suggestedAlgos": [], "selectedAlgoName": None, "selectedAlgoGroup": "", "detectedMarket": [], "error": str(e)})
 
 
 scheduler = BackgroundScheduler(timezone=os.getenv("TZ", "Asia/Kolkata"))

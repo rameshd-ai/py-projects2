@@ -1,0 +1,81 @@
+{% extends "base_dashboard.html" %}
+{% block content %}
+<div class="fade-in">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('dashboard_algo_library') }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center">
+      <span class="material-icons-round me-1" style="font-size: 18px;">arrow_back</span> Playbooks
+    </a>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+      <h5 class="mb-0">{{ algo.name }}</h5>
+      <span class="badge bg-primary bg-opacity-25 text-primary-custom">{{ algo.marketType }}</span>
+      <span class="badge {% if algo.riskLevel == 'LOW' %}bg-success bg-opacity-25{% elif algo.riskLevel == 'HIGH' %}bg-danger bg-opacity-25{% else %}bg-warning bg-opacity-25{% endif %}">{{ algo.riskLevel }}</span>
+      {% if algo.goodFor %}
+      {% for g in algo.goodFor %}
+      <span class="badge bg-secondary bg-opacity-50" title="Good for {{ g|upper }}">{{ g|upper }}</span>
+      {% endfor %}
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-3">{{ algo.description or '—' }}</p>
+      <p class="mb-1"><strong>Best for:</strong> {{ algo.bestUseCase or '—' }}</p>
+      <p class="mb-1"><strong>Good for:</strong> {{ (algo.goodFor or [])|join(', ')|title or '—' }}</p>
+      <p class="mb-1"><strong>Timeframe:</strong> {{ (algo.timeframe or ['—'])|join(', ') }}</p>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">Entry rules</div>
+    <div class="card-body">
+      {% if algo.entryRules %}
+      <ul class="mb-0">
+        {% for rule in algo.entryRules %}
+        <li>{{ rule }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted mb-0">See entry conditions in config.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">Options logic</div>
+    <div class="card-body">
+      <p class="mb-0">{{ algo.optionsLogic or '—' }}</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">Risk &amp; stats</div>
+        <div class="card-body">
+          <p class="mb-1"><strong>Risk profile:</strong> {{ algo.riskLevel or '—' }}</p>
+          <p class="mb-1"><strong>Win rate (AI estimate):</strong> {{ algo.winRateEstimate or '—' }}%</p>
+          <p class="mb-1"><strong>R:R expectation:</strong> {{ algo.rrExpectation or '—' }}</p>
+          <p class="mb-0"><strong>Avoid when:</strong> {{ algo.avoidWhen or '—' }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">AI confidence boost factors</div>
+        <div class="card-body">
+          {% if algo.confidenceBoostFactors %}
+          <ul class="mb-0">
+            {% for f in algo.confidenceBoostFactors %}
+            <li>{{ f }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted mb-0">—</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

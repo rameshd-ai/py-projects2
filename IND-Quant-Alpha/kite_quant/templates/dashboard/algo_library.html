@@ -1,0 +1,91 @@
+{% extends "base_dashboard.html" %}
+{% block content %}
+<div class="fade-in">
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title d-flex align-items-center gap-2 mb-2">
+        <span class="material-icons-round text-primary-custom">menu_book</span>
+        Trading Playbooks
+      </h5>
+      <p class="text-muted small mb-0">Strategy marketplace: browse algos, understand entry rules and options logic. AI suggests best-fit algos in Manual mode and auto-selects in AI mode.</p>
+    </div>
+  </div>
+
+  <div class="card mb-4 border-0" style="background: rgba(168, 199, 250, 0.06);">
+    <div class="card-header py-2 border-bottom border-secondary border-opacity-25">
+      <span class="material-icons-round me-2 align-middle" style="font-size: 20px;">label</span>
+      <strong>What the tags mean</strong>
+    </div>
+    <div class="card-body py-3 small">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <p class="mb-1 fw-semibold text-primary-custom">Market type</p>
+          <ul class="mb-0 ps-3 text-muted">
+            <li><strong class="text-body">TREND</strong> — Best when price moves in one direction (momentum, breakouts).</li>
+            <li><strong class="text-body">RANGE</strong> — Best when price oscillates (mean reversion, fade).</li>
+            <li><strong class="text-body">VOLATILE</strong> — For expansion/breakout in choppy or explosive moves.</li>
+            <li><strong class="text-body">EVENT</strong> — News or catalyst-driven (earnings, results).</li>
+            <li><strong class="text-body">OPTIONS</strong> — Options-specific (IV, straddle, gamma).</li>
+            <li><strong class="text-body">ADVANCED</strong> — AI/meta logic (regime, MTF, liquidity, sizing).</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 fw-semibold text-primary-custom">Risk level</p>
+          <ul class="mb-0 ps-3 text-muted">
+            <li><strong class="text-success-custom">LOW</strong> — Lower capital at risk; smaller moves, tighter stops.</li>
+            <li><strong class="text-warning-custom">MEDIUM</strong> — Moderate risk and position size; balanced reward.</li>
+            <li><strong class="text-danger-custom">HIGH</strong> — Higher risk; larger moves or options decay; use strict sizing.</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 fw-semibold text-primary-custom">Good for</p>
+          <ul class="mb-0 ps-3 text-muted">
+            <li><strong class="text-body">STOCK</strong> — Suited for equity / stock F&amp;O.</li>
+            <li><strong class="text-body">INDEX</strong> — Suited for index F&amp;O (Nifty, Bank Nifty).</li>
+            <li><strong class="text-body">OPTIONS</strong> — Suited for options (CE/PE, straddles, IV plays).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    {% for algo in algos %}
+    <div class="col-lg-4 col-md-6">
+      <a href="{{ url_for('dashboard_algo_detail', algo_id=algo.id) }}" class="text-decoration-none text-reset">
+        <div class="card h-100 border-0 algo-card" style="transition: transform 0.2s, box-shadow 0.2s;">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h6 class="card-title mb-0">{{ algo.name }}</h6>
+              <span class="material-icons-round text-muted" style="font-size: 20px;">arrow_forward</span>
+            </div>
+            <div class="d-flex flex-wrap gap-1 mb-2">
+              <span class="badge bg-primary bg-opacity-25 text-primary-custom">{{ algo.marketType }}</span>
+              <span class="badge {% if algo.riskLevel == 'LOW' %}bg-success bg-opacity-25 text-success-custom{% elif algo.riskLevel == 'HIGH' %}bg-danger bg-opacity-25 text-danger-custom{% else %}bg-warning bg-opacity-25 text-warning-custom{% endif %}">{{ algo.riskLevel }}</span>
+              {% if algo.goodFor %}
+              {% for g in algo.goodFor %}
+              <span class="badge bg-secondary bg-opacity-50" title="Good for {{ g|upper }}">{{ g|upper }}</span>
+              {% endfor %}
+              {% endif %}
+            </div>
+            <p class="small text-muted mb-0">{{ algo.description or algo.bestUseCase or '—' }}</p>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if not algos %}
+  <div class="card">
+    <div class="card-body text-center text-muted py-5">
+      <span class="material-icons-round mb-2" style="font-size: 48px;">folder_off</span>
+      <p class="mb-0">No playbooks loaded. Check config/algos.json.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+<style>
+  .algo-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+</style>
+{% endblock %}

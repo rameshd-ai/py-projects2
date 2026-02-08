@@ -1,0 +1,187 @@
+{% extends "base_dashboard.html" %}
+{% block content %}
+<div class="fade-in">
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title d-flex align-items-center gap-2 mb-2">
+        <span class="material-icons-round text-primary-custom">menu_book</span>
+        Strategy Library
+      </h5>
+      <p class="text-muted small mb-0">Strategies grouped by market behavior. In Manual mode AI recommends strategies per stock; in AI mode the best strategy is selected automatically.</p>
+    </div>
+  </div>
+
+  <div class="card mb-3 border-0" style="background: rgba(168, 199, 250, 0.06);">
+    <div class="card-header py-2 border-bottom border-secondary border-opacity-25 d-flex align-items-center gap-2">
+      <span class="material-icons-round align-middle" style="font-size: 20px;">label</span>
+      <strong>What the tags mean</strong>
+    </div>
+    <div class="card-body py-3 small">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <p class="mb-1 fw-semibold text-primary-custom">Risk</p>
+          <span class="badge bg-success bg-opacity-25 text-success-custom">LOW</span> <span class="text-muted">—</span> Lower risk<br>
+          <span class="badge bg-warning bg-opacity-25 text-warning-custom">MEDIUM</span> <span class="text-muted">—</span> Moderate risk<br>
+          <span class="badge bg-danger bg-opacity-25 text-danger-custom">HIGH</span> <span class="text-muted">—</span> Higher risk
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 fw-semibold text-primary-custom">Timeframe</p>
+          <span class="badge bg-info bg-opacity-25">INTRADAY</span> 5m–30m &nbsp; <span class="badge bg-secondary bg-opacity-50">SWING</span> 1d+ &nbsp; <span class="badge bg-primary bg-opacity-25">OPTIONS</span> CE/PE
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 fw-semibold text-primary-custom">Instruments</p>
+          EQUITY (stock) &nbsp; INDEX (Nifty/Bank Nifty) &nbsp; OPTIONS
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% for item in groups_with_algos %}
+  {% set g = item.group %}
+  {% set algos = item.algos %}
+  {% if algos %}
+  <div class="card mb-3 strategy-group-card border-0" data-group-color="{{ g.color }}">
+    <div class="card-header d-flex align-items-center justify-content-between py-3 cursor-pointer collapsed" data-bs-toggle="collapse" data-bs-target="#group-{{ g.id }}" aria-expanded="false">
+      <div class="d-flex align-items-center gap-2">
+        <span class="material-icons-round strategy-group-icon" style="font-size: 24px;">{{ g.icon }}</span>
+        <span class="fw-semibold">{{ g.name }}</span>
+        <span class="badge bg-secondary bg-opacity-50">{{ algos|length }}</span>
+      </div>
+      <span class="material-icons-round text-muted">expand_more</span>
+    </div>
+    <div class="collapse" id="group-{{ g.id }}">
+      <div class="card-body pt-0">
+        <p class="small text-muted mb-3">{{ g.description or '' }}</p>
+        <div class="row g-3">
+          {% for algo in algos %}
+          <div class="col-lg-4 col-md-6">
+            <div class="card h-100 border strategy-card">
+              <div class="card-body">
+                <h6 class="card-title mb-2">{{ algo.name }}</h6>
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                  <span class="badge {% if algo.riskLevel == 'LOW' %}bg-success bg-opacity-25 text-success-custom{% elif algo.riskLevel == 'HIGH' %}bg-danger bg-opacity-25 text-danger-custom{% else %}bg-warning bg-opacity-25 text-warning-custom{% endif %}">{{ algo.riskLevel }}</span>
+                  {% if algo.timeframe %}
+                  {% if '1d' in algo.timeframe or 'swing' in (algo.timeframe|join(' ')|lower) %}
+                  <span class="badge bg-secondary bg-opacity-50">SWING</span>
+                  {% elif algo.marketType == 'OPTIONS' or 'options' in (algo.goodFor or [])|join(' ')|lower %}
+                  <span class="badge bg-primary bg-opacity-25">OPTIONS</span>
+                  {% else %}
+                  <span class="badge bg-info bg-opacity-25">INTRADAY</span>
+                  {% endif %}
+                  {% endif %}
+                </div>
+                <p class="small text-muted mb-3">{{ (algo.description or algo.bestUseCase or '—')[:120] }}{% if (algo.description or algo.bestUseCase or '')|length > 120 %}…{% endif %}</p>
+                <button type="button" class="btn btn-sm btn-outline-primary w-100 view-details-btn" data-algo-id="{{ algo.id }}">View Details</button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+<!-- Strategy Details Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="strategyDetailOffcanvas" aria-labelledby="strategyDetailLabel" style="width: min(100%, 480px);">
+  <div class="offcanvas-header border-bottom">
+    <h5 class="offcanvas-title" id="strategyDetailLabel">Strategy Details</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body" id="strategyDetailBody">
+    <p class="text-muted">Select a strategy to view details.</p>
+  </div>
+</div>
+
+<style>
+  .strategy-group-card .card-header { cursor: pointer; }
+  .strategy-group-card .card-header[data-group-color="teal"] { background: rgba(0, 150, 136, 0.12); color: #80cbc4; }
+  .strategy-group-card .card-header[data-group-color="yellow"] { background: rgba(255, 193, 7, 0.12); color: #ffd54f; }
+  .strategy-group-card .card-header[data-group-color="blue"] { background: rgba(33, 150, 243, 0.12); color: #64b5f6; }
+  .strategy-group-card .card-header[data-group-color="purple"] { background: rgba(156, 39, 176, 0.12); color: #ce93d8; }
+  .strategy-group-card .card-header[data-group-color="red"] { background: rgba(244, 67, 54, 0.12); color: #ef9a9a; }
+  .strategy-group-card .card-header[data-group-color="indigo"] { background: rgba(63, 81, 181, 0.12); color: #9fa8da; }
+  .strategy-group-card .card-header[data-group-color="brown"] { background: rgba(121, 85, 72, 0.2); color: #bcaaa4; }
+  .strategy-card { transition: box-shadow 0.2s; }
+  .strategy-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+</style>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function() {
+  const offcanvas = document.getElementById('strategyDetailOffcanvas');
+  const bodyEl = document.getElementById('strategyDetailBody');
+  const labelEl = document.getElementById('strategyDetailLabel');
+
+  document.querySelectorAll('.view-details-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const id = this.getAttribute('data-algo-id');
+      if (!id) return;
+      fetch('/api/algos/' + encodeURIComponent(id))
+        .then(function(r) { return r.json(); })
+        .then(function(algo) {
+          if (algo.error) {
+            bodyEl.innerHTML = '<p class="text-danger">Strategy not found.</p>';
+            return;
+          }
+          labelEl.textContent = algo.name || 'Strategy Details';
+          const riskCls = algo.riskLevel === 'LOW' ? 'text-success-custom' : (algo.riskLevel === 'HIGH' ? 'text-danger-custom' : 'text-warning-custom');
+          const instruments = (algo.instruments || []).join(', ') || '—';
+          const marketCond = (algo.marketCondition || []).join(', ') || '—';
+          let html = '<p class="text-muted small">' + (algo.description || '—') + '</p>';
+          html += '<p class="mb-1"><strong>Risk:</strong> <span class="' + riskCls + '">' + (algo.riskLevel || '—') + '</span></p>';
+          html += '<p class="mb-1"><strong>Best for:</strong> ' + (algo.bestUseCase || '—') + '</p>';
+          html += '<p class="mb-2"><strong>Market conditions:</strong> ' + marketCond + '</p>';
+          html += '<p class="mb-1"><strong>Instruments:</strong> ' + instruments + '</p>';
+          html += '<hr class="my-3">';
+          html += '<p class="mb-1 small fw-semibold">Entry logic</p><p class="small text-muted">' + (algo.entryLogic || '—') + '</p>';
+          html += '<p class="mb-1 small fw-semibold mt-2">Exit logic</p><p class="small text-muted">' + (algo.exitLogic || '—') + '</p>';
+          html += '<p class="mb-1 small fw-semibold mt-2">Stop logic</p><p class="small text-muted">' + (algo.stopLogic || '—') + '</p>';
+          if (algo.entryRules && algo.entryRules.length) {
+            html += '<p class="mb-1 small fw-semibold mt-2">Entry rules</p><ul class="small text-muted mb-0">';
+            algo.entryRules.forEach(function(r) { html += '<li>' + r + '</li>'; });
+            html += '</ul>';
+          }
+          if (algo.optionsLogic) {
+            html += '<p class="mb-1 small fw-semibold mt-2">Options logic</p><p class="small text-muted">' + algo.optionsLogic + '</p>';
+          }
+          bodyEl.innerHTML = html;
+          var bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvas);
+          bsOffcanvas.show();
+        })
+        .catch(function() {
+          bodyEl.innerHTML = '<p class="text-danger">Failed to load strategy.</p>';
+          bootstrap.Offcanvas.getOrCreateInstance(offcanvas).show();
+        });
+    });
+  });
+
+  document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(btn) {
+    var targetId = btn.getAttribute('data-bs-target');
+    if (!targetId) return;
+    var target = document.querySelector(targetId);
+    if (target) {
+      target.addEventListener('show.bs.collapse', function() {
+        var icon = btn.querySelector('.material-icons-round:last-of-type');
+        if (icon) icon.textContent = 'expand_less';
+      });
+      target.addEventListener('hide.bs.collapse', function() {
+        var icon = btn.querySelector('.material-icons-round:last-of-type');
+        if (icon) icon.textContent = 'expand_more';
+      });
+    }
+  });
+
+  // Open strategy detail from hash (e.g. from AI Agent recommended tags)
+  var hash = window.location.hash.slice(1);
+  if (hash) {
+    var detailBtn = document.querySelector('.view-details-btn[data-algo-id="' + hash + '"]');
+    if (detailBtn) detailBtn.click();
+  }
+})();
+</script>
+{% endblock %}

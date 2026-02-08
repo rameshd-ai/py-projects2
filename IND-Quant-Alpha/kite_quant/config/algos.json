@@ -1,0 +1,2387 @@
+[
+  {
+    "id": "momentum_breakout",
+    "name": "Momentum Breakout",
+    "marketType": "TREND",
+    "bestUseCase": "Strong trend days",
+    "timeframe": [
+      "5m",
+      "15m",
+      "30m"
+    ],
+    "description": "Identify stocks making fresh intraday highs/lows with volume expansion above average. Enter in breakout direction.",
+    "entryConditions": {
+      "trendStrength": ">0.7",
+      "rsi": ">60 (bullish) or <40 (bearish)",
+      "priceVsVWAP": "ABOVE/BELOW",
+      "volume": "Above average"
+    },
+    "entryRules": [
+      "Fresh intraday high/low with volume expansion",
+      "Enter in breakout direction",
+      "Avoid if breakout near major resistance/support without volume confirmation"
+    ],
+    "optionsLogic": "Buy ATM or 1 strike ITM CE (bullish); Buy ATM or 1 strike ITM PE (bearish)",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 58,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Choppy range markets",
+    "confidenceBoostFactors": [
+      "Strong index trend",
+      "Sector strength",
+      "Volume confirmation"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Fresh intraday high/low with volume expansion",
+    "exitLogic": "Exit on stop or target; avoid: Choppy range markets",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout",
+      "momentum"
+    ]
+  },
+  {
+    "id": "vwap_trend_ride",
+    "name": "VWAP Trend Ride",
+    "marketType": "TREND",
+    "bestUseCase": "Institutional trend days",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Enter long when price sustains above VWAP with higher lows and strong volume. Enter short when price sustains below VWAP with lower highs.",
+    "entryConditions": {
+      "trendStrength": ">0.5",
+      "priceVsVWAP": "ABOVE or BELOW (sustained)",
+      "volume": "Strong"
+    },
+    "entryRules": [
+      "Long: price above VWAP, higher lows, strong volume",
+      "Short: price below VWAP, lower highs",
+      "Exit if price closes decisively back through VWAP"
+    ],
+    "optionsLogic": "ATM CE when above VWAP; ATM PE when below VWAP",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 58,
+    "rrExpectation": "1.5 to 2",
+    "avoidWhen": "Choppy around VWAP",
+    "confidenceBoostFactors": [
+      "Clear VWAP respect",
+      "Smart money positioning"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Long: price above VWAP, higher lows, strong volume",
+    "exitLogic": "Exit on stop or target; avoid: Choppy around VWAP",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "volume",
+      "vwap"
+    ]
+  },
+  {
+    "id": "pullback_continuation",
+    "name": "Pullback Continuation",
+    "marketType": "TREND",
+    "bestUseCase": "Trend but after initial move",
+    "timeframe": [
+      "5m",
+      "15m",
+      "30m"
+    ],
+    "description": "In a strong trend, wait for pullback to VWAP/EMA. Enter when price shows rejection (bullish/bearish candle + volume return) in direction of original trend.",
+    "entryConditions": {
+      "trendStrength": ">0.6",
+      "rsi": "30-50 (bullish) or 50-70 (bearish)",
+      "priceVsVWAP": "Pullback to then hold"
+    },
+    "entryRules": [
+      "Strong trend intact; wait for pullback to VWAP/EMA",
+      "Enter on rejection candle (bullish/bearish) + volume return",
+      "Trade in direction of original trend"
+    ],
+    "optionsLogic": "ATM CE (bullish) or PE (bearish) on bounce",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 60,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Entering too early during deep reversal",
+    "confidenceBoostFactors": [
+      "Clear trend",
+      "Volume on resumption"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Strong trend intact; wait for pullback to VWAP/EMA",
+    "exitLogic": "Exit on stop or target; avoid: Entering too early during deep reversal",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "pullback",
+      "volume",
+      "vwap"
+    ]
+  },
+  {
+    "id": "orb_opening_range_breakout",
+    "name": "Opening Range Breakout (ORB)",
+    "marketType": "TREND",
+    "bestUseCase": "High momentum mornings",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Mark first 5\u201315 minute high/low. Enter on breakout with volume expansion and index confirmation. Avoid fake breakouts without follow-through candles.",
+    "entryConditions": {
+      "sessionPhase": "OPENING",
+      "volume": "Spike on break",
+      "indexConfirmation": "Aligned"
+    },
+    "entryRules": [
+      "Define range from first 5\u201315 min high/low",
+      "Enter on breakout with volume expansion",
+      "Require index confirmation; avoid fake breakouts without follow-through"
+    ],
+    "optionsLogic": "ATM or 1 OTM in direction of break",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 55,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Inside small range day",
+    "confidenceBoostFactors": [
+      "Clean range",
+      "Strong volume on break"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Define range from first 5\u201315 min high/low",
+    "exitLogic": "Exit on stop or target; avoid: Inside small range day",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout",
+      "orb",
+      "index"
+    ]
+  },
+  {
+    "id": "rsi_reversal_fade",
+    "name": "RSI Reversal Fade",
+    "marketType": "RANGE",
+    "bestUseCase": "Range-bound market",
+    "timeframe": [
+      "15m",
+      "30m"
+    ],
+    "description": "If RSI > 70 near resistance \u2192 look for short fade. If RSI < 30 near support \u2192 look for long bounce. Confirm with slowing momentum and volume drop.",
+    "entryConditions": {
+      "rsi": "<30 OR >70",
+      "trendStrength": "<0.4",
+      "volume": "Dropping"
+    },
+    "entryRules": [
+      "RSI > 70 near resistance \u2192 short fade",
+      "RSI < 30 near support \u2192 long bounce",
+      "Confirm with slowing momentum and volume drop"
+    ],
+    "optionsLogic": "Counter-trend: PE when overbought, CE when oversold",
+    "optionsStyle": "COUNTER_TREND",
+    "riskLevel": "LOW",
+    "winRateEstimate": 58,
+    "rrExpectation": "1.5 to 2",
+    "avoidWhen": "Strong breakout trend day",
+    "confidenceBoostFactors": [
+      "Range confirmed",
+      "Multiple timeframe RSI"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "MEAN_REVERSION"
+    ],
+    "marketCondition": [
+      "RANGE_BOUND",
+      "SIDEWAYS"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "RSI > 70 near resistance \u2192 short fade",
+    "exitLogic": "Exit on stop or target; avoid: Strong breakout trend day",
+    "stopLogic": "Stop below/above structure or VWAP break; risk LOW",
+    "tags": [
+      "volume",
+      "momentum",
+      "rsi",
+      "reversal"
+    ]
+  },
+  {
+    "id": "bollinger_mean_reversion",
+    "name": "Bollinger Band Mean Reversion",
+    "marketType": "RANGE",
+    "bestUseCase": "Low volatility ranges",
+    "timeframe": [
+      "15m",
+      "30m"
+    ],
+    "description": "When price closes outside Bollinger Band and shows rejection wick, enter trade toward middle band. Exit near VWAP or mid-band.",
+    "entryConditions": {
+      "trendStrength": "<0.5",
+      "priceVsBollinger": "Outside band + rejection wick"
+    },
+    "entryRules": [
+      "Price closes outside Bollinger Band with rejection wick",
+      "Enter toward middle band",
+      "Exit near VWAP or mid-band"
+    ],
+    "optionsLogic": "Straddle or directional fade",
+    "optionsStyle": "COUNTER_TREND",
+    "riskLevel": "LOW",
+    "winRateEstimate": 56,
+    "rrExpectation": "1.5 to 2",
+    "avoidWhen": "Bands expanding with strong trend",
+    "confidenceBoostFactors": [
+      "Tight bands",
+      "Volume declining"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "MEAN_REVERSION"
+    ],
+    "marketCondition": [
+      "RANGE_BOUND",
+      "SIDEWAYS"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Price closes outside Bollinger Band with rejection wick",
+    "exitLogic": "Exit on stop or target; avoid: Bands expanding with strong trend",
+    "stopLogic": "Stop below/above structure or VWAP break; risk LOW",
+    "tags": [
+      "bollinger",
+      "mean_reversion",
+      "rsi",
+      "vwap"
+    ]
+  },
+  {
+    "id": "vwap_mean_reversion",
+    "name": "VWAP Mean Reversion",
+    "marketType": "RANGE",
+    "bestUseCase": "Overextended intraday moves",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "When price deviates far from VWAP (overextended move) and volume declines, expect snapback toward VWAP.",
+    "entryConditions": {
+      "priceVsVWAP": "Far deviation",
+      "volume": "Declining"
+    },
+    "entryRules": [
+      "Price overextended from VWAP",
+      "Volume declining on extension",
+      "Enter snapback toward VWAP"
+    ],
+    "optionsLogic": "Directional toward VWAP (CE if below, PE if above)",
+    "optionsStyle": "COUNTER_TREND",
+    "riskLevel": "LOW",
+    "winRateEstimate": 56,
+    "rrExpectation": "1.5 to 2",
+    "avoidWhen": "News-driven breakout",
+    "confidenceBoostFactors": [
+      "Clear overextension",
+      "Volume drop"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "MEAN_REVERSION"
+    ],
+    "marketCondition": [
+      "RANGE_BOUND",
+      "SIDEWAYS"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Price overextended from VWAP",
+    "exitLogic": "Exit on stop or target; avoid: News-driven breakout",
+    "stopLogic": "Stop below/above structure or VWAP break; risk LOW",
+    "tags": [
+      "volume",
+      "mean_reversion",
+      "rsi",
+      "vwap"
+    ]
+  },
+  {
+    "id": "liquidity_sweep_reversal",
+    "name": "Liquidity Sweep Reversal",
+    "marketType": "RANGE",
+    "bestUseCase": "Stop-hunt moves",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "If price takes out previous high/low and quickly reverses with strong opposite candle and volume spike, enter reversal trade targeting prior range.",
+    "entryConditions": {
+      "sweep": "High/low taken out",
+      "reversalCandle": "Strong opposite",
+      "volume": "Spike"
+    },
+    "entryRules": [
+      "Price takes out previous high/low (sweep)",
+      "Quick reversal with strong opposite candle + volume spike",
+      "Enter reversal targeting prior range"
+    ],
+    "optionsLogic": "Counter-trend option in reversal direction",
+    "optionsStyle": "COUNTER_TREND",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Trend continuation (no reversal confirmation)",
+    "confidenceBoostFactors": [
+      "Trapped traders",
+      "Clear rejection wick"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "MEAN_REVERSION",
+      "SMART_MONEY"
+    ],
+    "marketCondition": [
+      "RANGE_BOUND",
+      "SIDEWAYS"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Price takes out previous high/low (sweep)",
+    "exitLogic": "Exit on stop or target; avoid: Trend continuation (no reversal confirmation)",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "liquidity",
+      "reversal"
+    ]
+  },
+  {
+    "id": "inside_bar_breakout",
+    "name": "Inside Bar Breakout",
+    "marketType": "VOLATILE",
+    "bestUseCase": "Volatility expansion setups",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Detect tight consolidation candle (inside previous candle range). Enter on breakout of that range with volume expansion.",
+    "entryConditions": {
+      "pattern": "Inside bar",
+      "volume": "Expansion on break"
+    },
+    "entryRules": [
+      "Tight consolidation (inside previous candle range)",
+      "Enter on breakout of range with volume expansion"
+    ],
+    "optionsLogic": "ATM in breakout direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 55,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Already overextended move",
+    "confidenceBoostFactors": [
+      "Tight range",
+      "Volume confirmation"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "VOLATILITY_BREAKOUT"
+    ],
+    "marketCondition": [
+      "VOLATILE",
+      "EVENT_DRIVEN"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Tight consolidation (inside previous candle range)",
+    "exitLogic": "Exit on stop or target; avoid: Already overextended move",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout"
+    ]
+  },
+  {
+    "id": "news_volatility_burst",
+    "name": "News Volatility Burst",
+    "marketType": "EVENT",
+    "bestUseCase": "Event-driven spikes",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "When major news hits and volume surges, enter in direction of first strong impulse move. Use tight trailing stop.",
+    "entryConditions": {
+      "volatility": "HIGH",
+      "sentiment": "Strong",
+      "volume": "Surge"
+    },
+    "entryRules": [
+      "Major news catalyst; volume surge",
+      "Enter in direction of first strong impulse",
+      "Tight trailing stop"
+    ],
+    "optionsLogic": "Straddle or directional based on sentiment",
+    "optionsStyle": "STRADDLE",
+    "riskLevel": "HIGH",
+    "winRateEstimate": 52,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Fake news / low liquidity",
+    "confidenceBoostFactors": [
+      "Clear catalyst",
+      "Liquid options"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "VOLATILITY_BREAKOUT"
+    ],
+    "marketCondition": [
+      "VOLATILE",
+      "EVENT_DRIVEN"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Major news catalyst; volume surge",
+    "exitLogic": "Exit on stop or target; avoid: Fake news / low liquidity",
+    "stopLogic": "Stop below/above structure or VWAP break; risk HIGH",
+    "tags": [
+      "volume",
+      "volatility"
+    ]
+  },
+  {
+    "id": "time_based_volatility_play",
+    "name": "Time-Based Volatility Play",
+    "marketType": "VOLATILE",
+    "bestUseCase": "Intraday timing edge",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Increase probability weight during known volatility windows (market open, post-lunch, closing hour). Combine with breakout or momentum setup.",
+    "entryConditions": {
+      "sessionWindow": "Open/post-lunch/close",
+      "setup": "Breakout or momentum"
+    },
+    "entryRules": [
+      "Trade during volatility windows: open, post-lunch, closing hour",
+      "Combine with breakout or momentum setup"
+    ],
+    "optionsLogic": "Same as underlying setup (breakout/momentum)",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 53,
+    "rrExpectation": "1.5 to 2",
+    "avoidWhen": "Dead mid-session chop",
+    "confidenceBoostFactors": [
+      "Time alignment",
+      "Volume in window"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "VOLATILITY_BREAKOUT"
+    ],
+    "marketCondition": [
+      "VOLATILE",
+      "EVENT_DRIVEN"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Trade during volatility windows: open, post-lunch, closing hour",
+    "exitLogic": "Exit on stop or target; avoid: Dead mid-session chop",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "breakout",
+      "momentum",
+      "volatility"
+    ]
+  },
+  {
+    "id": "iv_expansion_play",
+    "name": "IV Expansion Play",
+    "marketType": "OPTIONS",
+    "bestUseCase": "Pre-event setups",
+    "timeframe": [
+      "15m",
+      "30m"
+    ],
+    "description": "When IV is low but expected move or event is near, buy options expecting IV expansion and price move.",
+    "entryConditions": {
+      "ivRank": "Low",
+      "eventExpected": "Earnings, result, event"
+    },
+    "entryRules": [
+      "IV below recent average",
+      "Catalyst expected within holding period",
+      "Long options for IV expansion"
+    ],
+    "optionsLogic": "Long straddle/strangle or debit spread",
+    "optionsStyle": "STRADDLE",
+    "riskLevel": "HIGH",
+    "winRateEstimate": 50,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "IV already high",
+    "confidenceBoostFactors": [
+      "Clear event",
+      "IV crush risk managed"
+    ],
+    "goodFor": [
+      "options"
+    ],
+    "groups": [
+      "OPTIONS_EDGE"
+    ],
+    "marketCondition": [
+      "OPTIONS",
+      "IV_SENSITIVE"
+    ],
+    "instruments": [
+      "OPTIONS"
+    ],
+    "entryLogic": "IV below recent average",
+    "exitLogic": "Exit on stop or target; avoid: IV already high",
+    "stopLogic": "Stop below/above structure or VWAP break; risk HIGH",
+    "tags": [
+      "options",
+      "iv"
+    ]
+  },
+  {
+    "id": "gamma_scalping_lite",
+    "name": "Gamma Scalping Lite",
+    "marketType": "OPTIONS",
+    "bestUseCase": "Fast markets",
+    "timeframe": [
+      "5m"
+    ],
+    "description": "In high volatility environment, scalp quick option price swings using fast momentum bursts. Exit quickly.",
+    "entryConditions": {
+      "volatility": "HIGH",
+      "momentum": "Short burst"
+    },
+    "entryRules": [
+      "Quick momentum move in high volatility",
+      "Tight stop; small target; exit quickly"
+    ],
+    "optionsLogic": "ATM or near-ATM for delta; quick exit",
+    "optionsStyle": "SCALPING",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1 to 1.5",
+    "avoidWhen": "Low volatility / wide spreads",
+    "confidenceBoostFactors": [
+      "Tight spreads",
+      "Fast execution"
+    ],
+    "goodFor": [
+      "options"
+    ],
+    "groups": [
+      "OPTIONS_EDGE"
+    ],
+    "marketCondition": [
+      "OPTIONS",
+      "IV_SENSITIVE"
+    ],
+    "instruments": [
+      "OPTIONS"
+    ],
+    "entryLogic": "Quick momentum move in high volatility",
+    "exitLogic": "Exit on stop or target; avoid: Low volatility / wide spreads",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volatility",
+      "momentum",
+      "swing",
+      "gamma"
+    ]
+  },
+  {
+    "id": "straddle_breakout",
+    "name": "Straddle Breakout",
+    "marketType": "OPTIONS",
+    "bestUseCase": "Major breakout days, direction unclear",
+    "timeframe": [
+      "15m",
+      "30m"
+    ],
+    "description": "When expecting big move but direction unclear, take ATM straddle. Exit losing leg early when direction confirms.",
+    "entryConditions": {
+      "volatility": "Expected to rise",
+      "direction": "Uncertain"
+    },
+    "entryRules": [
+      "Event or big move expected; direction unclear",
+      "ATM straddle; exit losing leg when direction confirms"
+    ],
+    "optionsLogic": "ATM straddle (CE + PE same strike)",
+    "optionsStyle": "STRADDLE",
+    "riskLevel": "HIGH",
+    "winRateEstimate": 48,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "IV very high already",
+    "confidenceBoostFactors": [
+      "Clear binary event",
+      "Manage delta"
+    ],
+    "goodFor": [
+      "options",
+      "index"
+    ],
+    "groups": [
+      "OPTIONS_EDGE"
+    ],
+    "marketCondition": [
+      "OPTIONS",
+      "IV_SENSITIVE"
+    ],
+    "instruments": [
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Event or big move expected; direction unclear",
+    "exitLogic": "Exit on stop or target; avoid: IV very high already",
+    "stopLogic": "Stop below/above structure or VWAP break; risk HIGH",
+    "tags": [
+      "breakout",
+      "straddle"
+    ]
+  },
+  {
+    "id": "sector_rotation_momentum",
+    "name": "Sector Rotation Momentum",
+    "marketType": "TREND",
+    "bestUseCase": "Strongest performing sector",
+    "timeframe": [
+      "15m",
+      "30m"
+    ],
+    "description": "Detect strongest performing sector. Select top relative strength stock from that sector for momentum trade.",
+    "entryConditions": {
+      "sectorStrength": "Leading",
+      "relativeStrength": "Top in sector"
+    },
+    "entryRules": [
+      "Identify strongest performing sector",
+      "Select top relative strength stock in that sector",
+      "Enter momentum trade"
+    ],
+    "optionsLogic": "Directional (CE/PE) in sector direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 57,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Sector rotation unclear",
+    "confidenceBoostFactors": [
+      "Institutional flow",
+      "Sector leadership"
+    ],
+    "goodFor": [
+      "stock",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING",
+      "SMART_MONEY"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "OPTIONS"
+    ],
+    "entryLogic": "Identify strongest performing sector",
+    "exitLogic": "Exit on stop or target; avoid: Sector rotation unclear",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "sector",
+      "relative_strength",
+      "momentum",
+      "iv"
+    ]
+  },
+  {
+    "id": "index_lead_stock_lag",
+    "name": "Index Lead \u2013 Stock Lag",
+    "marketType": "TREND",
+    "bestUseCase": "Index trending, stock not yet moved",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "If index is trending strongly but a major component stock hasn't moved yet, trade the lagging stock in index direction.",
+    "entryConditions": {
+      "indexTrend": "Strong",
+      "stockVsIndex": "Lagging"
+    },
+    "entryRules": [
+      "Index trending strongly",
+      "Major component stock lagging",
+      "Enter lagging stock in index direction"
+    ],
+    "optionsLogic": "CE if index bullish, PE if bearish",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 56,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Stock already moved with index",
+    "confidenceBoostFactors": [
+      "Index conviction",
+      "Catch-up move"
+    ],
+    "goodFor": [
+      "index",
+      "stock",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Index trending strongly",
+    "exitLogic": "Exit on stop or target; avoid: Stock already moved with index",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "index"
+    ]
+  },
+  {
+    "id": "relative_strength_breakout",
+    "name": "Relative Strength Breakout",
+    "marketType": "TREND",
+    "bestUseCase": "Stock outperforming index",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Choose stocks outperforming index on intraday strength. Enter on breakout of consolidation.",
+    "entryConditions": {
+      "relativeStrength": "Outperforming index",
+      "pattern": "Consolidation"
+    },
+    "entryRules": [
+      "Stock outperforming index intraday",
+      "Enter on breakout of consolidation"
+    ],
+    "optionsLogic": "ATM in breakout direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 58,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Index weak and stock giving back gains",
+    "confidenceBoostFactors": [
+      "Relative strength",
+      "Consolidation break"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Stock outperforming index intraday",
+    "exitLogic": "Exit on stop or target; avoid: Index weak and stock giving back gains",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "breakout",
+      "index",
+      "relative_strength",
+      "iv"
+    ]
+  },
+  {
+    "id": "volume_climax_reversal",
+    "name": "Volume Climax Reversal",
+    "marketType": "VOLATILE",
+    "bestUseCase": "Exhaustion after extreme volume",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "After extreme volume spike and large candle, wait for exhaustion and reversal signal.",
+    "entryConditions": {
+      "volume": "Extreme spike",
+      "candle": "Large",
+      "exhaustion": "Reversal signal"
+    },
+    "entryRules": [
+      "Extreme volume spike + large candle",
+      "Wait for exhaustion and reversal signal",
+      "Enter in reversal direction"
+    ],
+    "optionsLogic": "Counter-trend option after climax",
+    "optionsStyle": "COUNTER_TREND",
+    "riskLevel": "HIGH",
+    "winRateEstimate": 52,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Trend continuation (no exhaustion)",
+    "confidenceBoostFactors": [
+      "Climax volume",
+      "Clear rejection"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SMART_MONEY"
+    ],
+    "marketCondition": [
+      "VOLATILE",
+      "EVENT_DRIVEN"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Extreme volume spike + large candle",
+    "exitLogic": "Exit on stop or target; avoid: Trend continuation (no exhaustion)",
+    "stopLogic": "Stop below/above structure or VWAP break; risk HIGH",
+    "tags": [
+      "volume",
+      "reversal"
+    ]
+  },
+  {
+    "id": "trend_day_vwap_hold",
+    "name": "Trend Day VWAP Hold",
+    "marketType": "TREND",
+    "bestUseCase": "Market opens strong and never revisits VWAP",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "If price stays above VWAP for extended time with shallow pullbacks, keep buying dips. Exit only on VWAP breakdown. Identifies true trend days vs fake breakouts.",
+    "entryConditions": {
+      "priceVsVWAP": "ABOVE sustained",
+      "pullbacks": "Shallow"
+    },
+    "entryRules": [
+      "Price above VWAP for extended time",
+      "Buy shallow pullbacks",
+      "Exit only on VWAP breakdown"
+    ],
+    "optionsLogic": "CE when holding above VWAP; exit on break",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 58,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "VWAP being tested repeatedly",
+    "confidenceBoostFactors": [
+      "Clean trend day",
+      "No VWAP revisit"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Price above VWAP for extended time",
+    "exitLogic": "Exit on stop or target; avoid: VWAP being tested repeatedly",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "breakout",
+      "pullback",
+      "vwap"
+    ]
+  },
+  {
+    "id": "ema_ribbon_trend_alignment",
+    "name": "EMA Ribbon Trend Alignment",
+    "marketType": "TREND",
+    "bestUseCase": "Smooth trending stock",
+    "timeframe": [
+      "5m",
+      "15m",
+      "30m"
+    ],
+    "description": "Use 9/20/50 EMA alignment. Enter when all EMAs stacked in one direction and price pulls back to short EMA.",
+    "entryConditions": {
+      "emaStack": "9 above 20 above 50",
+      "pullback": "To 9 EMA"
+    },
+    "entryRules": [
+      "All EMAs stacked in one direction",
+      "Enter on pullback to short (9) EMA"
+    ],
+    "optionsLogic": "Directional in trend direction (CE/PE)",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 56,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "EMAs tangled or crossing",
+    "confidenceBoostFactors": [
+      "Clean ribbon",
+      "Volume on pullback"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "All EMAs stacked in one direction",
+    "exitLogic": "Exit on stop or target; avoid: EMAs tangled or crossing",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend"
+    ]
+  },
+  {
+    "id": "range_compression_breakout",
+    "name": "Range Compression Breakout",
+    "marketType": "VOLATILE",
+    "bestUseCase": "Tight sideways move before expansion",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Detect decreasing ATR + tight candles. Enter on expansion with volume spike.",
+    "entryConditions": {
+      "atr": "Decreasing",
+      "candles": "Tight",
+      "volume": "Spike on break"
+    },
+    "entryRules": [
+      "Decreasing ATR and tight candles",
+      "Enter on expansion with volume spike"
+    ],
+    "optionsLogic": "ATM in breakout direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 55,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Already expanded / high ATR",
+    "confidenceBoostFactors": [
+      "ATR contraction",
+      "Volume confirmation"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "VOLATILITY_BREAKOUT"
+    ],
+    "marketCondition": [
+      "VOLATILE",
+      "EVENT_DRIVEN"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Decreasing ATR and tight candles",
+    "exitLogic": "Exit on stop or target; avoid: Already expanded / high ATR",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout"
+    ]
+  },
+  {
+    "id": "failed_breakdown_trap",
+    "name": "Failed Breakdown / Breakdown Trap",
+    "marketType": "RANGE",
+    "bestUseCase": "Market fakes breakdown",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Price breaks support, quickly reclaims level with strong bullish candle \u2192 long trade (trap reversal).",
+    "entryConditions": {
+      "break": "Support broken",
+      "reclaim": "Strong bullish candle"
+    },
+    "entryRules": [
+      "Price breaks support",
+      "Quick reclaim with strong bullish candle",
+      "Enter long (trap reversal)"
+    ],
+    "optionsLogic": "CE on failed breakdown (bullish reversal)",
+    "optionsStyle": "COUNTER_TREND",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Breakdown with follow-through",
+    "confidenceBoostFactors": [
+      "Fast reclaim",
+      "Volume on reclaim"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "MEAN_REVERSION"
+    ],
+    "marketCondition": [
+      "RANGE_BOUND",
+      "SIDEWAYS"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Price breaks support",
+    "exitLogic": "Exit on stop or target; avoid: Breakdown with follow-through",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trap",
+      "reversal"
+    ]
+  },
+  {
+    "id": "vwap_reclaim",
+    "name": "VWAP Reclaim",
+    "marketType": "TREND",
+    "bestUseCase": "Morning weakness turning strong",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "If price below VWAP early, then reclaims and holds above \u2192 bullish shift trade.",
+    "entryConditions": {
+      "early": "Below VWAP",
+      "reclaim": "Holds above VWAP"
+    },
+    "entryRules": [
+      "Price below VWAP in morning",
+      "Reclaims and holds above VWAP",
+      "Enter bullish shift"
+    ],
+    "optionsLogic": "CE on VWAP reclaim and hold",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 56,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Reclaim fails and price slips back",
+    "confidenceBoostFactors": [
+      "Clean reclaim",
+      "Hold above VWAP"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "TREND_FOLLOWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Price below VWAP in morning",
+    "exitLogic": "Exit on stop or target; avoid: Reclaim fails and price slips back",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "vwap"
+    ]
+  },
+  {
+    "id": "volume_dry_up_breakout",
+    "name": "Volume Dry-Up Breakout",
+    "marketType": "VOLATILE",
+    "bestUseCase": "Quiet consolidation before move",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Volume contracts heavily, then sudden expansion candle \u2192 breakout trade.",
+    "entryConditions": {
+      "volume": "Heavy contraction",
+      "expansion": "Sudden volume candle"
+    },
+    "entryRules": [
+      "Volume contracts heavily in consolidation",
+      "Enter on sudden volume expansion candle"
+    ],
+    "optionsLogic": "ATM in breakout direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 55,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "No clear volume dry-up",
+    "confidenceBoostFactors": [
+      "Clear dry-up",
+      "Strong expansion candle"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "VOLATILITY_BREAKOUT"
+    ],
+    "marketCondition": [
+      "VOLATILE",
+      "EVENT_DRIVEN"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Volume contracts heavily in consolidation",
+    "exitLogic": "Exit on stop or target; avoid: No clear volume dry-up",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout"
+    ]
+  },
+  {
+    "id": "daily_breakout_continuation",
+    "name": "Daily Breakout Continuation",
+    "marketType": "TREND",
+    "bestUseCase": "Multi-day resistance break",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Stock breaks multi-day resistance with strong volume \u2192 hold for follow-through days.",
+    "entryConditions": {
+      "break": "Multi-day resistance",
+      "volume": "Strong"
+    },
+    "entryRules": [
+      "Break multi-day resistance with strong volume",
+      "Hold for follow-through days"
+    ],
+    "optionsLogic": "CE on breakout; hold or roll",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Low volume breakout",
+    "confidenceBoostFactors": [
+      "Strong volume",
+      "Clear level break"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Break multi-day resistance with strong volume",
+    "exitLogic": "Exit on stop or target; avoid: Low volume breakout",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout"
+    ]
+  },
+  {
+    "id": "pullback_20_50_dma",
+    "name": "Pullback to 20/50 DMA",
+    "marketType": "TREND",
+    "bestUseCase": "Strong uptrend pullback",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "In strong uptrend, buy pullbacks to 20 or 50 day moving average.",
+    "entryConditions": {
+      "trend": "Strong up",
+      "pullback": "To 20 or 50 DMA"
+    },
+    "entryRules": [
+      "Strong uptrend intact",
+      "Buy pullback to 20 or 50 DMA"
+    ],
+    "optionsLogic": "CE on bounce from DMA",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 56,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Trend broken / DMA failing",
+    "confidenceBoostFactors": [
+      "Trend strength",
+      "DMA hold"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Strong uptrend intact",
+    "exitLogic": "Exit on stop or target; avoid: Trend broken / DMA failing",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "pullback"
+    ]
+  },
+  {
+    "id": "weekly_range_breakout",
+    "name": "Weekly Range Breakout",
+    "marketType": "TREND",
+    "bestUseCase": "Multi-day momentum",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Break of weekly high/low with volume expansion \u2192 multi-day momentum.",
+    "entryConditions": {
+      "break": "Weekly high/low",
+      "volume": "Expansion"
+    },
+    "entryRules": [
+      "Break weekly high or low",
+      "Volume expansion",
+      "Hold for multi-day momentum"
+    ],
+    "optionsLogic": "Directional in break direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Inside week / no clear range",
+    "confidenceBoostFactors": [
+      "Weekly level",
+      "Volume"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Break weekly high or low",
+    "exitLogic": "Exit on stop or target; avoid: Inside week / no clear range",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout",
+      "momentum"
+    ]
+  },
+  {
+    "id": "gap_and_go_swing",
+    "name": "Gap & Go (Swing Version)",
+    "marketType": "EVENT",
+    "bestUseCase": "Strong earnings/news gap",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Strong earnings/news gap with high volume \u2192 buy first consolidation.",
+    "entryConditions": {
+      "gap": "Strong",
+      "volume": "High",
+      "setup": "First consolidation"
+    },
+    "entryRules": [
+      "Strong gap on earnings/news",
+      "High volume",
+      "Buy first consolidation"
+    ],
+    "optionsLogic": "CE on gap continuation; manage IV",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "HIGH",
+    "winRateEstimate": 52,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Gap filling / fading",
+    "confidenceBoostFactors": [
+      "Strong catalyst",
+      "Volume"
+    ],
+    "goodFor": [
+      "stock",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "VOLATILE",
+      "EVENT_DRIVEN"
+    ],
+    "instruments": [
+      "EQUITY",
+      "OPTIONS"
+    ],
+    "entryLogic": "Strong gap on earnings/news",
+    "exitLogic": "Exit on stop or target; avoid: Gap filling / fading",
+    "stopLogic": "Stop below/above structure or VWAP break; risk HIGH",
+    "tags": [
+      "volume",
+      "swing",
+      "rsi",
+      "gap"
+    ]
+  },
+  {
+    "id": "stage2_trend_breakout",
+    "name": "Stage 2 Trend Breakout (Stan Weinstein)",
+    "marketType": "TREND",
+    "bestUseCase": "Exit from long base",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Stock exits long base with rising volume \u2192 start of big trend phase.",
+    "entryConditions": {
+      "base": "Long consolidation",
+      "break": "Rising volume"
+    },
+    "entryRules": [
+      "Long base complete",
+      "Breakout with rising volume",
+      "Start of trend phase"
+    ],
+    "optionsLogic": "CE on breakout; swing hold",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 55,
+    "rrExpectation": "2 to 3",
+    "avoidWhen": "Late in trend / extended",
+    "confidenceBoostFactors": [
+      "Base duration",
+      "Volume on break"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Long base complete",
+    "exitLogic": "Exit on stop or target; avoid: Late in trend / extended",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "breakout",
+      "volume"
+    ]
+  },
+  {
+    "id": "swing_rsi_compression_breakout",
+    "name": "Swing RSI Compression Breakout",
+    "marketType": "TREND",
+    "bestUseCase": "RSI coiled then expands",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "RSI stays compressed 40\u201360 for days then expands \u2192 start of momentum swing.",
+    "entryConditions": {
+      "rsi": "40-60 for days",
+      "expansion": "RSI breakout"
+    },
+    "entryRules": [
+      "RSI compressed 40-60 for days",
+      "Enter on RSI expansion",
+      "Momentum swing"
+    ],
+    "optionsLogic": "Directional in RSI expansion direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "RSI already extended",
+    "confidenceBoostFactors": [
+      "Compression period",
+      "Clean expansion"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "RSI compressed 40-60 for days",
+    "exitLogic": "Exit on stop or target; avoid: RSI already extended",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "breakout",
+      "momentum",
+      "rsi",
+      "swing"
+    ]
+  },
+  {
+    "id": "darvas_box_breakout",
+    "name": "Darvas Box Breakout",
+    "marketType": "TREND",
+    "bestUseCase": "Multi-week box range",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Price breaks out of multi-week box range \u2192 trend continuation.",
+    "entryConditions": {
+      "pattern": "Darvas box",
+      "break": "Box boundary"
+    },
+    "entryRules": [
+      "Identify multi-week box",
+      "Enter on breakout of box",
+      "Trend continuation"
+    ],
+    "optionsLogic": "CE/PE in break direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "False break from box",
+    "confidenceBoostFactors": [
+      "Box clarity",
+      "Volume on break"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Identify multi-week box",
+    "exitLogic": "Exit on stop or target; avoid: False break from box",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "breakout",
+      "darvas"
+    ]
+  },
+  {
+    "id": "relative_strength_swing_leader",
+    "name": "Relative Strength Swing Leader",
+    "marketType": "TREND",
+    "bestUseCase": "Outperforming index for days",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Stock outperforming index for several days \u2192 buy on pullbacks.",
+    "entryConditions": {
+      "relativeStrength": "Outperforming days",
+      "pullback": "Within trend"
+    },
+    "entryRules": [
+      "Stock outperforming index for several days",
+      "Buy on pullbacks"
+    ],
+    "optionsLogic": "CE on pullbacks in leader",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 56,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Relative strength fading",
+    "confidenceBoostFactors": [
+      "Sustained outperformance",
+      "Sector strength"
+    ],
+    "goodFor": [
+      "stock",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "OPTIONS"
+    ],
+    "entryLogic": "Stock outperforming index for several days",
+    "exitLogic": "Exit on stop or target; avoid: Relative strength fading",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "pullback",
+      "swing",
+      "iv",
+      "relative_strength",
+      "index"
+    ]
+  },
+  {
+    "id": "trendline_break_retest",
+    "name": "Trendline Break + Retest",
+    "marketType": "TREND",
+    "bestUseCase": "Descending trendline break",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Break of descending trendline + successful retest \u2192 bullish swing.",
+    "entryConditions": {
+      "break": "Trendline",
+      "retest": "Successful hold"
+    },
+    "entryRules": [
+      "Break descending trendline",
+      "Retest holds",
+      "Enter bullish swing"
+    ],
+    "optionsLogic": "CE on retest hold",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 54,
+    "rrExpectation": "1.5 to 2.5",
+    "avoidWhen": "Retest fails",
+    "confidenceBoostFactors": [
+      "Clear trendline",
+      "Volume on break"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Break descending trendline",
+    "exitLogic": "Exit on stop or target; avoid: Retest fails",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "trend",
+      "swing",
+      "trendline"
+    ]
+  },
+  {
+    "id": "swing_volume_accumulation",
+    "name": "Swing Volume Accumulation",
+    "marketType": "TREND",
+    "bestUseCase": "Flat price, rising volume",
+    "timeframe": [
+      "1d",
+      "swing"
+    ],
+    "description": "Price flat but volume rising over days \u2192 accumulation \u2192 breakout soon.",
+    "entryConditions": {
+      "price": "Flat",
+      "volume": "Rising over days"
+    },
+    "entryRules": [
+      "Price flat, volume rising over days",
+      "Anticipate breakout",
+      "Enter on break"
+    ],
+    "optionsLogic": "Directional on breakout",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 53,
+    "rrExpectation": "1.5 to 3",
+    "avoidWhen": "Distribution (price up, volume down)",
+    "confidenceBoostFactors": [
+      "Volume trend",
+      "Tight range"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "SWING"
+    ],
+    "marketCondition": [
+      "TRENDING",
+      "DIRECTIONAL"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Price flat, volume rising over days",
+    "exitLogic": "Exit on stop or target; avoid: Distribution (price up, volume down)",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout",
+      "swing",
+      "accumulation"
+    ]
+  },
+  {
+    "id": "market_regime_detection",
+    "name": "Market Regime Detection",
+    "marketType": "ADVANCED",
+    "bestUseCase": "AI first decides market type",
+    "timeframe": [
+      "any"
+    ],
+    "description": "AI first decides: Trend Day, Range Day, Volatile News Day, or Expiry/Low Liquidity Day. Then only activates matching algos.",
+    "entryConditions": {
+      "regime": "Classified"
+    },
+    "entryRules": [
+      "Detect regime: Trend / Range / Volatile / Expiry",
+      "Activate only matching algos"
+    ],
+    "optionsLogic": "Depends on regime",
+    "optionsStyle": "ADAPTIVE",
+    "riskLevel": "LOW",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Clear regime",
+      "Algo-regime match"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Detect regime: Trend / Range / Volatile / Expiry",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk LOW",
+    "tags": [
+      "trend",
+      "regime",
+      "liquidity",
+      "iv"
+    ]
+  },
+  {
+    "id": "multi_timeframe_alignment",
+    "name": "Multi-Timeframe Alignment",
+    "marketType": "ADVANCED",
+    "bestUseCase": "All timeframes agree",
+    "timeframe": [
+      "5m",
+      "15m",
+      "1h"
+    ],
+    "description": "Trade only when 5m trend = 15m trend = 1h bias.",
+    "entryConditions": {
+      "5m": "Trend",
+      "15m": "Same trend",
+      "1h": "Same bias"
+    },
+    "entryRules": [
+      "5m trend aligns with 15m and 1h",
+      "Trade in aligned direction"
+    ],
+    "optionsLogic": "Directional in aligned direction",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "LOW",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "Timeframes conflict",
+    "confidenceBoostFactors": [
+      "Full alignment",
+      "Higher TF confirmation"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "5m trend aligns with 15m and 1h",
+    "exitLogic": "Exit on stop or target; avoid: Timeframes conflict",
+    "stopLogic": "Stop below/above structure or VWAP break; risk LOW",
+    "tags": [
+      "trend"
+    ]
+  },
+  {
+    "id": "liquidity_zone_reaction",
+    "name": "Liquidity Zone Reaction",
+    "marketType": "ADVANCED",
+    "bestUseCase": "Key levels for reactions",
+    "timeframe": [
+      "5m",
+      "15m",
+      "1d"
+    ],
+    "description": "AI marks previous day high/low, VWAP bands, option OI levels. Trades reactions from these zones.",
+    "entryConditions": {
+      "zones": "Marked",
+      "reaction": "From zone"
+    },
+    "entryRules": [
+      "Mark PDC high/low, VWAP bands, OI levels",
+      "Trade reactions from zones"
+    ],
+    "optionsLogic": "Directional or straddle at zone",
+    "optionsStyle": "ADAPTIVE",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Clear zones",
+      "Reaction confirmation"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Mark PDC high/low, VWAP bands, OI levels",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "liquidity",
+      "vwap"
+    ]
+  },
+  {
+    "id": "order_flow_imbalance_proxy",
+    "name": "Order Flow Imbalance Proxy",
+    "marketType": "ADVANCED",
+    "bestUseCase": "Institutional activity proxy",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Use volume spikes + large candle bodies as proxy for institutional activity.",
+    "entryConditions": {
+      "volume": "Spike",
+      "candle": "Large body"
+    },
+    "entryRules": [
+      "Volume spike + large candle body",
+      "Use as institutional proxy",
+      "Trade in direction"
+    ],
+    "optionsLogic": "Directional with flow",
+    "optionsStyle": "DIRECTIONAL_BUY",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Strong imbalance",
+      "Multiple confirmations"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Volume spike + large candle body",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "iv"
+    ]
+  },
+  {
+    "id": "volatility_contraction_expansion",
+    "name": "Volatility Contraction \u2192 Expansion Model",
+    "marketType": "ADVANCED",
+    "bestUseCase": "Shrinking ATR before breakout",
+    "timeframe": [
+      "5m",
+      "15m",
+      "1d"
+    ],
+    "description": "Detect shrinking ATR \u2192 prepare breakout mode.",
+    "entryConditions": {
+      "atr": "Shrinking",
+      "mode": "Breakout prepared"
+    },
+    "entryRules": [
+      "Detect ATR contraction",
+      "Prepare for expansion",
+      "Enter on breakout"
+    ],
+    "optionsLogic": "Straddle or directional on expansion",
+    "optionsStyle": "ADAPTIVE",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Clear contraction",
+      "Volume on expansion"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Detect ATR contraction",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "breakout",
+      "volatility"
+    ]
+  },
+  {
+    "id": "time_of_day_behavior",
+    "name": "Time-of-Day Behavior Model",
+    "marketType": "ADVANCED",
+    "bestUseCase": "Session-based bias",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Morning = breakout bias; Midday = mean reversion; Power hour = momentum + closing moves.",
+    "entryConditions": {
+      "session": "Morning/Midday/Power"
+    },
+    "entryRules": [
+      "Morning: breakout bias",
+      "Midday: mean reversion",
+      "Power hour: momentum and closing"
+    ],
+    "optionsLogic": "Session-appropriate strategy",
+    "optionsStyle": "ADAPTIVE",
+    "riskLevel": "LOW",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Session clarity",
+      "Historical fit"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Morning: breakout bias",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk LOW",
+    "tags": [
+      "breakout",
+      "momentum",
+      "mean_reversion",
+      "rsi"
+    ]
+  },
+  {
+    "id": "smart_money_trap_detection",
+    "name": "Smart Money Trap Detection",
+    "marketType": "ADVANCED",
+    "bestUseCase": "Avoid or fade fakeouts",
+    "timeframe": [
+      "5m",
+      "15m"
+    ],
+    "description": "Detect breakout without volume, long wick fakeouts. AI marks trap probability.",
+    "entryConditions": {
+      "breakout": "No volume",
+      "wick": "Long fakeout"
+    },
+    "entryRules": [
+      "Detect low-volume breakout",
+      "Detect long wick fakeouts",
+      "Mark trap probability"
+    ],
+    "optionsLogic": "Fade trap or avoid",
+    "optionsStyle": "COUNTER_TREND",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Trap signals",
+      "Confirmation"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Detect low-volume breakout",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "volume",
+      "breakout",
+      "trap"
+    ]
+  },
+  {
+    "id": "options_flow_bias",
+    "name": "Options Flow Bias (Advanced)",
+    "marketType": "ADVANCED",
+    "bestUseCase": "OI and flow signals",
+    "timeframe": [
+      "1d",
+      "intraday"
+    ],
+    "description": "If available: High Call OI unwinding \u2192 bullish; High Put OI unwinding \u2192 bearish.",
+    "entryConditions": {
+      "callOI": "Unwinding",
+      "putOI": "Unwinding"
+    },
+    "entryRules": [
+      "Call OI unwinding can imply bullish",
+      "Put OI unwinding can imply bearish",
+      "Use as bias"
+    ],
+    "optionsLogic": "Align with flow bias",
+    "optionsStyle": "ADAPTIVE",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "Conflicting flow",
+    "confidenceBoostFactors": [
+      "Clear OI signal",
+      "Volume confirmation"
+    ],
+    "goodFor": [
+      "options",
+      "index"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Call OI unwinding can imply bullish",
+    "exitLogic": "Exit on stop or target; avoid: Conflicting flow",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "options"
+    ]
+  },
+  {
+    "id": "volatility_regime_switch",
+    "name": "Volatility Regime Switch",
+    "marketType": "ADVANCED",
+    "bestUseCase": "IV-based strategy shift",
+    "timeframe": [
+      "1d",
+      "intraday"
+    ],
+    "description": "AI shifts between option buying strategies (low IV) and option selling/credit spreads (high IV).",
+    "entryConditions": {
+      "iv": "Low or high",
+      "regime": "Set"
+    },
+    "entryRules": [
+      "Low IV: option buying",
+      "High IV: option selling/credit spreads",
+      "Switch by regime"
+    ],
+    "optionsLogic": "Buy low IV; sell premium high IV",
+    "optionsStyle": "ADAPTIVE",
+    "riskLevel": "MEDIUM",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Clear IV regime",
+      "Strategy match"
+    ],
+    "goodFor": [
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "OPTIONS"
+    ],
+    "entryLogic": "Low IV: option buying",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk MEDIUM",
+    "tags": [
+      "regime",
+      "volatility",
+      "iv"
+    ]
+  },
+  {
+    "id": "risk_adaptive_position_sizing",
+    "name": "Risk-Adaptive Position Sizing",
+    "marketType": "ADVANCED",
+    "bestUseCase": "Size by conditions",
+    "timeframe": [
+      "any"
+    ],
+    "description": "AI reduces lot size in high volatility, news days, and late session.",
+    "entryConditions": {
+      "volatility": "High",
+      "news": "Yes",
+      "session": "Late"
+    },
+    "entryRules": [
+      "Reduce size in high volatility",
+      "Reduce on news days",
+      "Reduce in late session"
+    ],
+    "optionsLogic": "Smaller lots in risk conditions",
+    "optionsStyle": "ADAPTIVE",
+    "riskLevel": "LOW",
+    "winRateEstimate": 0,
+    "rrExpectation": "\u2014",
+    "avoidWhen": "\u2014",
+    "confidenceBoostFactors": [
+      "Discipline",
+      "Condition awareness"
+    ],
+    "goodFor": [
+      "stock",
+      "index",
+      "options"
+    ],
+    "groups": [
+      "ADVANCED"
+    ],
+    "marketCondition": [
+      "ANY"
+    ],
+    "instruments": [
+      "EQUITY",
+      "INDEX",
+      "OPTIONS"
+    ],
+    "entryLogic": "Reduce size in high volatility",
+    "exitLogic": "Exit on stop or target; avoid: \u2014",
+    "stopLogic": "Stop below/above structure or VWAP break; risk LOW",
+    "tags": [
+      "volatility",
+      "sizing",
+      "iv"
+    ]
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "TREND_FOLLOWING",
+    "name": "Trend Following",
+    "description": "Used in directional markets.",
+    "icon": "trending_up",
+    "color": "teal",
+    "order": 1
+  },
+  {
+    "id": "MEAN_REVERSION",
+    "name": "Mean Reversion",
+    "description": "Used in range-bound markets.",
+    "icon": "swap_horiz",
+    "color": "yellow",
+    "order": 2
+  },
+  {
+    "id": "VOLATILITY_BREAKOUT",
+    "name": "Volatility Breakout",
+    "description": "Used when volatility expansion is expected.",
+    "icon": "bolt",
+    "color": "blue",
+    "order": 3
+  },
+  {
+    "id": "OPTIONS_EDGE",
+    "name": "Options Edge",
+    "description": "Options-specific strategies.",
+    "icon": "show_chart",
+    "color": "purple",
+    "order": 4
+  },
+  {
+    "id": "SMART_MONEY",
+    "name": "Smart Money / AI Edge",
+    "description": "Institutional behavior & advanced logic.",
+    "icon": "psychology",
+    "color": "red",
+    "order": 5
+  },
+  {
+    "id": "SWING",
+    "name": "Swing / Multi-Day",
+    "description": "Positional and multi-day trades.",
+    "icon": "schedule",
+    "color": "indigo",
+    "order": 6
+  },
+  {
+    "id": "ADVANCED",
+    "name": "Advanced / AI Logic",
+    "description": "Regime detection, MTF, sizing.",
+    "icon": "smart_toy",
+    "color": "brown",
+    "order": 7
+  }
+]
