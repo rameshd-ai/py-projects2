@@ -1,0 +1,499 @@
+{% extends "base_dashboard.html" %}
+{% block content %}
+<div class="fade-in ai-agent-dashboard">
+  <!-- SECTION 1 — USER CAPITAL SETTINGS (TOP BAR) -->
+  <div class="card mb-4">
+    <div class="card-header d-flex flex-wrap align-items-center gap-3">
+      <span class="material-icons-round text-primary-custom">account_balance_wallet</span>
+      <span>Capital & Risk</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted">Total Capital (₹)</label>
+          <input type="number" class="form-control" id="total-capital" placeholder="e.g. 100000" min="0" value="100000" step="1000">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted">Risk Per Trade (%)</label>
+          <input type="number" class="form-control" id="risk-pct" placeholder="2" min="0" max="100" value="2" step="0.5">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted d-block">Mode</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="trade-mode" id="mode-intraday" value="intraday" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="mode-intraday">Intraday</label>
+            <input type="radio" class="btn-check" name="trade-mode" id="mode-btst" value="btst">
+            <label class="btn btn-outline-secondary btn-sm" for="mode-btst">BTST</label>
+          </div>
+        </div>
+        <div class="col-md-3 d-flex align-items-center">
+          <div class="metric-item flex-grow-1 py-2 px-3">
+            <span class="metric-label">Max Risk Per Trade</span>
+            <span class="metric-value d-block" id="max-risk-value">₹2,000</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INDEX OPPORTUNITIES (Capital Friendly) — shown when capital < ₹15k or no stock fits budget -->
+  <div class="card mb-4 d-none" id="index-opportunities-block">
+    <div class="card-header d-flex align-items-center gap-2" style="background: rgba(156, 39, 176, 0.2); color: #ce93d8;">
+      <span class="material-icons-round">show_chart</span>
+      <span>Index Opportunities (Capital Friendly)</span>
+    </div>
+    <div class="card-body">
+      <div id="index-opportunities-loading" class="text-center text-muted py-3">Loading index bias…</div>
+      <div id="index-opportunities-content" class="d-none">
+        <div id="index-no-direction-msg" class="alert alert-secondary border-0 small d-none">
+          Market lacks clear direction. Wait for better setup.
+        </div>
+        <div id="index-nifty-section" class="mb-4 d-none">
+          <h6 class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-primary bg-opacity-25" id="index-nifty-label">NIFTY – Bullish</span>
+            <span class="badge bg-success bg-opacity-25" id="index-nifty-confidence">—%</span>
+          </h6>
+          <p class="small text-muted mb-2" id="index-nifty-reason">—</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-dark"><tr><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="index-nifty-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="index-banknifty-section" class="d-none">
+          <h6 class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-primary bg-opacity-25" id="index-banknifty-label">BANK NIFTY – Bullish</span>
+            <span class="badge bg-success bg-opacity-25" id="index-banknifty-confidence">—%</span>
+          </h6>
+          <p class="small text-muted mb-2" id="index-banknifty-reason">—</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-dark"><tr><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="index-banknifty-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2 — AI TRADE CATEGORIES (4 BLOCKS) -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-success-subtle border-0">
+          <span class="material-icons-round me-2">trending_up</span>
+          Momentum Trades
+        </div>
+        <div class="card-body p-2" id="block-momentum">
+          <div class="text-center text-muted py-4" id="momentum-loading">Loading…</div>
+          <div class="list-group list-group-flush" id="momentum-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-warning-subtle border-0">
+          <span class="material-icons-round me-2">swap_horiz</span>
+          Reversal Trades
+        </div>
+        <div class="card-body p-2" id="block-reversal">
+          <div class="text-center text-muted py-4" id="reversal-loading">Loading…</div>
+          <div class="list-group list-group-flush" id="reversal-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <div class="card h-100">
+        <div class="card-header bg-primary bg-opacity-25 border-0 text-primary-custom">
+          <span class="material-icons-round me-2">newspaper</span>
+          News/Event Trades
+        </div>
+        <div class="card-body p-2" id="block-news">
+          <div class="text-center text-muted py-4" id="news-loading">Loading…</div>
+          <div class="list-group list-group-flush" id="news-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+      <div class="card h-100">
+        <div class="card-header border-0" style="background: rgba(255, 193, 7, 0.2); color: #ffc107;">
+          <span class="material-icons-round me-2">diamond</span>
+          Gold & Silver ETF
+        </div>
+        <div class="card-body p-2" id="block-etf">
+          <div class="text-center text-muted py-4" id="etf-loading">Loading…</div>
+          <div class="list-group list-group-flush" id="etf-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTIONS PANEL (RIGHT-SIDE OFFCANVAS) -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="optionsPanel" aria-labelledby="optionsPanelLabel" style="width: min(100%, 520px);">
+    <div class="offcanvas-header border-bottom">
+      <h5 class="offcanvas-title d-flex align-items-center gap-2" id="optionsPanelLabel">
+        <span class="material-icons-round">options</span>
+        <span id="options-panel-stock">—</span> Options
+      </h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-0 d-flex flex-column overflow-hidden">
+      <!-- AI RECOMMENDATION PANEL -->
+      <div class="p-3 border-bottom" style="background: rgba(168, 199, 250, 0.08);">
+        <h6 class="text-primary-custom mb-2 d-flex align-items-center gap-2">
+          <span class="material-icons-round fs-6">psychology</span>
+          AI Suggested Trade
+        </h6>
+        <div class="small" id="ai-recommendation-content">
+          <div class="d-flex flex-wrap gap-2 mb-2">
+            <span class="badge bg-primary bg-opacity-25 text-primary-custom" id="rec-direction">—</span>
+            <span class="badge bg-secondary bg-opacity-50" id="rec-strike">—</span>
+            <span class="badge bg-success bg-opacity-25 text-success" id="rec-confidence">—</span>
+            <span class="badge bg-secondary bg-opacity-50" id="rec-holding">—</span>
+          </div>
+          <p class="mb-0 text-muted" id="rec-reason">—</p>
+        </div>
+      </div>
+      <!-- OPTIONS TABLE -->
+      <div class="flex-grow-1 overflow-auto px-3 pb-3">
+        <div class="alert alert-warning border-0 small d-none" id="no-options-warning">
+          No contracts available within your risk. Increase capital or reduce risk %.
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-dark sticky-top">
+              <tr>
+                <th>Type</th>
+                <th>Strike</th>
+                <th>Premium</th>
+                <th>Lot</th>
+                <th>Total Cost</th>
+                <th>Risk</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="options-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .stock-card { transition: background 0.2s; }
+  .stock-card:hover { background: var(--md-surface-2); }
+  .ai-score-bar { height: 6px; border-radius: 3px; background: var(--md-surface-2); overflow: hidden; }
+  .ai-score-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .row-ai-recommended { background: rgba(168, 199, 250, 0.12) !important; }
+  .risk-badge-low { background: rgba(109, 213, 140, 0.2); color: var(--md-success); }
+  .risk-badge-medium { background: rgba(253, 196, 0, 0.2); color: var(--md-warning); }
+  .risk-badge-high { background: rgba(255, 180, 171, 0.2); color: var(--md-error); }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const totalCapitalEl = document.getElementById('total-capital');
+  const riskPctEl = document.getElementById('risk-pct');
+  const maxRiskValueEl = document.getElementById('max-risk-value');
+  const optionsPanel = document.getElementById('optionsPanel');
+  const optionsPanelStock = document.getElementById('options-panel-stock');
+  const optionsTbody = document.getElementById('options-tbody');
+  const noOptionsWarning = document.getElementById('no-options-warning');
+
+  function getMaxRiskPerTrade() {
+    const capital = parseFloat(totalCapitalEl.value) || 0;
+    const pct = parseFloat(riskPctEl.value) || 0;
+    return (capital * pct) / 100;
+  }
+
+  function formatMoney(n) {
+    if (n >= 1e5) return '₹' + (n / 1e5).toFixed(1) + 'L';
+    return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+
+  function updateMaxRiskDisplay() {
+    const maxRisk = getMaxRiskPerTrade();
+    maxRiskValueEl.textContent = formatMoney(maxRisk);
+  }
+  totalCapitalEl.addEventListener('input', updateMaxRiskDisplay);
+  riskPctEl.addEventListener('input', updateMaxRiskDisplay);
+  updateMaxRiskDisplay();
+
+  const INDEX_CAPITAL_THRESHOLD = 15000;
+  let noStockFitsBudget = false;
+
+  function getTotalCapital() {
+    return parseFloat(totalCapitalEl.value) || 0;
+  }
+
+  function shouldShowIndexBlock() {
+    return getTotalCapital() < INDEX_CAPITAL_THRESHOLD || noStockFitsBudget;
+  }
+
+  function updateIndexBlockVisibility() {
+    const block = document.getElementById('index-opportunities-block');
+    if (!block) return;
+    if (shouldShowIndexBlock()) {
+      block.classList.remove('d-none');
+      loadIndexOpportunities();
+    } else {
+      block.classList.add('d-none');
+    }
+  }
+
+  async function loadIndexOpportunities() {
+    const loadingEl = document.getElementById('index-opportunities-loading');
+    const contentEl = document.getElementById('index-opportunities-content');
+    const noDirectionEl = document.getElementById('index-no-direction-msg');
+    const niftySection = document.getElementById('index-nifty-section');
+    const bankNiftySection = document.getElementById('index-banknifty-section');
+    if (loadingEl) loadingEl.classList.remove('d-none');
+    if (contentEl) contentEl.classList.add('d-none');
+    if (noDirectionEl) noDirectionEl.classList.add('d-none');
+
+    const maxRisk = getMaxRiskPerTrade();
+    try {
+      const biasRes = await fetch('/api/index-bias');
+      const biasData = await biasRes.json();
+      const niftyBias = biasData.niftyBias || 'NEUTRAL';
+      const bankNiftyBias = biasData.bankNiftyBias || 'NEUTRAL';
+      const reasons = (biasData.reasons || []).join('. ');
+      const confidence = biasData.confidence != null ? biasData.confidence + '%' : '—';
+
+      if (loadingEl) loadingEl.classList.add('d-none');
+      if (contentEl) contentEl.classList.remove('d-none');
+
+      const bothNeutral = niftyBias === 'NEUTRAL' && bankNiftyBias === 'NEUTRAL';
+      const vixLow = (biasData.vixValue || 99) < 11;
+      if (bothNeutral && vixLow) {
+        if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Market lacks clear direction. Wait for better setup.'; }
+        niftySection.classList.add('d-none');
+        bankNiftySection.classList.add('d-none');
+        return;
+      }
+
+      function renderIndexTable(tbodyId, options, maxRiskRupee, isRecommendedIdx) {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return;
+        if (!options || options.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-muted small">No options in range.</td></tr>';
+          return;
+        }
+        const rows = options.map((opt, idx) => {
+          const lotCost = opt.lotCost != null ? opt.lotCost : (opt.premium * opt.lotSize);
+          const withinBudget = lotCost <= maxRiskRupee;
+          const statusHtml = withinBudget ? '<span class="text-success-custom">Within Budget</span>' : '<span class="text-danger-custom">Over Budget</span>';
+          const btnDisabled = !withinBudget;
+          const tooltip = btnDisabled ? ' title="Requires ' + formatMoney(lotCost) + ', exceeds your risk limit"' : '';
+          const recommended = (isRecommendedIdx >= 0 && idx === isRecommendedIdx);
+          return '<tr class="' + (recommended ? 'row-ai-recommended' : '') + '">' +
+            '<td><span class="badge ' + (opt.type === 'CE' ? 'bg-success bg-opacity-25' : 'bg-danger bg-opacity-25') + '">' + opt.type + '</span></td>' +
+            '<td>' + opt.strike + '</td><td>' + opt.premium + '</td><td>' + opt.lotSize + '</td>' +
+            '<td>' + formatMoney(lotCost) + '</td><td>' + statusHtml + '</td>' +
+            '<td><button type="button" class="btn btn-sm ' + (opt.type === 'CE' ? 'btn-success' : 'btn-danger') + (btnDisabled ? ' disabled' : '') + '"' + tooltip + '>Buy ' + opt.type + '</button></td></tr>';
+        });
+        tbody.innerHTML = rows.join('');
+      }
+
+      if (niftyBias !== 'NEUTRAL') {
+        const niftyOptRes = await fetch('/api/index-options/NIFTY?max_risk=' + encodeURIComponent(maxRisk));
+        const niftyOptData = await niftyOptRes.json();
+        document.getElementById('index-nifty-label').textContent = 'NIFTY – ' + (niftyBias === 'BULLISH' ? 'Bullish' : 'Bearish') + ' Intraday Bias';
+        document.getElementById('index-nifty-confidence').textContent = confidence;
+        document.getElementById('index-nifty-reason').textContent = reasons || 'Above VWAP + breadth';
+        niftySection.classList.remove('d-none');
+        const opts = niftyOptData.options || [];
+        const recIdx = opts.findIndex(o => (niftyOptData.aiRecommendation || {}).direction === 'BUY ' + o.type);
+        renderIndexTable('index-nifty-tbody', opts, maxRisk, recIdx === -1 ? 0 : recIdx);
+      } else {
+        niftySection.classList.add('d-none');
+      }
+
+      if (bankNiftyBias !== 'NEUTRAL') {
+        const bnOptRes = await fetch('/api/index-options/BANKNIFTY?max_risk=' + encodeURIComponent(maxRisk));
+        const bnOptData = await bnOptRes.json();
+        document.getElementById('index-banknifty-label').textContent = 'BANK NIFTY – ' + (bankNiftyBias === 'BULLISH' ? 'Bullish' : 'Bearish') + ' Intraday Bias';
+        document.getElementById('index-banknifty-confidence').textContent = confidence;
+        document.getElementById('index-banknifty-reason').textContent = reasons || 'Banks leading / breadth';
+        bankNiftySection.classList.remove('d-none');
+        const opts = bnOptData.options || [];
+        const recIdx = opts.findIndex(o => (bnOptData.aiRecommendation || {}).direction === 'BUY ' + o.type);
+        renderIndexTable('index-banknifty-tbody', opts, maxRisk, recIdx === -1 ? 0 : recIdx);
+      } else {
+        bankNiftySection.classList.add('d-none');
+      }
+
+      if (niftyBias === 'NEUTRAL' && bankNiftyBias === 'NEUTRAL') {
+        if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Market lacks clear direction. Wait for better setup.'; }
+      }
+    } catch (e) {
+      if (loadingEl) { loadingEl.classList.add('d-none'); loadingEl.textContent = 'Error loading index data.'; }
+      if (contentEl) contentEl.classList.remove('d-none');
+      if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Could not load index bias.'; }
+    }
+  }
+
+  totalCapitalEl.addEventListener('input', updateIndexBlockVisibility);
+  riskPctEl.addEventListener('input', updateIndexBlockVisibility);
+  updateIndexBlockVisibility();
+
+  function renderStockCard(item, listId) {
+    const trendIcon = item.trend === 'up' ? '↑' : '↓';
+    const trendClass = item.trend === 'up' ? 'text-success-custom' : 'text-danger-custom';
+    const score = Math.min(100, Math.max(0, item.score || 0));
+    return `
+      <div class="list-group-item list-group-item-action stock-card border-0 rounded-3 mb-2" data-stock="${item.stock}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <strong>${item.stock}</strong>
+            <span class="ms-2 ${trendClass}">${trendIcon}</span>
+          </div>
+          <span class="badge bg-primary bg-opacity-25">${score}</span>
+        </div>
+        <div class="small text-muted mt-1">${item.signalSummary || '—'}</div>
+        <div class="small mt-1">Volume: ${item.volumeSignal || 'Normal'}</div>
+        <div class="ai-score-bar mt-2"><div class="ai-score-fill bg-primary" style="width:${score}%"></div></div>
+        <button type="button" class="btn btn-sm btn-primary mt-2 w-100 view-options-btn" data-stock="${item.stock}">
+          View Trade Options
+        </button>
+      </div>
+    `;
+  }
+
+  function setLoading(blockId, loading) {
+    const block = document.getElementById(blockId);
+    const loadingEl = document.getElementById(blockId.replace('block-', '').replace('-list', '') + '-loading');
+    const listEl = document.getElementById(blockId.replace('block-', '').replace('-list', '') + '-list');
+    if (!listEl) return;
+    if (loading) {
+    } else {
+      if (loadingEl) loadingEl.classList.add('d-none');
+    }
+  }
+
+  const SIGNAL_CATEGORIES = ['momentum', 'reversal', 'news', 'etf'];
+
+  async function loadSignals() {
+    SIGNAL_CATEGORIES.forEach(cat => {
+      const loadingEl = document.getElementById(cat + '-loading');
+      const listEl = document.getElementById(cat + '-list');
+      if (loadingEl) loadingEl.classList.remove('d-none');
+      if (listEl) listEl.innerHTML = '';
+    });
+    try {
+      const r = await fetch('/api/ai-trade-signals');
+      const data = await r.json();
+      SIGNAL_CATEGORIES.forEach(cat => {
+        const loadingEl = document.getElementById(cat + '-loading');
+        const listEl = document.getElementById(cat + '-list');
+        const items = data[cat] || [];
+        if (loadingEl) loadingEl.classList.add('d-none');
+        if (listEl) {
+          listEl.innerHTML = items.map(item => renderStockCard(item, cat)).join('');
+          listEl.querySelectorAll('.view-options-btn').forEach(btn => {
+            btn.addEventListener('click', function() { openOptionsPanel(this.dataset.stock); });
+          });
+        }
+      });
+    } catch (e) {
+      SIGNAL_CATEGORIES.forEach(cat => {
+        const loadingEl = document.getElementById(cat + '-loading');
+        const listEl = document.getElementById(cat + '-list');
+        if (loadingEl) { loadingEl.classList.add('d-none'); loadingEl.textContent = 'Error loading.'; }
+        if (listEl) listEl.innerHTML = '<li class="list-group-item text-muted small">Failed to load.</li>';
+      });
+    }
+  }
+
+  function riskLevel(iv) {
+    if (iv <= 18) return { label: 'Low', cls: 'risk-badge-low' };
+    if (iv <= 22) return { label: 'Medium', cls: 'risk-badge-medium' };
+    return { label: 'High', cls: 'risk-badge-high' };
+  }
+
+  function openOptionsPanel(stock) {
+    optionsPanelStock.textContent = stock;
+    const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(optionsPanel);
+    bsOffcanvas.show();
+    loadOptionsForStock(stock);
+  }
+
+  async function loadOptionsForStock(stock) {
+    optionsTbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Loading…</td></tr>';
+    noOptionsWarning.classList.add('d-none');
+    try {
+      const r = await fetch('/api/options/' + encodeURIComponent(stock));
+      const data = await r.json();
+      const rec = data.aiRecommendation || {};
+      document.getElementById('rec-direction').textContent = 'Buy ' + (rec.direction || '—');
+      document.getElementById('rec-strike').textContent = (rec.strikePreference || 'ATM');
+      document.getElementById('rec-confidence').textContent = (rec.confidence != null ? rec.confidence + '%' : '—');
+      document.getElementById('rec-holding').textContent = rec.holdingTime || '—';
+      document.getElementById('rec-reason').textContent = rec.reason || '—';
+
+      const options = data.options || [];
+      const maxRisk = getMaxRiskPerTrade();
+      let anyWithinBudget = false;
+      const recommendedDirection = (rec.direction || 'CE').toUpperCase();
+      const firstRecommendedIdx = options.findIndex(o => o.type === recommendedDirection);
+
+      const rows = options.map((opt, idx) => {
+        const lotCost = (opt.premium || 0) * (opt.lotSize || 0);
+        const withinBudget = lotCost <= maxRisk;
+        if (withinBudget) anyWithinBudget = true;
+        const risk = riskLevel(opt.iv || 18);
+        const isRecommended = (idx === firstRecommendedIdx);
+        const statusHtml = withinBudget
+          ? '<span class="text-success-custom">Within Budget</span>'
+          : '<span class="text-danger-custom">Over Budget</span>';
+        const btnDisabled = !withinBudget;
+        const tooltip = btnDisabled ? ' title="Requires ' + formatMoney(lotCost) + ', exceeds your risk limit"' : '';
+        return `
+          <tr class="${isRecommended ? 'row-ai-recommended' : ''}" data-recommended="${isRecommended}">
+            <td><span class="badge ${opt.type === 'CE' ? 'bg-success bg-opacity-25' : 'bg-danger bg-opacity-25'}">${opt.type}</span></td>
+            <td>${opt.strike}</td>
+            <td>${opt.premium}</td>
+            <td>${opt.lotSize}</td>
+            <td>${formatMoney(lotCost)}</td>
+            <td><span class="badge ${risk.cls}">${risk.label}</span></td>
+            <td>${statusHtml}</td>
+            <td>
+              <button type="button" class="btn btn-sm ${opt.type === 'CE' ? 'btn-success' : 'btn-danger'} ${btnDisabled ? 'disabled' : ''}" ${tooltip}
+                ${btnDisabled ? 'aria-disabled="true"' : ''}>Buy ${opt.type}</button>
+            </td>
+          </tr>
+        `;
+      });
+
+      optionsTbody.innerHTML = rows.join('');
+      if (!anyWithinBudget && options.length > 0) {
+        noOptionsWarning.classList.remove('d-none');
+        noStockFitsBudget = true;
+        updateIndexBlockVisibility();
+      }
+      var recommendedRow = optionsTbody.querySelector('tr[data-recommended="true"]');
+      if (recommendedRow) recommendedRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } catch (e) {
+      optionsTbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading options.</td></tr>';
+    }
+  }
+
+  document.querySelectorAll('.view-options-btn').forEach(btn => {
+    btn.addEventListener('click', function() { openOptionsPanel(this.dataset.stock); });
+  });
+  document.getElementById('optionsPanel').addEventListener('shown.bs.offcanvas', function() {
+    document.querySelectorAll('#options-tbody tr.row-ai-recommended').forEach(function(row) {
+      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+  });
+
+  loadSignals();
+})();
+</script>
+{% endblock %}

@@ -111,6 +111,11 @@ def dashboard_zerodha():
     return render_template("dashboard/zerodha.html", active_page="zerodha", page_title="My Zerodha")
 
 
+@app.route("/dashboard/ai-agent")
+def dashboard_ai_agent():
+    return render_template("dashboard/ai_agent.html", active_page="ai_agent", page_title="AI Trading Agent")
+
+
 def _config_for_template() -> dict[str, str]:
     """Config for settings form; secrets masked so user sees 'saved' without exposing full value."""
     cfg = load_config()
@@ -1891,6 +1896,8 @@ LIQUID_FNO_STOCKS = [
     "TATAMOTORS", "KOTAKBANK", "LT", "HINDUNILVR", "ITC", "AXISBANK", "MARUTI",
     "BAJFINANCE", "WIPRO", "HCLTECH", "ASIANPAINT", "TITAN", "SUNPHARMA",
 ]
+# Gold & Silver ETFs (NSE) for AI Trading Agent commodity block
+GOLD_SILVER_ETFS = ["GOLDBEES", "GOLDSHARE", "SILVERETF"]
 INTRADAY_PICKS_STOCK_COUNT = 12  # Score 12 stocks in parallel for faster response
 INTRADAY_PICKS_WORKERS = 6  # Parallel workers for scoring
 INTRADAY_PICKS_CACHE_TTL = timedelta(minutes=5)
@@ -2032,6 +2039,491 @@ def api_intraday_picks():
     _intraday_picks_cache = payload
     _intraday_picks_cache_time = now
     return jsonify(payload)
+
+
+def _classify_signal_type(pick: dict) -> str:
+    """Classify into Bullish Momentum / Oversold Bounce / News Breakout for display."""
+    pred = (pick.get("prediction") or "NEUTRAL").upper()
+    tags = pick.get("tags") or []
+    tags_str = " ".join(tags).upper()
+    if "SENTIMENT" in tags_str or "NEWS" in tags_str:
+        return "News Breakout"
+    if "RSI" in tags_str and ("BEARISH" in tags_str or "BULLISH" in tags_str):
+        return "Oversold Bounce"
+    return "Bullish Momentum" if pred == "BULLISH" else "Bearish Momentum"
+
+
+def _volume_strength(pick: dict) -> str:
+    """Infer volume strength from factors (Normal / High / Spike)."""
+    tags = pick.get("tags") or []
+    tags_str = " ".join(tags).upper()
+    if "VOLUME" in tags_str or "SPIKE" in tags_str or "DEPTH" in tags_str:
+        return "Spike"
+    if "VWAP" in tags_str or "15M" in tags_str:
+        return "High"
+    return "Normal"
+
+
+def _build_ai_trade_signals() -> dict:
+    """Build momentum, reversal, news lists (top 3 each) for AI Trading Agent. Uses cached intraday picks when fresh."""
+    global _intraday_picks_cache, _intraday_picks_cache_time
+    now = datetime.now()
+    if _intraday_picks_cache is None or _intraday_picks_cache_time is None or (now - _intraday_picks_cache_time) >= INTRADAY_PICKS_CACHE_TTL:
+        symbols = LIQUID_FNO_STOCKS[:INTRADAY_PICKS_STOCK_COUNT]
+        results = []
+        with ThreadPoolExecutor(max_workers=INTRADAY_PICKS_WORKERS) as executor:
+            future_to_sym = {executor.submit(_score_stock_for_intraday, sym): sym for sym in symbols}
+            for future in as_completed(future_to_sym, timeout=75):
+                sym = future_to_sym[future]
+                try:
+                    results.append(future.result())
+                except Exception:
+                    results.append({"symbol": sym, "score": 0.0, "tags": ["Error"], "prediction": "NEUTRAL"})
+        got = {r.get("symbol") for r in results}
+        for sym in symbols:
+            if sym not in got:
+                results.append({"symbol": sym, "score": 0.0, "tags": ["Timeout"], "prediction": "NEUTRAL"})
+        results.sort(key=lambda x: -(x.get("score") or 0))
+        picks = results[:15]
+        _intraday_picks_cache = {"picks": picks, "ai_suggestion": _get_ai_trade_suggestion(picks), "cached_at": now.isoformat()}
+        _intraday_picks_cache_time = now
+    else:
+        picks = _intraday_picks_cache.get("picks", [])
+
+    def to_card(p: dict) -> dict:
+        score_raw = (p.get("score") or 0) * 50 + 50
+        score = max(0, min(100, int(score_raw)))
+        return {
+            "stock": p.get("symbol", ""),
+            "score": score,
+            "trend": "up" if (p.get("prediction") or "").upper() == "BULLISH" else "down",
+            "volumeSignal": _volume_strength(p),
+            "signalSummary": _classify_signal_type(p),
+        }
+
+    momentum, reversal, news = [], [], []
+    for p in picks:
+        card = to_card(p)
+        tags = p.get("tags") or []
+        tags_str = " ".join(tags).upper()
+        if "SENTIMENT" in tags_str:
+            news.append(card)
+        elif "RSI" in tags_str:
+            reversal.append(card)
+        else:
+            momentum.append(card)
+    # Fill each category to 3 from remaining cards (by score) if needed
+    used = set()
+    def take(category_list: list, n: int) -> list:
+        out = []
+        for c in category_list:
+            if c["stock"] not in used and len(out) < n:
+                out.append(c)
+                used.add(c["stock"])
+        return out
+
+    all_cards = sorted(
+        [to_card(p) for p in picks],
+        key=lambda c: -c["score"]
+    )
+    m_out = take(momentum, 3)
+    for c in all_cards:
+        if len(m_out) >= 3:
+            break
+        if c["stock"] not in used:
+            m_out.append(c)
+            used.add(c["stock"])
+    r_out = take(reversal, 3)
+    used_r = {x["stock"] for x in r_out}
+    for c in all_cards:
+        if len(r_out) >= 3:
+            break
+        if c["stock"] not in used_r:
+            r_out.append(c)
+            used_r.add(c["stock"])
+    n_out = take(news, 3)
+    used_n = {x["stock"] for x in n_out}
+    for c in all_cards:
+        if len(n_out) >= 3:
+            break
+        if c["stock"] not in used_n:
+            n_out.append(c)
+            used_n.add(c["stock"])
+    # Gold & Silver ETF block: score ETFs separately and return top 3
+    etf_picks = []
+    for sym in GOLD_SILVER_ETFS:
+        try:
+            etf_picks.append(_score_stock_for_intraday(sym))
+        except Exception:
+            etf_picks.append({"symbol": sym, "score": 0.0, "tags": [], "prediction": "NEUTRAL"})
+    etf_picks.sort(key=lambda x: -(x.get("score") or 0))
+    etf_out = [to_card(p) for p in etf_picks[:3]]
+    return {"momentum": m_out[:3], "reversal": r_out[:3], "news": n_out[:3], "etf": etf_out}
+
+
+@app.route("/api/ai-trade-signals")
+def api_ai_trade_signals():
+    """GET /api/ai-trade-signals: momentum, reversal, news, etf (each top 3 for AI Trading Agent)."""
+    try:
+        raw = _build_ai_trade_signals()
+        return jsonify({
+            "momentum": raw.get("momentum", [])[:3],
+            "reversal": raw.get("reversal", [])[:3],
+            "news": raw.get("news", [])[:3],
+            "etf": raw.get("etf", [])[:3],
+        })
+    except Exception as e:
+        return jsonify({"momentum": [], "reversal": [], "news": [], "etf": [], "error": str(e)})
+
+
+# --- Index Options AI Module (small capital: ₹3k–₹15k) ---
+INDEX_CAPITAL_THRESHOLD = 15000  # Show index block when capital < this or no stock fits
+
+
+def _compute_index_vwap_from_ohlc(df) -> float | None:
+    """Compute VWAP from OHLC DataFrame (columns: Open, High, Low, Close, Volume). Returns None if insufficient data."""
+    if df is None or df.empty or "Close" not in df.columns:
+        return None
+    if "Volume" not in df.columns:
+        df = df.copy()
+        df["Volume"] = 1
+    typical = (df["High"] + df["Low"] + df["Close"]) / 3
+    vol = df["Volume"]
+    if vol.sum() == 0:
+        return float(df["Close"].iloc[-1])
+    return float((typical * vol).sum() / vol.sum())
+
+
+def get_index_market_bias() -> dict:
+    """
+    AI market bias for NIFTY and BANKNIFTY. Uses live index, VIX, US close, optional 5m VWAP/trend.
+    Returns: niftyBias, bankNiftyBias, confidence, reasons.
+    """
+    reasons = []
+    nifty_score = 0.0
+    bank_nifty_score = 0.0
+
+    nifty = fetch_nifty50_live()
+    bank_nifty = fetch_bank_nifty_live()
+    vix_data = fetch_india_vix()
+    us_bias_data = _get_cached_us_bias()
+
+    nifty_price = (nifty.get("price") or 0) or (nifty.get("open") or 0)
+    nifty_open = nifty.get("open") or nifty_price
+    nifty_pct = nifty.get("pct_change") or 0
+
+    bn_price = (bank_nifty.get("price") or 0) or (bank_nifty.get("open") or 0)
+    bn_open = bank_nifty.get("open") or bn_price
+    bn_pct = bank_nifty.get("pct_change") or 0
+
+    # Index vs VWAP proxy (price vs open)
+    if nifty_price > 0 and nifty_open > 0:
+        if nifty_price > nifty_open:
+            nifty_score += 0.35
+            reasons.append("Nifty above open (VWAP proxy)")
+        else:
+            nifty_score -= 0.35
+            reasons.append("Nifty below open")
+
+    if bn_price > 0 and bn_open > 0:
+        if bn_price > bn_open:
+            bank_nifty_score += 0.35
+            if "Nifty above open" not in " ".join(reasons):
+                reasons.append("Bank Nifty above open")
+        else:
+            bank_nifty_score -= 0.35
+
+    # 5min trend (higher highs) – optional from OHLC
+    try:
+        df_nifty_5m = fetch_nse_ohlc("NIFTY 50", interval="5m", period="1d")
+        if df_nifty_5m is not None and not df_nifty_5m.empty and len(df_nifty_5m) >= 2:
+            last_c = float(df_nifty_5m["Close"].iloc[-1])
+            prev_c = float(df_nifty_5m["Close"].iloc[-2])
+            if last_c > prev_c:
+                nifty_score += 0.2
+                reasons.append("Nifty 5m higher close")
+            else:
+                nifty_score -= 0.2
+        df_bn_5m = fetch_nse_ohlc("NIFTY BANK", interval="5m", period="1d")
+        if df_bn_5m is not None and not df_bn_5m.empty and len(df_bn_5m) >= 2:
+            last_c = float(df_bn_5m["Close"].iloc[-1])
+            prev_c = float(df_bn_5m["Close"].iloc[-2])
+            if last_c > prev_c:
+                bank_nifty_score += 0.2
+            else:
+                bank_nifty_score -= 0.2
+    except Exception:
+        pass
+
+    # Market breadth proxy: index green
+    if nifty_pct and nifty_pct > 0:
+        nifty_score += 0.2
+        if "Strong breadth" not in " ".join(reasons):
+            reasons.append("Strong breadth (index green)")
+    elif nifty_pct is not None and nifty_pct < 0:
+        nifty_score -= 0.2
+
+    if bn_pct and bn_pct > 0:
+        bank_nifty_score += 0.2
+    elif bn_pct is not None and bn_pct < 0:
+        bank_nifty_score -= 0.2
+
+    # Bank Nifty vs Nifty relative strength
+    if nifty_pct is not None and bn_pct is not None and bn_pct > nifty_pct:
+        bank_nifty_score += 0.25
+        reasons.append("Banks leading")
+    elif nifty_pct is not None and bn_pct is not None and bn_pct < nifty_pct:
+        bank_nifty_score -= 0.2
+
+    # US market previous close
+    us_pct = us_bias_data.get("sp500_pct_change")
+    if us_pct is not None:
+        if us_pct > 0:
+            nifty_score += 0.15
+            bank_nifty_score += 0.15
+            reasons.append("Positive global cues")
+        elif us_pct < -0.5:
+            nifty_score -= 0.15
+            bank_nifty_score -= 0.15
+
+    # India VIX: rising/high = breakout chance (slight bullish bias for momentum)
+    vix_val = vix_data.get("vix_value")
+    if vix_val is not None:
+        if vix_val > 18:
+            reasons.append("Elevated VIX (breakout potential)")
+        if vix_val < 12:
+            reasons.append("Low VIX (range-bound)")
+
+    def to_bias(score: float) -> str:
+        if score > 0.2:
+            return "BULLISH"
+        if score < -0.2:
+            return "BEARISH"
+        return "NEUTRAL"
+
+    nifty_bias = to_bias(nifty_score)
+    bank_nifty_bias = to_bias(bank_nifty_score)
+
+    # Safety: do not show trade if both NEUTRAL and VIX very low + flat
+    if vix_val is not None and vix_val < 11 and nifty_bias == "NEUTRAL" and bank_nifty_bias == "NEUTRAL":
+        reasons.append("Market lacks clear direction. Wait for better setup.")
+
+    confidence = min(100, max(0, int(50 + (abs(nifty_score) + abs(bank_nifty_score)) * 25)))
+    if not reasons:
+        reasons.append("Index vs open and trend")
+
+    return {
+        "niftyBias": nifty_bias,
+        "bankNiftyBias": bank_nifty_bias,
+        "confidence": confidence,
+        "reasons": reasons[:6],
+        "niftyScore": round(nifty_score, 2),
+        "bankNiftyScore": round(bank_nifty_score, 2),
+        "vixValue": vix_val,
+    }
+
+
+def get_affordable_index_options(
+    index_name: str,
+    bias: str,
+    max_risk_per_trade: float,
+    confidence: int | None = None,
+) -> tuple[list, dict, bool]:
+    """
+    Get 2–3 affordable weekly index options (ATM, 1 OTM, 2 OTM) filtered by max_risk_per_trade.
+    Returns (options_list, ai_recommendation, safe_to_show).
+    """
+    index_name = (index_name or "").upper().replace(" ", "")
+    if index_name not in ("NIFTY", "BANKNIFTY", "NIFTY50", "BANKNIFTY50"):
+        if "BANK" in index_name:
+            index_name = "BANKNIFTY"
+        else:
+            index_name = "NIFTY"
+
+    if bias == "NEUTRAL":
+        return [], {}, False
+
+    # Index config: strike step, lot size, symbol for quote
+    if index_name == "BANKNIFTY":
+        strike_step = 100
+        lot_size = 15
+        quote_symbol = "NIFTY BANK"
+    else:
+        strike_step = 50
+        lot_size = 25
+        quote_symbol = "NIFTY 50"
+
+    try:
+        if quote_symbol == "NIFTY 50":
+            live = fetch_nifty50_live()
+        else:
+            live = fetch_bank_nifty_live()
+        spot = float(live.get("price") or live.get("open") or 0)
+    except Exception:
+        spot = 24500.0 if index_name == "NIFTY" else 52000.0
+
+    if spot <= 0:
+        spot = 24500.0 if index_name == "NIFTY" else 52000.0
+
+    base_strike = round(spot / strike_step) * strike_step
+    use_ce = bias == "BULLISH"
+
+    # ATM, 1 OTM, 2 OTM (for CE: OTM = strike > spot; for PE: OTM = strike < spot)
+    strikes = []
+    if use_ce:
+        strikes = [base_strike, base_strike + strike_step, base_strike + 2 * strike_step]
+    else:
+        strikes = [base_strike, base_strike - strike_step, base_strike - 2 * strike_step]
+
+    # Mock premiums (index options: typically tens to low hundreds)
+    options = []
+    for i, strike in enumerate(strikes):
+        if use_ce:
+            prem = max(20, 80 - (strike - spot) / 2 + (30 if i == 0 else 0))
+        else:
+            prem = max(20, 80 + (spot - strike) / 2 + (30 if i == 0 else 0))
+        prem = round(prem, 2)
+        lot_cost = prem * lot_size
+        options.append({
+            "type": "CE" if use_ce else "PE",
+            "strike": strike,
+            "premium": prem,
+            "lotSize": lot_size,
+            "lotCost": lot_cost,
+            "distanceFromATM": i,
+        })
+
+    # Filter by budget and sort by closest to ATM
+    affordable = [o for o in options if o["lotCost"] <= max_risk_per_trade]
+    affordable.sort(key=lambda x: (x["distanceFromATM"], x["premium"]))
+    top = affordable[:3]
+    if not top and options:
+        top = options[:3]  # show anyway but frontend will mark Over Budget
+
+    # AI recommendation text
+    direction = "BUY CE" if use_ce else "BUY PE"
+    move_type = "Momentum" if bias == "BULLISH" else "Reversal"
+    if bias == "BEARISH":
+        move_type = "Momentum"
+    summary = (
+        f"{'NIFTY' if index_name == 'NIFTY' else 'Bank Nifty'} is trading "
+        f"{'above' if bias == 'BULLISH' else 'below'} open with {bias.lower()} intraday bias. "
+        "Suitable for small-capital weekly options."
+    )
+
+    rec = {
+        "direction": direction,
+        "confidence": confidence if confidence is not None else 65,
+        "expectedMoveType": move_type,
+        "holdingTime": "20-90 min",
+        "summary": summary,
+    }
+
+    # Safe to show only if we have at least one affordable or bias is clear
+    safe = bias != "NEUTRAL" and (float(max_risk_per_trade) > 0)
+    return top if top else options[:3], rec, safe
+
+
+@app.route("/api/index-bias")
+def api_index_bias():
+    """GET /api/index-bias: NIFTY and BANKNIFTY bias, confidence, reasons."""
+    try:
+        data = get_index_market_bias()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({
+            "niftyBias": "NEUTRAL",
+            "bankNiftyBias": "NEUTRAL",
+            "confidence": 0,
+            "reasons": [f"Error: {str(e)}"],
+        })
+
+
+@app.route("/api/index-options/<index_name>")
+def api_index_options(index_name: str):
+    """GET /api/index-options/{index}: affordable options + AI recommendation. Query: max_risk (optional)."""
+    max_risk = request.args.get("max_risk", type=float)
+    if max_risk is None or max_risk <= 0:
+        max_risk = 3000.0  # default for small capital
+    bias_data = get_index_market_bias()
+    nifty_bias = bias_data.get("niftyBias", "NEUTRAL")
+    bank_nifty_bias = bias_data.get("bankNiftyBias", "NEUTRAL")
+    index_upper = (index_name or "").upper().replace(" ", "")
+    if "BANK" in index_upper:
+        bias = bank_nifty_bias
+        label = "BANKNIFTY"
+    else:
+        bias = nifty_bias
+        label = "NIFTY"
+    options, ai_rec, safe = get_affordable_index_options(
+        label, bias, max_risk, confidence=bias_data.get("confidence")
+    )
+    return jsonify({
+        "index": label,
+        "bias": bias,
+        "aiRecommendation": ai_rec,
+        "options": options,
+        "safeToShow": safe,
+    })
+
+
+def _mock_option_chain(stock: str) -> tuple[list, dict]:
+    """Return (options list, aiRecommendation) for a stock. Uses quote for ATM; mock CE/PE around it."""
+    try:
+        quote = fetch_nse_quote(stock)
+        spot = float(quote.get("last") or quote.get("close") or 0)
+        if spot <= 0:
+            spot = 500.0  # fallback
+        # Round to typical strike interval (e.g. 50 for mid-cap, 100 for large)
+        step = 50 if spot < 2000 else 100
+        base = round(spot / step) * step
+        pred = _get_market_prediction(stock)
+        direction = "CE" if (pred.get("prediction") or "").upper() == "BULLISH" else "PE"
+        confidence = pred.get("confidence", 50) or 50
+        factors = pred.get("factors", [])
+        reason = " ".join(factors[:3]) if factors else "Trend + Volume + Sentiment"
+        options = []
+        for i in range(-2, 3):  # 5 strikes
+            strike = base + i * step
+            for typ in ["CE", "PE"]:
+                # Mock premium: higher for OTM, lower for ITM
+                if typ == "CE":
+                    prem = max(5, 30 - (strike - spot) / 10 + (20 if i == 0 else 0))
+                else:
+                    prem = max(5, 30 + (strike - spot) / 10 + (20 if i == 0 else 0))
+                prem = round(prem, 2)
+                lot = 250 if spot < 3000 else (500 if spot < 8000 else 25)
+                iv = 18 if abs(i) <= 1 else (22 if abs(i) == 2 else 25)
+                options.append({"type": typ, "strike": strike, "premium": prem, "lotSize": lot, "iv": iv})
+        rec = {
+            "direction": direction,
+            "strikePreference": "ATM",
+            "confidence": confidence,
+            "holdingTime": "30-90 min",
+            "reason": reason[:120] + ("..." if len(reason) > 120 else ""),
+        }
+        return options, rec
+    except Exception:
+        spot = 500.0
+        base = 500
+        return [
+            {"type": "CE", "strike": base, "premium": 28, "lotSize": 250, "iv": 18},
+            {"type": "PE", "strike": base, "premium": 30, "lotSize": 250, "iv": 18},
+        ], {"direction": "CE", "strikePreference": "ATM", "confidence": 60, "holdingTime": "30-90 min", "reason": "Trend + Volume"}
+
+
+@app.route("/api/options/<stock>")
+def api_options(stock: str):
+    """GET /api/options/{stock}: option chain + AI recommendation for budget filtering."""
+    try:
+        options, ai_recommendation = _mock_option_chain(stock.upper())
+        return jsonify({
+            "aiRecommendation": ai_recommendation,
+            "options": options,
+            "stock": stock.upper(),
+        })
+    except Exception as e:
+        return jsonify({"aiRecommendation": {}, "options": [], "stock": stock.upper(), "error": str(e)})
 
 
 scheduler = BackgroundScheduler(timezone=os.getenv("TZ", "Asia/Kolkata"))
