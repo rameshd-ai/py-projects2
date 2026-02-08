@@ -20,6 +20,11 @@ _instruments_cache: list[dict[str, Any]] = []
 _instruments_cache_time: float = 0
 INSTRUMENTS_CACHE_TTL_SEC = 24 * 3600
 
+# Cache for NFO options (index option tradingsymbol resolution).
+_nfo_options_cache: list[dict[str, Any]] = []
+_nfo_options_cache_time: float = 0
+NFO_CACHE_TTL_SEC = 3600
+
 # Standard indices (F&O underlyings) - always searchable even if not in NSE dump (FINNIFTY removed)
 _FNO_INDEX_LIST = [
     {"symbol": "NIFTY 50", "name": "Nifty 50 Index", "instrument_type": "INDEX", "exchange": "NSE"},
@@ -54,8 +59,6 @@ def _get_instrument_token(symbol: str) -> int | None:
         return None
     
     try:
-        # Try NSE format first
-        nse_symbol = f"NSE:{symbol}"
         instruments = kite.instruments("NSE")
         for inst in instruments:
             if inst["tradingsymbol"] == symbol.upper():
@@ -63,6 +66,58 @@ def _get_instrument_token(symbol: str) -> int | None:
         return None
     except Exception:
         return None
+
+
+def _load_nfo_options_cache(force: bool = False) -> list[dict[str, Any]]:
+    """Load NFO instruments (options) for index option tradingsymbol resolution."""
+    global _nfo_options_cache, _nfo_options_cache_time
+    now = time.time()
+    if not force and _nfo_options_cache and (now - _nfo_options_cache_time) < NFO_CACHE_TTL_SEC:
+        return _nfo_options_cache
+    kite = _get_kite()
+    if not kite:
+        return _nfo_options_cache
+    try:
+        import socket
+        socket.setdefaulttimeout(60)
+        raw = kite.instruments("NFO")
+        out = [inst for inst in raw if (inst.get("instrument_type") or "").upper() in ("CE", "PE")]
+        _nfo_options_cache = out
+        _nfo_options_cache_time = now
+        return out
+    except Exception:
+        return _nfo_options_cache
+
+
+def get_nfo_option_tradingsymbol(
+    index_name: str,
+    strike: int,
+    option_type: str,
+) -> str | None:
+    """
+    Return Zerodha NFO tradingsymbol for index option (e.g. NIFTY24SEP2622500CE).
+    Used for LIVE index option execution. Returns None if not found.
+    """
+    index_name = (index_name or "").upper().replace(" ", "")
+    if index_name == "BANKNIFTY":
+        underlying = "BANKNIFTY"
+    else:
+        underlying = "NIFTY"
+    opt = (option_type or "CE").upper()
+    if opt not in ("CE", "PE"):
+        opt = "CE"
+    instruments = _load_nfo_options_cache()
+    strike_str = str(strike)
+    for inst in instruments:
+        ts = (inst.get("tradingsymbol") or "").strip()
+        if not ts.startswith(underlying):
+            continue
+        if not ts.endswith(opt):
+            continue
+        if strike_str not in ts:
+            continue
+        return ts
+    return None
 
 
 def _load_instruments_cache(force: bool = False) -> list[dict[str, Any]]:
@@ -171,51 +226,42 @@ def place_order(
     price: float | None = None,
     sl: float | None = None,
     tp: float | None = None,
+    exchange: str | None = None,
+    tradingsymbol: str | None = None,
 ) -> dict[str, Any]:
     """
     Place order via Zerodha Kite. side: BUY | SELL.
-    sl/tp as absolute price or None.
+    For NFO index options pass exchange="NFO" and tradingsymbol (e.g. NIFTY24SEP2622500CE).
+    For NSE equity pass symbol only (exchange defaults NSE).
     """
     kite = _get_kite()
     if not kite:
         return {"error": "Kite Connect not initialized. Check API credentials.", "success": False}
-    
+    use_exchange = (exchange or "NSE").upper()
+    use_tradingsymbol = (tradingsymbol or symbol or "").strip().upper()
+    if not use_tradingsymbol:
+        return {"error": "Missing symbol or tradingsymbol", "success": False}
     try:
-        instrument_token = _get_instrument_token(symbol)
-        if not instrument_token:
-            return {"error": f"Instrument token not found for {symbol}", "success": False}
-        
-        # Map order types
         kite_order_type = "MARKET" if order_type.upper() == "MARKET" else "LIMIT"
         transaction_type = "BUY" if side.upper() == "BUY" else "SELL"
-        product_type = "MIS"  # Intraday
-        
+        product_type = "MIS"
         order_params = {
-            "exchange": "NSE",
-            "tradingsymbol": symbol.upper(),
+            "exchange": use_exchange,
+            "tradingsymbol": use_tradingsymbol,
             "transaction_type": transaction_type,
             "quantity": quantity,
             "order_type": kite_order_type,
             "product": product_type,
             "validity": "DAY",
         }
-        
         if price is not None and kite_order_type == "LIMIT":
             order_params["price"] = price
-        
-        # Place order
         order_id = kite.place_order(**order_params)
-        
-        # If SL/TP provided, place bracket orders (Zerodha supports GTT or separate orders)
-        result = {"order_id": order_id, "success": True, "symbol": symbol}
-        
+        result = {"order_id": order_id, "success": True, "symbol": use_tradingsymbol}
         if sl is not None or tp is not None:
-            # Note: Zerodha bracket orders require different approach
-            # For now, we'll place the main order and note SL/TP in response
             result["stop_loss"] = sl
             result["target"] = tp
             result["note"] = "Place SL/TP orders separately or use GTT"
-        
         return result
     except Exception as e:
         return {"error": str(e), "success": False}
@@ -360,26 +406,25 @@ def get_zerodha_profile_info() -> dict[str, Any]:
         return {"connected": False, "error": str(e)}
 
 
-def get_quote(symbol: str) -> dict[str, Any]:
-    """Get current quote for symbol. Includes depth (buy_quantity, sell_quantity) when available."""
+def get_quote(symbol: str, exchange: str = "NSE") -> dict[str, Any]:
+    """Get current quote. For NFO options pass exchange='NFO' and symbol as tradingsymbol (e.g. NIFTY24SEP2622500CE)."""
     kite = _get_kite()
     if not kite:
         return {"symbol": symbol, "last": 0.0, "open": 0.0, "high": 0.0, "low": 0.0}
-    
+    key = f"{(exchange or 'NSE').upper()}:{(symbol or '').strip().upper()}"
     try:
-        nse_symbol = f"NSE:{symbol.upper()}"
-        quote = kite.quote(nse_symbol)
-        ltp_data = quote.get(nse_symbol, {})
+        quote = kite.quote(key)
+        ltp_data = quote.get(key, {})
         depth = ltp_data.get("depth", {})
         buy_qty = sum(item.get("quantity", 0) for item in (depth.get("buy") or []) if item.get("quantity"))
         sell_qty = sum(item.get("quantity", 0) for item in (depth.get("sell") or []) if item.get("quantity"))
         if not buy_qty and not sell_qty:
             buy_qty = int(ltp_data.get("buy_quantity", 0))
             sell_qty = int(ltp_data.get("sell_quantity", 0))
-        
         return {
             "symbol": symbol,
             "last": float(ltp_data.get("last_price", 0)),
+            "last_price": float(ltp_data.get("last_price", 0)),
             "open": float(ltp_data.get("ohlc", {}).get("open", 0)),
             "high": float(ltp_data.get("ohlc", {}).get("high", 0)),
             "low": float(ltp_data.get("ohlc", {}).get("low", 0)),

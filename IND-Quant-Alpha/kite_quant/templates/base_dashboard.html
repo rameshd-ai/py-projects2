@@ -86,6 +86,11 @@
           <span class="material-icons-round">menu_book</span> Strategy Library
         </a>
       </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_backtest') }}" class="nav-link {{ 'active' if active_page == 'backtest' else '' }}">
+          <span class="material-icons-round">history</span> Backtesting
+        </a>
+      </li>
       <li class="nav-item mt-auto mb-3">
         <a href="{{ url_for('settings') }}" class="nav-link">
           <span class="material-icons-round">settings</span> Settings

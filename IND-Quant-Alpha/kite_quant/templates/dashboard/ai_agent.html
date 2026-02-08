@@ -15,6 +15,16 @@
         <div class="col-auto">
           <span class="badge px-3 py-2 rounded-pill bg-secondary bg-opacity-50" id="trading-mode-badge">Manual Mode</span>
         </div>
+        <div class="col-auto ms-md-3 border-start ps-md-3">
+          <label class="form-label small text-muted mb-0">Execution</label>
+          <select class="form-select form-select-sm" id="execution-mode-select" style="min-width: 160px;" title="Paper = simulated orders, Live = real Zerodha orders">
+            <option value="PAPER" selected>📄 Paper (simulated)</option>
+            <option value="LIVE">🔴 Live (real orders)</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <span class="small text-muted" id="execution-mode-hint">Paper: no real orders</span>
+        </div>
       </div>
     </div>
   </div>
@@ -70,30 +80,44 @@
         <div id="index-no-direction-msg" class="alert alert-secondary border-0 small d-none">
           Market lacks clear direction. Wait for better setup.
         </div>
-        <div id="index-nifty-section" class="mb-4 d-none">
-          <h6 class="d-flex align-items-center gap-2 mb-2">
-            <span class="badge bg-primary bg-opacity-25" id="index-nifty-label">NIFTY – Bullish</span>
-            <span class="badge bg-success bg-opacity-25" id="index-nifty-confidence">—%</span>
-          </h6>
-          <p class="small text-muted mb-2" id="index-nifty-reason">—</p>
-          <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0 index-options-table">
-              <thead class="table-dark"><tr><th class="index-select-th">Select</th><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody id="index-nifty-tbody"></tbody>
-            </table>
+        <div class="row g-3" id="index-recommendation-cards">
+          <div class="col-md-6 d-none" id="index-nifty-card-wrap">
+            <div class="card border-primary border-opacity-50 h-100" id="index-nifty-card">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-primary bg-opacity-25" id="index-nifty-instrument">NIFTY</span>
+                  <span class="badge bg-secondary bg-opacity-50" id="index-nifty-bias">—</span>
+                </div>
+                <p class="small mb-1"><strong>Strategy:</strong> <span id="index-nifty-strategy">—</span></p>
+                <p class="small mb-1"><strong>Trade:</strong> <span id="index-nifty-trade">—</span> · <span id="index-nifty-strike">—</span></p>
+                <p class="small mb-1"><strong>Entry:</strong> <span id="index-nifty-entry" class="text-muted">—</span></p>
+                <p class="small mb-1"><strong>Stop:</strong> <span id="index-nifty-stop" class="text-muted">—</span></p>
+                <p class="small mb-2"><strong>Risk:</strong> ₹<span id="index-nifty-risk">—</span> · <strong>Lots:</strong> <span id="index-nifty-lots">—</span></p>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-success btn-sm flex-grow-1 index-approve-btn" data-index="NIFTY">Approve & Run</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm index-reject-btn" data-index="NIFTY">Reject</button>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div id="index-banknifty-section" class="d-none">
-          <h6 class="d-flex align-items-center gap-2 mb-2">
-            <span class="badge bg-primary bg-opacity-25" id="index-banknifty-label">BANK NIFTY – Bullish</span>
-            <span class="badge bg-success bg-opacity-25" id="index-banknifty-confidence">—%</span>
-          </h6>
-          <p class="small text-muted mb-2" id="index-banknifty-reason">—</p>
-          <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle mb-0 index-options-table">
-              <thead class="table-dark"><tr><th class="index-select-th">Select</th><th>Option</th><th>Strike</th><th>Premium</th><th>Lot Size</th><th>Total Cost</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody id="index-banknifty-tbody"></tbody>
-            </table>
+          <div class="col-md-6 d-none" id="index-banknifty-card-wrap">
+            <div class="card border-primary border-opacity-50 h-100" id="index-banknifty-card">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-primary bg-opacity-25" id="index-banknifty-instrument">BANK NIFTY</span>
+                  <span class="badge bg-secondary bg-opacity-50" id="index-banknifty-bias">—</span>
+                </div>
+                <p class="small mb-1"><strong>Strategy:</strong> <span id="index-banknifty-strategy">—</span></p>
+                <p class="small mb-1"><strong>Trade:</strong> <span id="index-banknifty-trade">—</span> · <span id="index-banknifty-strike">—</span></p>
+                <p class="small mb-1"><strong>Entry:</strong> <span id="index-banknifty-entry" class="text-muted">—</span></p>
+                <p class="small mb-1"><strong>Stop:</strong> <span id="index-banknifty-stop" class="text-muted">—</span></p>
+                <p class="small mb-2"><strong>Risk:</strong> ₹<span id="index-banknifty-risk">—</span> · <strong>Lots:</strong> <span id="index-banknifty-lots">—</span></p>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-success btn-sm flex-grow-1 index-approve-btn" data-index="BANKNIFTY">Approve & Run</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm index-reject-btn" data-index="BANKNIFTY">Reject</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -163,6 +187,26 @@
     </div>
   </div>
 
+  <!-- ACTIVE SESSIONS & ENGINE CONTROL (Kill switch, market guard) -->
+  <div class="card mb-4 border-warning border-opacity-50">
+    <div class="card-header d-flex align-items-center gap-2" style="background: rgba(255, 193, 7, 0.15);">
+      <span class="material-icons-round">settings_input_antenna</span>
+      <span>Active Sessions & Engine Control</span>
+    </div>
+    <div class="card-body">
+      <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <span class="small text-muted">Engine:</span>
+        <span class="badge bg-success bg-opacity-25 text-success" id="engine-status-badge">Running</span>
+        <button type="button" class="btn btn-danger btn-sm" id="engine-kill-btn" title="Halt all LIVE/PAPER trading">STOP ALL TRADING</button>
+        <button type="button" class="btn btn-success btn-sm" id="engine-start-btn" title="Resume engine">RESUME ENGINE</button>
+      </div>
+      <div class="small text-muted mb-2">Active sessions (Manual Mode):</div>
+      <div id="active-sessions-list" class="list-group list-group-flush">
+        <div class="list-group-item text-muted small" id="active-sessions-empty">No active sessions.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- OPTIONS PANEL (RIGHT-SIDE OFFCANVAS) -->
   <div class="offcanvas offcanvas-end" tabindex="-1" id="optionsPanel" aria-labelledby="optionsPanelLabel" style="width: min(100%, 520px);">
     <div class="offcanvas-header border-bottom">
@@ -197,32 +241,34 @@
       </div>
       <!-- AI MODE MESSAGE (shown only in AI Mode) -->
       <div class="px-3 pt-2 pb-2 d-none" id="options-ai-mode-msg" style="background: rgba(168, 199, 250, 0.1);">
-        <p class="small text-muted mb-2" id="options-ai-mode-desc">AI will automatically select best strike based on capital, risk %, and live market conditions.</p>
+        <p class="small text-muted mb-2" id="options-ai-mode-desc">AI will select instrument, strategy, strike, and size, then execute automatically. No approval step.</p>
         <p class="small mb-2 d-none" id="options-ai-selected-algo-line">🤖 AI Active Strategy: <strong id="options-ai-selected-algo-name">—</strong> <span id="options-ai-selected-algo-group" class="text-muted">(—)</span></p>
         <button type="button" class="btn btn-sm btn-primary" id="options-allow-ai-trade-btn">Allow AI to Trade This Strategy</button>
       </div>
-      <!-- OPTIONS TABLE -->
+      <!-- AI TRADE RECOMMENDATION CARD (replaces strike selection: AI picks, user Approve/Reject) -->
       <div class="flex-grow-1 overflow-auto px-3 pb-3">
-        <div class="alert alert-warning border-0 small d-none" id="no-options-warning">
-          No contracts available within your risk. Increase capital or reduce risk %.
-        </div>
-        <div class="table-responsive">
-          <table class="table table-sm table-hover align-middle mb-0">
-            <thead class="table-dark sticky-top">
-              <tr>
-                <th class="option-select-th">Select</th>
-                <th>Type</th>
-                <th>Strike</th>
-                <th>Premium</th>
-                <th>Lot</th>
-                <th>Total Cost</th>
-                <th>Risk</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="options-tbody"></tbody>
-          </table>
+        <div class="text-center text-muted py-4 d-none" id="options-recommendation-loading">Loading AI recommendation…</div>
+        <div class="alert alert-warning border-0 small d-none" id="no-recommendation-warning">No recommendation for this instrument (e.g. neutral bias).</div>
+        <div class="d-none" id="options-recommendation-card-wrap">
+          <div class="card border-primary border-opacity-50 mb-3" id="options-recommendation-card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-primary bg-opacity-25" id="rec-card-instrument">—</span>
+                <span class="badge bg-secondary bg-opacity-50" id="rec-card-bias">—</span>
+              </div>
+              <p class="small mb-1"><strong>Strategy:</strong> <span id="rec-card-strategy">—</span></p>
+              <p class="small mb-1"><strong>Trade:</strong> <span id="rec-card-trade-type">—</span> · <span id="rec-card-strike">—</span></p>
+              <p class="small mb-1"><strong>Entry:</strong> <span id="rec-card-entry" class="text-muted">—</span></p>
+              <p class="small mb-1"><strong>Stop:</strong> <span id="rec-card-stop" class="text-muted">—</span></p>
+              <p class="small mb-1"><strong>Reward:</strong> <span id="rec-card-reward" class="text-muted">—</span></p>
+              <p class="small mb-2"><strong>Risk:</strong> ₹<span id="rec-card-risk">—</span> · <strong>Lots:</strong> <span id="rec-card-lots">—</span></p>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-success flex-grow-1" id="options-approve-trade-btn">Approve & Run Trade</button>
+                <button type="button" class="btn btn-outline-secondary" id="options-reject-trade-btn">Reject</button>
+              </div>
+            </div>
+          </div>
+          <p class="small text-muted mb-0">AI selected this instrument, strategy, strike, and size. You only approve or reject.</p>
         </div>
       </div>
     </div>
@@ -249,8 +295,7 @@
   const maxRiskValueEl = document.getElementById('max-risk-value');
   const optionsPanel = document.getElementById('optionsPanel');
   const optionsPanelStock = document.getElementById('options-panel-stock');
-  const optionsTbody = document.getElementById('options-tbody');
-  const noOptionsWarning = document.getElementById('no-options-warning');
+  let currentRecommendation = null;
 
   // Trading mode: "manual" | "agent" — selection exists ONLY at strike level (in options popup / index tables)
   let tradingMode = 'manual';
@@ -268,33 +313,110 @@
     const badge = document.getElementById('trading-mode-badge');
     const execCard = document.getElementById('execution-card');
     const execHint = document.getElementById('execution-hint');
+    const indexAiMsg = document.getElementById('index-ai-mode-msg');
+    const indexCardButtons = document.querySelectorAll('#index-recommendation-cards .d-flex.gap-2');
     if (tradingMode === 'agent') {
       if (badge) { badge.textContent = 'AI Mode'; badge.className = 'badge px-3 py-2 rounded-pill bg-primary bg-opacity-25 text-primary-custom'; }
       if (execCard) execCard.classList.add('d-none');
-      if (execHint) execHint.textContent = 'Selections are made in each strategy\'s options view.';
-      document.getElementById('index-ai-mode-msg').classList.remove('d-none');
-      toggleIndexSelectColumn(false);
+      if (execHint) execHint.textContent = 'AI selects and executes trades. No approval step.';
+      if (indexAiMsg) indexAiMsg.classList.remove('d-none');
+      indexCardButtons.forEach(function(el) { el.style.display = 'none'; });
     } else {
       if (badge) { badge.textContent = 'Manual Mode'; badge.className = 'badge px-3 py-2 rounded-pill bg-secondary bg-opacity-50'; }
       if (execCard) execCard.classList.remove('d-none');
-      if (execHint) execHint.textContent = 'Open a stock or index, select strikes in the options view, then execute.';
-      document.getElementById('index-ai-mode-msg').classList.add('d-none');
-      toggleIndexSelectColumn(true);
+      if (execHint) execHint.textContent = 'Open a stock or index; AI shows one recommendation. Approve or reject only.';
+      if (indexAiMsg) indexAiMsg.classList.add('d-none');
+      indexCardButtons.forEach(function(el) { el.style.display = ''; });
     }
   }
 
   function refreshOptionsViewForMode() {
     const stock = optionsPanelStock.textContent;
-    if (stock && stock !== '—') loadOptionsForStock(stock);
+    if (stock && stock !== '—') loadRecommendationForInstrument(stock);
   }
 
   document.getElementById('trading-mode-select').addEventListener('change', function() {
     setTradingMode(this.value);
   });
+  function getExecutionMode() {
+    const sel = document.getElementById('execution-mode-select');
+    return (sel && sel.value) ? sel.value.toUpperCase() : 'PAPER';
+  }
+  document.getElementById('execution-mode-select').addEventListener('change', function() {
+    const hint = document.getElementById('execution-mode-hint');
+    if (hint) hint.textContent = this.value === 'LIVE' ? 'Live: real Zerodha orders' : 'Paper: no real orders';
+  });
+
+  function loadEngineStatus() {
+    fetch('/api/engine/status').then(function(r) { return r.json(); }).then(function(data) {
+      const badge = document.getElementById('engine-status-badge');
+      if (badge) {
+        badge.textContent = data.engine_enabled ? 'Running' : 'Stopped';
+        badge.className = data.engine_enabled ? 'badge bg-success bg-opacity-25 text-success' : 'badge bg-danger bg-opacity-25 text-danger';
+      }
+    }).catch(function() {});
+  }
+  function loadActiveSessions() {
+    fetch('/api/trade-sessions/active').then(function(r) { return r.json(); }).then(function(data) {
+      const list = document.getElementById('active-sessions-list');
+      const empty = document.getElementById('active-sessions-empty');
+      if (!list) return;
+      const sessions = data.sessions || [];
+      if (sessions.length === 0) {
+        empty.classList.remove('d-none');
+        list.querySelectorAll('.active-session-row').forEach(function(el) { el.remove(); });
+        return;
+      }
+      empty.classList.add('d-none');
+      list.querySelectorAll('.active-session-row').forEach(function(el) { el.remove(); });
+      sessions.forEach(function(s) {
+        const row = document.createElement('div');
+        row.className = 'list-group-item d-flex justify-content-between align-items-center active-session-row';
+        const pnl = s.daily_pnl != null ? Number(s.daily_pnl) : 0;
+        const pnlClass = pnl >= 0 ? 'text-success' : 'text-danger';
+        row.innerHTML = '<div class="small">' +
+          '<strong>' + (s.instrument || '—') + '</strong> ' +
+          '<span class="badge bg-opacity-50 ' + (s.execution_mode === 'LIVE' ? 'bg-danger' : 'bg-secondary') + '">' + (s.execution_mode || 'PAPER') + '</span> ' +
+          'Trades: ' + (s.trades_taken_today ?? 0) + '/' + (s.max_trades_allowed ?? 10) + ' ' +
+          '<span class="' + pnlClass + '">P&L: ' + (pnl >= 0 ? '+' : '') + pnl + '</span>' +
+          (s.current_trade ? ' <span class="text-warning">(open)</span>' : '') +
+          '</div>' +
+          '<button type="button" class="btn btn-outline-danger btn-sm session-kill-btn" data-session-id="' + (s.session_id || '') + '">Kill Session</button>';
+        list.appendChild(row);
+      });
+      list.querySelectorAll('.session-kill-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const id = this.getAttribute('data-session-id');
+          if (!id || !confirm('Close open trade (if any) and stop this session?')) return;
+          fetch('/api/trade-sessions/' + encodeURIComponent(id) + '/kill', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+            .then(function(r) { return r.json(); }).then(function(res) {
+              if (res.ok) { loadActiveSessions(); } else { alert(res.error || 'Failed'); }
+            }).catch(function() { alert('Failed to kill session'); });
+        });
+      });
+    }).catch(function() {});
+  }
+  document.getElementById('engine-kill-btn').addEventListener('click', function() {
+    if (!confirm('Stop all LIVE and PAPER trading immediately?')) return;
+    fetch('/api/engine/kill', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(function(r) { return r.json(); }).then(function(res) {
+        if (res.ok) { loadEngineStatus(); }
+      }).catch(function() {});
+  });
+  document.getElementById('engine-start-btn').addEventListener('click', function() {
+    fetch('/api/engine/start', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(function(r) { return r.json(); }).then(function(res) {
+        if (res.ok) { loadEngineStatus(); }
+      }).catch(function() {});
+  });
+  loadEngineStatus();
+  loadActiveSessions();
+  setInterval(loadActiveSessions, 30000);
+  setInterval(loadEngineStatus, 10000);
 
   document.getElementById('execution-btn').addEventListener('click', function() {
-    const selected = getSelectedManualTrades();
-    executeManualTrades(selected);
+    document.getElementById('optionsPanel').querySelector('.offcanvas-title') && document.getElementById('optionsPanel').querySelector('.offcanvas-title').click();
+    alert('Open a stock or index from the cards above; use Approve & Run Trade on the AI recommendation card.');
   });
 
   document.getElementById('options-allow-ai-trade-btn').addEventListener('click', function() {
@@ -303,29 +425,6 @@
   document.getElementById('index-allow-ai-trade-btn').addEventListener('click', function() {
     alert('Allow AI to Trade Index. (Backend integration pending.)');
   });
-
-  function getSelectedManualTrades() {
-    const trades = [];
-    document.querySelectorAll('.trade-child-cb:checked').forEach(cb => {
-      trades.push({ stock: cb.dataset.stock, strike: cb.dataset.strike, type: cb.dataset.optType, index: cb.dataset.index, category: cb.dataset.category });
-    });
-    return trades;
-  }
-
-  function executeManualTrades(selectedTrades) {
-    if (selectedTrades.length === 0) {
-      alert('Select one or more strikes (checkboxes in the options view) first.');
-      return;
-    }
-    console.log('Execute manual trades:', selectedTrades);
-    alert('Execute Selected Trades: ' + selectedTrades.length + ' strike(s) selected. (Backend integration pending.)');
-  }
-
-  function toggleIndexSelectColumn(show) {
-    document.querySelectorAll('.index-select-th, .index-select-cell').forEach(function(el) {
-      el.style.display = show ? '' : 'none';
-    });
-  }
 
   function getMaxRiskPerTrade() {
     const capital = parseFloat(totalCapitalEl.value) || 0;
@@ -346,8 +445,6 @@
   riskPctEl.addEventListener('input', updateMaxRiskDisplay);
   updateMaxRiskDisplay();
 
-  let noStockFitsBudget = false;
-
   function getTotalCapital() {
     return parseFloat(totalCapitalEl.value) || 0;
   }
@@ -356,105 +453,85 @@
     loadIndexOpportunities();
   }
 
+  let indexRecommendations = {};
+  function fillIndexCard(prefix, rec) {
+    if (!rec) return;
+    const id = prefix;
+    document.getElementById(id + '-instrument').textContent = rec.instrument || id;
+    document.getElementById(id + '-bias').textContent = rec.marketBias || '—';
+    document.getElementById(id + '-strategy').textContent = rec.strategyName || '—';
+    document.getElementById(id + '-trade').textContent = rec.tradeType || '—';
+    document.getElementById(id + '-strike').textContent = rec.suggestedStrike || '—';
+    document.getElementById(id + '-entry').textContent = rec.entryCondition || '—';
+    document.getElementById(id + '-stop').textContent = rec.stopLossLogic || '—';
+    document.getElementById(id + '-risk').textContent = (rec.riskPerTrade != null ? Math.round(rec.riskPerTrade).toLocaleString('en-IN') : '—');
+    document.getElementById(id + '-lots').textContent = rec.positionSizeLots != null ? rec.positionSizeLots : '—';
+  }
+
   async function loadIndexOpportunities() {
     const loadingEl = document.getElementById('index-opportunities-loading');
     const contentEl = document.getElementById('index-opportunities-content');
     const noDirectionEl = document.getElementById('index-no-direction-msg');
-    const niftySection = document.getElementById('index-nifty-section');
-    const bankNiftySection = document.getElementById('index-banknifty-section');
+    const niftyWrap = document.getElementById('index-nifty-card-wrap');
+    const bankNiftyWrap = document.getElementById('index-banknifty-card-wrap');
     if (loadingEl) loadingEl.classList.remove('d-none');
     if (contentEl) contentEl.classList.add('d-none');
     if (noDirectionEl) noDirectionEl.classList.add('d-none');
-
-    // Index options: use TOTAL CAPITAL as budget (user pays premium × lot_size per contract)
-    const indexBudget = getTotalCapital() || 5000;
+    const capital = getTotalCapital() || 5000;
     try {
-      const biasRes = await fetch('/api/index-bias');
-      const biasData = await biasRes.json();
-      const niftyBias = biasData.niftyBias || 'NEUTRAL';
-      const bankNiftyBias = biasData.bankNiftyBias || 'NEUTRAL';
-      const reasons = (biasData.reasons || []).join('. ');
-      const confidence = biasData.confidence != null ? biasData.confidence + '%' : '—';
-
+      const [niftyRes, bankRes] = await Promise.all([
+        fetch('/api/ai-trade-recommendation?instrument=NIFTY&capital=' + capital),
+        fetch('/api/ai-trade-recommendation?instrument=BANKNIFTY&capital=' + capital)
+      ]);
+      const niftyData = await niftyRes.json();
+      const bankData = await bankRes.json();
       if (loadingEl) loadingEl.classList.add('d-none');
       if (contentEl) contentEl.classList.remove('d-none');
-
-      const bothNeutral = niftyBias === 'NEUTRAL' && bankNiftyBias === 'NEUTRAL';
-      const vixLow = (biasData.vixValue || 99) < 11;
-      if (bothNeutral && vixLow) {
-        if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Market lacks clear direction. Wait for better setup.'; }
-        niftySection.classList.add('d-none');
-        bankNiftySection.classList.add('d-none');
-        return;
-      }
-
-      function renderIndexTable(tbodyId, options, budgetRupee, isRecommendedIdx, indexLabel) {
-        const tbody = document.getElementById(tbodyId);
-        if (!tbody) return;
-        indexLabel = indexLabel || (tbodyId.indexOf('nifty') >= 0 && tbodyId.indexOf('bank') < 0 ? 'NIFTY' : 'BANKNIFTY');
-        const isManual = tradingMode === 'manual';
-        if (!options || options.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-muted small">No options in range.</td></tr>';
-          return;
-        }
-        const rows = options.map((opt, idx) => {
-          const totalCost = opt.totalCost != null ? opt.totalCost : (opt.lotCost != null ? opt.lotCost : (opt.premium * opt.lotSize));
-          const canTrade = opt.canTrade != null ? opt.canTrade : (totalCost <= budgetRupee);
-          const statusLabel = (opt.status != null ? opt.status : (canTrade ? 'Affordable' : 'Over Budget'));
-          const statusHtml = canTrade ? '<span class="text-success-custom">' + statusLabel + '</span>' : '<span class="text-danger-custom">' + statusLabel + '</span>';
-          const btnDisabled = isManual ? !canTrade : true;
-          const tooltip = (isManual && !canTrade) ? ' title="Requires ' + formatMoney(totalCost) + ', exceeds your budget"' : '';
-          const recommended = (isRecommendedIdx >= 0 && idx === isRecommendedIdx);
-          const btnText = isManual ? (canTrade ? ('Buy ' + opt.type) : 'Over Budget') : '—';
-          const selectTd = isManual ? '<td class="index-select-cell"><input type="checkbox" class="form-check-input trade-child-cb" data-strike="' + opt.strike + '" data-opt-type="' + opt.type + '" data-index="' + indexLabel + '" data-total-cost="' + totalCost + '" aria-label="Select"></td>' : '<td class="index-select-cell"></td>';
-          return '<tr class="' + (recommended ? 'row-ai-recommended' : '') + '">' +
-            selectTd +
-            '<td><span class="badge ' + (opt.type === 'CE' ? 'bg-success bg-opacity-25' : 'bg-danger bg-opacity-25') + '">' + opt.type + '</span></td>' +
-            '<td>' + opt.strike + '</td><td>' + opt.premium + '</td><td>' + opt.lotSize + '</td>' +
-            '<td>' + formatMoney(totalCost) + '</td><td>' + statusHtml + '</td>' +
-            '<td><button type="button" class="btn btn-sm ' + (opt.type === 'CE' ? 'btn-success' : 'btn-danger') + (btnDisabled ? ' disabled' : '') + '"' + tooltip + '>' + btnText + '</button></td></tr>';
-        });
-        tbody.innerHTML = rows.join('');
-        toggleIndexSelectColumn(isManual);
-      }
-
-      if (niftyBias !== 'NEUTRAL') {
-        const niftyOptRes = await fetch('/api/index-options/NIFTY?max_risk=' + encodeURIComponent(indexBudget));
-        const niftyOptData = await niftyOptRes.json();
-        document.getElementById('index-nifty-label').textContent = 'NIFTY – ' + (niftyBias === 'BULLISH' ? 'Bullish' : 'Bearish') + ' Intraday Bias';
-        document.getElementById('index-nifty-confidence').textContent = confidence;
-        document.getElementById('index-nifty-reason').textContent = reasons || 'Above VWAP + breadth';
-        niftySection.classList.remove('d-none');
-        const opts = niftyOptData.options || [];
-        const recIdx = opts.findIndex(o => (niftyOptData.aiRecommendation || {}).direction === 'BUY ' + o.type);
-        renderIndexTable('index-nifty-tbody', opts, indexBudget, recIdx === -1 ? 0 : recIdx);
+      indexRecommendations = {};
+      if (niftyData.recommendation) {
+        indexRecommendations.NIFTY = niftyData.recommendation;
+        fillIndexCard('index-nifty', niftyData.recommendation);
+        if (niftyWrap) niftyWrap.classList.remove('d-none');
       } else {
-        niftySection.classList.add('d-none');
+        if (niftyWrap) niftyWrap.classList.add('d-none');
       }
-
-      if (bankNiftyBias !== 'NEUTRAL') {
-        const bnOptRes = await fetch('/api/index-options/BANKNIFTY?max_risk=' + encodeURIComponent(indexBudget));
-        const bnOptData = await bnOptRes.json();
-        document.getElementById('index-banknifty-label').textContent = 'BANK NIFTY – ' + (bankNiftyBias === 'BULLISH' ? 'Bullish' : 'Bearish') + ' Intraday Bias';
-        document.getElementById('index-banknifty-confidence').textContent = confidence;
-        document.getElementById('index-banknifty-reason').textContent = reasons || 'Banks leading / breadth';
-        bankNiftySection.classList.remove('d-none');
-        const opts = bnOptData.options || [];
-        const recIdx = opts.findIndex(o => (bnOptData.aiRecommendation || {}).direction === 'BUY ' + o.type);
-        renderIndexTable('index-banknifty-tbody', opts, indexBudget, recIdx === -1 ? 0 : recIdx);
+      if (bankData.recommendation) {
+        indexRecommendations.BANKNIFTY = bankData.recommendation;
+        fillIndexCard('index-banknifty', bankData.recommendation);
+        if (bankNiftyWrap) bankNiftyWrap.classList.remove('d-none');
       } else {
-        bankNiftySection.classList.add('d-none');
+        if (bankNiftyWrap) bankNiftyWrap.classList.add('d-none');
       }
-
-      if (niftyBias === 'NEUTRAL' && bankNiftyBias === 'NEUTRAL') {
+      if (!niftyData.recommendation && !bankData.recommendation) {
         if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Market lacks clear direction. Wait for better setup.'; }
       }
     } catch (e) {
-      if (loadingEl) { loadingEl.classList.add('d-none'); loadingEl.textContent = 'Error loading index data.'; }
+      if (loadingEl) loadingEl.classList.add('d-none');
       if (contentEl) contentEl.classList.remove('d-none');
-      if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Could not load index bias.'; }
+      if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Could not load index recommendations.'; }
     }
   }
+
+  document.getElementById('index-recommendation-cards').addEventListener('click', function(e) {
+    const approveBtn = e.target.closest('.index-approve-btn');
+    const rejectBtn = e.target.closest('.index-reject-btn');
+    if (approveBtn) {
+      const index = approveBtn.getAttribute('data-index');
+      const rec = indexRecommendations[index];
+      if (!rec) return;
+      const executionMode = getExecutionMode();
+      fetch('/api/approve-trade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ recommendation: rec, execution_mode: executionMode }) })
+        .then(function(r) { return r.json(); }).then(function(res) {
+          if (res.ok) { alert('Trade session created (' + executionMode + '). Strategy engine will monitor entry and exit.'); loadActiveSessions(); }
+          else alert(res.error || 'Failed.');
+        }).catch(function() { alert('Failed to approve.'); });
+    }
+    if (rejectBtn) {
+      const index = rejectBtn.getAttribute('data-index');
+      const wrap = document.getElementById('index-' + (index === 'BANKNIFTY' ? 'banknifty' : 'nifty') + '-card-wrap');
+      if (wrap) wrap.classList.add('d-none');
+    }
+  });
 
   totalCapitalEl.addEventListener('input', refreshIndexOpportunities);
   riskPctEl.addEventListener('input', refreshIndexOpportunities);
@@ -541,26 +618,36 @@
     optionsPanelStock.textContent = stock;
     const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(optionsPanel);
     bsOffcanvas.show();
-    loadOptionsForStock(stock);
+    loadRecommendationForInstrument(stock);
   }
 
-  async function loadOptionsForStock(stock) {
-    optionsTbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading…</td></tr>';
-    noOptionsWarning.classList.add('d-none');
+  async function loadRecommendationForInstrument(instrument) {
+    const loadingEl = document.getElementById('options-recommendation-loading');
+    const noRecEl = document.getElementById('no-recommendation-warning');
+    const cardWrap = document.getElementById('options-recommendation-card-wrap');
+    if (loadingEl) loadingEl.classList.remove('d-none');
+    if (noRecEl) noRecEl.classList.add('d-none');
+    if (cardWrap) cardWrap.classList.add('d-none');
+    currentRecommendation = null;
+    const capital = getTotalCapital() || 100000;
+    const riskPct = parseFloat(document.getElementById('risk-pct').value) || 2;
     try {
-      const r = await fetch('/api/options/' + encodeURIComponent(stock));
+      const r = await fetch('/api/ai-trade-recommendation?instrument=' + encodeURIComponent(instrument) + '&capital=' + capital + '&risk_pct=' + riskPct);
       const data = await r.json();
-      const rec = data.aiRecommendation || {};
-      document.getElementById('rec-direction').textContent = 'Buy ' + (rec.direction || '—');
-      document.getElementById('rec-strike').textContent = (rec.strikePreference || 'ATM');
+      if (loadingEl) loadingEl.classList.add('d-none');
+      const rec = data.recommendation;
+      if (!rec) {
+        if (noRecEl) noRecEl.classList.remove('d-none');
+        return;
+      }
+      currentRecommendation = rec;
+      document.getElementById('rec-direction').textContent = 'Buy ' + (rec.optionType || rec.tradeType || '—');
+      document.getElementById('rec-strike').textContent = rec.suggestedStrike || '—';
       document.getElementById('rec-confidence').textContent = (rec.confidence != null ? rec.confidence + '%' : '—');
-      document.getElementById('rec-holding').textContent = rec.holdingTime || '—';
-      document.getElementById('rec-reason').textContent = rec.reason || '—';
-
-      const suggestedAlgos = data.suggestedAlgos || [];
-      const selectedAlgoName = data.selectedAlgoName || null;
-      const selectedAlgoGroup = data.selectedAlgoGroup || '';
-      const detectedMarket = data.detectedMarket || [];
+      document.getElementById('rec-holding').textContent = '30-90 min';
+      document.getElementById('rec-reason').textContent = rec.entryCondition || '—';
+      const suggestedAlgos = rec.suggestedAlgos || [];
+      const detectedMarket = rec.detectedMarket || [];
       const isManual = tradingMode === 'manual';
       const suggestedBlock = document.getElementById('options-suggested-algos-block');
       const suggestedStockEl = document.getElementById('options-suggested-algos-stock');
@@ -571,86 +658,62 @@
       const aiSelectedGroupEl = document.getElementById('options-ai-selected-algo-group');
       if (isManual) {
         suggestedBlock.classList.remove('d-none');
-        suggestedStockEl.textContent = data.stock || stock;
+        suggestedStockEl.textContent = rec.instrument || instrument;
         if (detectedMarketEl) detectedMarketEl.textContent = detectedMarket.length ? detectedMarket.join(' + ') : '—';
         suggestedTagsEl.innerHTML = suggestedAlgos.length ? suggestedAlgos.map(function(a) {
           return '<a href="/dashboard/algo-library#' + (a.id || '') + '" class="badge bg-primary bg-opacity-25 text-primary-custom text-decoration-none" title="View strategy: ' + (a.name || a.id) + '">' + (a.name || a.id) + '</a>';
-        }).join('') : '<span class="small text-muted">No strategies suggested for this setup.</span>';
+        }).join('') : '<span class="small text-muted">No strategies suggested.</span>';
       } else {
         suggestedBlock.classList.add('d-none');
         if (aiSelectedLine && aiSelectedName) {
-          if (selectedAlgoName) {
+          if (rec.selectedAlgoName) {
             aiSelectedLine.classList.remove('d-none');
-            aiSelectedName.textContent = selectedAlgoName;
-            if (aiSelectedGroupEl) aiSelectedGroupEl.textContent = selectedAlgoGroup ? '(' + selectedAlgoGroup + ')' : '';
-          } else {
-            aiSelectedLine.classList.add('d-none');
-          }
+            aiSelectedName.textContent = rec.selectedAlgoName;
+            if (aiSelectedGroupEl) aiSelectedGroupEl.textContent = rec.selectedAlgoGroup ? '(' + rec.selectedAlgoGroup + ')' : '';
+          } else { aiSelectedLine.classList.add('d-none'); }
         }
       }
-
-      const options = data.options || [];
-      const maxRisk = getMaxRiskPerTrade();
-      let anyWithinBudget = false;
-      const recommendedDirection = (rec.direction || 'CE').toUpperCase();
-      const firstRecommendedIdx = options.findIndex(o => o.type === recommendedDirection);
-
-      const rows = options.map((opt, idx) => {
-        const lotCost = (opt.premium || 0) * (opt.lotSize || 0);
-        const withinBudget = lotCost <= maxRisk;
-        if (withinBudget) anyWithinBudget = true;
-        const risk = riskLevel(opt.iv || 18);
-        const isRecommended = (idx === firstRecommendedIdx);
-        const statusHtml = withinBudget
-          ? '<span class="text-success-custom">Within Budget</span>'
-          : '<span class="text-danger-custom">Over Budget</span>';
-        const btnDisabled = isManual ? !withinBudget : true;
-        const tooltip = (isManual && !withinBudget) ? ' title="Requires ' + formatMoney(lotCost) + ', exceeds your risk limit"' : '';
-        const btnText = isManual ? (withinBudget ? ('Buy ' + opt.type) : 'Over Budget') : '—';
-        const rowSelectTd = isManual ? '<td class="option-select-cell"><input type="checkbox" class="form-check-input trade-child-cb" data-stock="' + stock + '" data-strike="' + opt.strike + '" data-opt-type="' + opt.type + '" data-category="stock" aria-label="Select"></td>' : '<td class="option-select-cell"></td>';
-        return `
-          <tr class="${isRecommended ? 'row-ai-recommended' : ''}" data-recommended="${isRecommended}">
-            ${rowSelectTd}
-            <td><span class="badge ${opt.type === 'CE' ? 'bg-success bg-opacity-25' : 'bg-danger bg-opacity-25'}">${opt.type}</span></td>
-            <td>${opt.strike}</td>
-            <td>${opt.premium}</td>
-            <td>${opt.lotSize}</td>
-            <td>${formatMoney(lotCost)}</td>
-            <td><span class="badge ${risk.cls}">${risk.label}</span></td>
-            <td>${statusHtml}</td>
-            <td>
-              <button type="button" class="btn btn-sm ${opt.type === 'CE' ? 'btn-success' : 'btn-danger'} ${btnDisabled ? 'disabled' : ''}" ${tooltip}
-                ${btnDisabled ? 'aria-disabled="true"' : ''}>${btnText}</button>
-            </td>
-          </tr>
-        `;
-      });
-
-      optionsTbody.innerHTML = rows.join('');
-      document.querySelectorAll('.option-select-th, .option-select-cell').forEach(function(el) {
-        el.style.display = isManual ? '' : 'none';
-      });
+      document.getElementById('rec-card-instrument').textContent = rec.instrument || instrument;
+      document.getElementById('rec-card-bias').textContent = rec.marketBias || '—';
+      document.getElementById('rec-card-strategy').textContent = rec.strategyName || '—';
+      document.getElementById('rec-card-trade-type').textContent = rec.tradeType || '—';
+      document.getElementById('rec-card-strike').textContent = rec.suggestedStrike || '—';
+      document.getElementById('rec-card-entry').textContent = rec.entryCondition || '—';
+      document.getElementById('rec-card-stop').textContent = rec.stopLossLogic || '—';
+      document.getElementById('rec-card-reward').textContent = rec.rewardLogic || '—';
+      document.getElementById('rec-card-risk').textContent = (rec.riskPerTrade != null ? Math.round(rec.riskPerTrade).toLocaleString('en-IN') : '—');
+      document.getElementById('rec-card-lots').textContent = rec.positionSizeLots != null ? rec.positionSizeLots : '—';
       const optionsAiMsg = document.getElementById('options-ai-mode-msg');
       if (optionsAiMsg) optionsAiMsg.classList.toggle('d-none', isManual);
-      if (!anyWithinBudget && options.length > 0) {
-        noOptionsWarning.classList.remove('d-none');
-        noStockFitsBudget = true;
-      }
-      var recommendedRow = optionsTbody.querySelector('tr[data-recommended="true"]');
-      if (recommendedRow) recommendedRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      if (cardWrap) cardWrap.classList.remove('d-none');
     } catch (e) {
-      optionsTbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error loading options.</td></tr>';
+      if (loadingEl) loadingEl.classList.add('d-none');
+      if (noRecEl) { noRecEl.classList.remove('d-none'); noRecEl.textContent = 'Error loading recommendation.'; }
     }
   }
+
+  document.getElementById('options-approve-trade-btn').addEventListener('click', function() {
+    if (!currentRecommendation) return;
+    const executionMode = getExecutionMode();
+    fetch('/api/approve-trade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recommendation: currentRecommendation, execution_mode: executionMode })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.ok) { alert('Trade session created (' + executionMode + '). Strategy engine will monitor entry and manage stop/exit.'); loadActiveSessions(); }
+      else alert(res.error || 'Failed to approve.');
+    }).catch(function() { alert('Failed to approve trade.'); });
+  });
+  document.getElementById('options-reject-trade-btn').addEventListener('click', function() {
+    document.getElementById('options-recommendation-card-wrap').classList.add('d-none');
+    document.getElementById('no-recommendation-warning').classList.remove('d-none');
+    document.getElementById('no-recommendation-warning').textContent = 'Recommendation rejected.';
+  });
 
   document.querySelectorAll('.view-options-btn').forEach(btn => {
     btn.addEventListener('click', function() { openOptionsPanel(this.dataset.stock); });
   });
-  document.getElementById('optionsPanel').addEventListener('shown.bs.offcanvas', function() {
-    document.querySelectorAll('#options-tbody tr.row-ai-recommended').forEach(function(row) {
-      row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    });
-  });
+  document.getElementById('optionsPanel').addEventListener('shown.bs.offcanvas', function() {});
 
   loadSignals();
 })();

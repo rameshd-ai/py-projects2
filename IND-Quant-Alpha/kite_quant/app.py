@@ -28,7 +28,12 @@ from engine.data_fetcher import (
 from engine.sentiment_engine import get_sentiment_for_symbol
 from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
-from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk
+from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol
+from execution.executor import execute_entry, execute_exit, get_balance_for_mode
+from execution.trade_history_store import get_trade_history as get_stored_trade_history
+from strategies import data_provider as strategy_data_provider
+from strategies.strategy_registry import get_strategy_for_session
+from risk.risk_manager import RiskConfig, RiskManager
 from engine.market_calendar import get_calendar_for_month
 from engine.algo_engine import load_algos, get_algo_by_id, get_suggested_algos, load_strategy_groups, get_algos_grouped, get_primary_group
 import json
@@ -115,6 +120,11 @@ def dashboard_zerodha():
 @app.route("/dashboard/ai-agent")
 def dashboard_ai_agent():
     return render_template("dashboard/ai_agent.html", active_page="ai_agent", page_title="AI Trading Agent")
+
+
+@app.route("/dashboard/backtest")
+def dashboard_backtest():
+    return render_template("dashboard/backtest.html", active_page="backtest", page_title="Backtesting")
 
 
 @app.route("/dashboard/algo-library")
@@ -2460,6 +2470,546 @@ def get_affordable_index_options(
     return top, rec, safe
 
 
+# --- AI Trade Recommendation + Session-Based Continuous Strategy Automation ---
+# Execution modes: LIVE (Zerodha), PAPER (simulated balance), BACKTEST (historical)
+INTRADAY_CUTOFF_TIME = time(15, 15)  # 3:15 PM IST
+MAX_TRADES_PER_SESSION = 10
+SESSION_ENGINE_INTERVAL_SEC = 60
+_SESSIONS_DIR = Path(__file__).resolve().parent / "data"
+_SESSIONS_FILE = _SESSIONS_DIR / "trade_sessions.json"
+_sessions_lock = Lock()
+_trade_sessions: list[dict] = []
+ENGINE_ENABLED = True  # Global kill switch: False = no LIVE/PAPER entries or management
+
+
+def is_market_open(now: datetime | None = None) -> bool:
+    """True if NSE market hours (weekday 9:15–15:30 IST). Saturday=5, Sunday=6 => closed."""
+    now = now or datetime.now(ZoneInfo("Asia/Kolkata"))
+    if now.weekday() >= 5:  # Saturday, Sunday
+        return False
+    market_open = time(9, 15)
+    market_close = time(15, 30)
+    return market_open <= now.time() <= market_close
+
+
+def _load_trade_sessions() -> None:
+    """Load persisted sessions from JSON (called at startup)."""
+    global _trade_sessions
+    with _sessions_lock:
+        if not _SESSIONS_FILE.exists():
+            _trade_sessions = []
+            return
+        try:
+            with open(_SESSIONS_FILE, encoding="utf-8") as f:
+                data = json.load(f)
+            _trade_sessions = data.get("sessions") or []
+        except Exception:
+            _trade_sessions = []
+
+
+def _save_trade_sessions() -> None:
+    """Persist sessions to JSON."""
+    _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    with _sessions_lock:
+        try:
+            with open(_SESSIONS_FILE, "w", encoding="utf-8") as f:
+                json.dump({"sessions": _trade_sessions, "updatedAt": datetime.now().isoformat()}, f, indent=2)
+        except Exception:
+            pass
+
+
+# Load persisted sessions on startup (after first request may have created data dir)
+_load_trade_sessions()
+
+
+def _session_date(session: dict) -> date | None:
+    """Return session's calendar date (from createdAt)."""
+    created = session.get("createdAt")
+    if not created:
+        return None
+    try:
+        if isinstance(created, str):
+            return datetime.fromisoformat(created.replace("Z", "+00:00")).date()
+        return None
+    except Exception:
+        return None
+
+
+def _build_ai_trade_recommendation_stock(
+    stock: str, capital: float, risk_pct: float
+) -> dict[str, Any]:
+    """Build a single AI trade recommendation for a stock. No strike selection by user."""
+    risk_per_trade = capital * (risk_pct / 100.0) if capital and risk_pct else 0
+    options, rec, pred = _mock_option_chain(stock.upper())
+    stock_indicators = {
+        "score": pred.get("score"),
+        "prediction": pred.get("prediction"),
+        "rsi": pred.get("rsi"),
+        "sentiment_score": pred.get("sentiment_score"),
+    }
+    market_indicators = {"vix_high": pred.get("vix_high", False)}
+    suggested_ids = get_suggested_algos(stock_indicators, market_indicators, top_n=1)
+    algo = get_algo_by_id(suggested_ids[0]) if suggested_ids else None
+    direction = (rec.get("direction") or "CE").replace("BUY ", "")
+    # Pick best strike: ATM (first matching CE/PE in options)
+    best_opt = next((o for o in options if o.get("type") == direction), options[0] if options else {})
+    strike = best_opt.get("strike", 0)
+    lot_size = best_opt.get("lotSize", 1)
+    premium = best_opt.get("premium", 0)
+    total_cost = premium * lot_size
+    lots = max(1, int(risk_per_trade / total_cost)) if total_cost else 1
+    market_bias = (pred.get("prediction") or "NEUTRAL").capitalize()
+    pred_dir = (pred.get("prediction") or "").upper()
+    detected_market = ["TRENDING", "DIRECTIONAL"] if pred_dir in ("BULLISH", "BEARISH") else ["RANGE_BOUND"]
+    factors_str = " ".join(pred.get("factors") or [])
+    if "volume" in factors_str.lower() or "Volume" in factors_str:
+        detected_market.append("HIGH_VOLUME")
+    groups_meta = {g["id"]: g["name"] for g in load_strategy_groups()}
+    selected_group_id = get_primary_group(algo) if algo else ""
+    return {
+        "instrumentType": "stock",
+        "instrument": stock.upper(),
+        "symbol": stock.upper(),
+        "marketBias": market_bias,
+        "strategyId": algo.get("id") if algo else "",
+        "strategyName": algo.get("name") if algo else "Momentum Breakout",
+        "tradeType": "CALL" if direction == "CE" else "PUT",
+        "suggestedStrike": str(strike) + " " + direction,
+        "strike": strike,
+        "optionType": direction,
+        "entryCondition": (algo.get("entryLogic") or rec.get("reason") or "Break above day high / trend confirmation"),
+        "stopLossLogic": (algo.get("stopLogic") if algo else None) or "Previous swing low / VWAP break",
+        "riskPerTrade": round(risk_per_trade, 2),
+        "positionSizeLots": lots,
+        "rewardLogic": (algo.get("exitLogic") if algo else None) or "Trail stop / target 1.5R / structure exit",
+        "confidence": rec.get("confidence", 50),
+        "totalCost": round(total_cost * lots, 2),
+        "detectedMarket": detected_market,
+        "suggestedAlgos": [{"id": aid, "name": (get_algo_by_id(aid) or {}).get("name", aid)} for aid in get_suggested_algos(stock_indicators, market_indicators, top_n=3)],
+        "selectedAlgoName": algo.get("name") if algo else None,
+        "selectedAlgoGroup": groups_meta.get(selected_group_id, ""),
+    }
+
+
+def _build_ai_trade_recommendation_index(index_label: str, capital: float) -> dict[str, Any] | None:
+    """Build a single AI trade recommendation for NIFTY or BANKNIFTY."""
+    bias_data = get_index_market_bias()
+    nifty_bias = bias_data.get("niftyBias", "NEUTRAL")
+    bank_nifty_bias = bias_data.get("bankNiftyBias", "NEUTRAL")
+    label = (index_label or "").upper().replace(" ", "")
+    if "BANK" in label:
+        bias = bank_nifty_bias
+        label = "BANKNIFTY"
+    else:
+        bias = nifty_bias
+        label = "NIFTY"
+    if bias == "NEUTRAL":
+        return None
+    options, ai_rec, _ = get_affordable_index_options(label, bias, capital, confidence=bias_data.get("confidence"))
+    if not options:
+        return None
+    best = options[0]
+    opt_type = best.get("type", "CE")
+    strike = best.get("strike", 0)
+    lot_size = best.get("lotSize", 25)
+    total_cost = best.get("totalCost") or (best.get("premium", 0) * lot_size)
+    lots = max(1, int(capital / total_cost)) if total_cost else 1
+    risk_per_trade = min(capital * 0.02, total_cost * lots)  # cap at 2% of capital
+    market_bias = "Bullish" if bias == "BULLISH" else "Bearish"
+    premium = best.get("premium", 0)
+    tradingsymbol_nfo = get_nfo_option_tradingsymbol(label, strike, opt_type)
+    rec_out = {
+        "instrumentType": "index",
+        "instrument": label,
+        "symbol": label,
+        "marketBias": market_bias,
+        "strategyId": "index_lead_stock_lag",
+        "strategyName": "Index Momentum",
+        "tradeType": "CALL" if opt_type == "CE" else "PUT",
+        "suggestedStrike": str(strike) + " " + opt_type,
+        "strike": strike,
+        "optionType": opt_type,
+        "entryCondition": "Index holds above/below open; momentum confirmation",
+        "stopLossLogic": "Break of opening range / VWAP",
+        "riskPerTrade": round(risk_per_trade, 2),
+        "positionSizeLots": lots,
+        "rewardLogic": "Trail or 20–90 min holding time",
+        "confidence": ai_rec.get("confidence", 65),
+        "totalCost": round(total_cost * lots, 2),
+        "product_type": "OPTION",
+        "exchange": "NFO",
+        "lot_size": lot_size,
+        "lotSize": lot_size,
+        "premium": round(premium, 2),
+    }
+    if tradingsymbol_nfo:
+        rec_out["tradingsymbol"] = tradingsymbol_nfo
+    return rec_out
+
+
+@app.route("/api/ai-trade-recommendation")
+def api_ai_trade_recommendation():
+    """GET /api/ai-trade-recommendation?instrument=RELIANCE|NIFTY|BANKNIFTY. Returns one AI recommendation card (no strike selection)."""
+    instrument = (request.args.get("instrument") or "").strip().upper()
+    if not instrument:
+        return jsonify({"error": "Missing instrument"}), 400
+    capital = request.args.get("capital", type=float) or 100000.0
+    risk_pct = request.args.get("risk_pct", type=float) or 2.0
+    try:
+        if instrument in ("NIFTY", "BANKNIFTY"):
+            rec = _build_ai_trade_recommendation_index(instrument, capital)
+        else:
+            rec = _build_ai_trade_recommendation_stock(instrument, capital, risk_pct)
+        if rec is None:
+            return jsonify({"error": "No recommendation (e.g. neutral bias)", "recommendation": None})
+        return jsonify({"recommendation": rec})
+    except Exception as e:
+        return jsonify({"error": str(e), "recommendation": None}), 500
+
+
+@app.route("/api/approve-trade", methods=["POST"])
+def api_approve_trade():
+    """POST /api/approve-trade: create ACTIVE trade session. execution_mode: LIVE | PAPER | BACKTEST."""
+    global _trade_sessions
+    data = request.get_json() or {}
+    rec = data.get("recommendation") or data
+    if not rec or not rec.get("instrument"):
+        return jsonify({"ok": False, "error": "Missing recommendation"}), 400
+    instrument = (rec.get("instrument") or "").strip().upper()
+    execution_mode = (data.get("execution_mode") or rec.get("execution_mode") or "PAPER").upper()
+    if execution_mode not in ("LIVE", "PAPER", "BACKTEST"):
+        execution_mode = "PAPER"
+    virtual_balance = data.get("virtual_balance")
+    if execution_mode in ("PAPER", "BACKTEST"):
+        try:
+            virtual_balance = float(virtual_balance) if virtual_balance is not None else 100000.0
+        except (TypeError, ValueError):
+            virtual_balance = 100000.0
+    else:
+        virtual_balance = None
+    session_id = f"ts_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    max_trades = int(data.get("max_trades_allowed") or rec.get("max_trades_allowed") or MAX_TRADES_PER_SESSION)
+    daily_loss_limit = data.get("daily_loss_limit") or rec.get("daily_loss_limit")
+    tradingsymbol = rec.get("tradingsymbol") or instrument
+    exchange = rec.get("exchange") or "NSE"
+    lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 1)
+    session = {
+        "sessionId": session_id,
+        "instrument": instrument,
+        "mode": "INTRADAY",
+        "status": "ACTIVE",
+        "execution_mode": execution_mode,
+        "virtual_balance": virtual_balance,
+        "max_trades_allowed": max_trades,
+        "trades_taken_today": 0,
+        "daily_pnl": 0.0,
+        "daily_loss_limit": float(daily_loss_limit) if daily_loss_limit is not None else None,
+        "cutoff_time": "15:15",
+        "current_trade_id": None,
+        "current_trade": None,
+        "recommendation": rec,
+        "tradingsymbol": tradingsymbol,
+        "exchange": exchange,
+        "lot_size": lot_size,
+        "createdAt": now.isoformat(),
+    }
+    _trade_sessions.append(session)
+    _save_trade_sessions()
+    return jsonify({
+        "ok": True,
+        "sessionId": session_id,
+        "execution_mode": execution_mode,
+        "message": "Session active (%s). Engine will trade up to %d times until cutoff." % (execution_mode, max_trades),
+    })
+
+
+def _pick_best_strategy(instrument: str) -> tuple[str, str]:
+    """Return (strategy_id, strategy_name) for current market. Used by session engine each scan."""
+    instrument = (instrument or "").strip().upper()
+    if instrument in ("NIFTY", "BANKNIFTY"):
+        return "index_lead_stock_lag", "Index Momentum"
+    try:
+        pred = _get_cached_prediction(instrument)
+        stock_indicators = {
+            "score": pred.get("score"),
+            "prediction": pred.get("prediction"),
+            "rsi": pred.get("rsi"),
+            "sentiment_score": pred.get("sentiment_score"),
+        }
+        market_indicators = {"vix_high": pred.get("vix_high", False)}
+        ids = get_suggested_algos(stock_indicators, market_indicators, top_n=1)
+        if ids:
+            algo = get_algo_by_id(ids[0])
+            return ids[0], (algo.get("name") if algo else "Momentum Breakout")
+        return "momentum_breakout", "Momentum Breakout"
+    except Exception:
+        return "momentum_breakout", "Momentum Breakout"
+
+
+def _check_entry_real(session: dict, strategy_name_override: str | None = None) -> tuple[bool, float | None]:
+    """Use registered strategy to check entry. strategy_name_override = current best from re-scan."""
+    try:
+        strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override)
+        if not strategy:
+            return False, None
+        return strategy.check_entry()
+    except Exception:
+        return False, None
+
+
+def _manage_trade_real(session: dict) -> bool:
+    """Use strategy check_exit (same strategy that opened the trade); if exit reason, call execute_exit."""
+    trade = session.get("current_trade")
+    if not trade:
+        return False
+    try:
+        strategy_name = trade.get("strategy_name")
+        strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override=strategy_name)
+        if not strategy:
+            return False
+        exit_reason = strategy.check_exit(trade)
+        if not exit_reason:
+            return False
+        execute_exit(session)
+        return True
+    except Exception:
+        return False
+
+
+def _run_session_engine_tick() -> None:
+    """Background tick: for each ACTIVE session, apply guard rails, manage open trade or scan for entry."""
+    global ENGINE_ENABLED
+    if not ENGINE_ENABLED:
+        return
+    if not is_market_open():
+        return
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    today = now.date()
+    try:
+        cutoff = INTRADAY_CUTOFF_TIME
+        if now.time() >= cutoff:
+            for s in _trade_sessions:
+                if s.get("status") == "ACTIVE":
+                    s["status"] = "STOPPED"
+            _save_trade_sessions()
+            return
+    except Exception:
+        pass
+    for session in _trade_sessions:
+        if session.get("status") != "ACTIVE":
+            continue
+        if (session.get("execution_mode") or "").upper() == "BACKTEST":
+            continue
+        session_date = _session_date(session)
+        if session_date is not None and session_date < today:
+            session["status"] = "STOPPED"
+            continue
+        max_trades = session.get("max_trades_allowed") or MAX_TRADES_PER_SESSION
+        taken = session.get("trades_taken_today") or 0
+        if taken >= max_trades:
+            session["status"] = "STOPPED"
+            continue
+        daily_limit = session.get("daily_loss_limit")
+        if daily_limit is not None and (session.get("daily_pnl") or 0) <= -float(daily_limit):
+            session["status"] = "STOPPED"
+            continue
+        if session.get("current_trade_id"):
+            try:
+                if _manage_trade_real(session):
+                    _save_trade_sessions()
+            except Exception:
+                pass
+            continue
+        instrument = session.get("instrument", "")
+        strategy_id, strategy_name = _pick_best_strategy(instrument)
+        can_enter, entry_price = _check_entry_real(session, strategy_name_override=strategy_name)
+        if can_enter and entry_price is not None:
+            try:
+                strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override=strategy_name)
+                rec = session.get("recommendation") or {}
+                symbol = session.get("instrument", "")
+                side = "BUY"
+                lot_size = int(session.get("lot_size") or rec.get("lotSize") or 1)
+                if lot_size <= 0:
+                    lot_size = 1
+                is_nfo = (session.get("exchange") or "").upper() == "NFO"
+                if is_nfo and session.get("tradingsymbol"):
+                    from engine.zerodha_client import get_quote as kite_get_quote
+                    opt_quote = kite_get_quote(session["tradingsymbol"], exchange="NFO")
+                    entry_price = float(opt_quote.get("last", 0) or opt_quote.get("last_price", 0)) or entry_price
+                    stop_loss = round(entry_price * 0.995, 2)
+                    target = round(entry_price * 1.015, 2)
+                else:
+                    stop_loss = strategy.get_stop_loss(entry_price) if strategy else None
+                    target = strategy.get_target(entry_price) if strategy else None
+                capital = session.get("virtual_balance")
+                if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
+                    capital, _ = get_balance()
+                    capital = capital or 0
+                if capital is None or capital <= 0:
+                    capital = 100000.0
+                risk_config = RiskConfig(
+                    capital=float(capital),
+                    risk_percent_per_trade=float(rec.get("risk_percent_per_trade") or 1.0),
+                    max_daily_loss_percent=float(rec.get("max_daily_loss_percent") or 3.0),
+                    max_trades=session.get("max_trades_allowed") or MAX_TRADES_PER_SESSION,
+                )
+                risk_mgr = RiskManager(risk_config)
+                premium = rec.get("premium")
+                if premium is not None:
+                    premium = float(premium)
+                elif is_nfo:
+                    premium = entry_price
+                stop_for_risk = stop_loss if stop_loss is not None and stop_loss != entry_price else entry_price * 0.995
+                approved, reason, lots = risk_mgr.validate_trade(
+                    session, entry_price, stop_for_risk, lot_size, premium=premium
+                )
+                if not approved:
+                    continue
+                qty = max(1, lots * lot_size)
+                execute_entry(
+                    session, symbol, side, qty,
+                    price=entry_price,
+                    strategy_name=strategy_name,
+                    stop_loss=stop_loss,
+                    target=target,
+                )
+                _save_trade_sessions()
+            except Exception:
+                pass
+    _save_trade_sessions()
+
+
+@app.route("/api/trade-sessions")
+def api_trade_sessions():
+    """GET /api/trade-sessions: list all trade sessions (active and stopped) for UI."""
+    return jsonify({"sessions": _trade_sessions})
+
+
+@app.route("/api/trade-sessions/active")
+def api_trade_sessions_active():
+    """GET /api/trade-sessions/active: only sessions with status ACTIVE."""
+    active = [s for s in _trade_sessions if s.get("status") == "ACTIVE"]
+    out = []
+    for s in active:
+        out.append({
+            "session_id": s.get("sessionId"),
+            "instrument": s.get("instrument"),
+            "tradingsymbol": s.get("tradingsymbol"),
+            "exchange": s.get("exchange"),
+            "execution_mode": s.get("execution_mode"),
+            "status": s.get("status"),
+            "trades_taken_today": s.get("trades_taken_today"),
+            "max_trades_allowed": s.get("max_trades_allowed"),
+            "daily_pnl": s.get("daily_pnl"),
+            "current_trade": s.get("current_trade"),
+            "cutoff_time": s.get("cutoff_time"),
+        })
+    return jsonify({"sessions": out})
+
+
+@app.route("/api/trade-sessions/<session_id>/kill", methods=["POST"])
+def api_trade_session_kill(session_id: str):
+    """POST: close open trade immediately, set session STOPPED, persist. No further trading."""
+    global _trade_sessions
+    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+    if not session:
+        return jsonify({"ok": False, "error": "Session not found"}), 404
+    if session.get("current_trade"):
+        try:
+            execute_exit(session)
+        except Exception:
+            pass
+    session["status"] = "STOPPED"
+    _save_trade_sessions()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/engine/kill", methods=["POST"])
+def api_engine_kill():
+    """POST: global kill switch — halt all LIVE/PAPER trading (engine tick does nothing)."""
+    global ENGINE_ENABLED
+    ENGINE_ENABLED = False
+    return jsonify({"ok": True, "engine_enabled": False})
+
+
+@app.route("/api/engine/start", methods=["POST"])
+def api_engine_start():
+    """POST: resume engine — allow LIVE/PAPER trading again."""
+    global ENGINE_ENABLED
+    ENGINE_ENABLED = True
+    return jsonify({"ok": True, "engine_enabled": True})
+
+
+@app.route("/api/engine/status")
+def api_engine_status():
+    """GET: current global engine state (for UI)."""
+    return jsonify({"engine_enabled": ENGINE_ENABLED})
+
+
+@app.route("/api/account-balance")
+def api_account_balance():
+    """GET /api/account-balance?mode=LIVE|PAPER|BACKTEST. Returns balance for that mode."""
+    mode = (request.args.get("mode") or "LIVE").upper()
+    if mode not in ("LIVE", "PAPER", "BACKTEST"):
+        mode = "LIVE"
+    balance, resolved_mode = get_balance_for_mode(mode, _trade_sessions)
+    return jsonify({"mode": resolved_mode, "balance": round(balance, 2)})
+
+
+@app.route("/api/trade-history")
+def api_trade_history():
+    """GET /api/trade-history?mode=LIVE|PAPER|BACKTEST&session_id=... Optional filters."""
+    mode = request.args.get("mode")
+    session_id = request.args.get("session_id")
+    trades = get_stored_trade_history(mode=mode, session_id=session_id)
+    return jsonify({"trades": trades})
+
+
+# --- Backtest (separate from session engine: offline historical replay) ---
+@app.route("/api/backtest/run", methods=["POST"])
+def api_backtest_run():
+    """POST /api/backtest/run: run backtest on historical data. Body: instrument, strategy, from_date, to_date, timeframe, initial_capital, risk_percent_per_trade."""
+    from backtest.backtest_engine import run_backtest_engine, save_backtest_result
+    data = request.get_json() or {}
+    instrument = (data.get("instrument") or "").strip().upper() or "RELIANCE"
+    strategy = data.get("strategy") or "Momentum Breakout"
+    from_date = data.get("from_date") or (date.today() - timedelta(days=30)).isoformat()
+    to_date = data.get("to_date") or date.today().isoformat()
+    timeframe = data.get("timeframe") or "5minute"
+    initial_capital = float(data.get("initial_capital") or 100000)
+    risk_pct = float(data.get("risk_percent_per_trade") or 1.0)
+    max_daily_loss = float(data.get("max_daily_loss_percent") or 3.0)
+    max_trades = int(data.get("max_trades") or 20)
+    try:
+        result = run_backtest_engine(
+            instrument=instrument,
+            strategy_name=strategy,
+            from_date=from_date,
+            to_date=to_date,
+            timeframe=timeframe,
+            initial_capital=initial_capital,
+            risk_percent_per_trade=risk_pct,
+            max_daily_loss_percent=max_daily_loss,
+            max_trades=max_trades,
+        )
+        if result.get("error"):
+            return jsonify({"ok": False, "error": result["error"]}), 400
+        save_backtest_result(result)
+        return jsonify({"ok": True, "result": result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/backtest/results")
+def api_backtest_results():
+    """GET /api/backtest/results: list all backtest runs (summary + trades)."""
+    from backtest.backtest_engine import load_backtest_results
+    runs = load_backtest_results()
+    return jsonify({"runs": runs})
+
+
 @app.route("/api/index-bias")
 def api_index_bias():
     """GET /api/index-bias: NIFTY and BANKNIFTY bias, confidence, reasons."""
@@ -2624,6 +3174,7 @@ def api_options(stock: str):
 
 scheduler = BackgroundScheduler(timezone=os.getenv("TZ", "Asia/Kolkata"))
 scheduler.add_job(_do_auto_close, "interval", minutes=1)
+scheduler.add_job(_run_session_engine_tick, "interval", seconds=SESSION_ENGINE_INTERVAL_SEC)
 scheduler.start()
 
 
