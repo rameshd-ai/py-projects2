@@ -127,6 +127,22 @@ def dashboard_backtest():
     return render_template("dashboard/backtest.html", active_page="backtest", page_title="Backtesting")
 
 
+# Algo ids that have executable strategy logic (check_entry, check_exit, SL/target). Others fall back to MomentumBreakout.
+IMPLEMENTED_ALGO_IDS = frozenset({
+    "momentum_breakout", "vwap_trend_ride", "rsi_reversal_fade", "orb_opening_range_breakout", "index_lead_stock_lag",
+    "pullback_continuation",
+    "bollinger_mean_reversion", "vwap_mean_reversion", "liquidity_sweep_reversal", "inside_bar_breakout",
+    "news_volatility_burst", "time_based_volatility_play", "gamma_scalping_lite",
+    "sector_rotation_momentum", "relative_strength_breakout", "volume_climax_reversal",
+    "trend_day_vwap_hold", "ema_ribbon_trend_alignment",
+    "range_compression_breakout", "failed_breakdown_trap", "vwap_reclaim",
+    "volume_dry_up_breakout", "daily_breakout_continuation",
+    "pullback_20_50_dma", "swing_rsi_compression_breakout", "swing_volume_accumulation",
+    "multi_timeframe_alignment", "liquidity_zone_reaction", "order_flow_imbalance_proxy",
+    "volatility_contraction_expansion", "time_of_day_behavior", "smart_money_trap_detection",
+})
+
+
 @app.route("/dashboard/algo-library")
 def dashboard_algo_library():
     """Strategy Library: strategies grouped by market behavior, collapsible sections."""
@@ -135,12 +151,14 @@ def dashboard_algo_library():
     groups_with_algos = [
         {"group": g, "algos": grouped.get(g["id"], [])}
         for g in groups_meta
+        if grouped.get(g["id"], [])
     ]
     return render_template(
         "dashboard/strategy_library.html",
         active_page="algo_library",
         page_title="Strategy Library",
         groups_with_algos=groups_with_algos,
+        implemented_algo_ids=IMPLEMENTED_ALGO_IDS,
     )
 
 
@@ -3125,12 +3143,13 @@ def api_algo_detail(algo_id: str):
 
 @app.route("/api/strategy-groups")
 def api_strategy_groups():
-    """GET /api/strategy-groups: groups with algo counts for Strategy Library."""
+    """GET /api/strategy-groups: groups with algo counts for Strategy Library (intraday only)."""
     groups_meta = sorted(load_strategy_groups(), key=lambda g: g.get("order", 99))
     grouped = get_algos_grouped()
     return jsonify([
         {"id": g["id"], "name": g["name"], "description": g.get("description"), "icon": g.get("icon"), "color": g.get("color"), "order": g.get("order"), "count": len(grouped.get(g["id"], []))}
         for g in groups_meta
+        if grouped.get(g["id"], [])
     ])
 
 

@@ -15,16 +15,41 @@ _algos_cache: list[dict[str, Any]] | None = None
 _groups_cache: list[dict[str, Any]] | None = None
 _grouped_algos_cache: dict[str, list[dict[str, Any]]] | None = None
 
+# Intraday-only: timeframes that count as intraday for UI/engine
+_INTRADAY_TIMEFRAMES = frozenset({"5m", "15m", "30m", "intraday", "5min", "15min", "30min"})
+_EXCLUDE_TAGS = frozenset({"swing", "multi-day", "multi-day swing"})
+
+
+def _is_intraday_executable(algo: dict[str, Any]) -> bool:
+    """True if algo is executable and intraday-only (no swing/multi-day)."""
+    if algo.get("executable") is not True:
+        return False
+    tags = algo.get("tags") or []
+    tag_set = {str(t).lower().strip() for t in tags}
+    if tag_set & _EXCLUDE_TAGS:
+        return False
+    tf = algo.get("timeframe") or []
+    tf_set = {str(t).lower().strip() for t in tf}
+    if not tf_set:
+        return True
+    if tf_set & _INTRADAY_TIMEFRAMES:
+        return True
+    if "1d" in tf_set or "swing" in tf_set or "1day" in tf_set:
+        return False
+    return True
+
 
 def load_algos() -> list[dict[str, Any]]:
-    """Load algo definitions from config/algos.json. Cached."""
+    """Load algo definitions from config/algos.json. Cached. Returns only intraday-executable algos."""
     global _algos_cache
     if _algos_cache is not None:
         return _algos_cache
     try:
         with open(_CONFIG_PATH, encoding="utf-8") as f:
-            _algos_cache = json.load(f)
-        return _algos_cache or []
+            raw = json.load(f)
+        algos = raw or []
+        _algos_cache = [a for a in algos if _is_intraday_executable(a)]
+        return _algos_cache
     except Exception:
         return []
 
@@ -139,11 +164,7 @@ def get_suggested_algos(
             s += 0.9
         if aid == "news_volatility_burst" and abs(sentiment_score) > 0.4:
             s += 0.8
-        if aid == "iv_expansion_play" and not vix_high and market_indicators.get("event_expected"):
-            s += 0.6
         if aid == "gamma_scalping_lite" and volatility_high:
-            s += 0.5
-        if aid == "straddle_breakout" and volatility_high and market_indicators.get("direction_uncertain"):
             s += 0.5
         if aid == "inside_bar_breakout" and volatility_high:
             s += 0.5

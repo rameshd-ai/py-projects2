@@ -40,14 +40,6 @@
     "order": 5
   },
   {
-    "id": "SWING",
-    "name": "Swing / Multi-Day",
-    "description": "Positional and multi-day trades.",
-    "icon": "schedule",
-    "color": "indigo",
-    "order": 6
-  },
-  {
     "id": "ADVANCED",
     "name": "Advanced / AI Logic",
     "description": "Regime detection, MTF, sizing.",

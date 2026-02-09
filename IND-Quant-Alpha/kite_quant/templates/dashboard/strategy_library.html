@@ -26,11 +26,16 @@
         </div>
         <div class="col-md-4">
           <p class="mb-1 fw-semibold text-primary-custom">Timeframe</p>
-          <span class="badge bg-info bg-opacity-25">INTRADAY</span> 5m–30m &nbsp; <span class="badge bg-secondary bg-opacity-50">SWING</span> 1d+ &nbsp; <span class="badge bg-primary bg-opacity-25">OPTIONS</span> CE/PE
+          <span class="badge bg-info bg-opacity-25">INTRADAY</span> 5m–30m &nbsp; <span class="badge bg-primary bg-opacity-25">OPTIONS</span> CE/PE
         </div>
         <div class="col-md-4">
           <p class="mb-1 fw-semibold text-primary-custom">Instruments</p>
           EQUITY (stock) &nbsp; INDEX (Nifty/Bank Nifty) &nbsp; OPTIONS
+        </div>
+        <div class="col-md-4">
+          <p class="mb-1 fw-semibold text-primary-custom">Green dot</p>
+          <span class="d-inline-block rounded-circle bg-success me-1 align-middle" style="width: 8px; height: 8px;"></span>
+          <span class="text-muted">Strategy logic implemented — runs in Manual / Live / Backtest</span>
         </div>
       </div>
     </div>
@@ -55,15 +60,18 @@
         <div class="row g-3">
           {% for algo in algos %}
           <div class="col-lg-4 col-md-6">
-            <div class="card h-100 border strategy-card">
+            <div class="card h-100 border strategy-card position-relative">
+              {% if algo.id in implemented_algo_ids %}
+              <span class="position-absolute top-0 end-0 m-2" title="Strategy logic implemented — executable in Manual/Live/Backtest" style="z-index: 1;">
+                <span class="d-inline-block rounded-circle bg-success" style="width: 10px; height: 10px; box-shadow: 0 0 0 2px rgba(25, 135, 84, 0.3);"></span>
+              </span>
+              {% endif %}
               <div class="card-body">
                 <h6 class="card-title mb-2">{{ algo.name }}</h6>
                 <div class="d-flex flex-wrap gap-1 mb-2">
                   <span class="badge {% if algo.riskLevel == 'LOW' %}bg-success bg-opacity-25 text-success-custom{% elif algo.riskLevel == 'HIGH' %}bg-danger bg-opacity-25 text-danger-custom{% else %}bg-warning bg-opacity-25 text-warning-custom{% endif %}">{{ algo.riskLevel }}</span>
                   {% if algo.timeframe %}
-                  {% if '1d' in algo.timeframe or 'swing' in (algo.timeframe|join(' ')|lower) %}
-                  <span class="badge bg-secondary bg-opacity-50">SWING</span>
-                  {% elif algo.marketType == 'OPTIONS' or 'options' in (algo.goodFor or [])|join(' ')|lower %}
+                  {% if algo.marketType == 'OPTIONS' or 'options' in (algo.goodFor or [])|join(' ')|lower %}
                   <span class="badge bg-primary bg-opacity-25">OPTIONS</span>
                   {% else %}
                   <span class="badge bg-info bg-opacity-25">INTRADAY</span>
