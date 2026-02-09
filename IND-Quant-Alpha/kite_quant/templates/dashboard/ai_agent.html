@@ -433,10 +433,13 @@
     card.className = 'card border border-opacity-50 active-session-card' + (isStopped ? ' bg-dark bg-opacity-10' : '');
     var sessionId = s.sessionId || s.session_id || '';
     card.setAttribute('data-session-id', sessionId);
+    var aiToggleButton = !isStopped ?
+      '<button type="button" class="btn btn-sm ' + (s.ai_auto_switching_enabled ? 'btn-primary' : 'btn-outline-secondary') + ' session-ai-toggle-btn me-2" data-session-id="' + sessionId + '" title="' + (s.ai_auto_switching_enabled ? 'Disable AI auto-switching' : 'Enable AI auto-switching') + '">' +
+      '<span class="material-icons-round fs-6">smart_toy</span> ' + (s.ai_auto_switching_enabled ? '🤖 AI ON' : 'Enable AI') + '</button>' : '';
     var actionButton = isStopped ?
       '<div class="d-flex gap-2"><button type="button" class="btn btn-outline-success btn-sm session-resume-btn" data-session-id="' + sessionId + '">Resume</button>' +
       '<button type="button" class="btn btn-outline-danger btn-sm session-delete-btn" data-session-id="' + sessionId + '">Delete</button></div>' :
-      '<button type="button" class="btn btn-outline-danger btn-sm session-kill-btn" data-session-id="' + sessionId + '">Stop</button>';
+      '<div class="d-flex gap-2">' + aiToggleButton + '<button type="button" class="btn btn-outline-danger btn-sm session-kill-btn" data-session-id="' + sessionId + '">Stop</button></div>';
     card.innerHTML =
       '<div class="card-body py-3">' +
         '<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">' +
@@ -448,10 +451,17 @@
           actionButton +
         '</div>' +
         '<div class="small text-muted mb-2">' +
-          (s.ai_mode_enabled ? '<span class="badge bg-primary bg-opacity-25 text-primary me-1" title="AI auto-selects strategies every ' + (s.ai_check_interval_minutes || 15) + ' min">🤖 AI Mode</span> ' : '') +
-          'Strategy: <strong>' + (s.ai_recommended_strategy || s.strategy_name || '—') + '</strong>' + 
-          (s.ai_recommendation_confidence ? ' <span class="badge bg-success bg-opacity-25 text-success-custom" title="' + (s.ai_recommendation_reasoning || '') + '">' + s.ai_recommendation_confidence + '</span>' : '') + 
+          (s.ai_auto_switching_enabled ? '<span class="badge bg-primary bg-opacity-25 text-primary me-1" title="AI auto-switches strategies every ' + (s.ai_check_interval_minutes || 5) + ' min">🤖 AI Auto-Switch</span> ' : '') +
+          'Strategy: <strong>' + ((s.recommendation || {}).strategyName || s.strategy_name || '—') + '</strong>' + 
+          (s.ai_strategy_switches ? ' <span class="badge bg-info bg-opacity-25 text-info" title="AI has switched strategy ' + s.ai_strategy_switches + ' times">↻ ' + s.ai_strategy_switches + '</span>' : '') + 
           ' &nbsp;|&nbsp; Trades: ' + (s.trades_taken_today ?? 0) + '/' + (s.max_trades_allowed ?? 10) + ' &nbsp;|&nbsp; Cutoff: ' + (s.cutoff_time || '—') + ' &nbsp;|&nbsp; <span class="' + dailyPnlClass + '">Daily P&L: ' + (dailyPnl >= 0 ? '+' : '') + dailyPnl + '</span></div>' +
+        (s.last_ai_recommendation && s.ai_auto_switching_enabled && !isStopped ? 
+          '<div class="alert alert-info border-0 small mb-2 py-2" style="background: rgba(168, 199, 250, 0.12);">' +
+          '<strong>🤖 AI Recommendation:</strong> ' + (s.last_ai_recommendation.recommended_strategy || '—') + 
+          ' <span class="badge bg-success bg-opacity-25 text-success-custom ms-1">' + (s.last_ai_recommendation.confidence || 'unknown') + '</span><br>' +
+          '<span class="text-muted">' + (s.last_ai_recommendation.reasoning || 'No reasoning provided') + '</span><br>' +
+          '<span class="text-muted small">Market: ' + (s.last_ai_recommendation.market_assessment || '—') + '</span>' +
+          '</div>' : '') +
         (isStopped ? '<div class="border-top pt-2 mt-2 small text-muted">Session is stopped. Resume to continue trading.</div>' : 
         (ct ? (
           '<div class="border-top pt-2 mt-2 small">' +
@@ -586,6 +596,50 @@
           });
         } else {
           console.log('Delete button NOT found for session:', sessionId, 'Is stopped?', s.status === 'STOPPED');
+        }
+        var aiToggleBtn = card.querySelector('.session-ai-toggle-btn');
+        if (aiToggleBtn) {
+          aiToggleBtn.addEventListener('click', function() {
+            var id = this.getAttribute('data-session-id');
+            var currentlyEnabled = s.ai_auto_switching_enabled;
+            var newState = !currentlyEnabled;
+            
+            if (newState) {
+              // Enabling AI
+              var interval = prompt('🤖 Enable AI Auto-Switching\n\nAI will analyze market conditions and automatically switch to the best strategy.\n\nHow often should AI check? (minutes):', '5');
+              if (interval === null) return;
+              interval = parseInt(interval) || 5;
+              
+              fetch('/api/trade-sessions/' + encodeURIComponent(id) + '/ai-mode', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: true, interval_minutes: interval })
+              }).then(function(r) { return r.json(); }).then(function(res) {
+                  if (res.ok) { 
+                    loadActiveSessions();
+                    alert('✅ AI Auto-Switching ENABLED!\n\nAI will check every ' + interval + ' minutes and switch strategies based on market conditions.');
+                  } else { 
+                    alert('❌ ' + (res.error || 'Failed to enable AI')); 
+                  }
+                }).catch(function() { alert('❌ Failed to enable AI mode'); });
+            } else {
+              // Disabling AI
+              if (!confirm('Disable AI auto-switching?\n\nYou will continue using the current strategy.')) return;
+              
+              fetch('/api/trade-sessions/' + encodeURIComponent(id) + '/ai-mode', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: false, interval_minutes: 5 })
+              }).then(function(r) { return r.json(); }).then(function(res) {
+                  if (res.ok) { 
+                    loadActiveSessions();
+                    alert('AI auto-switching disabled. Using fixed strategy.');
+                  } else { 
+                    alert('❌ ' + (res.error || 'Failed to disable AI')); 
+                  }
+                }).catch(function() { alert('❌ Failed to disable AI mode'); });
+            }
+          });
         }
         if (s.status === "ACTIVE" && s.current_trade) {
           var exchange = (s.exchange || 'NSE').toUpperCase();

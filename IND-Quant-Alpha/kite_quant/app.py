@@ -17,6 +17,7 @@ load_dotenv()
 from engine.config_store import CONFIG_KEYS, apply_config_to_env, load_config, save_config
 apply_config_to_env()
 
+from engine.ai_strategy_advisor import get_market_context, get_ai_strategy_recommendation, should_switch_strategy
 from engine.strategy import compute_us_bias, suggest_min_trades, consensus_signal, compute_technicals
 from engine.data_fetcher import (
     fetch_nse_quote,
@@ -2779,9 +2780,9 @@ def api_approve_trade():
     exchange = rec.get("exchange") or "NSE"
     lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 1)
     
-    # AI Mode configuration
-    ai_mode_enabled = data.get("ai_mode_enabled", True)  # Default: AI mode ON
-    ai_check_interval = data.get("ai_check_interval_minutes", 15)  # Default: 15 min
+    # AI Auto-Switching configuration (enabled by default)
+    ai_auto_switching_enabled = data.get("ai_auto_switching_enabled", True)  # Default: AI ON
+    ai_check_interval = data.get("ai_check_interval_minutes", 5)  # Default: 5 min
     
     session = {
         "sessionId": session_id,
@@ -2802,13 +2803,12 @@ def api_approve_trade():
         "exchange": exchange,
         "lot_size": lot_size,
         "createdAt": now.isoformat(),
-        # AI Strategy Advisor
-        "ai_mode_enabled": ai_mode_enabled,
+        # AI Strategy Auto-Switching (enabled by default)
+        "ai_auto_switching_enabled": ai_auto_switching_enabled,
         "ai_check_interval_minutes": ai_check_interval,
-        "ai_last_check_time": None,
-        "ai_recommended_strategy": None,
-        "ai_recommendation_confidence": None,
-        "ai_recommendation_reasoning": None,
+        "last_ai_strategy_check": None,
+        "last_ai_recommendation": None,
+        "ai_strategy_switches": 0,
     }
     _trade_sessions.append(session)
     _save_trade_sessions()
@@ -2823,14 +2823,11 @@ def api_approve_trade():
 def _pick_best_strategy(instrument: str, session: dict | None = None) -> tuple[str, str]:
     """
     Return (strategy_id, strategy_name) for current market.
-    If session has AI mode enabled, uses GPT-based recommendation.
+    If session has AI auto-switching enabled, uses the current AI-selected strategy.
     Otherwise uses rule-based strategy selection.
     """
-    # Check if AI mode enabled for this session
-    if session and session.get("ai_mode_enabled"):
-        ai_strategy = _get_ai_recommended_strategy(session)
-        if ai_strategy:
-            return ai_strategy  # Returns (strategy_id, strategy_name)
+    # Note: AI auto-switching now happens in _run_session_engine_tick()
+    # This function just returns the currently assigned strategy
     
     # Fallback to rule-based strategy selection
     instrument = (instrument or "").strip().upper()
@@ -3096,6 +3093,85 @@ def _run_session_engine_tick() -> None:
             except Exception as e:
                 logger.exception("Engine tick manage trade error: %s", str(e))
             continue
+        
+        # AI Strategy Auto-Switching (if enabled)
+        if session.get("ai_auto_switching_enabled", False):
+            last_ai_check = session.get("last_ai_strategy_check")
+            ai_check_interval_minutes = session.get("ai_check_interval_minutes", 5)  # Default: check every 5 min
+            should_run_ai = True
+            if last_ai_check:
+                try:
+                    from datetime import datetime
+                    last_check_dt = datetime.fromisoformat(last_ai_check)
+                    minutes_since = (now - last_check_dt).total_seconds() / 60
+                    should_run_ai = minutes_since >= ai_check_interval_minutes
+                except Exception:
+                    pass
+            
+            if should_run_ai:
+                try:
+                    # Gather market context
+                    nifty = fetch_nifty50_live()
+                    banknifty = fetch_bank_nifty_live()
+                    vix = fetch_india_vix()
+                    
+                    # Get recent candles for price action analysis
+                    instrument = session.get("instrument", "")
+                    recent_candles = None
+                    try:
+                        candles_df = strategy_data_provider.get_recent_candles(instrument, interval="5m", count=10, period="1d")
+                        if candles_df:
+                            recent_candles = [
+                                {
+                                    "high": c.get("high", 0),
+                                    "low": c.get("low", 0),
+                                    "close": c.get("close", 0),
+                                    "volume": c.get("volume", 0),
+                                }
+                                for c in candles_df
+                            ]
+                    except Exception:
+                        pass
+                    
+                    context = get_market_context(
+                        nifty_price=nifty.get("last_price") if nifty else None,
+                        nifty_change_pct=nifty.get("change_percent") if nifty else None,
+                        banknifty_price=banknifty.get("last_price") if banknifty else None,
+                        banknifty_change_pct=banknifty.get("change_percent") if banknifty else None,
+                        vix=vix,
+                        current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
+                        recent_candles=recent_candles,
+                    )
+                    
+                    current_strategy = (session.get("recommendation") or {}).get("strategyName")
+                    ai_recommendation = get_ai_strategy_recommendation(context, current_strategy)
+                    
+                    session["last_ai_strategy_check"] = now.isoformat()
+                    session["last_ai_recommendation"] = ai_recommendation
+                    
+                    if ai_recommendation:
+                        should_switch, new_strategy = should_switch_strategy(
+                            ai_recommendation,
+                            current_strategy,
+                            min_confidence="medium",
+                        )
+                        
+                        if should_switch and new_strategy:
+                            logger.info(
+                                "[AI SWITCH] %s → %s | Reason: %s",
+                                current_strategy,
+                                new_strategy,
+                                ai_recommendation.get("reasoning", "AI recommendation"),
+                            )
+                            # Update session strategy
+                            if "recommendation" not in session:
+                                session["recommendation"] = {}
+                            session["recommendation"]["strategyName"] = new_strategy
+                            session["ai_strategy_switches"] = session.get("ai_strategy_switches", 0) + 1
+                            _save_trade_sessions()
+                except Exception as e:
+                    logger.exception("[AI ADVISOR] Error during strategy evaluation: %s", str(e))
+        
         instrument = session.get("instrument", "")
         strategy_id, strategy_name = _pick_best_strategy(instrument, session=session)
         can_enter, entry_price = _check_entry_real(session, strategy_name_override=strategy_name)
@@ -3334,14 +3410,16 @@ def api_trade_session_ai_mode(session_id: str):
         return jsonify({"ok": False, "error": "Session not found"}), 404
     
     ai_enabled = data.get("enabled", True)
-    ai_interval = data.get("interval_minutes", 15)
+    ai_interval = data.get("interval_minutes", 5)  # Default 5 minutes
     
-    session["ai_mode_enabled"] = ai_enabled
+    session["ai_auto_switching_enabled"] = ai_enabled
     session["ai_check_interval_minutes"] = ai_interval
     
     # Reset AI state when toggling
     if ai_enabled:
-        session["ai_last_check_time"] = None
+        session["last_ai_strategy_check"] = None
+        session["last_ai_recommendation"] = None
+        session["ai_strategy_switches"] = 0
         logger.info(f"[AI MODE] Enabled for session {session_id}, interval: {ai_interval} min")
     else:
         logger.info(f"[AI MODE] Disabled for session {session_id}")
@@ -3350,9 +3428,9 @@ def api_trade_session_ai_mode(session_id: str):
     
     return jsonify({
         "ok": True,
-        "ai_mode_enabled": ai_enabled,
+        "ai_auto_switching_enabled": ai_enabled,
         "ai_check_interval_minutes": ai_interval,
-        "message": f"AI mode {'enabled' if ai_enabled else 'disabled'}"
+        "message": f"AI auto-switching {'enabled' if ai_enabled else 'disabled'}"
     })
 
 
