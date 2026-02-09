@@ -511,14 +511,14 @@
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Trades Today <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Daily Trade Count</strong><br/>Number of trades executed today vs maximum allowed<br/>Example: 2/5 means 2 trades done, 3 remaining<br/>Prevents overtrading">info</span></div>
-            <div class="metric-value" id="overview-tradesToday">0 / 3</div>
+            <div class="metric-label">Trade Frequency <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Dynamic Hourly Frequency</strong><br/>Trades per hour based on capital & drawdown<br/>View live stats in AI Agent dashboard<br/>Configure in Settings → Trade Frequency">info</span></div>
+            <div class="metric-value text-muted small">See AI Agent</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="metric-item">
-            <div class="metric-label">Max Trades/Day <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Daily Trade Limit</strong><br/>Maximum trades allowed per day<br/>Risk management feature<br/>Prevents overtrading and excessive losses<br/>Configure in Settings">info</span></div>
-            <div class="metric-value" id="overview-maxTrades">3</div>
+            <div class="metric-label">Auto-Close Time <span class="material-icons-round info-icon" data-bs-toggle="tooltip" data-bs-html="true" data-bs-title="<strong>Daily Auto-Close</strong><br/>Trading automatically stops at this time<br/>Default: 2:30 PM IST<br/>Configure in Settings">info</span></div>
+            <div class="metric-value" id="overview-autoCloseTime">14:30</div>
           </div>
       </div>
     </div>
@@ -771,8 +771,8 @@
             </div>
             <div class="col-6 col-md-3">
               <div class="metric-item py-2">
-                <div class="metric-label">Trades</div>
-                <div class="metric-value fs-5" id="live-tradesToday">0 / 3</div>
+                <div class="metric-label">Frequency</div>
+                <div class="metric-value fs-6 text-muted">Dynamic</div>
           </div>
         </div>
       </div>
@@ -1522,8 +1522,7 @@
         const priceVal = data.price != null ? '₹' + Number(data.price).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '—';
         const map = {
             'price': (data.symbol || '—') + '  ' + priceVal,
-            'tradesToday': (data.trade_count_today ?? 0) + ' / ' + (data.max_trades_per_day ?? 3),
-            'maxTrades': data.max_trades_per_day ?? 3
+            'autoCloseTime': data.auto_close_time || '14:30'
         };
         for(let k in map) {
             const el = document.getElementById(p + k) || document.getElementById('overview-' + k);

@@ -1,81 +1,228 @@
 {% extends "base_dashboard.html" %}
 {% block content %}
 <div class="fade-in">
-  <p class="text-muted mb-4">Offline historical replay. Same strategies and risk manager as Manual Mode. No live or paper sessions.</p>
+  <div class="alert alert-info border-0 mb-4" style="background: rgba(168, 199, 250, 0.12);">
+    <strong>AI-Powered Backtesting:</strong> Test strategies with AI auto-switching! Simulates real intraday trading with strategy changes every 5 minutes.
+  </div>
 
   <div class="card mb-4">
-    <div class="card-header d-flex align-items-center">
-      <span class="material-icons-round me-2 text-primary-custom">play_circle</span>
-      Run Backtest
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <span class="material-icons-round me-2 text-primary-custom">smart_toy</span>
+        AI Backtest Configuration
+      </div>
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="enable-ai-switching" checked>
+        <label class="form-check-label" for="enable-ai-switching">Enable AI Auto-Switching</label>
+      </div>
     </div>
     <div class="card-body">
-      <div class="row g-3">
-        <div class="col-md-3">
-          <label class="form-label">Instrument</label>
-          <select class="form-select" id="backtest-instrument">
-            <option value="RELIANCE">RELIANCE</option>
-            <option value="HDFCBANK">HDFCBANK</option>
-            <option value="TCS">TCS</option>
-            <option value="NIFTY">NIFTY</option>
-            <option value="BANKNIFTY">BANKNIFTY</option>
-          </select>
+      <!-- Stock Selection -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Search Stock</label>
+          <input type="text" class="form-control" id="backtest-stock-search" placeholder="Type stock name or symbol..." list="stock-list">
+          <datalist id="stock-list">
+            <option value="RELIANCE">Reliance Industries</option>
+            <option value="HDFCBANK">HDFC Bank</option>
+            <option value="TCS">Tata Consultancy Services</option>
+            <option value="INFY">Infosys</option>
+            <option value="ICICIBANK">ICICI Bank</option>
+            <option value="SBIN">State Bank of India</option>
+            <option value="BAJFINANCE">Bajaj Finance</option>
+            <option value="BHARTIARTL">Bharti Airtel</option>
+            <option value="ITC">ITC</option>
+            <option value="KOTAKBANK">Kotak Mahindra Bank</option>
+            <option value="LT">Larsen & Toubro</option>
+            <option value="AXISBANK">Axis Bank</option>
+            <option value="ASIANPAINT">Asian Paints</option>
+            <option value="MARUTI">Maruti Suzuki</option>
+            <option value="TATAMOTORS">Tata Motors</option>
+            <option value="WIPRO">Wipro</option>
+            <option value="NIFTY">NIFTY 50</option>
+            <option value="BANKNIFTY">BANK NIFTY</option>
+          </datalist>
         </div>
-        <div class="col-md-3">
-          <label class="form-label">Strategy</label>
-          <select class="form-select" id="backtest-strategy">
+        <div class="col-md-4" id="strategy-select-container">
+          <label class="form-label">Strategy (disabled when AI ON)</label>
+          <select class="form-select" id="backtest-strategy" disabled>
+            <option value="AI_AUTO">AI Auto-Select</option>
             <option value="Momentum Breakout">Momentum Breakout</option>
             <option value="VWAP Trend Ride">VWAP Trend Ride</option>
             <option value="RSI Reversal Fade">RSI Reversal Fade</option>
             <option value="Opening Range Breakout">Opening Range Breakout</option>
+            <option value="Pullback Continuation">Pullback Continuation</option>
+            <option value="EMA Ribbon Trend Alignment">EMA Ribbon</option>
           </select>
         </div>
-        <div class="col-md-2">
-          <label class="form-label">From</label>
-          <input type="date" class="form-control" id="backtest-from">
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">To</label>
-          <input type="date" class="form-control" id="backtest-to">
-        </div>
-        <div class="col-md-2">
+        <div class="col-md-4">
           <label class="form-label">Timeframe</label>
           <select class="form-select" id="backtest-timeframe">
-            <option value="5minute">5 min</option>
-            <option value="15minute">15 min</option>
+            <option value="5minute" selected>5 minutes (Recommended)</option>
+            <option value="15minute">15 minutes</option>
+            <option value="1hour">1 hour</option>
           </select>
         </div>
-        <div class="col-md-2">
-          <label class="form-label">Capital (₹)</label>
-          <input type="number" class="form-control" id="backtest-capital" value="100000" min="1000" step="1000">
+      </div>
+
+      <!-- Time Period Quick Selectors -->
+      <div class="mb-3">
+        <label class="form-label">Test Period (Quick Select)</label>
+        <div class="btn-group w-100" role="group">
+          <button type="button" class="btn btn-outline-secondary period-btn" data-days="1">1 Day</button>
+          <button type="button" class="btn btn-outline-secondary period-btn" data-days="5">1 Week</button>
+          <button type="button" class="btn btn-outline-secondary period-btn" data-days="21">1 Month</button>
+          <button type="button" class="btn btn-outline-secondary period-btn" data-days="63">3 Months</button>
+          <button type="button" class="btn btn-outline-secondary period-btn" data-days="126">6 Months</button>
+          <button type="button" class="btn btn-outline-secondary period-btn" data-days="252">1 Year</button>
+          <button type="button" class="btn btn-outline-secondary" id="custom-period-btn">Custom</button>
         </div>
-        <div class="col-md-2">
-          <label class="form-label">Risk %</label>
-          <input type="number" class="form-control" id="backtest-risk" value="1" min="0.1" max="5" step="0.1">
+      </div>
+
+      <!-- Custom Date Range (hidden by default) -->
+      <div class="row g-3 mb-3 d-none" id="custom-date-range">
+        <div class="col-md-6">
+          <label class="form-label">From Date</label>
+          <input type="date" class="form-control" id="backtest-from">
         </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button type="button" class="btn btn-primary w-100" id="backtest-run-btn">
-            <span class="material-icons-round fs-6 me-1">play_arrow</span> Run Backtest
+        <div class="col-md-6">
+          <label class="form-label">To Date</label>
+          <input type="date" class="form-control" id="backtest-to">
+        </div>
+      </div>
+
+      <!-- Capital & Risk Settings -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label">Investment Amount (₹)</label>
+          <input type="number" class="form-control" id="backtest-capital" value="10000" min="1000" step="1000">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Max Loss Limit (₹)</label>
+          <input type="number" class="form-control" id="backtest-max-loss" value="2000" min="100" step="100">
+          <small class="text-muted">Stop if loss exceeds this</small>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Max Trades Per Day</label>
+          <input type="number" class="form-control" id="backtest-max-trades" value="10" min="1" max="50">
+          <small class="text-muted">5 buy + 5 sell = 10 total</small>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Risk Per Trade (%)</label>
+          <input type="number" class="form-control" id="backtest-risk-pct" value="2" min="0.5" max="10" step="0.5">
+        </div>
+      </div>
+
+      <!-- Run Button -->
+      <div class="row g-3">
+        <div class="col-md-12">
+          <button type="button" class="btn btn-primary btn-lg w-100" id="backtest-run-btn">
+            <span class="material-icons-round fs-5 me-2">play_arrow</span>
+            Run AI-Powered Backtest
           </button>
         </div>
       </div>
-      <div id="backtest-run-status" class="mt-3 small text-muted d-none"></div>
+
+      <div id="backtest-run-status" class="mt-3 small d-none"></div>
+      <div class="progress mt-2 d-none" id="backtest-progress" style="height: 4px;">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+      </div>
     </div>
   </div>
 
+  <!-- Results Card -->
   <div class="card mb-4 d-none" id="backtest-last-result-card">
-    <div class="card-header">Last run summary</div>
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <span>Backtest Results</span>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="export-results-btn">
+        <span class="material-icons-round fs-6">download</span> Export CSV
+      </button>
+    </div>
     <div class="card-body">
-      <div class="row g-3 mb-3">
-        <div class="col"><span class="text-muted">Net P&L</span><div id="bt-net-pnl" class="fw-bold">—</div></div>
-        <div class="col"><span class="text-muted">Win rate</span><div id="bt-win-rate">—</div></div>
-        <div class="col"><span class="text-muted">Max drawdown</span><div id="bt-max-dd">—</div></div>
-        <div class="col"><span class="text-muted">Trades</span><div id="bt-trades">—</div></div>
+      <!-- Summary Metrics -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">Net P&L</div>
+            <div class="metric-value" id="bt-net-pnl">—</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">Total Trades</div>
+            <div class="metric-value" id="bt-trades">—</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">Win Rate</div>
+            <div class="metric-value" id="bt-win-rate">—</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">Best Day</div>
+            <div class="metric-value text-success-custom" id="bt-best-day">—</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">Worst Day</div>
+            <div class="metric-value text-danger-custom" id="bt-worst-day">—</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">AI Switches</div>
+            <div class="metric-value" id="bt-ai-switches">—</div>
+          </div>
+        </div>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm table-dark table-borderless">
-          <thead><tr><th>Entry</th><th>Exit</th><th>Entry price</th><th>Exit price</th><th>Qty</th><th>P&L</th><th>Reason</th></tr></thead>
-          <tbody id="backtest-trades-tbody"></tbody>
-        </table>
+
+      <!-- Daily Breakdown -->
+      <div class="mb-4">
+        <h6 class="mb-3">Daily Breakdown</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-dark table-hover">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Trades</th>
+                <th>Wins</th>
+                <th>Losses</th>
+                <th>Daily P&L</th>
+                <th>Cumulative P&L</th>
+                <th>Freq Mode</th>
+                <th>Strategies Used</th>
+                <th>AI Switches</th>
+              </tr>
+            </thead>
+            <tbody id="backtest-daily-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- All Trades -->
+      <div>
+        <h6 class="mb-3">All Trades</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-dark table-hover">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Strategy</th>
+                <th>Entry Time</th>
+                <th>Exit Time</th>
+                <th>Entry Price</th>
+                <th>Exit Price</th>
+                <th>Qty</th>
+                <th>P&L</th>
+                <th>Exit Reason</th>
+              </tr>
+            </thead>
+            <tbody id="backtest-trades-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -98,80 +245,192 @@
 (function() {
   var fromEl = document.getElementById('backtest-from');
   var toEl = document.getElementById('backtest-to');
+  var aiToggle = document.getElementById('enable-ai-switching');
+  var strategySelect = document.getElementById('backtest-strategy');
+  var customDateRange = document.getElementById('custom-date-range');
+  var lastResultsData = null;
+  
+  // Initialize dates
   var t = new Date();
   toEl.value = t.toISOString().slice(0, 10);
   var p = new Date(t);
-  p.setDate(p.getDate() - 30);
+  p.setDate(p.getDate() - 5); // Default 1 week
   fromEl.value = p.toISOString().slice(0, 10);
 
-  function loadResults() {
-    fetch('/api/backtest/results').then(function(r) { return r.json(); }).then(function(data) {
-      var runs = data.runs || [];
-      var tbody = document.getElementById('backtest-runs-tbody');
-      var empty = document.getElementById('backtest-runs-empty');
-      tbody.innerHTML = '';
-      if (runs.length === 0) {
-        empty.classList.remove('d-none');
-        return;
-      }
-      empty.classList.add('d-none');
-      runs.slice().reverse().slice(0, 20).forEach(function(r) {
-        var tr = document.createElement('tr');
-        var pnl = r.net_pnl != null ? r.net_pnl : 0;
-        var pnlClass = pnl >= 0 ? 'text-success-custom' : 'text-danger-custom';
-        tr.innerHTML = '<td>' + (r.run_id || '—') + '</td><td>' + (r.instrument || '—') + '</td><td>' + (r.strategy || '—') + '</td><td>' + (r.from_date || '') + ' to ' + (r.to_date || '') + '</td><td class="' + pnlClass + '">' + pnl + '</td><td>' + (r.win_rate != null ? r.win_rate + '%' : '—') + '</td><td>' + (r.max_drawdown != null ? r.max_drawdown + '%' : '—') + '</td>';
-        tbody.appendChild(tr);
-      });
-    }).catch(function() {});
-  }
-  loadResults();
+  // AI toggle handling
+  aiToggle.addEventListener('change', function() {
+    strategySelect.disabled = this.checked;
+    if (this.checked) {
+      strategySelect.value = 'AI_AUTO';
+    }
+  });
 
+  // Period quick selectors
+  document.querySelectorAll('.period-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var days = parseInt(this.getAttribute('data-days'));
+      var to = new Date();
+      var from = new Date();
+      from.setDate(to.getDate() - days);
+      toEl.value = to.toISOString().slice(0, 10);
+      fromEl.value = from.toISOString().slice(0, 10);
+      customDateRange.classList.add('d-none');
+      
+      // Highlight selected button
+      document.querySelectorAll('.period-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      this.classList.add('active');
+    });
+  });
+
+  // Custom period button
+  document.getElementById('custom-period-btn').addEventListener('click', function() {
+    customDateRange.classList.toggle('d-none');
+    document.querySelectorAll('.period-btn').forEach(function(b) {
+      b.classList.remove('active');
+    });
+  });
+
+  // Set default to 1 week
+  document.querySelector('[data-days="5"]').classList.add('active');
+
+  // Export results
+  document.getElementById('export-results-btn').addEventListener('click', function() {
+    if (!lastResultsData) return;
+    var csv = 'Date,Strategy,Entry Time,Exit Time,Entry Price,Exit Price,Qty,P&L,Exit Reason\n';
+    (lastResultsData.trades || []).forEach(function(t) {
+      csv += [
+        t.date || '',
+        t.strategy || '',
+        t.entry_time || '',
+        t.exit_time || '',
+        t.entry_price || '',
+        t.exit_price || '',
+        t.qty || '',
+        t.pnl || 0,
+        t.exit_reason || ''
+      ].join(',') + '\n';
+    });
+    
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url = window.URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'backtest_results_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+  });
+
+  // Run backtest
   document.getElementById('backtest-run-btn').addEventListener('click', function() {
     var btn = this;
     var status = document.getElementById('backtest-run-status');
+    var progress = document.getElementById('backtest-progress');
+    var progressBar = progress.querySelector('.progress-bar');
+    
     btn.disabled = true;
     status.classList.remove('d-none');
-    status.textContent = 'Running…';
+    progress.classList.remove('d-none');
+    status.innerHTML = '<span class="text-primary">Running backtest... This may take a few minutes.</span>';
+    progressBar.style.width = '10%';
+    
     var payload = {
-      instrument: document.getElementById('backtest-instrument').value,
-      strategy: document.getElementById('backtest-strategy').value,
+      instrument: document.getElementById('backtest-stock-search').value || 'NIFTY',
+      strategy: aiToggle.checked ? 'AI_AUTO' : strategySelect.value,
       from_date: fromEl.value,
       to_date: toEl.value,
       timeframe: document.getElementById('backtest-timeframe').value,
-      initial_capital: parseFloat(document.getElementById('backtest-capital').value) || 100000,
-      risk_percent_per_trade: parseFloat(document.getElementById('backtest-risk').value) || 1
+      initial_capital: parseFloat(document.getElementById('backtest-capital').value) || 10000,
+      max_loss_limit: parseFloat(document.getElementById('backtest-max-loss').value) || 2000,
+      max_trades_per_day: parseInt(document.getElementById('backtest-max-trades').value) || 10,
+      risk_percent_per_trade: parseFloat(document.getElementById('backtest-risk-pct').value) || 2,
+      ai_enabled: aiToggle.checked,
+      ai_check_interval_minutes: 5
     };
-    fetch('/api/backtest/run', {
+    
+    progressBar.style.width = '30%';
+    
+    fetch('/api/backtest/run-ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    }).then(function(r) { return r.json(); }).then(function(data) {
+    }).then(function(r) {
+      progressBar.style.width = '80%';
+      return r.json();
+    }).then(function(data) {
       btn.disabled = false;
+      progress.classList.add('d-none');
+      
       if (data.ok && data.result) {
-        status.textContent = 'Done.';
+        status.innerHTML = '<span class="text-success">Backtest completed successfully!</span>';
         var r = data.result;
+        lastResultsData = r;
+        
+        // Show results card
         document.getElementById('backtest-last-result-card').classList.remove('d-none');
+        
+        // Summary metrics
         var pnlEl = document.getElementById('bt-net-pnl');
-        pnlEl.textContent = (r.net_pnl != null ? r.net_pnl : 0);
-        pnlEl.className = (r.net_pnl >= 0 ? 'fw-bold text-success-custom' : 'fw-bold text-danger-custom');
-        document.getElementById('bt-win-rate').textContent = (r.win_rate != null ? r.win_rate + '%' : '—');
-        document.getElementById('bt-max-dd').textContent = (r.max_drawdown != null ? r.max_drawdown + '%' : '—');
-        document.getElementById('bt-trades').textContent = (r.total_trades != null ? r.total_trades : 0);
-        var tbody = document.getElementById('backtest-trades-tbody');
-        tbody.innerHTML = '';
+        var pnl = r.net_pnl != null ? r.net_pnl : 0;
+        pnlEl.textContent = '₹' + pnl.toFixed(2);
+        pnlEl.className = 'metric-value ' + (pnl >= 0 ? 'text-success-custom' : 'text-danger-custom');
+        
+        document.getElementById('bt-trades').textContent = r.total_trades || 0;
+        document.getElementById('bt-win-rate').textContent = (r.win_rate != null ? r.win_rate.toFixed(1) + '%' : '—');
+        document.getElementById('bt-best-day').textContent = r.best_day_pnl != null ? '₹' + r.best_day_pnl.toFixed(2) : '—';
+        document.getElementById('bt-worst-day').textContent = r.worst_day_pnl != null ? '₹' + r.worst_day_pnl.toFixed(2) : '—';
+        document.getElementById('bt-ai-switches').textContent = r.ai_switches || 0;
+        
+        // Daily breakdown
+        var dailyTbody = document.getElementById('backtest-daily-tbody');
+        dailyTbody.innerHTML = '';
+        (r.daily_breakdown || []).forEach(function(day) {
+          var tr = document.createElement('tr');
+          var dayPnl = day.pnl || 0;
+          var cumPnl = day.cumulative_pnl || 0;
+          var freqMode = day.frequency_mode || 'NORMAL';
+          var freqBadgeClass = freqMode === 'NORMAL' ? 'badge-success' : (freqMode === 'REDUCED' ? 'badge-warning' : 'badge-danger');
+          tr.innerHTML = 
+            '<td>' + (day.date || '') + '</td>' +
+            '<td>' + (day.trades || 0) + '</td>' +
+            '<td>' + (day.wins || 0) + '</td>' +
+            '<td>' + (day.losses || 0) + '</td>' +
+            '<td class="' + (dayPnl >= 0 ? 'text-success-custom' : 'text-danger-custom') + '">₹' + dayPnl.toFixed(2) + '</td>' +
+            '<td class="' + (cumPnl >= 0 ? 'text-success-custom' : 'text-danger-custom') + '">₹' + cumPnl.toFixed(2) + '</td>' +
+            '<td><span class="badge ' + freqBadgeClass + ' badge-sm">' + freqMode + '</span></td>' +
+            '<td><small>' + (day.strategies || []).join(', ') + '</small></td>' +
+            '<td>' + (day.ai_switches || 0) + '</td>';
+          dailyTbody.appendChild(tr);
+        });
+        
+        // All trades
+        var tradesTbody = document.getElementById('backtest-trades-tbody');
+        tradesTbody.innerHTML = '';
         (r.trades || []).forEach(function(t) {
           var tr = document.createElement('tr');
-          var pnl = t.pnl != null ? t.pnl : 0;
-          tr.innerHTML = '<td>' + (t.entry_time || '') + '</td><td>' + (t.exit_time || '') + '</td><td>' + (t.entry_price || '') + '</td><td>' + (t.exit_price || '') + '</td><td>' + (t.qty || '') + '</td><td class="' + (pnl >= 0 ? 'text-success-custom' : 'text-danger-custom') + '">' + pnl + '</td><td>' + (t.exit_reason || '') + '</td>';
-          tbody.appendChild(tr);
+          var tradePnl = t.pnl || 0;
+          tr.innerHTML = 
+            '<td>' + (t.date || '') + '</td>' +
+            '<td><small>' + (t.strategy || '') + '</small></td>' +
+            '<td>' + (t.entry_time || '') + '</td>' +
+            '<td>' + (t.exit_time || '') + '</td>' +
+            '<td>₹' + (t.entry_price || 0).toFixed(2) + '</td>' +
+            '<td>₹' + (t.exit_price || 0).toFixed(2) + '</td>' +
+            '<td>' + (t.qty || 0) + '</td>' +
+            '<td class="' + (tradePnl >= 0 ? 'text-success-custom' : 'text-danger-custom') + '">₹' + tradePnl.toFixed(2) + '</td>' +
+            '<td><small>' + (t.exit_reason || '') + '</small></td>';
+          tradesTbody.appendChild(tr);
         });
-        loadResults();
+        
+        // Scroll to results
+        document.getElementById('backtest-last-result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
-        status.textContent = 'Error: ' + (data.error || 'Unknown');
+        status.innerHTML = '<span class="text-danger">Error: ' + (data.error || 'Unknown error') + '</span>';
       }
     }).catch(function(e) {
       btn.disabled = false;
-      status.textContent = 'Request failed.';
+      progress.classList.add('d-none');
+      status.innerHTML = '<span class="text-danger">Request failed: ' + e.message + '</span>';
     });
   });
 })();

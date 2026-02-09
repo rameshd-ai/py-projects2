@@ -136,6 +136,9 @@
         <button class="nav-link" id="trading-tab" data-bs-toggle="tab" data-bs-target="#trading-pane" type="button" role="tab">Trading</button>
       </li>
       <li class="nav-item" role="presentation">
+        <button class="nav-link" id="frequency-tab" data-bs-toggle="tab" data-bs-target="#frequency-pane" type="button" role="tab">Trade Frequency</button>
+      </li>
+      <li class="nav-item" role="presentation">
         <button class="nav-link" id="apis-tab" data-bs-toggle="tab" data-bs-target="#apis-pane" type="button" role="tab">APIs & AI</button>
       </li>
       <li class="nav-item" role="presentation">
@@ -172,22 +175,88 @@
 
         <!-- Trading -->
         <div class="tab-pane fade" id="trading-pane" role="tabpanel">
-          <div class="tab-section-title">Daily limits & schedule</div>
-          <div class="form-group">
-            <label for="MAX_TRADES_PER_DAY">Max trades per day</label>
-            <input type="number" id="MAX_TRADES_PER_DAY" name="MAX_TRADES_PER_DAY" value="{{ config.get('MAX_TRADES_PER_DAY', '3') }}" placeholder="3" min="1" max="20">
-            <div class="hint">Maximum trades allowed per day (1–20).</div>
+          <div class="tab-section-title">Trading Schedule</div>
+          <div class="info-box mb-3">
+            <strong>Trade Frequency:</strong> Controlled by the <strong>Trade Frequency</strong> tab (dynamic hourly limits based on capital and drawdown).
+            <br><strong>Position Sizing:</strong> Set per session when approving trades (virtual balance for paper mode, live balance for live mode).
           </div>
           <div class="form-group">
             <label for="AUTO_CLOSE_TIME">Auto-close time (HH:MM)</label>
             <input type="text" id="AUTO_CLOSE_TIME" name="AUTO_CLOSE_TIME" value="{{ config.get('AUTO_CLOSE_TIME', '14:30') }}" placeholder="14:30">
             <div class="hint">Trading stops at this time (IST).</div>
           </div>
-          <div class="form-group">
-            <label for="TRADING_AMOUNT">Trading amount (₹)</label>
-            <input type="text" id="TRADING_AMOUNT" name="TRADING_AMOUNT" value="{{ config.get('TRADING_AMOUNT', '') }}" placeholder="e.g. 50000">
-            <div class="hint">Capital used for risk calculations. Can also set from dashboard.</div>
+        </div>
+
+        <!-- Trade Frequency -->
+        <div class="tab-pane fade" id="frequency-pane" role="tabpanel">
+          <div class="tab-section-title">Dynamic Trade Frequency</div>
+          <div class="info-box mb-3">
+            <strong>Capital-Based Frequency:</strong> Automatically adjusts trades per hour based on your capital size and daily P&L. 
+            Reduces frequency during drawdowns to protect capital.
           </div>
+
+          <div class="mb-4">
+            <h6 class="text-muted mb-3">Capital Slabs & Frequency</h6>
+            <table class="table table-sm table-dark table-hover" id="frequency-rules-table">
+              <thead>
+                <tr>
+                  <th>Min Capital (₹)</th>
+                  <th>Max Capital (₹)</th>
+                  <th>Trades per Hour</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="frequency-rules-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="add-frequency-rule-btn">
+              <span>+</span> Add Slab
+            </button>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="max-hourly-cap">Max Hourly Cap</label>
+                <input type="number" class="form-control" id="max-hourly-cap" min="1" max="10" value="5">
+                <div class="hint">Maximum trades per hour (safety limit)</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="drawdown-reduce-percent">Drawdown Reduction %</label>
+                <input type="number" class="form-control" id="drawdown-reduce-percent" min="0.1" max="1" step="0.1" value="0.5">
+                <div class="hint">Reduce frequency by this factor during drawdown (0.5 = 50%)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="drawdown-trigger">Soft Drawdown Trigger (%)</label>
+                <input type="number" class="form-control" id="drawdown-trigger" min="0.5" max="10" step="0.5" value="2">
+                <div class="hint">When daily loss hits this %, reduce frequency</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="hard-drawdown-trigger">Hard Drawdown Trigger (%)</label>
+                <input type="number" class="form-control" id="hard-drawdown-trigger" min="1" max="20" step="0.5" value="5">
+                <div class="hint">When daily loss hits this %, limit to 1 trade/hour</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert alert-warning border-0 small" style="background: rgba(253, 196, 0, 0.15);">
+            <strong>⚠ Example:</strong> With ₹100,000 capital, 2% soft trigger = ₹2,000 loss. Frequency reduces by 50%. 
+            5% hard trigger = ₹5,000 loss. Only 1 trade/hour allowed.
+          </div>
+
+          <button type="button" class="btn btn-primary" id="save-frequency-btn">
+            Save Frequency Settings
+          </button>
         </div>
 
         <!-- APIs & AI -->
@@ -223,7 +292,7 @@
         </div>
       </div>
 
-      <button type="submit" class="btn btn-save">Save settings</button>
+      <button type="submit" class="btn btn-save" id="general-save-btn">Save settings</button>
     </form>
   </div>
 
@@ -232,10 +301,11 @@
     (function() {
       var form = document.getElementById('settingsForm');
       var msgEl = document.getElementById('msg');
+      var generalSaveBtn = document.getElementById('general-save-btn');
       var keys = [
         'ZERODHA_API_KEY', 'ZERODHA_API_SECRET', 'ZERODHA_ACCESS_TOKEN',
         'NEWS_API_KEY', 'OPENAI_API_KEY', 'FLASK_SECRET_KEY', 'FLASK_ENV',
-        'TZ', 'AUTO_CLOSE_TIME', 'MAX_TRADES_PER_DAY', 'TRADING_AMOUNT'
+        'TZ', 'AUTO_CLOSE_TIME'
       ];
 
       function showMsg(text, type) {
@@ -243,6 +313,25 @@
         msgEl.className = 'msg show ' + type;
         if (type === 'success') setTimeout(function() { msgEl.classList.remove('show'); }, 4000);
       }
+
+      // Hide general save button on Trade Frequency tab
+      function updateSaveButtonVisibility() {
+        var frequencyTab = document.getElementById('frequency-pane');
+        if (frequencyTab && frequencyTab.classList.contains('show')) {
+          generalSaveBtn.style.display = 'none';
+        } else {
+          generalSaveBtn.style.display = 'block';
+        }
+      }
+
+      // Listen for tab changes
+      var tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+      tabButtons.forEach(function(btn) {
+        btn.addEventListener('shown.bs.tab', updateSaveButtonVisibility);
+      });
+
+      // Initial check
+      updateSaveButtonVisibility();
 
       form.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -277,6 +366,110 @@
             showMsg('Failed to save: ' + (err.message || 'network error'), 'error');
           });
       });
+
+      // Trade Frequency Management
+      var frequencyRules = [];
+      
+      function loadFrequencySettings() {
+        fetch('/api/settings/trade-frequency')
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.ok && data.config) {
+              var config = data.config;
+              frequencyRules = config.rules || [];
+              
+              // Populate settings
+              document.getElementById('max-hourly-cap').value = config.max_hourly_cap || 5;
+              document.getElementById('drawdown-trigger').value = (config.drawdown_trigger_percent || 0.02) * 100;
+              document.getElementById('hard-drawdown-trigger').value = (config.hard_drawdown_trigger_percent || 0.05) * 100;
+              document.getElementById('drawdown-reduce-percent').value = config.drawdown_reduce_percent || 0.5;
+              
+              // Render rules table
+              renderFrequencyRules();
+            }
+          })
+          .catch(function(e) {
+            console.error('Failed to load frequency settings:', e);
+          });
+      }
+      
+      function renderFrequencyRules() {
+        var tbody = document.getElementById('frequency-rules-tbody');
+        tbody.innerHTML = '';
+        
+        frequencyRules.forEach(function(rule, idx) {
+          var tr = document.createElement('tr');
+          tr.innerHTML = 
+            '<td><input type="number" class="form-control form-control-sm" value="' + (rule.min_capital || 0) + '" data-idx="' + idx + '" data-field="min_capital"></td>' +
+            '<td><input type="number" class="form-control form-control-sm" value="' + (rule.max_capital || '') + '" data-idx="' + idx + '" data-field="max_capital" placeholder="None"></td>' +
+            '<td><input type="number" class="form-control form-control-sm" value="' + (rule.max_trades_per_hour || 2) + '" data-idx="' + idx + '" data-field="max_trades_per_hour" min="1" max="10"></td>' +
+            '<td><button type="button" class="btn btn-sm btn-outline-danger remove-rule-btn" data-idx="' + idx + '">Remove</button></td>';
+          tbody.appendChild(tr);
+        });
+        
+        // Attach listeners
+        tbody.querySelectorAll('input').forEach(function(input) {
+          input.addEventListener('change', function() {
+            var idx = parseInt(this.getAttribute('data-idx'));
+            var field = this.getAttribute('data-field');
+            var value = this.value;
+            
+            if (field === 'min_capital' || field === 'max_capital') {
+              frequencyRules[idx][field] = value ? parseInt(value) : (field === 'max_capital' ? null : 0);
+            } else if (field === 'max_trades_per_hour') {
+              frequencyRules[idx][field] = parseInt(value) || 2;
+            }
+          });
+        });
+        
+        tbody.querySelectorAll('.remove-rule-btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var idx = parseInt(this.getAttribute('data-idx'));
+            frequencyRules.splice(idx, 1);
+            renderFrequencyRules();
+          });
+        });
+      }
+      
+      document.getElementById('add-frequency-rule-btn').addEventListener('click', function() {
+        frequencyRules.push({
+          min_capital: 0,
+          max_capital: null,
+          max_trades_per_hour: 2
+        });
+        renderFrequencyRules();
+      });
+      
+      document.getElementById('save-frequency-btn').addEventListener('click', function() {
+        var config = {
+          rules: frequencyRules,
+          max_hourly_cap: parseInt(document.getElementById('max-hourly-cap').value) || 5,
+          drawdown_trigger_percent: parseFloat(document.getElementById('drawdown-trigger').value) / 100 || 0.02,
+          hard_drawdown_trigger_percent: parseFloat(document.getElementById('hard-drawdown-trigger').value) / 100 || 0.05,
+          drawdown_reduce_percent: parseFloat(document.getElementById('drawdown-reduce-percent').value) || 0.5
+        };
+        
+        fetch('/api/settings/trade-frequency', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config: config })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.ok) {
+            showMsg('Trade frequency settings saved!', 'success');
+          } else {
+            showMsg('Failed to save: ' + (data.error || 'Unknown error'), 'error');
+          }
+        })
+        .catch(function(e) {
+          showMsg('Failed to save: ' + e.message, 'error');
+        });
+      });
+      
+      // Load frequency settings on page load
+      loadFrequencySettings();
+      
     })();
   </script>
 </body>

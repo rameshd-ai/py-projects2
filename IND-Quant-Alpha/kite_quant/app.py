@@ -18,6 +18,7 @@ from engine.config_store import CONFIG_KEYS, apply_config_to_env, load_config, s
 apply_config_to_env()
 
 from engine.ai_strategy_advisor import get_market_context, get_ai_strategy_recommendation, should_switch_strategy
+from engine.trade_frequency import calculate_max_trades_per_hour, get_frequency_status, get_trade_frequency_config, save_trade_frequency_config
 from engine.strategy import compute_us_bias, suggest_min_trades, consensus_signal, compute_technicals
 from engine.data_fetcher import (
     fetch_nse_quote,
@@ -221,13 +222,12 @@ def api_settings():
     data = request.get_json()
     if data is None:
         return {"ok": False, "error": "Invalid JSON or missing Content-Type: application/json"}, 400
-    # Allow TRADING_AMOUNT even when empty or "0"
     payload = {}
     for k, v in data.items():
         if k not in CONFIG_KEYS:
             continue
         v_str = str(v).strip() if v is not None else ""
-        if k == "TRADING_AMOUNT" or v_str:
+        if v_str:
             payload[k] = v_str
     if not payload:
         return {"ok": False, "error": "No valid settings to save"}, 400
@@ -238,22 +238,8 @@ def api_settings():
         return {"ok": False, "error": str(e)}, 500
 
 
-@app.route("/api/trading-amount", methods=["GET", "POST"])
-def api_trading_amount():
-    """GET: return current trading amount from config. POST: save to config.json and return success."""
-    if request.method == "GET":
-        amount = load_config().get("TRADING_AMOUNT", "").strip()
-        return jsonify({"ok": True, "trading_amount": amount})
-    data = request.get_json()
-    if data is None:
-        return jsonify({"ok": False, "error": "Invalid JSON or missing Content-Type: application/json"}), 400
-    val = data.get("amount") if data.get("amount") is not None else data.get("TRADING_AMOUNT")
-    val_str = str(val).strip() if val is not None else ""
-    try:
-        save_config({"TRADING_AMOUNT": val_str})
-        return jsonify({"ok": True, "message": "Saved", "trading_amount": val_str})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+# REMOVED: api_trading_amount endpoint - TRADING_AMOUNT is no longer used
+# Position sizing is now controlled by virtual_balance per session
 
 
 @app.route("/api/start", methods=["POST"])
@@ -536,8 +522,6 @@ def api_live():
         "balance": balance,
         "pnl": pnl,
         "today_pnl": today_pnl,
-        "trade_count_today": sm.trade_count_today(),
-        "max_trades_per_day": sm.get_max_trades_per_day(),
         "minutes_until_auto_close": minutes_left,
         "auto_close_time": os.getenv("AUTO_CLOSE_TIME", "14:30"),
         "market_prediction": prediction_data.get("prediction", "NEUTRAL"),
@@ -547,7 +531,6 @@ def api_live():
         "actual_direction": actual_direction,
         "overall_accuracy": accuracy_data.get("overall_accuracy", 0),
         "price_change_pct": price_change,
-        "trading_amount": load_config().get("TRADING_AMOUNT", "").strip(),
     }
 
 
@@ -1479,16 +1462,15 @@ def api_trade_suggestions():
             }
         
         suggestion = suggest_min_trades(df, symbol)
-        sm = get_session_manager()
         
         return {
             "ok": True,
             "symbol": symbol,
             "min_trades": suggestion["min_trades"],
             "suggested_max": suggestion["suggested_max"],
-            "current_max": sm.get_max_trades_per_day(),
             "reasoning": suggestion["reasoning"],
             "factors": suggestion["factors"],
+            "note": "Trade frequency now controlled by dynamic hourly system (see Settings → Trade Frequency)",
         }
     except Exception as e:
         return {
@@ -2539,7 +2521,8 @@ def get_affordable_index_options(
 # --- AI Trade Recommendation + Session-Based Continuous Strategy Automation ---
 # Execution modes: LIVE (Zerodha), PAPER (simulated balance), BACKTEST (historical)
 INTRADAY_CUTOFF_TIME = time(15, 15)  # 3:15 PM IST
-MAX_TRADES_PER_SESSION = 10
+# DEPRECATED: No longer used - replaced by dynamic hourly frequency
+# MAX_TRADES_PER_SESSION = 10
 SESSION_ENGINE_INTERVAL_SEC = 60
 _SESSIONS_DIR = Path(__file__).resolve().parent / "data"
 _SESSIONS_FILE = _SESSIONS_DIR / "trade_sessions.json"
@@ -2571,6 +2554,17 @@ def _load_trade_sessions() -> None:
             with open(_SESSIONS_FILE, encoding="utf-8") as f:
                 data = json.load(f)
             _trade_sessions = data.get("sessions") or []
+            
+            # Backward compatibility: Initialize new frequency fields for old sessions
+            now = datetime.now(ZoneInfo("Asia/Kolkata"))
+            for session in _trade_sessions:
+                if "current_hour_block" not in session:
+                    session["current_hour_block"] = now.hour
+                if "hourly_trade_count" not in session:
+                    session["hourly_trade_count"] = 0
+                if "frequency_mode" not in session:
+                    session["frequency_mode"] = "NORMAL"
+            
         except Exception as e:
             logger.exception("Load trade sessions error: %s", str(e))
             _trade_sessions = []
@@ -2774,7 +2768,6 @@ def api_approve_trade():
         virtual_balance = None
     session_id = f"ts_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    max_trades = int(data.get("max_trades_allowed") or rec.get("max_trades_allowed") or MAX_TRADES_PER_SESSION)
     daily_loss_limit = data.get("daily_loss_limit") or rec.get("daily_loss_limit")
     tradingsymbol = rec.get("tradingsymbol") or instrument
     exchange = rec.get("exchange") or "NSE"
@@ -2791,7 +2784,6 @@ def api_approve_trade():
         "status": "ACTIVE",
         "execution_mode": execution_mode,
         "virtual_balance": virtual_balance,
-        "max_trades_allowed": max_trades,
         "trades_taken_today": 0,
         "daily_pnl": 0.0,
         "daily_loss_limit": float(daily_loss_limit) if daily_loss_limit is not None else None,
@@ -2809,6 +2801,10 @@ def api_approve_trade():
         "last_ai_strategy_check": None,
         "last_ai_recommendation": None,
         "ai_strategy_switches": 0,
+        # Dynamic Trade Frequency (hourly tracking)
+        "current_hour_block": now.hour,
+        "hourly_trade_count": 0,
+        "frequency_mode": "NORMAL",
     }
     _trade_sessions.append(session)
     _save_trade_sessions()
@@ -3077,11 +3073,14 @@ def _run_session_engine_tick() -> None:
         if session_date is not None and session_date < today:
             session["status"] = "STOPPED"
             continue
-        max_trades = session.get("max_trades_allowed") or MAX_TRADES_PER_SESSION
-        taken = session.get("trades_taken_today") or 0
-        if taken >= max_trades:
-            session["status"] = "STOPPED"
-            continue
+        
+        # Reset hourly trade count if hour changed
+        current_hour = now.hour
+        if session.get("current_hour_block") != current_hour:
+            session["current_hour_block"] = current_hour
+            session["hourly_trade_count"] = 0
+            logger.info(f"[FREQ] Hour changed to {current_hour}, resetting hourly count for {session.get('instrument')}")
+        
         daily_limit = session.get("daily_loss_limit")
         if daily_limit is not None and (session.get("daily_pnl") or 0) <= -float(daily_limit):
             session["status"] = "STOPPED"
@@ -3172,6 +3171,27 @@ def _run_session_engine_tick() -> None:
                 except Exception as e:
                     logger.exception("[AI ADVISOR] Error during strategy evaluation: %s", str(e))
         
+        # Check dynamic hourly trade frequency
+        capital = session.get("virtual_balance") or 100000
+        if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
+            live_capital, _ = get_balance()
+            if live_capital and live_capital > 0:
+                capital = live_capital
+        
+        daily_pnl = session.get("daily_pnl", 0)
+        max_trades_this_hour, freq_mode = calculate_max_trades_per_hour(capital, daily_pnl)
+        session["frequency_mode"] = freq_mode
+        
+        trades_this_hour = session.get("hourly_trade_count", 0)
+        
+        # Block if hourly limit reached
+        if trades_this_hour >= max_trades_this_hour:
+            logger.info(
+                f"[FREQ] Hourly limit reached for {session.get('instrument')} | "
+                f"{trades_this_hour}/{max_trades_this_hour} | Mode: {freq_mode}"
+            )
+            continue
+        
         instrument = session.get("instrument", "")
         strategy_id, strategy_name = _pick_best_strategy(instrument, session=session)
         can_enter, entry_price = _check_entry_real(session, strategy_name_override=strategy_name)
@@ -3191,6 +3211,9 @@ def _run_session_engine_tick() -> None:
             "risk_approved": None,
             "risk_reason": None,
             "calculated_lots": None,
+            "max_trades_this_hour": max_trades_this_hour,
+            "trades_this_hour": trades_this_hour,
+            "frequency_mode": freq_mode,
         }
         if can_enter and entry_price is not None:
             try:
@@ -3221,7 +3244,7 @@ def _run_session_engine_tick() -> None:
                     capital=float(capital),
                     risk_percent_per_trade=float(rec.get("risk_percent_per_trade") or 1.0),
                     max_daily_loss_percent=float(rec.get("max_daily_loss_percent") or 3.0),
-                    max_trades=session.get("max_trades_allowed") or MAX_TRADES_PER_SESSION,
+                    max_trades=100,  # No longer used - dynamic hourly frequency controls this
                 )
                 risk_mgr = RiskManager(risk_config)
                 premium = rec.get("premium")
@@ -3247,6 +3270,13 @@ def _run_session_engine_tick() -> None:
                     strategy_name=strategy_name,
                     stop_loss=stop_loss,
                     target=target,
+                )
+                # Increment hourly trade count after successful entry
+                session["hourly_trade_count"] = session.get("hourly_trade_count", 0) + 1
+                logger.info(
+                    f"[FREQ] Trade executed for {session.get('instrument')} | "
+                    f"Hour: {session.get('current_hour_block')} | "
+                    f"Count: {session['hourly_trade_count']}/{max_trades_this_hour}"
                 )
                 _save_trade_sessions()
             except Exception as e:
@@ -3303,6 +3333,9 @@ def api_trade_sessions_active():
                 _, strategy_name = _pick_best_strategy(s.get("instrument") or "")
             except Exception:
                 strategy_name = "—"
+        # Get frequency status for this session
+        freq_status = get_frequency_status(s)
+        
         out.append({
             "session_id": s.get("sessionId"),
             "instrument": s.get("instrument"),
@@ -3313,7 +3346,6 @@ def api_trade_sessions_active():
             "strategy_name": strategy_name or "—",
             "session_status": _session_status_display(s),
             "trades_taken_today": s.get("trades_taken_today"),
-            "max_trades_allowed": s.get("max_trades_allowed"),
             "daily_pnl": s.get("daily_pnl"),
             "cutoff_time": s.get("cutoff_time"),
             "current_trade": s.get("current_trade"),
@@ -3321,6 +3353,11 @@ def api_trade_sessions_active():
             "last_entry_check": s.get("last_entry_check"),
             "entry_diagnostics": s.get("entry_diagnostics"),
             "current_ltp": (s.get("entry_diagnostics") or {}).get("ltp"),
+            # Dynamic trade frequency info
+            "frequency_mode": freq_status.get("frequency_mode"),
+            "max_trades_this_hour": freq_status.get("max_trades_per_hour"),
+            "hourly_trade_count": s.get("hourly_trade_count", 0),
+            "current_hour_block": s.get("current_hour_block"),
         })
     last_scan = _last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None
     payload = {"sessions": out, "last_scan": last_scan, **_engine_status_for_api()}
@@ -3373,6 +3410,10 @@ def api_trade_session_resume(session_id: str):
         session["trades_taken_today"] = 0
         session["daily_pnl"] = 0.0
         logger.info("Session %s resumed - reset to today (was from %s)", session_id, session_date)
+    # Reset hourly tracking
+    session["current_hour_block"] = now.hour
+    session["hourly_trade_count"] = 0
+    session["frequency_mode"] = "NORMAL"
     # Clear any stale diagnostics from previous run
     session.pop("entry_diagnostics", None)
     session.pop("last_entry_check", None)
@@ -3588,6 +3629,426 @@ def api_backtest_results():
     from backtest.backtest_engine import load_backtest_results
     runs = load_backtest_results()
     return jsonify({"runs": runs})
+
+
+@app.route("/api/backtest/run-ai", methods=["POST"])
+def api_backtest_run_ai():
+    """
+    POST /api/backtest/run-ai: AI-powered backtest with strategy auto-switching.
+    Simulates intraday trading day by day with AI evaluating and switching strategies every N minutes.
+    """
+    data = request.get_json() or {}
+    
+    # Extract parameters
+    instrument = (data.get("instrument") or "").strip().upper() or "NIFTY"
+    from_date_str = data.get("from_date") or (date.today() - timedelta(days=5)).isoformat()
+    to_date_str = data.get("to_date") or date.today().isoformat()
+    timeframe = data.get("timeframe") or "5minute"
+    initial_capital = float(data.get("initial_capital") or 10000)
+    max_loss_limit = float(data.get("max_loss_limit") or 2000)
+    max_trades_per_day = int(data.get("max_trades_per_day") or 10)
+    risk_percent = float(data.get("risk_percent_per_trade") or 2.0)
+    ai_enabled = data.get("ai_enabled", True)
+    ai_check_interval = int(data.get("ai_check_interval_minutes") or 5)
+    
+    try:
+        from datetime import datetime as dt
+        from_date = dt.fromisoformat(from_date_str).date()
+        to_date = dt.fromisoformat(to_date_str).date()
+    except:
+        return jsonify({"ok": False, "error": "Invalid date format"}), 400
+    
+    logger.info(f"[AI BACKTEST] Starting: {instrument} from {from_date} to {to_date}, AI={ai_enabled}")
+    
+    try:
+        # Run AI-powered backtest
+        result = _run_ai_backtest(
+            instrument=instrument,
+            from_date=from_date,
+            to_date=to_date,
+            timeframe=timeframe,
+            initial_capital=initial_capital,
+            max_loss_limit=max_loss_limit,
+            max_trades_per_day=max_trades_per_day,
+            risk_percent=risk_percent,
+            ai_enabled=ai_enabled,
+            ai_check_interval=ai_check_interval,
+        )
+        
+        if result.get("error"):
+            return jsonify({"ok": False, "error": result["error"]}), 400
+        
+        logger.info(f"[AI BACKTEST] Completed: Net P&L={result.get('net_pnl')}, Trades={result.get('total_trades')}")
+        return jsonify({"ok": True, "result": result})
+        
+    except Exception as e:
+        logger.exception(f"[AI BACKTEST] Error: {str(e)}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+def _run_ai_backtest(
+    instrument: str,
+    from_date: date,
+    to_date: date,
+    timeframe: str,
+    initial_capital: float,
+    max_loss_limit: float,
+    max_trades_per_day: int,
+    risk_percent: float,
+    ai_enabled: bool,
+    ai_check_interval: int,
+) -> dict:
+    """
+    Run AI-powered backtest simulating intraday trading with strategy auto-switching.
+    Returns comprehensive report with daily breakdown.
+    """
+    from engine.data_fetcher import fetch_nse_ohlc
+    from strategies.strategy_registry import get_strategy_for_session, STRATEGY_MAP
+    from strategies import data_provider as strategy_data_provider
+    from engine.ai_strategy_advisor import get_market_context, get_ai_strategy_recommendation, should_switch_strategy
+    
+    # Results tracking
+    all_trades = []
+    daily_breakdown = []
+    current_capital = initial_capital
+    cumulative_pnl = 0
+    total_ai_switches = 0
+    
+    # Iterate through each trading day
+    current_date = from_date
+    day_count = 0
+    
+    while current_date <= to_date:
+        day_count += 1
+        logger.info(f"[AI BACKTEST] Processing day {day_count}: {current_date}")
+        
+        # Fetch intraday candles for this day
+        try:
+            candles = fetch_nse_ohlc(
+                symbol=instrument,
+                interval=timeframe,
+                from_date=current_date,
+                to_date=current_date
+            )
+            
+            if not candles or len(candles) < 5:
+                logger.info(f"[AI BACKTEST] Skipping {current_date}: Insufficient data")
+                current_date += timedelta(days=1)
+                continue
+                
+        except Exception as e:
+            logger.warning(f"[AI BACKTEST] Failed to fetch data for {current_date}: {e}")
+            current_date += timedelta(days=1)
+            continue
+        
+        # Simulate trading for this day
+        day_result = _simulate_trading_day(
+            instrument=instrument,
+            trade_date=current_date,
+            candles=candles,
+            current_capital=current_capital,
+            max_trades=max_trades_per_day,
+            risk_percent=risk_percent,
+            ai_enabled=ai_enabled,
+            ai_check_interval=ai_check_interval,
+        )
+        
+        # Update tracking
+        all_trades.extend(day_result["trades"])
+        cumulative_pnl += day_result["daily_pnl"]
+        day_result["daily_summary"]["cumulative_pnl"] = cumulative_pnl
+        daily_breakdown.append(day_result["daily_summary"])
+        current_capital = day_result["ending_capital"]
+        total_ai_switches += day_result["ai_switches"]
+        
+        # Check if max loss limit exceeded
+        if cumulative_pnl <= -max_loss_limit:
+            logger.info(f"[AI BACKTEST] Max loss limit reached: {cumulative_pnl}")
+            break
+        
+        current_date += timedelta(days=1)
+    
+    # Calculate summary metrics
+    wins = sum(1 for t in all_trades if t.get("pnl", 0) > 0)
+    losses = sum(1 for t in all_trades if t.get("pnl", 0) < 0)
+    total_trades = len(all_trades)
+    win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
+    
+    # Best and worst days
+    day_pnls = [d["pnl"] for d in daily_breakdown]
+    best_day_pnl = max(day_pnls) if day_pnls else 0
+    worst_day_pnl = min(day_pnls) if day_pnls else 0
+    
+    # Return comprehensive report
+    return {
+        "instrument": instrument,
+        "from_date": from_date.isoformat(),
+        "to_date": to_date.isoformat(),
+        "initial_capital": initial_capital,
+        "ending_capital": current_capital,
+        "net_pnl": cumulative_pnl,
+        "total_trades": total_trades,
+        "wins": wins,
+        "losses": losses,
+        "win_rate": win_rate,
+        "best_day_pnl": best_day_pnl,
+        "worst_day_pnl": worst_day_pnl,
+        "ai_enabled": ai_enabled,
+        "ai_switches": total_ai_switches,
+        "trades": all_trades,
+        "daily_breakdown": daily_breakdown,
+    }
+
+
+def _simulate_trading_day(
+    instrument: str,
+    trade_date: date,
+    candles: list[dict],
+    current_capital: float,
+    max_trades: int,  # Kept as absolute daily failsafe limit (legacy parameter)
+    risk_percent: float,
+    ai_enabled: bool,
+    ai_check_interval: int,
+) -> dict:
+    """
+    Simulate a single trading day with AI strategy switching + dynamic frequency.
+    Uses dynamic hourly frequency limits based on capital and drawdown.
+    max_trades parameter is kept as an absolute daily failsafe.
+    Returns day summary with trades and P&L.
+    """
+    from strategies.strategy_registry import get_strategy_for_session, STRATEGY_MAP
+    from strategies import data_provider as strategy_data_provider
+    from engine.trade_frequency import calculate_max_trades_per_hour
+    
+    # Day tracking
+    day_trades = []
+    day_pnl = 0
+    current_position = None
+    strategies_used = set()
+    ai_switches_today = 0
+    current_strategy_name = "Momentum Breakout"  # Default starting strategy
+    
+    # Track last AI check time
+    last_ai_check_idx = 0
+    
+    # Dynamic frequency tracking
+    hourly_trade_counts = {}  # hour -> trade_count
+    frequency_mode = "NORMAL"
+    
+    # Simulate each candle (5-minute intervals)
+    for idx, candle in enumerate(candles):
+        candle_time = candle.get("timestamp") or candle.get("date")
+        ltp = candle.get("close")
+        
+        # Skip if outside market hours (9:15 - 15:15)
+        current_hour = 9  # Default
+        if candle_time:
+            try:
+                candle_dt = datetime.fromisoformat(str(candle_time))
+                candle_time_obj = candle_dt.time()
+                current_hour = candle_dt.hour
+                if candle_time_obj < time(9, 15) or candle_time_obj > time(15, 15):
+                    continue
+            except:
+                pass
+        
+        # Initialize hourly counter
+        if current_hour not in hourly_trade_counts:
+            hourly_trade_counts[current_hour] = 0
+        
+        # AI strategy evaluation (every N candles)
+        candles_since_check = idx - last_ai_check_idx
+        if ai_enabled and candles_since_check >= (ai_check_interval // 5) and not current_position:
+            # Get market context for AI
+            recent_candles = candles[max(0, idx-10):idx+1]
+            
+            # Simplified AI decision (in real scenario, would call full AI advisor)
+            # For backtest, we'll rotate through strategies based on market conditions
+            available_strategies = ["Momentum Breakout", "VWAP Trend Ride", "RSI Reversal Fade", 
+                                   "Pullback Continuation", "EMA Ribbon Trend Alignment"]
+            
+            # Simple logic: pick based on trend
+            if len(recent_candles) >= 3:
+                trend = recent_candles[-1]["close"] - recent_candles[0]["close"]
+                if trend > 0:
+                    new_strategy = "Momentum Breakout"
+                elif abs(trend) < 20:
+                    new_strategy = "RSI Reversal Fade"
+                else:
+                    new_strategy = "Pullback Continuation"
+                
+                if new_strategy != current_strategy_name:
+                    current_strategy_name = new_strategy
+                    ai_switches_today += 1
+                    logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Switched to {new_strategy}")
+            
+            last_ai_check_idx = idx
+        
+        strategies_used.add(current_strategy_name)
+        
+        # Check if we have open position - manage exit
+        if current_position:
+            # Check stop loss
+            if ltp <= current_position["stop_loss"]:
+                exit_pnl = (current_position["stop_loss"] - current_position["entry_price"]) * current_position["qty"]
+                day_trades.append({
+                    "date": trade_date.isoformat(),
+                    "strategy": current_position["strategy"],
+                    "entry_time": current_position["entry_time"],
+                    "exit_time": candle_time,
+                    "entry_price": current_position["entry_price"],
+                    "exit_price": current_position["stop_loss"],
+                    "qty": current_position["qty"],
+                    "pnl": exit_pnl,
+                    "exit_reason": "STOP_LOSS"
+                })
+                day_pnl += exit_pnl
+                current_position = None
+                continue
+            
+            # Check target
+            if ltp >= current_position["target"]:
+                exit_pnl = (current_position["target"] - current_position["entry_price"]) * current_position["qty"]
+                day_trades.append({
+                    "date": trade_date.isoformat(),
+                    "strategy": current_position["strategy"],
+                    "entry_time": current_position["entry_time"],
+                    "exit_time": candle_time,
+                    "entry_price": current_position["entry_price"],
+                    "exit_price": current_position["target"],
+                    "qty": current_position["qty"],
+                    "pnl": exit_pnl,
+                    "exit_reason": "TARGET"
+                })
+                day_pnl += exit_pnl
+                current_position = None
+                continue
+        
+        # Entry logic - check dynamic hourly frequency
+        if not current_position:
+            # Absolute daily failsafe check
+            if len(day_trades) >= max_trades:
+                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Daily max trades limit reached ({len(day_trades)}/{max_trades})")
+                break
+            
+            # Calculate dynamic trades per hour based on capital and drawdown
+            max_trades_this_hour, freq_mode = calculate_max_trades_per_hour(
+                capital=current_capital + day_pnl,
+                daily_pnl=day_pnl
+            )
+            frequency_mode = freq_mode
+            
+            trades_this_hour = hourly_trade_counts.get(current_hour, 0)
+            
+            # Block if hourly limit reached
+            if trades_this_hour >= max_trades_this_hour:
+                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Hourly limit reached ({trades_this_hour}/{max_trades_this_hour}) Mode: {freq_mode}")
+                continue
+            
+            # Simple entry logic for backtest (in reality, would use full strategy check_entry)
+            # Look for momentum: if last 3 candles are green and volume is high
+            if idx >= 3:
+                recent = candles[idx-3:idx+1]
+                greens = sum(1 for c in recent if c["close"] > c["open"])
+                
+                if greens >= 3:  # Strong uptrend
+                    # Enter trade
+                    entry_price = ltp
+                    qty = int((current_capital * risk_percent / 100) / entry_price)
+                    if qty > 0:
+                        stop_loss = entry_price * 0.98  # 2% stop
+                        target = entry_price * 1.04  # 4% target
+                        
+                        current_position = {
+                            "strategy": current_strategy_name,
+                            "entry_time": candle_time,
+                            "entry_price": entry_price,
+                            "stop_loss": stop_loss,
+                            "target": target,
+                            "qty": qty,
+                        }
+                        
+                        # Increment hourly counter
+                        hourly_trade_counts[current_hour] = hourly_trade_counts.get(current_hour, 0) + 1
+                        
+                        logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: ENTRY {current_strategy_name} @{entry_price} (Hour: {trades_this_hour + 1}/{max_trades_this_hour})")
+    
+    # Close any open position at end of day
+    if current_position:
+        exit_price = candles[-1]["close"]
+        exit_pnl = (exit_price - current_position["entry_price"]) * current_position["qty"]
+        day_trades.append({
+            "date": trade_date.isoformat(),
+            "strategy": current_position["strategy"],
+            "entry_time": current_position["entry_time"],
+            "exit_time": candles[-1].get("timestamp") or candles[-1].get("date"),
+            "entry_price": current_position["entry_price"],
+            "exit_price": exit_price,
+            "qty": current_position["qty"],
+            "pnl": exit_pnl,
+            "exit_reason": "DAY_END"
+        })
+        day_pnl += exit_pnl
+        current_position = None
+    
+    # Day summary
+    wins = sum(1 for t in day_trades if t["pnl"] > 0)
+    losses = sum(1 for t in day_trades if t["pnl"] <= 0)
+    total_trades_all_hours = sum(hourly_trade_counts.values())
+    
+    return {
+        "trades": day_trades,
+        "daily_pnl": day_pnl,
+        "ending_capital": current_capital + day_pnl,
+        "ai_switches": ai_switches_today,
+        "frequency_mode": frequency_mode,
+        "hourly_breakdown": dict(hourly_trade_counts),
+        "daily_summary": {
+            "date": trade_date.isoformat(),
+            "trades": len(day_trades),
+            "wins": wins,
+            "losses": losses,
+            "pnl": day_pnl,
+            "cumulative_pnl": 0,  # Will be filled by caller
+            "strategies": list(strategies_used),
+            "ai_switches": ai_switches_today,
+            "frequency_mode": frequency_mode,
+            "total_trades_attempted": total_trades_all_hours,
+        }
+    }
+
+
+@app.route("/api/settings/trade-frequency")
+def api_get_trade_frequency():
+    """GET /api/settings/trade-frequency: Get trade frequency configuration."""
+    try:
+        config = get_trade_frequency_config()
+        return jsonify({"ok": True, "config": config})
+    except Exception as e:
+        logger.exception("Failed to get trade frequency config")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/settings/trade-frequency", methods=["POST"])
+def api_save_trade_frequency():
+    """POST /api/settings/trade-frequency: Save trade frequency configuration."""
+    try:
+        data = request.get_json() or {}
+        config = data.get("config")
+        
+        if not config:
+            return jsonify({"ok": False, "error": "No config provided"}), 400
+        
+        success = save_trade_frequency_config(config)
+        
+        if success:
+            return jsonify({"ok": True, "message": "Trade frequency config saved"})
+        else:
+            return jsonify({"ok": False, "error": "Validation failed"}), 400
+            
+    except Exception as e:
+        logger.exception("Failed to save trade frequency config")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/index-bias")

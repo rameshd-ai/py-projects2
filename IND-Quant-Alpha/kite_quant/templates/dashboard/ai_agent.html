@@ -454,7 +454,13 @@
           (s.ai_auto_switching_enabled ? '<span class="badge bg-primary bg-opacity-25 text-primary me-1" title="AI auto-switches strategies every ' + (s.ai_check_interval_minutes || 5) + ' min">🤖 AI Auto-Switch</span> ' : '') +
           'Strategy: <strong>' + ((s.recommendation || {}).strategyName || s.strategy_name || '—') + '</strong>' + 
           (s.ai_strategy_switches ? ' <span class="badge bg-info bg-opacity-25 text-info" title="AI has switched strategy ' + s.ai_strategy_switches + ' times">↻ ' + s.ai_strategy_switches + '</span>' : '') + 
-          ' &nbsp;|&nbsp; Trades: ' + (s.trades_taken_today ?? 0) + '/' + (s.max_trades_allowed ?? 10) + ' &nbsp;|&nbsp; Cutoff: ' + (s.cutoff_time || '—') + ' &nbsp;|&nbsp; <span class="' + dailyPnlClass + '">Daily P&L: ' + (dailyPnl >= 0 ? '+' : '') + dailyPnl + '</span></div>' +
+          ' &nbsp;|&nbsp; Cutoff: ' + (s.cutoff_time || '—') + ' &nbsp;|&nbsp; <span class="' + dailyPnlClass + '">Daily P&L: ' + (dailyPnl >= 0 ? '+' : '') + dailyPnl + '</span></div>' +
+        '<div class="small mb-2">' +
+          '<span class="badge ' + (s.frequency_mode === 'NORMAL' ? 'bg-success' : (s.frequency_mode === 'REDUCED' ? 'bg-warning' : 'bg-danger')) + ' bg-opacity-25 me-1">Frequency: ' + (s.frequency_mode || 'NORMAL') + '</span>' +
+          '<span class="text-muted">Trades this hour: <strong>' + (s.hourly_trade_count ?? 0) + '/' + ((s.last_entry_check || {}).max_trades_this_hour ?? '—') + '</strong></span>' +
+          (s.frequency_mode === 'REDUCED' ? ' <span class="text-warning small">⚠ Reduced due to drawdown</span>' : '') +
+          (s.frequency_mode === 'HARD_LIMIT' ? ' <span class="text-danger small">🛑 Hard limit - max loss protection</span>' : '') +
+        '</div>' +
         (s.last_ai_recommendation && s.ai_auto_switching_enabled && !isStopped ? 
           '<div class="alert alert-info border-0 small mb-2 py-2" style="background: rgba(168, 199, 250, 0.12);">' +
           '<strong>🤖 AI Recommendation:</strong> ' + (s.last_ai_recommendation.recommended_strategy || '—') + 

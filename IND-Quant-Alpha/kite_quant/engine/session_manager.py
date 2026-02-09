@@ -1,5 +1,6 @@
 """
-Trading on/off, 2:30 PM IST auto-close, trade count (configurable max/day).
+Trading on/off, auto-close time management.
+Note: Trade frequency is now controlled by the dynamic hourly frequency system (engine.trade_frequency).
 """
 from __future__ import annotations
 
@@ -7,9 +8,7 @@ import os
 from datetime import datetime, time
 from typing import Any
 
-from .config_store import load_config
-
-# Use Asia/Kolkata for 2:30 PM IST
+# Use Asia/Kolkata for auto-close time
 TZ_NAME = os.getenv("TZ", "Asia/Kolkata")
 AUTO_CLOSE_STR = os.getenv("AUTO_CLOSE_TIME", "14:30")
 
@@ -20,16 +19,6 @@ def _parse_auto_close_time() -> time:
         return time(int(h), int(m))
     except Exception:
         return time(14, 30)
-
-
-def _get_max_trades_per_day() -> int:
-    """Get max trades per day from config, default to 3."""
-    try:
-        cfg = load_config()
-        max_trades = cfg.get("MAX_TRADES_PER_DAY", "3")
-        return int(max_trades) if max_trades else 3
-    except Exception:
-        return 3
 
 
 AUTO_CLOSE_TIME = _parse_auto_close_time()
@@ -47,42 +36,7 @@ class SessionManager:
     def __init__(self):
         self._trading_on = False
         self._status = SessionStatus.STOPPED
-        self._trade_count_today = 0
-        self._last_reset_date: str | None = None
         self._positions: list[dict[str, Any]] = []
-
-    def _today_str(self) -> str:
-        try:
-            from zoneinfo import ZoneInfo
-            return datetime.now(ZoneInfo(TZ_NAME)).date().isoformat()
-        except Exception:
-            return datetime.utcnow().date().isoformat()
-
-    def _reset_trade_count_if_new_day(self) -> None:
-        today = self._today_str()
-        if self._last_reset_date != today:
-            self._trade_count_today = 0
-            self._last_reset_date = today
-
-    def can_trade(self) -> bool:
-        """Check if can trade based on configurable max trades per day."""
-        self._reset_trade_count_if_new_day()
-        max_trades = _get_max_trades_per_day()
-        return self._trade_count_today < max_trades
-
-    def record_trade(self) -> None:
-        self._reset_trade_count_if_new_day()
-        max_trades = _get_max_trades_per_day()
-        if self._trade_count_today < max_trades:
-            self._trade_count_today += 1
-    
-    def get_max_trades_per_day(self) -> int:
-        """Get current max trades per day setting."""
-        return _get_max_trades_per_day()
-
-    def trade_count_today(self) -> int:
-        self._reset_trade_count_if_new_day()
-        return self._trade_count_today
 
     def is_trading_on(self) -> bool:
         return self._trading_on
