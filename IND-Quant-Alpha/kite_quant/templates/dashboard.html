@@ -403,6 +403,13 @@
     <!-- OVERVIEW SECTION -->
     <div id="section-overview" class="section active fade-in">
       
+      <!-- Loading state (shown until first poll completes) -->
+      <div id="dashboard-loading" class="text-center py-5 text-muted">
+        <span class="material-icons-round mb-2" style="font-size: 48px;">hourglass_empty</span>
+        <div>Loading dashboard…</div>
+      </div>
+      <div id="dashboard-metrics" class="d-none">
+      
       <!-- Zerodha Authentication Status -->
       <div class="alert border-0 mb-4 d-flex align-items-center justify-content-between" id="zerodha-auth-alert" style="background: rgba(168, 199, 250, 0.1);">
         <div class="d-flex align-items-center">
@@ -626,6 +633,7 @@
         </div>
       </div>
     </div>
+    </div><!-- /#dashboard-metrics -->
 
     <!-- TESTING SECTION -->
     <div id="section-testing" class="section fade-in">
@@ -1677,12 +1685,32 @@
         }
     }
 
+    const POLL_TIMEOUT_MS = 55000;
+    let pollLoadDone = false;
     function poll() {
-        api(`/api/live?symbol=${currentSymbol}&mode=${currentMode}`).then(r => r.json()).then(d => {
-            updateUI(d, 'overview');
-            updateUI(d, 'testing');
-            updateUI(d, 'live');
-        });
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function() { controller.abort(); }, POLL_TIMEOUT_MS);
+        api(`/api/live?symbol=${currentSymbol}&mode=${currentMode}`, { signal: controller.signal })
+            .then(function(r) { clearTimeout(timeoutId); if (!r.ok) throw new Error('Request failed'); return r.json(); })
+            .then(function(d) {
+                pollLoadDone = true;
+                document.getElementById('dashboard-loading') && document.getElementById('dashboard-loading').classList.add('d-none');
+                document.getElementById('dashboard-metrics') && document.getElementById('dashboard-metrics').classList.remove('d-none');
+                updateUI(d, 'overview');
+                updateUI(d, 'testing');
+                updateUI(d, 'live');
+            })
+            .catch(function(err) {
+                clearTimeout(timeoutId);
+                if (!pollLoadDone) {
+                    var el = document.getElementById('dashboard-loading');
+                    if (el) {
+                        el.classList.remove('d-none');
+                        el.innerHTML = (err.name === 'AbortError') ? 'Still loading… First load can take up to a minute when fetching live data. Retrying in a few seconds…' : 'Unable to load data. Retrying…';
+                    }
+                    setTimeout(poll, 3000);
+                }
+            });
     }
 
     function startTrading() { api('/api/start', {method:'POST'}).then(r=>r.json()).then(d=>{ if(d.ok) { poll(); if(!pollTimer) pollTimer=setInterval(poll, POLL_MS); } }); }

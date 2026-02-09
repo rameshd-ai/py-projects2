@@ -14,13 +14,14 @@ class PullbackContinuation(BaseStrategy):
     """
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20)
+        # Pullback needs 20 candles to identify trend + pullback
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20, period="2d")
         if not candles or len(candles) < 10:
             return False, None
 
         last = candles[-1]
         prev = candles[-2]
-        vwap = self.data.get_vwap(self.instrument, interval="5m", count=20)
+        vwap = self.data.get_vwap(self.instrument, interval="5m", count=20, period="2d")
         ltp = self.data.get_ltp(self.instrument)
 
         if vwap <= 0 or ltp <= 0:

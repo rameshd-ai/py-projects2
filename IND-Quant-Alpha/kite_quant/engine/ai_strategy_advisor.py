@@ -1,0 +1,283 @@
+"""
+AI-powered strategy advisor: Uses GPT to analyze market conditions and recommend best strategy.
+Dynamically switches strategies based on real-time market analysis.
+"""
+from __future__ import annotations
+
+import logging
+import os
+from datetime import datetime
+from typing import Any
+
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
+
+# All available strategies with their characteristics
+STRATEGY_PROFILES = {
+    "Momentum Breakout": {
+        "id": "momentum_breakout",
+        "best_for": "Strong trending markets with clear breakouts",
+        "requires": "High volume, clear price momentum, breakout above resistance",
+        "timeframe": "5-15 min",
+    },
+    "VWAP Trend Ride": {
+        "id": "vwap_trend_ride",
+        "best_for": "Sustained trending days with VWAP as support/resistance",
+        "requires": "Clear trend, price respecting VWAP levels",
+        "timeframe": "5-30 min",
+    },
+    "RSI Reversal Fade": {
+        "id": "rsi_reversal_fade",
+        "best_for": "Overbought/oversold reversals in ranging markets",
+        "requires": "RSI extremes (>70 or <30), ranging market",
+        "timeframe": "5-15 min",
+    },
+    "Bollinger Mean Reversion": {
+        "id": "bollinger_mean_reversion",
+        "best_for": "Range-bound markets with mean reversion tendency",
+        "requires": "Low volatility, price at Bollinger band extremes",
+        "timeframe": "5-15 min",
+    },
+    "Pullback Continuation": {
+        "id": "pullback_continuation",
+        "best_for": "Trending markets with healthy pullbacks",
+        "requires": "Established trend, pullback to VWAP or support",
+        "timeframe": "5-30 min",
+    },
+    "EMA Ribbon Trend Alignment": {
+        "id": "ema_ribbon_trend_alignment",
+        "best_for": "Strong trending markets with EMA alignment",
+        "requires": "Multiple EMAs aligned, strong directional move",
+        "timeframe": "15-60 min",
+    },
+    "VWAP Reclaim": {
+        "id": "vwap_reclaim",
+        "best_for": "Trend reversal when price reclaims VWAP",
+        "requires": "VWAP reclaim, volume confirmation",
+        "timeframe": "5-15 min",
+    },
+    "News Volatility Burst": {
+        "id": "news_volatility_burst",
+        "best_for": "High volatility events, news-driven moves",
+        "requires": "VIX spike, sudden volatility increase",
+        "timeframe": "1-5 min",
+    },
+    "Volume Climax Reversal": {
+        "id": "volume_climax_reversal",
+        "best_for": "Exhaustion reversals after climax volume",
+        "requires": "Volume spike, price exhaustion",
+        "timeframe": "5-15 min",
+    },
+    "Range Compression Breakout": {
+        "id": "range_compression_breakout",
+        "best_for": "Breakouts after tight consolidation",
+        "requires": "Low ATR, tight range, building momentum",
+        "timeframe": "5-15 min",
+    },
+    "Liquidity Sweep Reversal": {
+        "id": "liquidity_sweep_reversal",
+        "best_for": "Reversal after stop-loss hunting",
+        "requires": "False breakout, liquidity grab, quick reversal",
+        "timeframe": "5-15 min",
+    },
+    "Time-Based Volatility Play": {
+        "id": "time_based_volatility_play",
+        "best_for": "Market open and close volatility",
+        "requires": "Specific time windows (9:15-9:45, 14:30-15:15)",
+        "timeframe": "5-15 min",
+    },
+}
+
+
+def get_market_context(
+    nifty_price: float | None = None,
+    nifty_change_pct: float | None = None,
+    banknifty_price: float | None = None,
+    banknifty_change_pct: float | None = None,
+    vix: float | None = None,
+    current_time: str | None = None,
+    recent_candles: list[dict] | None = None,
+) -> dict[str, Any]:
+    """
+    Gather comprehensive market context for AI analysis.
+    """
+    context = {
+        "timestamp": current_time or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "nifty": {
+            "price": nifty_price,
+            "change_pct": nifty_change_pct,
+        },
+        "banknifty": {
+            "price": banknifty_price,
+            "change_pct": banknifty_change_pct,
+        },
+        "vix": vix,
+    }
+    
+    # Analyze recent price action
+    if recent_candles and len(recent_candles) >= 5:
+        recent_5 = recent_candles[-5:]
+        avg_volume = sum(c.get("volume", 0) for c in recent_5) / len(recent_5)
+        last_candle = recent_5[-1]
+        
+        context["price_action"] = {
+            "trend": "bullish" if recent_5[-1]["close"] > recent_5[0]["close"] else "bearish",
+            "avg_volume": avg_volume,
+            "latest_volume": last_candle.get("volume", 0),
+            "volume_spike": last_candle.get("volume", 0) > avg_volume * 1.5,
+            "range_high": max(c["high"] for c in recent_5),
+            "range_low": min(c["low"] for c in recent_5),
+        }
+    
+    return context
+
+
+def build_gpt_prompt(context: dict[str, Any], current_strategy: str | None = None) -> str:
+    """
+    Build GPT prompt for strategy recommendation.
+    """
+    strategies_info = "\n".join([
+        f"- {name}: {info['best_for']} (Requires: {info['requires']})"
+        for name, info in STRATEGY_PROFILES.items()
+    ])
+    
+    prompt = f"""You are an expert intraday trading advisor for Indian stock markets (NSE/BSE).
+
+Current Market Context:
+- Time: {context.get('timestamp')}
+- NIFTY 50: {context['nifty']['price']} ({context['nifty']['change_pct']:+.2f}%)
+- BANK NIFTY: {context['banknifty']['price']} ({context['banknifty']['change_pct']:+.2f}%)
+- India VIX: {context.get('vix', 'N/A')}
+"""
+    
+    if "price_action" in context:
+        pa = context["price_action"]
+        prompt += f"""
+Recent Price Action (last 5 candles):
+- Trend: {pa['trend']}
+- Volume activity: {"High" if pa['volume_spike'] else "Normal"}
+- Range: {pa['range_low']:.2f} - {pa['range_high']:.2f}
+"""
+    
+    prompt += f"""
+Currently using strategy: {current_strategy or "None"}
+
+Available strategies:
+{strategies_info}
+
+Task: Based on the current market conditions, recommend the SINGLE BEST strategy for this moment.
+
+Respond in JSON format:
+{{
+    "recommended_strategy": "Strategy Name",
+    "confidence": "high/medium/low",
+    "reasoning": "2-3 sentence explanation",
+    "switch_from_current": true/false,
+    "market_assessment": "brief market condition summary"
+}}
+
+Consider:
+1. Current market trend and momentum
+2. Volatility level (VIX)
+3. Time of day (opening/mid-day/closing)
+4. Recent price action and volume
+5. Whether a switch is beneficial vs. staying with current strategy"""
+    
+    return prompt
+
+
+def get_ai_strategy_recommendation(
+    context: dict[str, Any],
+    current_strategy: str | None = None,
+) -> dict[str, Any] | None:
+    """
+    Get AI-powered strategy recommendation using OpenAI GPT.
+    Returns None if OpenAI is not configured or fails.
+    """
+    if not OPENAI_AVAILABLE:
+        logger.warning("OpenAI library not installed. Install with: pip install openai")
+        return None
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        logger.warning("OPENAI_API_KEY not configured. AI strategy selection disabled.")
+        return None
+    
+    try:
+        client = openai.OpenAI(api_key=api_key)
+        
+        prompt = build_gpt_prompt(context, current_strategy)
+        
+        logger.info(f"[AI ADVISOR] Requesting strategy recommendation...")
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",  # Fast and cost-effective
+            messages=[
+                {"role": "system", "content": "You are an expert intraday trading advisor specializing in Indian markets."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.3,  # Lower temperature for more consistent recommendations
+            max_tokens=500,
+        )
+        
+        result = response.choices[0].message.content
+        import json
+        recommendation = json.loads(result)
+        
+        logger.info(
+            f"[AI ADVISOR] Recommendation: {recommendation.get('recommended_strategy')} "
+            f"(Confidence: {recommendation.get('confidence')}) "
+            f"Switch: {recommendation.get('switch_from_current')}"
+        )
+        logger.info(f"[AI ADVISOR] Reasoning: {recommendation.get('reasoning')}")
+        
+        return recommendation
+        
+    except Exception as e:
+        logger.exception(f"[AI ADVISOR] Failed to get recommendation: {e}")
+        return None
+
+
+def should_switch_strategy(
+    recommendation: dict[str, Any],
+    current_strategy: str | None,
+    min_confidence: str = "medium",
+) -> tuple[bool, str | None]:
+    """
+    Determine if strategy should be switched based on AI recommendation.
+    Returns (should_switch, new_strategy_name)
+    """
+    if not recommendation:
+        return False, None
+    
+    recommended = recommendation.get("recommended_strategy")
+    confidence = recommendation.get("confidence", "low")
+    switch_flag = recommendation.get("switch_from_current", False)
+    
+    # Confidence threshold check
+    confidence_order = {"low": 0, "medium": 1, "high": 2}
+    if confidence_order.get(confidence, 0) < confidence_order.get(min_confidence, 1):
+        logger.info(f"[AI ADVISOR] Confidence too low ({confidence}), not switching")
+        return False, None
+    
+    # If no current strategy, always accept recommendation
+    if not current_strategy:
+        return True, recommended
+    
+    # If same strategy, no switch needed
+    if recommended == current_strategy:
+        logger.info(f"[AI ADVISOR] Recommended same strategy ({recommended}), staying")
+        return False, None
+    
+    # If AI explicitly says switch
+    if switch_flag:
+        logger.info(f"[AI ADVISOR] Switching {current_strategy} → {recommended}")
+        return True, recommended
+    
+    return False, None

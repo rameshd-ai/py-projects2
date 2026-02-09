@@ -8,7 +8,8 @@ from .base_strategy import BaseStrategy
 
 class RSIReversal(BaseStrategy):
     def check_entry(self) -> tuple[bool, float | None]:
-        rsi = self.data.get_rsi(self.instrument, interval="5minute", period=14)
+        # RSI-14 needs 16+ candles (period + 2)
+        rsi = self.data.get_rsi(self.instrument, interval="5minute", period=14, count=20)
         ltp = self.data.get_ltp(self.instrument)
         if rsi is None or ltp <= 0:
             return False, None

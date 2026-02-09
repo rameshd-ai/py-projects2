@@ -10,7 +10,8 @@ class DailyBreakoutContinuation(BaseStrategy):
     """Intraday: close above session high so far with volume expansion."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=30)
+        # Daily breakout continuation needs 30 candles for trend
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=30, period="3d")
         if not candles or len(candles) < 20:
             return False, None
         day_high = max(float(c.get("high", 0)) for c in candles[:-1])

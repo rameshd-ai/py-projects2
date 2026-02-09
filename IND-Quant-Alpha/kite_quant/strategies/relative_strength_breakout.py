@@ -10,7 +10,8 @@ class RelativeStrengthBreakout(BaseStrategy):
     """Stock breaking out of recent base with volume."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20)
+        # Relative strength needs 20 candles for comparison
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20, period="2d")
         if not candles or len(candles) < 15:
             return False, None
         last = candles[-1]

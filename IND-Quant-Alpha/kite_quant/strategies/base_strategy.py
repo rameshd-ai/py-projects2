@@ -5,6 +5,9 @@ from __future__ import annotations
 
 from typing import Any
 
+# Preferred return type for check_entry (full observability for Manual Mode)
+EntryCheckResult = dict[str, Any]  # can_enter, entry_price, reason, conditions
+
 
 class BaseStrategy:
     """Base class for all trading strategies. Data provider supplies candles and LTP."""
@@ -13,9 +16,13 @@ class BaseStrategy:
         self.instrument = instrument
         self.data = data_provider
 
-    def check_entry(self) -> tuple[bool, float | None]:
+    def check_entry(self) -> tuple[bool, float | None] | dict[str, Any]:
         """
-        Check if entry condition is met. Returns (True, entry_price) or (False, None).
+        Check if entry condition is met.
+        May return:
+          - (bool, float|None): (can_enter, entry_price) for backward compat.
+          - dict: {"can_enter": bool, "entry_price": float|None, "reason": str, "conditions": dict}
+                  for full observability (reason and conditions shown in UI).
         """
         raise NotImplementedError
 

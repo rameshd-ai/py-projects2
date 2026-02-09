@@ -13,7 +13,8 @@ class LiquiditySweepReversal(BaseStrategy):
     """
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20)
+        # Liquidity sweep needs 20 candles to identify sweep patterns
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20, period="2d")
         if not candles or len(candles) < 6:
             return False, None
 

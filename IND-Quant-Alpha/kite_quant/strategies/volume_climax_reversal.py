@@ -10,7 +10,8 @@ class VolumeClimaxReversal(BaseStrategy):
     """Reversal after climax candle with confirmation."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=15)
+        # Volume climax needs 15 candles for volume comparison
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=15, period="2d")
         if not candles or len(candles) < 10:
             return False, None
         climax, confirm = candles[-2], candles[-1]

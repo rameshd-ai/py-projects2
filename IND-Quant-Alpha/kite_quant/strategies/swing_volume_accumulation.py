@@ -10,7 +10,8 @@ class SwingVolumeAccumulation(BaseStrategy):
     """Rising volume with flat price → breakout anticipation (intraday)."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=15)
+        # Volume accumulation needs 15 candles
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=15, period="2d")
         if not candles or len(candles) < 10:
             return False, None
         closes = [float(c.get("close", 0)) for c in candles[-10:]]

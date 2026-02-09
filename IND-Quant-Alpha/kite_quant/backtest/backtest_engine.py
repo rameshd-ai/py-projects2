@@ -153,7 +153,12 @@ def run_backtest_engine(
                     max_drawdown = dd
                 equity_curve.append({"index": i, "equity": equity, "date": candle.get("date", "")})
         else:
-            can_enter, entry_price = strategy.check_entry()
+            result = strategy.check_entry()
+            if isinstance(result, dict):
+                can_enter = result.get("can_enter", False)
+                entry_price = result.get("entry_price")
+            else:
+                can_enter, entry_price = result
             if can_enter and entry_price is not None:
                 stop_loss = strategy.get_stop_loss(entry_price)
                 target = strategy.get_target(entry_price)

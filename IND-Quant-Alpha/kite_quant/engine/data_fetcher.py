@@ -241,41 +241,88 @@ def fetch_nse_ohlc(
     Fetch NSE OHLC for symbol. Uses Zerodha Kite Connect if credentials given,
     else returns empty for backtest to fill from yfinance.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    print(f"[CANDLE FETCH] START: symbol={symbol}, interval={interval}, period={period}", flush=True)
+    logger.info(f"fetch_nse_ohlc called: symbol={symbol}, interval={interval}, period={period}")
+    
     try:
         from . import zerodha_client
+        print(f"[CANDLE FETCH] Getting Kite client...", flush=True)
         kite = zerodha_client._get_kite()
         
         if not kite:
-            # No credentials: return empty for backtest to fill from CSV/yfinance
+            print(f"[CANDLE FETCH] ERROR: No Kite client!", flush=True)
+            logger.warning("No Kite client available")
             return pd.DataFrame()
         
-        # Map interval to Kite format
+        print(f"[CANDLE FETCH] Kite client OK", flush=True)
+        
+        # Map interval to Kite format (Zerodha uses "5minute" not "minute5")
         interval_map = {
             "1m": "minute",
-            "3m": "minute3",
-            "5m": "minute5",
-            "15m": "minute15",
-            "30m": "minute30",
-            "1h": "hour",
+            "3m": "3minute",
+            "5m": "5minute",
+            "15m": "15minute",
+            "30m": "30minute",
+            "1h": "60minute",
             "1d": "day",
         }
-        kite_interval = interval_map.get(interval, "minute5")
+        kite_interval = interval_map.get(interval, "5minute")
         
         # Get instrument token
-        instruments = kite.instruments("NSE")
+        # For indices like "NIFTY 50", match by name or tradingsymbol
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Get instruments list (will be cached at kiteconnect level)
+        print(f"[CANDLE FETCH] Fetching instruments list...", flush=True)
+        try:
+            instruments = kite.instruments("NSE")
+            print(f"[CANDLE FETCH] Got {len(instruments)} instruments", flush=True)
+        except Exception as e:
+            print(f"[CANDLE FETCH] ERROR fetching instruments: {e}", flush=True)
+            logger.exception(f"Failed to fetch instruments list for {symbol}: {e}")
+            return pd.DataFrame()
+            
         instrument_token = None
+        symbol_upper = symbol.upper()
+        
+        print(f"[CANDLE FETCH] Searching for: {symbol_upper}", flush=True)
+        logger.info(f"Searching for instrument: {symbol_upper} among {len(instruments)} NSE instruments")
+        
+        # First try exact tradingsymbol match
         for inst in instruments:
-            if inst["tradingsymbol"] == symbol.upper():
+            if inst.get("tradingsymbol", "").upper() == symbol_upper:
                 instrument_token = inst["instrument_token"]
+                logger.info(f"✓ Found by tradingsymbol: token={instrument_token}, {inst.get('name')}")
                 break
         
+        # If not found, try name match for indices
         if not instrument_token:
+            for inst in instruments:
+                if inst.get("name", "").upper() == symbol_upper:
+                    instrument_token = inst["instrument_token"]
+                    logger.info(f"✓ Found by name: token={instrument_token}, tradingsymbol={inst.get('tradingsymbol')}")
+                    break
+        
+        if not instrument_token:
+            logger.error(f"✗ Could not find instrument token for: {symbol}")
+            logger.error(f"Sample instruments: {[{k: v for k, v in inst.items() if k in ['name', 'tradingsymbol', 'instrument_type']} for inst in instruments[:5]]}")
             return pd.DataFrame()
+        
+        logger.info(f"Using instrument_token={instrument_token} for {symbol}")
         
         # Calculate from/to dates based on period
         from datetime import datetime, timedelta
         to_date = datetime.now()
-        if period == "1d":
+        
+        # For intraday intervals, fetch from recent days to get enough candles
+        if "minute" in kite_interval.lower() and period == "1d":
+            # Default to 1 day of minute data
+            from_date = to_date - timedelta(days=1)
+        elif period == "1d":
             from_date = to_date - timedelta(days=1)
         elif period == "5d":
             from_date = to_date - timedelta(days=5)
@@ -287,6 +334,9 @@ def fetch_nse_ohlc(
             from_date = to_date - timedelta(days=60)
         
         # Fetch historical data
+        print(f"[CANDLE FETCH] Calling historical_data: token={instrument_token}, from={from_date}, to={to_date}, interval={kite_interval}", flush=True)
+        logger.info(f"Fetching historical: token={instrument_token}, from={from_date}, to={to_date}, interval={kite_interval}")
+        
         data = kite.historical_data(
             instrument_token=instrument_token,
             from_date=from_date,
@@ -294,7 +344,12 @@ def fetch_nse_ohlc(
             interval=kite_interval
         )
         
+        print(f"[CANDLE FETCH] Received {len(data) if data else 0} records", flush=True)
+        logger.info(f"Received {len(data) if data else 0} candle records from Zerodha")
+        
         if not data:
+            print(f"[CANDLE FETCH] ERROR: Empty data!", flush=True)
+            logger.error(f"No historical data returned from Zerodha for {symbol}")
             return pd.DataFrame()
         
         # Convert to DataFrame
@@ -311,8 +366,10 @@ def fetch_nse_ohlc(
         if "Datetime" in df.columns:
             df["Datetime"] = pd.to_datetime(df["Datetime"])
         
+        logger.info(f"Successfully fetched {len(df)} candles for {symbol}")
         return df
-    except Exception:
+    except Exception as e:
+        logger.exception(f"Error fetching OHLC for {symbol}: {str(e)}")
         return pd.DataFrame()
 
 

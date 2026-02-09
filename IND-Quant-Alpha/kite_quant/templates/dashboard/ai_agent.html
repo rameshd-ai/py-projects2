@@ -187,22 +187,33 @@
     </div>
   </div>
 
-  <!-- ACTIVE SESSIONS & ENGINE CONTROL (Kill switch, market guard) -->
+  <!-- ACTIVE SESSIONS & ENGINE CONTROL (Live terminal view) -->
   <div class="card mb-4 border-warning border-opacity-50">
     <div class="card-header d-flex align-items-center gap-2" style="background: rgba(255, 193, 7, 0.15);">
       <span class="material-icons-round">settings_input_antenna</span>
       <span>Active Sessions & Engine Control</span>
     </div>
     <div class="card-body">
-      <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+      <!-- Engine status line: running, market, next scan, session count -->
+      <div id="engine-status-line" class="d-flex flex-wrap align-items-center gap-3 mb-3 py-2 px-3 rounded" style="background: rgba(0,0,0,0.04);">
         <span class="small text-muted">Engine:</span>
         <span class="badge bg-success bg-opacity-25 text-success" id="engine-status-badge">Running</span>
-        <button type="button" class="btn btn-danger btn-sm" id="engine-kill-btn" title="Halt all LIVE/PAPER trading">STOP ALL TRADING</button>
-        <button type="button" class="btn btn-success btn-sm" id="engine-start-btn" title="Resume engine">RESUME ENGINE</button>
+        <span class="small text-muted">Market:</span>
+        <span class="badge bg-secondary bg-opacity-50" id="engine-market-badge">—</span>
+        <span class="small text-muted">Last tick:</span>
+        <span class="badge bg-secondary bg-opacity-50" id="engine-last-tick">—</span>
+        <span class="small text-muted">Next scan in:</span>
+        <span class="badge bg-primary bg-opacity-25" id="engine-next-scan">—</span>
+        <span class="small text-muted">Active sessions:</span>
+        <span class="badge bg-info bg-opacity-25" id="engine-active-count">0</span>
+        <span class="ms-auto">
+          <button type="button" class="btn btn-danger btn-sm" id="engine-kill-btn" title="Halt all LIVE/PAPER trading">STOP ALL TRADING</button>
+          <button type="button" class="btn btn-success btn-sm" id="engine-start-btn" title="Resume engine">RESUME ENGINE</button>
+        </span>
       </div>
-      <div class="small text-muted mb-2">Active sessions (Manual Mode):</div>
-      <div id="active-sessions-list" class="list-group list-group-flush">
-        <div class="list-group-item text-muted small" id="active-sessions-empty">No active sessions.</div>
+      <div class="small text-muted mb-2">Active sessions (live state):</div>
+      <div id="active-sessions-list" class="d-flex flex-column gap-3">
+        <div class="text-muted small py-2" id="active-sessions-empty">No active sessions.</div>
       </div>
     </div>
   </div>
@@ -348,54 +359,250 @@
   });
 
   function loadEngineStatus() {
-    fetch('/api/engine/status').then(function(r) { return r.json(); }).then(function(data) {
-      const badge = document.getElementById('engine-status-badge');
+    return fetch('/api/engine/status').then(function(r) { return r.json(); }).then(function(data) {
+      var running = data.running !== false && data.engine_enabled !== false;
+      var badge = document.getElementById('engine-status-badge');
       if (badge) {
-        badge.textContent = data.engine_enabled ? 'Running' : 'Stopped';
-        badge.className = data.engine_enabled ? 'badge bg-success bg-opacity-25 text-success' : 'badge bg-danger bg-opacity-25 text-danger';
+        badge.textContent = running ? 'Running' : 'Paused';
+        badge.className = running ? 'badge bg-success bg-opacity-25 text-success' : 'badge bg-danger bg-opacity-25 text-danger';
       }
+      var marketBadge = document.getElementById('engine-market-badge');
+      if (marketBadge) {
+        marketBadge.textContent = data.market_open ? 'Open' : 'Closed';
+        marketBadge.className = data.market_open ? 'badge bg-success bg-opacity-25 text-success' : 'badge bg-secondary bg-opacity-50';
+      }
+      var lastTickEl = document.getElementById('engine-last-tick');
+      if (lastTickEl) {
+        lastTickEl.textContent = data.last_tick ? (function() { try { var d = new Date(data.last_tick); return d.toLocaleTimeString(); } catch (e) { return '—'; } })() : '—';
+      }
+      var nextScan = document.getElementById('engine-next-scan');
+      if (nextScan) {
+        var sec = data.next_scan_sec != null ? data.next_scan_sec : data.next_scan_in_seconds;
+        nextScan.textContent = sec != null ? (sec + 's') : '—';
+      }
+      var activeCount = document.getElementById('engine-active-count');
+      if (activeCount) activeCount.textContent = data.active_session_count != null ? data.active_session_count : 0;
     }).catch(function() {});
   }
+  function formatTimeInTrade(entryTimeIso) {
+    if (!entryTimeIso) return '—';
+    try {
+      var entry = new Date(entryTimeIso);
+      var sec = Math.floor((Date.now() - entry.getTime()) / 1000);
+      if (sec < 60) return sec + 's';
+      if (sec < 3600) return Math.floor(sec / 60) + 'm';
+      return Math.floor(sec / 3600) + 'h ' + (Math.floor((sec % 3600) / 60)) + 'm';
+    } catch (e) { return '—'; }
+  }
+  function computeUnrealizedPnl(trade, ltp) {
+    if (trade == null || ltp == null) return { pnl: null, pct: null };
+    var entry = parseFloat(trade.entry_price);
+    var qty = parseInt(trade.qty, 10) || 0;
+    var side = (trade.side || 'BUY').toUpperCase();
+    if (!entry || !qty) return { pnl: null, pct: null };
+    var pnl = (side === 'BUY') ? (ltp - entry) * qty : (entry - ltp) * qty;
+    var pct = ((ltp - entry) / entry) * 100;
+    if (side === 'SELL') pct = -pct;
+    return { pnl: Math.round(pnl * 100) / 100, pct: Math.round(pct * 100) / 100 };
+  }
+  function fetchLtpAndUpdate(sessionId, symbol, exchange, trade, ltpEl, pnlEl) {
+    if (!symbol || !ltpEl) return;
+    fetch('/api/quote?symbol=' + encodeURIComponent(symbol) + '&exchange=' + encodeURIComponent(exchange || 'NSE'))
+      .then(function(r) { return r.json(); })
+      .then(function(q) {
+        var ltp = parseFloat(q.last || q.last_price) || 0;
+        ltpEl.textContent = ltp > 0 ? ltp.toFixed(2) : '—';
+        if (trade && pnlEl) {
+          var u = computeUnrealizedPnl(trade, ltp);
+          if (u.pnl != null) {
+            pnlEl.textContent = (u.pnl >= 0 ? '+' : '') + u.pnl + ' (' + (u.pct >= 0 ? '+' : '') + u.pct + '%)';
+            pnlEl.className = u.pnl >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold';
+          }
+        }
+      })
+      .catch(function() { ltpEl.textContent = '—'; });
+  }
+  function renderSessionCard(s) {
+    var ct = s.current_trade;
+    var isStopped = s.status === 'STOPPED';
+    var status = isStopped ? 'STOPPED' : (s.session_status || (ct ? 'IN_TRADE' : 'WAITING_FOR_ENTRY'));
+    var statusClass = status === 'STOPPED' ? 'secondary' : (status === 'IN_TRADE' ? 'warning' : (status === 'WAITING_FOR_ENTRY' ? 'info' : 'secondary'));
+    var dailyPnl = s.daily_pnl != null ? Number(s.daily_pnl) : 0;
+    var dailyPnlClass = dailyPnl >= 0 ? 'text-success' : 'text-danger';
+    var card = document.createElement('div');
+    card.className = 'card border border-opacity-50 active-session-card' + (isStopped ? ' bg-dark bg-opacity-10' : '');
+    var sessionId = s.sessionId || s.session_id || '';
+    card.setAttribute('data-session-id', sessionId);
+    var actionButton = isStopped ?
+      '<div class="d-flex gap-2"><button type="button" class="btn btn-outline-success btn-sm session-resume-btn" data-session-id="' + sessionId + '">Resume</button>' +
+      '<button type="button" class="btn btn-outline-danger btn-sm session-delete-btn" data-session-id="' + sessionId + '">Delete</button></div>' :
+      '<button type="button" class="btn btn-outline-danger btn-sm session-kill-btn" data-session-id="' + sessionId + '">Stop</button>';
+    card.innerHTML =
+      '<div class="card-body py-3">' +
+        '<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">' +
+          '<div class="d-flex flex-wrap align-items-center gap-2">' +
+            '<strong>' + (s.instrument || '—') + '</strong>' +
+            '<span class="badge bg-opacity-50 ' + (s.execution_mode === "LIVE" ? "bg-danger" : "bg-secondary") + '">' + (s.execution_mode || 'PAPER') + '</span>' +
+            '<span class="badge bg-' + statusClass + ' bg-opacity-25">' + status.replace(/_/g, ' ') + '</span>' +
+          '</div>' +
+          actionButton +
+        '</div>' +
+        '<div class="small text-muted mb-2">' +
+          (s.ai_mode_enabled ? '<span class="badge bg-primary bg-opacity-25 text-primary me-1" title="AI auto-selects strategies every ' + (s.ai_check_interval_minutes || 15) + ' min">🤖 AI Mode</span> ' : '') +
+          'Strategy: <strong>' + (s.ai_recommended_strategy || s.strategy_name || '—') + '</strong>' + 
+          (s.ai_recommendation_confidence ? ' <span class="badge bg-success bg-opacity-25 text-success-custom" title="' + (s.ai_recommendation_reasoning || '') + '">' + s.ai_recommendation_confidence + '</span>' : '') + 
+          ' &nbsp;|&nbsp; Trades: ' + (s.trades_taken_today ?? 0) + '/' + (s.max_trades_allowed ?? 10) + ' &nbsp;|&nbsp; Cutoff: ' + (s.cutoff_time || '—') + ' &nbsp;|&nbsp; <span class="' + dailyPnlClass + '">Daily P&L: ' + (dailyPnl >= 0 ? '+' : '') + dailyPnl + '</span></div>' +
+        (isStopped ? '<div class="border-top pt-2 mt-2 small text-muted">Session is stopped. Resume to continue trading.</div>' : 
+        (ct ? (
+          '<div class="border-top pt-2 mt-2 small">' +
+            '<div class="text-success fw-bold mb-2">IN TRADE</div>' +
+            '<div class="row g-2">' +
+              '<div class="col-6 col-md-4">Entry price: ' + (ct.entry_price != null ? '₹' + Number(ct.entry_price).toFixed(2) : '—') + '</div>' +
+              '<div class="col-6 col-md-4">Current price: <span class="session-ltp fw-bold">—</span></div>' +
+              '<div class="col-6 col-md-4">Stop loss: ' + (ct.stop_loss != null ? '₹' + Number(ct.stop_loss).toFixed(2) : '—') + '</div>' +
+              '<div class="col-6 col-md-4">Target: ' + (ct.target != null ? '₹' + Number(ct.target).toFixed(2) : '—') + '</div>' +
+              '<div class="col-6 col-md-4">Qty: ' + (ct.qty ?? '—') + '</div>' +
+              '<div class="col-6 col-md-4">Entry time: ' + (ct.entry_time ? new Date(ct.entry_time).toLocaleTimeString() : '—') + '</div>' +
+              '<div class="col-6 col-md-4">Time in trade: <span class="session-time-in-trade" data-entry-time="' + (ct.entry_time || '') + '">' + formatTimeInTrade(ct.entry_time) + '</span></div>' +
+              '<div class="col-6 col-md-4">Unrealized P&L: <span class="session-unrealized-pnl">—</span></div>' +
+            '</div>' +
+          '</div>'
+        ) : (
+          (function() {
+            var ed = s.entry_diagnostics || {};
+            var lec = s.last_entry_check || {};
+            var ts = (ed.last_check || lec.timestamp) ? new Date(ed.last_check || lec.timestamp).toLocaleTimeString() : '—';
+            var strategy = ed.strategy || lec.strategy || s.strategy_name || '—';
+            var ltp = ed.ltp != null ? Number(ed.ltp) : (s.current_ltp != null ? Number(s.current_ltp) : null);
+            var livePriceStr = (ltp != null && !isNaN(ltp)) ? ('₹' + ltp.toFixed(2)) : '⚠ Unable to fetch price';
+            var entryPriceVal = ed.entry_price != null ? ed.entry_price : lec.entry_price;
+            var entryPriceStr = entryPriceVal != null ? '₹' + Number(entryPriceVal).toFixed(2) : '—';
+            var blockedReason = ed.blocked_reason || lec.block_reason || '';
+            var conditions = ed.conditions || {};
+            var canEnter = lec.can_enter;
+            var riskApproved = lec.risk_approved;
+            var riskReason = lec.risk_reason || '';
+            var lots = lec.calculated_lots != null ? lec.calculated_lots : '';
+            var statusLine = '';
+            var statusClass = 'text-muted';
+            if (canEnter && riskApproved) {
+              statusLine = 'Ready — entry possible' + (lots !== '' ? ' (lots: ' + lots + ')' : '');
+              statusClass = 'text-success';
+            } else if (blockedReason) {
+              statusLine = 'Blocked: ' + blockedReason;
+              statusClass = 'text-warning';
+            } else if (canEnter && riskReason) {
+              statusLine = 'Risk rejected: ' + riskReason;
+              statusClass = 'text-danger';
+            } else {
+              statusLine = 'Waiting for next scan';
+            }
+            var conditionsHtml = '';
+            if (Object.keys(conditions).length > 0) {
+              conditionsHtml = '<div class="mt-2"><span class="text-muted small">Conditions:</span><ul class="small mb-0 mt-1 list-unstyled">';
+              for (var k in conditions) {
+                var v = conditions[k];
+                var ok = v === true || v === 'true' || v === 1;
+                conditionsHtml += '<li>' + (ok ? '✔' : '✖') + ' ' + k.replace(/_/g, ' ') + '</li>';
+              }
+              conditionsHtml += '</ul></div>';
+            }
+            return '<div class="border-top pt-2 mt-2 small">' +
+              '<div class="text-muted mb-2">Entry diagnostics (last check: ' + ts + ')</div>' +
+              '<div class="row g-2 mb-1">' +
+                '<div class="col-6 col-md-4">Live Price: ' + livePriceStr + '</div>' +
+                '<div class="col-6 col-md-4">Entry Price: ' + entryPriceStr + '</div>' +
+                '<div class="col-6 col-md-4">Strategy: ' + strategy + '</div>' +
+              '</div>' +
+              '<div class="' + statusClass + ' fw-bold">' + statusLine + '</div>' +
+              (riskReason && !riskApproved && canEnter ? '<div class="text-danger small mt-1">Risk reason: ' + riskReason + '</div>' : '') +
+              conditionsHtml +
+              '<div class="text-muted small mt-1">Last scan: ' + (s.last_scan ? new Date(s.last_scan).toLocaleTimeString() : '—') + '</div>' +
+            '</div>';
+          })()
+        ))) +
+      '</div>';
+    return card;
+  }
   function loadActiveSessions() {
-    fetch('/api/trade-sessions/active').then(function(r) { return r.json(); }).then(function(data) {
-      const list = document.getElementById('active-sessions-list');
-      const empty = document.getElementById('active-sessions-empty');
+    return fetch('/api/trade-sessions').then(function(r) { return r.json(); }).then(function(data) {
+      var list = document.getElementById('active-sessions-list');
+      var empty = document.getElementById('active-sessions-empty');
       if (!list) return;
-      const sessions = data.sessions || [];
+      var sessions = data.sessions || [];
+      list.querySelectorAll('.active-session-card').forEach(function(el) { el.remove(); });
       if (sessions.length === 0) {
         empty.classList.remove('d-none');
-        list.querySelectorAll('.active-session-row').forEach(function(el) { el.remove(); });
         return;
       }
       empty.classList.add('d-none');
-      list.querySelectorAll('.active-session-row').forEach(function(el) { el.remove(); });
       sessions.forEach(function(s) {
-        const row = document.createElement('div');
-        row.className = 'list-group-item d-flex justify-content-between align-items-center active-session-row';
-        const pnl = s.daily_pnl != null ? Number(s.daily_pnl) : 0;
-        const pnlClass = pnl >= 0 ? 'text-success' : 'text-danger';
-        row.innerHTML = '<div class="small">' +
-          '<strong>' + (s.instrument || '—') + '</strong> ' +
-          '<span class="badge bg-opacity-50 ' + (s.execution_mode === 'LIVE' ? 'bg-danger' : 'bg-secondary') + '">' + (s.execution_mode || 'PAPER') + '</span> ' +
-          'Trades: ' + (s.trades_taken_today ?? 0) + '/' + (s.max_trades_allowed ?? 10) + ' ' +
-          '<span class="' + pnlClass + '">P&L: ' + (pnl >= 0 ? '+' : '') + pnl + '</span>' +
-          (s.current_trade ? ' <span class="text-warning">(open)</span>' : '') +
-          '</div>' +
-          '<button type="button" class="btn btn-outline-danger btn-sm session-kill-btn" data-session-id="' + (s.session_id || '') + '">Kill Session</button>';
-        list.appendChild(row);
+        var card = renderSessionCard(s);
+        list.appendChild(card);
+        var killBtn = card.querySelector('.session-kill-btn');
+        var resumeBtn = card.querySelector('.session-resume-btn');
+        if (killBtn) {
+          killBtn.addEventListener('click', function() {
+            var id = this.getAttribute('data-session-id');
+            if (!id || !confirm('Close open trade (if any) and stop this session?')) return;
+            fetch('/api/trade-sessions/' + encodeURIComponent(id) + '/kill', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+              .then(function(r) { return r.json(); }).then(function(res) {
+                if (res.ok) { loadActiveSessions(); loadEngineStatus(); } else { alert(res.error || 'Failed'); }
+              }).catch(function() { alert('Failed to kill session'); });
+          });
+        }
+        if (resumeBtn) {
+          resumeBtn.addEventListener('click', function() {
+            var id = this.getAttribute('data-session-id');
+            if (!id || !confirm('Resume this stopped session?')) return;
+            fetch('/api/trade-sessions/' + encodeURIComponent(id) + '/resume', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+              .then(function(r) { return r.json(); }).then(function(res) {
+                if (res.ok) { loadActiveSessions(); loadEngineStatus(); } else { alert(res.error || 'Failed to resume'); }
+              }).catch(function() { alert('Failed to resume session'); });
+          });
+        }
+        var deleteBtn = card.querySelector('.session-delete-btn');
+        var sessionId = s.sessionId || s.session_id || '';
+        console.log('Looking for delete button, found:', deleteBtn, 'for session:', sessionId, 'status:', s.status);
+        if (deleteBtn) {
+          console.log('Attaching delete handler for:', sessionId);
+          deleteBtn.addEventListener('click', function() {
+            console.log('Delete button clicked for:', this.getAttribute('data-session-id'));
+            var id = this.getAttribute('data-session-id');
+            if (!id || !confirm('Permanently delete this session? This cannot be undone.')) return;
+            fetch('/api/trade-sessions/' + encodeURIComponent(id) + '/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+              .then(function(r) { return r.json(); }).then(function(res) {
+                if (res.ok) { 
+                  console.log('Session deleted successfully:', id);
+                  loadActiveSessions(); 
+                  loadEngineStatus(); 
+                } else { 
+                  alert(res.error || 'Failed to delete'); 
+                }
+              }).catch(function(err) { 
+                console.error('Delete error:', err);
+                alert('Failed to delete session'); 
+              });
+          });
+        } else {
+          console.log('Delete button NOT found for session:', sessionId, 'Is stopped?', s.status === 'STOPPED');
+        }
+        if (s.status === "ACTIVE" && s.current_trade) {
+          var exchange = (s.exchange || 'NSE').toUpperCase();
+          var symbol = (exchange === 'NFO' ? s.tradingsymbol : null) || s.current_trade.symbol || s.tradingsymbol || s.instrument;
+          var ltpEl = card.querySelector('.session-ltp');
+          var pnlEl = card.querySelector('.session-unrealized-pnl');
+          fetchLtpAndUpdate(sessionId, symbol, exchange, s.current_trade, ltpEl, pnlEl);
+        }
       });
-      list.querySelectorAll('.session-kill-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          const id = this.getAttribute('data-session-id');
-          if (!id || !confirm('Close open trade (if any) and stop this session?')) return;
-          fetch('/api/trade-sessions/' + encodeURIComponent(id) + '/kill', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-            .then(function(r) { return r.json(); }).then(function(res) {
-              if (res.ok) { loadActiveSessions(); } else { alert(res.error || 'Failed'); }
-            }).catch(function() { alert('Failed to kill session'); });
-        });
-      });
-    }).catch(function() {});
+    }).catch(function() { return {}; });
   }
+  setInterval(function() {
+    document.querySelectorAll('.session-time-in-trade').forEach(function(el) {
+      var t = el.getAttribute('data-entry-time');
+      if (t) el.textContent = formatTimeInTrade(t);
+    });
+  }, 1000);
   document.getElementById('engine-kill-btn').addEventListener('click', function() {
     if (!confirm('Stop all LIVE and PAPER trading immediately?')) return;
     fetch('/api/engine/kill', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
@@ -409,10 +616,8 @@
         if (res.ok) { loadEngineStatus(); }
       }).catch(function() {});
   });
-  loadEngineStatus();
-  loadActiveSessions();
-  setInterval(loadActiveSessions, 30000);
-  setInterval(loadEngineStatus, 10000);
+  setInterval(loadActiveSessions, 8000);
+  setInterval(loadEngineStatus, 8000);
 
   document.getElementById('execution-btn').addEventListener('click', function() {
     document.getElementById('optionsPanel').querySelector('.offcanvas-title') && document.getElementById('optionsPanel').querySelector('.offcanvas-title').click();
@@ -468,48 +673,41 @@
     document.getElementById(id + '-lots').textContent = rec.positionSizeLots != null ? rec.positionSizeLots : '—';
   }
 
-  async function loadIndexOpportunities() {
-    const loadingEl = document.getElementById('index-opportunities-loading');
-    const contentEl = document.getElementById('index-opportunities-content');
-    const noDirectionEl = document.getElementById('index-no-direction-msg');
-    const niftyWrap = document.getElementById('index-nifty-card-wrap');
-    const bankNiftyWrap = document.getElementById('index-banknifty-card-wrap');
+  function loadIndexOpportunities() {
+    var loadingEl = document.getElementById('index-opportunities-loading');
+    var contentEl = document.getElementById('index-opportunities-content');
+    var noDirectionEl = document.getElementById('index-no-direction-msg');
+    var niftyWrap = document.getElementById('index-nifty-card-wrap');
+    var bankNiftyWrap = document.getElementById('index-banknifty-card-wrap');
     if (loadingEl) loadingEl.classList.remove('d-none');
     if (contentEl) contentEl.classList.add('d-none');
     if (noDirectionEl) noDirectionEl.classList.add('d-none');
-    const capital = getTotalCapital() || 5000;
-    try {
-      const [niftyRes, bankRes] = await Promise.all([
-        fetch('/api/ai-trade-recommendation?instrument=NIFTY&capital=' + capital),
-        fetch('/api/ai-trade-recommendation?instrument=BANKNIFTY&capital=' + capital)
-      ]);
-      const niftyData = await niftyRes.json();
-      const bankData = await bankRes.json();
-      if (loadingEl) loadingEl.classList.add('d-none');
-      if (contentEl) contentEl.classList.remove('d-none');
-      indexRecommendations = {};
-      if (niftyData.recommendation) {
-        indexRecommendations.NIFTY = niftyData.recommendation;
-        fillIndexCard('index-nifty', niftyData.recommendation);
-        if (niftyWrap) niftyWrap.classList.remove('d-none');
-      } else {
-        if (niftyWrap) niftyWrap.classList.add('d-none');
-      }
-      if (bankData.recommendation) {
-        indexRecommendations.BANKNIFTY = bankData.recommendation;
-        fillIndexCard('index-banknifty', bankData.recommendation);
-        if (bankNiftyWrap) bankNiftyWrap.classList.remove('d-none');
-      } else {
-        if (bankNiftyWrap) bankNiftyWrap.classList.add('d-none');
-      }
-      if (!niftyData.recommendation && !bankData.recommendation) {
-        if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Market lacks clear direction. Wait for better setup.'; }
-      }
-    } catch (e) {
-      if (loadingEl) loadingEl.classList.add('d-none');
-      if (contentEl) contentEl.classList.remove('d-none');
-      if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Could not load index recommendations.'; }
-    }
+    var capital = getTotalCapital() || 5000;
+    return fetch('/api/ai-trade-recommendations-index?capital=' + capital)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (loadingEl) loadingEl.classList.add('d-none');
+        if (contentEl) contentEl.classList.remove('d-none');
+        indexRecommendations = {};
+        if (data.nifty) {
+          indexRecommendations.NIFTY = data.nifty;
+          fillIndexCard('index-nifty', data.nifty);
+          if (niftyWrap) niftyWrap.classList.remove('d-none');
+        } else { if (niftyWrap) niftyWrap.classList.add('d-none'); }
+        if (data.banknifty) {
+          indexRecommendations.BANKNIFTY = data.banknifty;
+          fillIndexCard('index-banknifty', data.banknifty);
+          if (bankNiftyWrap) bankNiftyWrap.classList.remove('d-none');
+        } else { if (bankNiftyWrap) bankNiftyWrap.classList.add('d-none'); }
+        if (!data.nifty && !data.banknifty) {
+          if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Market lacks clear direction. Wait for better setup.'; }
+        }
+      })
+      .catch(function() {
+        if (loadingEl) loadingEl.classList.add('d-none');
+        if (contentEl) contentEl.classList.remove('d-none');
+        if (noDirectionEl) { noDirectionEl.classList.remove('d-none'); noDirectionEl.textContent = 'Could not load index recommendations.'; }
+      });
   }
 
   document.getElementById('index-recommendation-cards').addEventListener('click', function(e) {
@@ -535,8 +733,8 @@
 
   totalCapitalEl.addEventListener('input', refreshIndexOpportunities);
   riskPctEl.addEventListener('input', refreshIndexOpportunities);
-  // Load index opportunities on page load (block is always visible)
-  loadIndexOpportunities();
+  // Run all initial data loads in parallel for faster page load
+  Promise.all([loadEngineStatus(), loadActiveSessions(), loadIndexOpportunities(), loadSignals()]);
   // Apply initial trading mode UI (manual by default)
   updateTradingModeUI();
 
@@ -715,7 +913,6 @@
   });
   document.getElementById('optionsPanel').addEventListener('shown.bs.offcanvas', function() {});
 
-  loadSignals();
 })();
 </script>
 {% endblock %}

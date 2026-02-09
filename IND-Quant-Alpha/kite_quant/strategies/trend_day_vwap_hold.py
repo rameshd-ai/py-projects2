@@ -10,10 +10,11 @@ class TrendDayVWAPHold(BaseStrategy):
     """Sustained above VWAP, buy dip to VWAP, exit on VWAP break."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=30)
+        # Trend + VWAP needs 30 candles for accurate VWAP
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=30, period="3d")
         if not candles or len(candles) < 20:
             return False, None
-        vwap = self.data.get_vwap(self.instrument, interval="5m", count=30)
+        vwap = self.data.get_vwap(self.instrument, interval="5m", count=30, period="3d")
         if vwap <= 0:
             return False, None
         above = [c for c in candles[-15:] if c["close"] > vwap]

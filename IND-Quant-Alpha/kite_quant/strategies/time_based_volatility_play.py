@@ -24,7 +24,8 @@ class TimeBasedVolatilityPlay(BaseStrategy):
         now = datetime.now().time()
         if not self._in_vol_window(now):
             return False, None
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=10)
+        # Time-based volatility needs 10 candles
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=10, period="1d")
         if not candles or len(candles) < 5:
             return False, None
         last, prev = candles[-1], candles[-2]

@@ -35,20 +35,29 @@ _FNO_INDEX_LIST = [
 
 def _get_kite() -> KiteConnect | None:
     """Initialize and return KiteConnect instance."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not KITE_AVAILABLE:
+        logger.warning("KiteConnect library not available")
         return None
     
     api_key = os.getenv("ZERODHA_API_KEY")
     access_token = os.getenv("ZERODHA_ACCESS_TOKEN")
     
+    logger.info(f"Attempting Kite auth: api_key={'present' if api_key else 'missing'}, access_token={'present' if access_token else 'missing'}")
+    
     if not api_key or not access_token:
+        logger.error("Zerodha credentials not found in environment")
         return None
     
     try:
         kite = KiteConnect(api_key=api_key)
         kite.set_access_token(access_token)
+        logger.info("Kite client created successfully")
         return kite
-    except Exception:
+    except Exception as e:
+        logger.exception(f"Failed to create Kite client: {e}")
         return None
 
 

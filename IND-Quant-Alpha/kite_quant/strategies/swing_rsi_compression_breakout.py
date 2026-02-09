@@ -10,8 +10,9 @@ class SwingRSICompressionBreakout(BaseStrategy):
     """RSI compression (40–60) then expansion trigger (RSI > 60 or < 40)."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        rsi = self.data.get_rsi(self.instrument, interval="5m", period=14)
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=10)
+        # RSI + swing needs 20 candles for RSI-14 + pattern
+        rsi = self.data.get_rsi(self.instrument, interval="5m", period=14, count=20)
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20, period="2d")
         if rsi is None or not candles or len(candles) < 5:
             return False, None
         if rsi > 60 or rsi < 40:

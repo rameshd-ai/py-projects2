@@ -13,7 +13,8 @@ class InsideBarBreakout(BaseStrategy):
     """
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=10)
+        # Inside bar needs 10 candles to identify pattern
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=10, period="1d")
         if not candles or len(candles) < 3:
             return False, None
 

@@ -11,7 +11,8 @@ class NewsVolatilityBurst(BaseStrategy):
     """Trades sudden impulse + volume surge (market reaction to news)."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=10)
+        # News volatility needs 10 candles to detect burst
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=10, period="1d")
         if not candles or len(candles) < 5:
             return False, None
         last = candles[-1]

@@ -28,7 +28,8 @@ class BollingerMeanReversion(BaseStrategy):
         return upper, mean, lower
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=25)
+        # Bollinger needs 20+ for std dev calculation
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=25, period="3d")
         if not candles or len(candles) < 20:
             return False, None
 

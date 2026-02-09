@@ -19,7 +19,8 @@ class EMARibbonTrendAlignment(BaseStrategy):
         return ema
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=60)
+        # EMA ribbon needs 50+ for multiple EMAs (9,21,50)
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=60, period="5d")
         if not candles or len(candles) < 50:
             return False, None
         ema9 = self._ema(candles[-15:], 9)

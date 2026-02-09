@@ -11,7 +11,8 @@ class SectorRotationMomentum(BaseStrategy):
     """Treats strong relative momentum vs own range as sector leadership."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=30)
+        # Sector rotation needs 30 candles for momentum analysis
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=30, period="3d")
         if not candles or len(candles) < 20:
             return False, None
         last = candles[-1]

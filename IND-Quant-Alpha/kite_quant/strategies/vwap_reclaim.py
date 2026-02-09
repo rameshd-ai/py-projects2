@@ -10,10 +10,11 @@ class VWAPReclaim(BaseStrategy):
     """Long-only: was below VWAP then close above with volume."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20)
+        # VWAP reclaim needs 20 candles for accurate VWAP
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=20, period="2d")
         if not candles or len(candles) < 15:
             return False, None
-        vwap = self.data.get_vwap(self.instrument, interval="5m", count=20)
+        vwap = self.data.get_vwap(self.instrument, interval="5m", count=20, period="2d")
         if vwap <= 0:
             return False, None
         if not all(c["close"] < vwap for c in candles[-15:-5]):

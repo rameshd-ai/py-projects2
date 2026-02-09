@@ -40,10 +40,22 @@ def get_recent_candles(
     Return list of recent candles, newest last. Each candle: open, high, low, close, volume, date (iso).
     interval can be "5m" or "5minute".
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     symbol = _nse_symbol(instrument)
     kite_interval = _interval_kite(interval)
+    logger.info(f"Fetching candles: instrument={instrument}, symbol={symbol}, interval={kite_interval}, period={period}")
+    
     df = fetch_nse_ohlc(symbol, interval=kite_interval, period=period)
-    if df is None or df.empty or "Close" not in df.columns:
+    if df is None:
+        logger.error(f"fetch_nse_ohlc returned None for symbol={symbol}, interval={kite_interval}")
+        return []
+    if df.empty:
+        logger.error(f"fetch_nse_ohlc returned empty dataframe for symbol={symbol}, interval={kite_interval}")
+        return []
+    if "Close" not in df.columns:
+        logger.error(f"fetch_nse_ohlc missing 'Close' column for symbol={symbol}. Columns: {list(df.columns)}")
         return []
     # Standardize column names (Zerodha returns Datetime, Open, High, Low, Close, Volume)
     rename = {"Datetime": "date", "Open": "open", "High": "high", "Low": "low", "Close": "close", "Volume": "volume"}
@@ -62,6 +74,11 @@ def get_recent_candles(
         c["close"] = float(row.get("Close", row.get("close", 0)))
         c["volume"] = float(row.get("Volume", row.get("volume", 0)))
         out.append(c)
+    
+    logger.info(f"Successfully fetched {len(out)} candles for {symbol}")
+    if len(out) < 3:
+        logger.warning(f"Only {len(out)} candles available for {symbol} - may not be enough for strategy")
+    
     return out
 
 
@@ -77,9 +94,9 @@ def get_ltp(instrument: str) -> float:
     return float(quote.get("last", 0) or quote.get("last_price", 0))
 
 
-def get_vwap(instrument: str, interval: str = "5m", count: int = 50) -> float:
+def get_vwap(instrument: str, interval: str = "5m", count: int = 50, period: str = "3d") -> float:
     """Volume-weighted average price from recent candles. Returns 0 if no data."""
-    candles = get_recent_candles(instrument, interval=interval, count=count)
+    candles = get_recent_candles(instrument, interval=interval, count=count, period=period)
     if not candles:
         return 0.0
     total_vtp = 0.0
@@ -108,10 +125,10 @@ def _rsi_from_prices(prices: list[float], period: int) -> float | None:
     return 100 - (100 / (1 + rs))
 
 
-def get_rsi(instrument: str, interval: str = "5m", period: int = 14, count: int | None = None) -> float | None:
+def get_rsi(instrument: str, interval: str = "5m", period: int = 14, count: int | None = None, data_period: str = "2d") -> float | None:
     """RSI from recent close prices. Returns None if not enough data."""
     need = (count or period + 2)
-    candles = get_recent_candles(instrument, interval=interval, count=need)
+    candles = get_recent_candles(instrument, interval=interval, count=need, period=data_period)
     if not candles:
         return None
     closes = [float(c.get("close", 0)) for c in candles if c.get("close")]

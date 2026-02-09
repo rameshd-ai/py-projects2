@@ -10,7 +10,8 @@ class FailedBreakdownTrap(BaseStrategy):
     """Break below support then reclaim above with volume."""
 
     def check_entry(self) -> tuple[bool, float | None]:
-        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=15)
+        # Failed breakdown needs 15 candles to identify trap
+        candles = self.data.get_recent_candles(self.instrument, interval="5m", count=15, period="2d")
         if not candles or len(candles) < 10:
             return False, None
         support = min(c["low"] for c in candles[-10:-2])

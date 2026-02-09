@@ -3,9 +3,12 @@ Flask server: dashboard, Start/Stop trading, 2:30 scheduler, /api/live, Kill Swi
 """
 from __future__ import annotations
 
+import logging
 import os
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -29,6 +32,7 @@ from engine.sentiment_engine import get_sentiment_for_symbol
 from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
 from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol
+from engine.ai_strategy_advisor import get_market_context, get_ai_strategy_recommendation, should_switch_strategy
 from execution.executor import execute_entry, execute_exit, get_balance_for_mode
 from execution.trade_history_store import get_trade_history as get_stored_trade_history
 from strategies import data_provider as strategy_data_provider
@@ -41,7 +45,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timedelta, time
 from functools import lru_cache
-from threading import Lock
+from threading import Lock, Thread
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -424,19 +428,26 @@ def api_live():
         us_futures = fetch_us_futures()
     # If market is closed, us_futures will be empty dict
     
-    # Fetch live Nifty 50 data only if Indian market is open
+    # Fetch live Nifty 50, Bank Nifty, India VIX in parallel when market open (faster homepage load)
     nifty_live = {}
     bank_nifty_live = {}
     india_vix_data = {}
     market_status = {}
-    
     if _is_indian_market_open():
-        nifty_live = fetch_nifty50_live()
-        # Fetch Bank Nifty, India VIX, and market status
-        bank_nifty_live = fetch_bank_nifty_live()
-        india_vix_data = fetch_india_vix()
+        try:
+            with ThreadPoolExecutor(max_workers=3) as ex:
+                f_nifty = ex.submit(fetch_nifty50_live)
+                f_bank = ex.submit(fetch_bank_nifty_live)
+                f_vix = ex.submit(fetch_india_vix)
+                nifty_live = f_nifty.result(timeout=12)
+                bank_nifty_live = f_bank.result(timeout=12)
+                india_vix_data = f_vix.result(timeout=12)
+        except Exception as e:
+            logger.warning("api_live: parallel index fetch failed, using fallback: %s", str(e))
+            nifty_live = fetch_nifty50_live()
+            bank_nifty_live = fetch_bank_nifty_live()
+            india_vix_data = fetch_india_vix()
         market_status = _determine_market_status(nifty_live)
-    # If market is closed, all will be empty dicts
     
     # Use cached news and prediction for faster response
     headlines = _get_cached_news(symbol)
@@ -2126,29 +2137,51 @@ def _volume_strength(pick: dict) -> str:
     return "Normal"
 
 
-def _build_ai_trade_signals() -> dict:
-    """Build momentum, reversal, news lists (top 3 each) for AI Trading Agent. Uses cached intraday picks when fresh."""
+# Timeout for intraday scoring in AI trade signals (keep lower for faster page load)
+INTRADAY_SIGNALS_TIMEOUT = 20
+
+
+def _refresh_intraday_picks_cache_sync(timeout_sec: int = INTRADAY_SIGNALS_TIMEOUT) -> None:
+    """Populate _intraday_picks_cache (symbols + ETFs). Call with lower timeout for API responsiveness."""
     global _intraday_picks_cache, _intraday_picks_cache_time
     now = datetime.now()
-    if _intraday_picks_cache is None or _intraday_picks_cache_time is None or (now - _intraday_picks_cache_time) >= INTRADAY_PICKS_CACHE_TTL:
-        symbols = LIQUID_FNO_STOCKS[:INTRADAY_PICKS_STOCK_COUNT]
-        results = []
-        with ThreadPoolExecutor(max_workers=INTRADAY_PICKS_WORKERS) as executor:
-            future_to_sym = {executor.submit(_score_stock_for_intraday, sym): sym for sym in symbols}
-            for future in as_completed(future_to_sym, timeout=75):
-                sym = future_to_sym[future]
-                try:
-                    results.append(future.result())
-                except Exception:
-                    results.append({"symbol": sym, "score": 0.0, "tags": ["Error"], "prediction": "NEUTRAL"})
-        got = {r.get("symbol") for r in results}
-        for sym in symbols:
-            if sym not in got:
-                results.append({"symbol": sym, "score": 0.0, "tags": ["Timeout"], "prediction": "NEUTRAL"})
-        results.sort(key=lambda x: -(x.get("score") or 0))
-        picks = results[:15]
-        _intraday_picks_cache = {"picks": picks, "ai_suggestion": _get_ai_trade_suggestion(picks), "cached_at": now.isoformat()}
-        _intraday_picks_cache_time = now
+    symbols = LIQUID_FNO_STOCKS[:INTRADAY_PICKS_STOCK_COUNT]
+    results = []
+    with ThreadPoolExecutor(max_workers=INTRADAY_PICKS_WORKERS) as executor:
+        future_to_sym = {executor.submit(_score_stock_for_intraday, sym): sym for sym in symbols}
+        for future in as_completed(future_to_sym, timeout=timeout_sec):
+            sym = future_to_sym[future]
+            try:
+                results.append(future.result())
+            except Exception:
+                results.append({"symbol": sym, "score": 0.0, "tags": ["Error"], "prediction": "NEUTRAL"})
+    got = {r.get("symbol") for r in results}
+    for sym in symbols:
+        if sym not in got:
+            results.append({"symbol": sym, "score": 0.0, "tags": ["Timeout"], "prediction": "NEUTRAL"})
+    results.sort(key=lambda x: -(x.get("score") or 0))
+    picks = results[:15]
+    _intraday_picks_cache = {"picks": picks, "ai_suggestion": _get_ai_trade_suggestion(picks), "cached_at": now.isoformat()}
+    _intraday_picks_cache_time = now
+
+
+def _build_ai_trade_signals() -> dict:
+    """Build momentum, reversal, news lists (top 3 each) for AI Trading Agent. Uses cached intraday picks when fresh; stale-while-revalidate when expired."""
+    global _intraday_picks_cache, _intraday_picks_cache_time
+    now = datetime.now()
+    cache_fresh = (
+        _intraday_picks_cache is not None
+        and _intraday_picks_cache_time is not None
+        and (now - _intraday_picks_cache_time) < INTRADAY_PICKS_CACHE_TTL
+    )
+    if not cache_fresh:
+        if _intraday_picks_cache is not None and _intraday_picks_cache.get("picks"):
+            # Stale-while-revalidate: return stale immediately, refresh in background
+            Thread(target=_refresh_intraday_picks_cache_sync, kwargs={"timeout_sec": 45}).start()
+            picks = _intraday_picks_cache.get("picks", [])
+        else:
+            _refresh_intraday_picks_cache_sync(timeout_sec=INTRADAY_SIGNALS_TIMEOUT)
+            picks = _intraday_picks_cache.get("picks", []) if _intraday_picks_cache else []
     else:
         picks = _intraday_picks_cache.get("picks", [])
 
@@ -2256,11 +2289,22 @@ def _compute_index_vwap_from_ohlc(df) -> float | None:
     return float((typical * vol).sum() / vol.sum())
 
 
+# Cache for index market bias (short TTL to keep recommendations responsive)
+_index_bias_cache: dict | None = None
+_index_bias_cache_time: datetime | None = None
+INDEX_BIAS_CACHE_TTL = timedelta(seconds=60)
+
+
 def get_index_market_bias() -> dict:
     """
     AI market bias for NIFTY and BANKNIFTY. Uses live index, VIX, US close, optional 5m VWAP/trend.
-    Returns: niftyBias, bankNiftyBias, confidence, reasons.
+    Returns: niftyBias, bankNiftyBias, confidence, reasons. Cached 60s for faster AI Agent load.
     """
+    global _index_bias_cache, _index_bias_cache_time
+    now = datetime.now()
+    if _index_bias_cache is not None and _index_bias_cache_time is not None:
+        if now - _index_bias_cache_time < INDEX_BIAS_CACHE_TTL:
+            return _index_bias_cache
     reasons = []
     nifty_score = 0.0
     bank_nifty_score = 0.0
@@ -2374,7 +2418,7 @@ def get_index_market_bias() -> dict:
     if not reasons:
         reasons.append("Index vs open and trend")
 
-    return {
+    out = {
         "niftyBias": nifty_bias,
         "bankNiftyBias": bank_nifty_bias,
         "confidence": confidence,
@@ -2383,6 +2427,9 @@ def get_index_market_bias() -> dict:
         "bankNiftyScore": round(bank_nifty_score, 2),
         "vixValue": vix_val,
     }
+    _index_bias_cache = out
+    _index_bias_cache_time = now
+    return out
 
 
 def get_affordable_index_options(
@@ -2497,7 +2544,9 @@ _SESSIONS_DIR = Path(__file__).resolve().parent / "data"
 _SESSIONS_FILE = _SESSIONS_DIR / "trade_sessions.json"
 _sessions_lock = Lock()
 _trade_sessions: list[dict] = []
-ENGINE_ENABLED = True  # Global kill switch: False = no LIVE/PAPER entries or management
+# Engine state: running = tick runs; last_tick = timestamp of last successful tick (for UI)
+engine_state: dict = {"running": True, "last_tick": None}
+_last_session_engine_tick_time: datetime | None = None  # For next-scan countdown (set each tick)
 
 
 def is_market_open(now: datetime | None = None) -> bool:
@@ -2521,7 +2570,8 @@ def _load_trade_sessions() -> None:
             with open(_SESSIONS_FILE, encoding="utf-8") as f:
                 data = json.load(f)
             _trade_sessions = data.get("sessions") or []
-        except Exception:
+        except Exception as e:
+            logger.exception("Load trade sessions error: %s", str(e))
             _trade_sessions = []
 
 
@@ -2532,8 +2582,8 @@ def _save_trade_sessions() -> None:
         try:
             with open(_SESSIONS_FILE, "w", encoding="utf-8") as f:
                 json.dump({"sessions": _trade_sessions, "updatedAt": datetime.now().isoformat()}, f, indent=2)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Save trade sessions error: %s", str(e))
 
 
 # Load persisted sessions on startup (after first request may have created data dir)
@@ -2609,9 +2659,12 @@ def _build_ai_trade_recommendation_stock(
     }
 
 
-def _build_ai_trade_recommendation_index(index_label: str, capital: float) -> dict[str, Any] | None:
-    """Build a single AI trade recommendation for NIFTY or BANKNIFTY."""
-    bias_data = get_index_market_bias()
+def _build_ai_trade_recommendation_index(
+    index_label: str, capital: float, bias_data: dict | None = None
+) -> dict[str, Any] | None:
+    """Build a single AI trade recommendation for NIFTY or BANKNIFTY. Optional bias_data avoids re-fetch."""
+    if bias_data is None:
+        bias_data = get_index_market_bias()
     nifty_bias = bias_data.get("niftyBias", "NEUTRAL")
     bank_nifty_bias = bias_data.get("bankNiftyBias", "NEUTRAL")
     label = (index_label or "").upper().replace(" ", "")
@@ -2685,6 +2738,19 @@ def api_ai_trade_recommendation():
         return jsonify({"error": str(e), "recommendation": None}), 500
 
 
+@app.route("/api/ai-trade-recommendations-index")
+def api_ai_trade_recommendations_index():
+    """GET /api/ai-trade-recommendations-index?capital=... Returns NIFTY and BANKNIFTY in one response (one bias fetch)."""
+    capital = request.args.get("capital", type=float) or 100000.0
+    try:
+        bias_data = get_index_market_bias()
+        nifty_rec = _build_ai_trade_recommendation_index("NIFTY", capital, bias_data=bias_data)
+        bank_rec = _build_ai_trade_recommendation_index("BANKNIFTY", capital, bias_data=bias_data)
+        return jsonify({"nifty": nifty_rec, "banknifty": bank_rec})
+    except Exception as e:
+        return jsonify({"nifty": None, "banknifty": None, "error": str(e)})
+
+
 @app.route("/api/approve-trade", methods=["POST"])
 def api_approve_trade():
     """POST /api/approve-trade: create ACTIVE trade session. execution_mode: LIVE | PAPER | BACKTEST."""
@@ -2712,6 +2778,11 @@ def api_approve_trade():
     tradingsymbol = rec.get("tradingsymbol") or instrument
     exchange = rec.get("exchange") or "NSE"
     lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 1)
+    
+    # AI Mode configuration
+    ai_mode_enabled = data.get("ai_mode_enabled", True)  # Default: AI mode ON
+    ai_check_interval = data.get("ai_check_interval_minutes", 15)  # Default: 15 min
+    
     session = {
         "sessionId": session_id,
         "instrument": instrument,
@@ -2731,6 +2802,13 @@ def api_approve_trade():
         "exchange": exchange,
         "lot_size": lot_size,
         "createdAt": now.isoformat(),
+        # AI Strategy Advisor
+        "ai_mode_enabled": ai_mode_enabled,
+        "ai_check_interval_minutes": ai_check_interval,
+        "ai_last_check_time": None,
+        "ai_recommended_strategy": None,
+        "ai_recommendation_confidence": None,
+        "ai_recommendation_reasoning": None,
     }
     _trade_sessions.append(session)
     _save_trade_sessions()
@@ -2742,8 +2820,19 @@ def api_approve_trade():
     })
 
 
-def _pick_best_strategy(instrument: str) -> tuple[str, str]:
-    """Return (strategy_id, strategy_name) for current market. Used by session engine each scan."""
+def _pick_best_strategy(instrument: str, session: dict | None = None) -> tuple[str, str]:
+    """
+    Return (strategy_id, strategy_name) for current market.
+    If session has AI mode enabled, uses GPT-based recommendation.
+    Otherwise uses rule-based strategy selection.
+    """
+    # Check if AI mode enabled for this session
+    if session and session.get("ai_mode_enabled"):
+        ai_strategy = _get_ai_recommended_strategy(session)
+        if ai_strategy:
+            return ai_strategy  # Returns (strategy_id, strategy_name)
+    
+    # Fallback to rule-based strategy selection
     instrument = (instrument or "").strip().upper()
     if instrument in ("NIFTY", "BANKNIFTY"):
         return "index_lead_stock_lag", "Index Momentum"
@@ -2765,14 +2854,168 @@ def _pick_best_strategy(instrument: str) -> tuple[str, str]:
         return "momentum_breakout", "Momentum Breakout"
 
 
+def _get_ai_recommended_strategy(session: dict) -> tuple[str, str] | None:
+    """
+    Use AI to recommend best strategy based on current market conditions.
+    Caches recommendation for AI_STRATEGY_CHECK_INTERVAL_MINUTES.
+    Returns (strategy_id, strategy_name) or None.
+    """
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    
+    # Check if we need to refresh AI recommendation
+    last_check = session.get("ai_last_check_time")
+    check_interval_minutes = session.get("ai_check_interval_minutes", 15)  # Default 15 min
+    
+    if last_check:
+        last_check_dt = datetime.fromisoformat(last_check)
+        elapsed_minutes = (now - last_check_dt).total_seconds() / 60
+        if elapsed_minutes < check_interval_minutes:
+            # Use cached recommendation
+            cached_strategy = session.get("ai_recommended_strategy")
+            if cached_strategy:
+                logger.info(f"[AI MODE] Using cached strategy: {cached_strategy}")
+                return (cached_strategy.lower().replace(" ", "_"), cached_strategy)
+    
+    # Fetch current market data
+    try:
+        nifty_data = fetch_nifty50_live()
+        banknifty_data = fetch_bank_nifty_live()
+        vix = fetch_india_vix()
+        
+        # Get recent candles for the session's instrument
+        instrument = session.get("instrument", "NIFTY")
+        from strategies import data_provider as strategy_data_provider
+        candles = strategy_data_provider.get_recent_candles(instrument, interval="5m", count=10, period="1d")
+        
+        # Build market context
+        context = get_market_context(
+            nifty_price=nifty_data.get("price"),
+            nifty_change_pct=nifty_data.get("change_percent"),
+            banknifty_price=banknifty_data.get("price"),
+            banknifty_change_pct=banknifty_data.get("change_percent"),
+            vix=vix,
+            current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
+            recent_candles=candles,
+        )
+        
+        # Get current strategy name
+        current_strategy = (session.get("recommendation") or {}).get("strategyName")
+        
+        # Get AI recommendation
+        logger.info(f"[AI MODE] Requesting strategy recommendation for {instrument}...")
+        recommendation = get_ai_strategy_recommendation(context, current_strategy)
+        
+        if recommendation:
+            recommended_strategy = recommendation.get("recommended_strategy")
+            confidence = recommendation.get("confidence", "medium")
+            reasoning = recommendation.get("reasoning", "")
+            
+            # Store in session
+            session["ai_last_check_time"] = now.isoformat()
+            session["ai_recommended_strategy"] = recommended_strategy
+            session["ai_recommendation_confidence"] = confidence
+            session["ai_recommendation_reasoning"] = reasoning
+            session["ai_last_recommendation"] = recommendation
+            
+            logger.info(
+                f"[AI MODE] New recommendation: {recommended_strategy} "
+                f"(Confidence: {confidence})"
+            )
+            logger.info(f"[AI MODE] Reasoning: {reasoning}")
+            
+            # Convert strategy name to ID format
+            strategy_id = recommended_strategy.lower().replace(" ", "_")
+            return (strategy_id, recommended_strategy)
+        else:
+            logger.warning("[AI MODE] No AI recommendation received, using fallback")
+            return None
+            
+    except Exception as e:
+        logger.exception(f"[AI MODE] Error getting AI recommendation: {e}")
+        return None
+
+
+def _fetch_session_ltp(session: dict) -> float | None:
+    """Fetch current LTP: NFO sessions use tradingsymbol only; NSE use instrument. Hard-enforce symbol+exchange."""
+    instrument = session.get("instrument")
+    tradingsymbol = session.get("tradingsymbol")
+    exchange = (session.get("exchange") or "NSE").strip().upper()
+    ltp = None
+    try:
+        if exchange == "NFO" and tradingsymbol:
+            q = strategy_data_provider.get_quote(tradingsymbol, exchange="NFO")
+            ltp = float(q.get("last", 0) or q.get("last_price", 0)) or None
+        else:
+            if instrument:
+                ltp = strategy_data_provider.get_ltp(instrument)
+    except Exception as e:
+        logger.error(
+            "LTP FETCH FAILED | instrument=%s | tradingsymbol=%s | exchange=%s | error=%s",
+            instrument,
+            tradingsymbol,
+            exchange,
+            str(e),
+        )
+        ltp = None
+    return ltp
+
+
 def _check_entry_real(session: dict, strategy_name_override: str | None = None) -> tuple[bool, float | None]:
-    """Use registered strategy to check entry. strategy_name_override = current best from re-scan."""
+    """Use registered strategy to check entry. Fetches LTP first, stores full entry_diagnostics (visibility only)."""
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    strategy_name = strategy_name_override or (session.get("recommendation") or {}).get("strategyName") or "—"
+    instrument = session.get("instrument") or "—"
+    ltp = _fetch_session_ltp(session)
     try:
         strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override)
         if not strategy:
+            diag = {
+                "last_check": now.isoformat(),
+                "strategy": strategy_name,
+                "ltp": ltp,
+                "entry_price": None,
+                "can_enter": False,
+                "blocked_reason": "No strategy loaded",
+                "conditions": {},
+            }
+            session["entry_diagnostics"] = diag
+            logger.info("ENTRY CHECK | %s | LTP=%s | can_enter=False | reason=No strategy loaded", instrument, ltp)
             return False, None
-        return strategy.check_entry()
-    except Exception:
+        result = strategy.check_entry()
+        if isinstance(result, dict):
+            can_enter = result.get("can_enter", False)
+            entry_price = result.get("entry_price")
+            reason = result.get("reason") or ("Condition met" if can_enter else "Condition not met")
+            conditions = result.get("conditions") or {}
+        else:
+            can_enter, entry_price = result
+            reason = "Condition met" if can_enter else "Condition not met"
+            conditions = {}
+        blocked_reason = None if can_enter else reason
+        diag = {
+            "last_check": now.isoformat(),
+            "strategy": strategy_name,
+            "ltp": ltp,
+            "entry_price": entry_price,
+            "can_enter": bool(can_enter),
+            "blocked_reason": blocked_reason,
+            "conditions": conditions,
+        }
+        session["entry_diagnostics"] = diag
+        logger.info("ENTRY CHECK | %s | LTP=%s | can_enter=%s | reason=%s", instrument, ltp, can_enter, reason)
+        return can_enter, entry_price
+    except Exception as e:
+        logger.exception("Entry check error: %s", str(e))
+        session["entry_diagnostics"] = {
+            "last_check": now.isoformat(),
+            "strategy": strategy_name,
+            "ltp": ltp,
+            "entry_price": None,
+            "can_enter": False,
+            "blocked_reason": f"Error: {e!s}",
+            "conditions": {},
+        }
+        logger.info("ENTRY CHECK | %s | LTP=%s | can_enter=False | reason=Error: %s", instrument, ltp, str(e))
         return False, None
 
 
@@ -2791,18 +3034,30 @@ def _manage_trade_real(session: dict) -> bool:
             return False
         execute_exit(session)
         return True
-    except Exception:
+    except Exception as e:
+        logger.exception("Manage trade exit error: %s", str(e))
         return False
 
 
 def _run_session_engine_tick() -> None:
     """Background tick: for each ACTIVE session, apply guard rails, manage open trade or scan for entry."""
-    global ENGINE_ENABLED
-    if not ENGINE_ENABLED:
+    global _last_session_engine_tick_time
+    if not engine_state.get("running", True):
         return
     if not is_market_open():
         return
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    _last_session_engine_tick_time = now
+    active_count = sum(1 for s in _trade_sessions if s.get("status") == "ACTIVE")
+    logger.info("ENGINE TICK | active_sessions=%s", active_count)
+    for s in _trade_sessions:
+        if s.get("status") == "ACTIVE":
+            logger.info(
+                "ENGINE TICK | instrument=%s | exchange=%s | tradingsymbol=%s",
+                s.get("instrument"),
+                s.get("exchange"),
+                s.get("tradingsymbol"),
+            )
     today = now.date()
     try:
         cutoff = INTRADAY_CUTOFF_TIME
@@ -2811,9 +3066,11 @@ def _run_session_engine_tick() -> None:
                 if s.get("status") == "ACTIVE":
                     s["status"] = "STOPPED"
             _save_trade_sessions()
+            engine_state["last_tick"] = now.isoformat()
             return
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("Engine tick cutoff error: %s", str(e))
+        return
     for session in _trade_sessions:
         if session.get("status") != "ACTIVE":
             continue
@@ -2836,12 +3093,29 @@ def _run_session_engine_tick() -> None:
             try:
                 if _manage_trade_real(session):
                     _save_trade_sessions()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception("Engine tick manage trade error: %s", str(e))
             continue
         instrument = session.get("instrument", "")
-        strategy_id, strategy_name = _pick_best_strategy(instrument)
+        strategy_id, strategy_name = _pick_best_strategy(instrument, session=session)
         can_enter, entry_price = _check_entry_real(session, strategy_name_override=strategy_name)
+        # Entry diagnostics for Manual Mode: always record last check (timestamp, strategy, can_enter, risk result)
+        block_reason: str | None = None
+        if not can_enter:
+            block_reason = "Condition not met"
+            logger.info("Entry not met | %s | %s", session.get("instrument", "—"), block_reason)
+        elif entry_price is None:
+            block_reason = "Entry price None"
+        session["last_entry_check"] = {
+            "timestamp": now.isoformat(),
+            "strategy": strategy_name,
+            "can_enter": bool(can_enter),
+            "entry_price": entry_price,
+            "block_reason": block_reason,
+            "risk_approved": None,
+            "risk_reason": None,
+            "calculated_lots": None,
+        }
         if can_enter and entry_price is not None:
             try:
                 strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override=strategy_name)
@@ -2883,7 +3157,12 @@ def _run_session_engine_tick() -> None:
                 approved, reason, lots = risk_mgr.validate_trade(
                     session, entry_price, stop_for_risk, lot_size, premium=premium
                 )
+                # Update diagnostics with risk result
+                session["last_entry_check"]["risk_approved"] = approved
+                session["last_entry_check"]["risk_reason"] = reason
+                session["last_entry_check"]["calculated_lots"] = lots
                 if not approved:
+                    session["last_entry_check"]["block_reason"] = reason or "Risk rejected"
                     continue
                 qty = max(1, lots * lot_size)
                 execute_entry(
@@ -2894,23 +3173,60 @@ def _run_session_engine_tick() -> None:
                     target=target,
                 )
                 _save_trade_sessions()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception("Engine tick entry execution error: %s", str(e))
+                session["last_entry_check"]["block_reason"] = f"Error: {e!s}"
+                session["last_entry_check"]["risk_approved"] = False
+    engine_state["last_tick"] = now.isoformat()
     _save_trade_sessions()
+
+
+def _engine_status_for_api() -> dict:
+    """Engine fields for API responses (running, last_tick, next_scan)."""
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    next_scan = None
+    if _last_session_engine_tick_time:
+        elapsed = (now - _last_session_engine_tick_time).total_seconds()
+        next_scan = max(0, int(SESSION_ENGINE_INTERVAL_SEC - elapsed))
+    last_tick = engine_state.get("last_tick") or (_last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None)
+    return {
+        "engine_running": engine_state.get("running", True),
+        "last_tick": last_tick,
+        "next_scan": next_scan,
+    }
 
 
 @app.route("/api/trade-sessions")
 def api_trade_sessions():
-    """GET /api/trade-sessions: list all trade sessions (active and stopped) for UI."""
-    return jsonify({"sessions": _trade_sessions})
+    """GET /api/trade-sessions: list all trade sessions (active and stopped) for UI; includes engine state and current_ltp."""
+    sessions_with_ltp = [
+        {**s, "current_ltp": (s.get("entry_diagnostics") or {}).get("ltp")}
+        for s in _trade_sessions
+    ]
+    payload = {"sessions": sessions_with_ltp, **_engine_status_for_api()}
+    return jsonify(payload)
+
+
+def _session_status_display(session: dict) -> str:
+    """Return WAITING_FOR_ENTRY | IN_TRADE | STOPPED for UI."""
+    if session.get("status") != "ACTIVE":
+        return "STOPPED"
+    return "IN_TRADE" if session.get("current_trade") else "WAITING_FOR_ENTRY"
 
 
 @app.route("/api/trade-sessions/active")
 def api_trade_sessions_active():
-    """GET /api/trade-sessions/active: only sessions with status ACTIVE."""
+    """GET /api/trade-sessions/active: only ACTIVE sessions with full live state for terminal UI."""
     active = [s for s in _trade_sessions if s.get("status") == "ACTIVE"]
     out = []
     for s in active:
+        rec = s.get("recommendation") or {}
+        strategy_name = rec.get("strategyName") or rec.get("strategy_name")
+        if not strategy_name:
+            try:
+                _, strategy_name = _pick_best_strategy(s.get("instrument") or "")
+            except Exception:
+                strategy_name = "—"
         out.append({
             "session_id": s.get("sessionId"),
             "instrument": s.get("instrument"),
@@ -2918,13 +3234,21 @@ def api_trade_sessions_active():
             "exchange": s.get("exchange"),
             "execution_mode": s.get("execution_mode"),
             "status": s.get("status"),
+            "strategy_name": strategy_name or "—",
+            "session_status": _session_status_display(s),
             "trades_taken_today": s.get("trades_taken_today"),
             "max_trades_allowed": s.get("max_trades_allowed"),
             "daily_pnl": s.get("daily_pnl"),
-            "current_trade": s.get("current_trade"),
             "cutoff_time": s.get("cutoff_time"),
+            "current_trade": s.get("current_trade"),
+            "last_scan": _last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None,
+            "last_entry_check": s.get("last_entry_check"),
+            "entry_diagnostics": s.get("entry_diagnostics"),
+            "current_ltp": (s.get("entry_diagnostics") or {}).get("ltp"),
         })
-    return jsonify({"sessions": out})
+    last_scan = _last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None
+    payload = {"sessions": out, "last_scan": last_scan, **_engine_status_for_api()}
+    return jsonify(payload)
 
 
 @app.route("/api/trade-sessions/<session_id>/kill", methods=["POST"])
@@ -2944,26 +3268,186 @@ def api_trade_session_kill(session_id: str):
     return jsonify({"ok": True})
 
 
+@app.route("/api/trade-sessions/<session_id>/resume", methods=["POST"])
+def api_trade_session_resume(session_id: str):
+    """POST: resume a STOPPED session, setting status to ACTIVE. Engine will start monitoring entry/exit again."""
+    global _trade_sessions
+    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+    if not session:
+        return jsonify({"ok": False, "error": "Session not found"}), 404
+    if session.get("status") != "STOPPED":
+        return jsonify({"ok": False, "error": "Session is not stopped (current status: {})".format(session.get("status"))}), 400
+    # Check if cutoff time has passed
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    cutoff_str = session.get("cutoff_time") or "15:15"
+    try:
+        cutoff_h, cutoff_m = map(int, cutoff_str.split(":"))
+        cutoff = now.replace(hour=cutoff_h, minute=cutoff_m, second=0, microsecond=0)
+        if now >= cutoff:
+            return jsonify({"ok": False, "error": "Cannot resume: cutoff time ({}) has passed".format(cutoff_str)}), 400
+    except Exception:
+        pass  # If cutoff parsing fails, allow resume
+    session["status"] = "ACTIVE"
+    session["resumed_at"] = now.isoformat()
+    # Reset session to today if it's from a previous day (otherwise engine will auto-stop it)
+    session_date = _session_date(session)
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    if session_date is not None and session_date < today:
+        session["createdAt"] = now.isoformat()
+        session["trades_taken_today"] = 0
+        session["daily_pnl"] = 0.0
+        logger.info("Session %s resumed - reset to today (was from %s)", session_id, session_date)
+    # Clear any stale diagnostics from previous run
+    session.pop("entry_diagnostics", None)
+    session.pop("last_entry_check", None)
+    _save_trade_sessions()
+    logger.info("Session %s resumed by user", session_id)
+    return jsonify({"ok": True, "session_id": session_id})
+
+
+@app.route("/api/trade-sessions/<session_id>/delete", methods=["POST"])
+def api_trade_session_delete(session_id: str):
+    """POST: permanently delete a session. Can only delete STOPPED sessions."""
+    global _trade_sessions
+    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+    if not session:
+        return jsonify({"ok": False, "error": "Session not found"}), 404
+    if session.get("status") != "STOPPED":
+        return jsonify({"ok": False, "error": "Can only delete stopped sessions. Stop the session first."}), 400
+    if session.get("current_trade"):
+        return jsonify({"ok": False, "error": "Session has an open trade. Close it first."}), 400
+    # Remove session from list
+    _trade_sessions = [s for s in _trade_sessions if s.get("sessionId") != session_id]
+    _save_trade_sessions()
+    logger.info("Session %s deleted by user", session_id)
+    return jsonify({"ok": True, "session_id": session_id})
+
+
+@app.route("/api/trade-sessions/<session_id>/ai-mode", methods=["POST"])
+def api_trade_session_ai_mode(session_id: str):
+    """POST: toggle AI strategy selection mode for a session."""
+    global _trade_sessions
+    data = request.get_json() or {}
+    
+    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+    if not session:
+        return jsonify({"ok": False, "error": "Session not found"}), 404
+    
+    ai_enabled = data.get("enabled", True)
+    ai_interval = data.get("interval_minutes", 15)
+    
+    session["ai_mode_enabled"] = ai_enabled
+    session["ai_check_interval_minutes"] = ai_interval
+    
+    # Reset AI state when toggling
+    if ai_enabled:
+        session["ai_last_check_time"] = None
+        logger.info(f"[AI MODE] Enabled for session {session_id}, interval: {ai_interval} min")
+    else:
+        logger.info(f"[AI MODE] Disabled for session {session_id}")
+    
+    _save_trade_sessions()
+    
+    return jsonify({
+        "ok": True,
+        "ai_mode_enabled": ai_enabled,
+        "ai_check_interval_minutes": ai_interval,
+        "message": f"AI mode {'enabled' if ai_enabled else 'disabled'}"
+    })
+
+
 @app.route("/api/engine/kill", methods=["POST"])
 def api_engine_kill():
-    """POST: global kill switch — halt all LIVE/PAPER trading (engine tick does nothing)."""
-    global ENGINE_ENABLED
-    ENGINE_ENABLED = False
-    return jsonify({"ok": True, "engine_enabled": False})
+    """POST: global kill switch — pause engine (engine tick does nothing). Kept for backward compat."""
+    engine_state["running"] = False
+    return jsonify({"ok": True, "engine_enabled": False, "running": False})
 
 
 @app.route("/api/engine/start", methods=["POST"])
 def api_engine_start():
+    """POST: resume engine. Kept for backward compat."""
+    engine_state["running"] = True
+    return jsonify({"ok": True, "engine_enabled": True, "running": True})
+
+
+@app.route("/api/engine/pause", methods=["POST"])
+def api_engine_pause():
+    """POST: pause engine — no LIVE/PAPER entries or management until resumed."""
+    engine_state["running"] = False
+    return jsonify({"ok": True, "running": False})
+
+
+@app.route("/api/engine/resume", methods=["POST"])
+def api_engine_resume():
     """POST: resume engine — allow LIVE/PAPER trading again."""
-    global ENGINE_ENABLED
-    ENGINE_ENABLED = True
-    return jsonify({"ok": True, "engine_enabled": True})
+    engine_state["running"] = True
+    return jsonify({"ok": True, "running": True})
 
 
 @app.route("/api/engine/status")
 def api_engine_status():
-    """GET: current global engine state (for UI)."""
-    return jsonify({"engine_enabled": ENGINE_ENABLED})
+    """GET: engine state (running, last_tick, next_scan), market open, active session count (for terminal UI)."""
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    next_scan_sec = None
+    if _last_session_engine_tick_time:
+        elapsed = (now - _last_session_engine_tick_time).total_seconds()
+        next_scan_sec = max(0, int(SESSION_ENGINE_INTERVAL_SEC - elapsed))
+    active_count = sum(1 for s in _trade_sessions if s.get("status") == "ACTIVE")
+    last_tick = engine_state.get("last_tick") or (_last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None)
+    return jsonify({
+        "running": engine_state.get("running", True),
+        "engine_enabled": engine_state.get("running", True),
+        "last_tick": last_tick,
+        "next_scan_sec": next_scan_sec,
+        "next_scan_in_seconds": next_scan_sec,
+        "market_open": is_market_open(now),
+        "active_session_count": active_count,
+        "last_scan": _last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None,
+    })
+
+
+@app.route("/api/quote")
+def api_quote():
+    """GET /api/quote?symbol=...&exchange=NSE|NFO. Returns LTP for terminal UI (e.g. unrealized PnL)."""
+    symbol = (request.args.get("symbol") or "").strip()
+    exchange = (request.args.get("exchange") or "NSE").strip().upper()
+    if not symbol:
+        return jsonify({"error": "Missing symbol", "last": 0.0}), 400
+    try:
+        from engine.zerodha_client import get_quote as kite_get_quote
+        q = kite_get_quote(symbol, exchange=exchange)
+        return jsonify({
+            "symbol": symbol,
+            "exchange": exchange,
+            "last": float(q.get("last", 0) or q.get("last_price", 0)),
+            "last_price": float(q.get("last", 0) or q.get("last_price", 0)),
+            "open": float(q.get("open", 0)),
+            "high": float(q.get("high", 0)),
+            "low": float(q.get("low", 0)),
+        })
+    except Exception as e:
+        return jsonify({"symbol": symbol, "last": 0.0, "error": str(e)})
+
+
+@app.route("/api/debug/ltp")
+def api_debug_ltp():
+    """GET /api/debug/ltp?symbol=XXX&exchange=NSE|NFO. Test price fetch (same path as entry diagnostics)."""
+    symbol = (request.args.get("symbol") or "").strip()
+    exchange = (request.args.get("exchange") or "NSE").strip().upper()
+    if not symbol:
+        return jsonify({"symbol": "", "exchange": exchange, "ltp": None, "error": "Missing symbol"})
+    err = None
+    ltp = None
+    try:
+        if exchange == "NFO":
+            q = strategy_data_provider.get_quote(symbol, exchange="NFO")
+            ltp = float(q.get("last", 0) or q.get("last_price", 0)) or None
+        else:
+            ltp = strategy_data_provider.get_ltp(symbol)
+    except Exception as e:
+        err = str(e)
+        ltp = None
+    return jsonify({"symbol": symbol, "exchange": exchange, "ltp": ltp, "error": err})
 
 
 @app.route("/api/account-balance")
@@ -3192,9 +3676,16 @@ def api_options(stock: str):
 
 
 scheduler = BackgroundScheduler(timezone=os.getenv("TZ", "Asia/Kolkata"))
-scheduler.add_job(_do_auto_close, "interval", minutes=1)
-scheduler.add_job(_run_session_engine_tick, "interval", seconds=SESSION_ENGINE_INTERVAL_SEC)
+scheduler.add_job(_do_auto_close, "interval", minutes=1, id="auto_close", replace_existing=True)
+scheduler.add_job(
+    _run_session_engine_tick,
+    "interval",
+    seconds=SESSION_ENGINE_INTERVAL_SEC,
+    id="session_engine",
+    replace_existing=True,
+)
 scheduler.start()
+logger.info("Session engine scheduler started")
 
 
 def main():
