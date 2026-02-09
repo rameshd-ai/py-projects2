@@ -6,6 +6,7 @@ Works for LIVE, PAPER, and BACKTEST.
 from __future__ import annotations
 
 from typing import Any
+from engine.position_sizing import calculate_position_size_auto, can_afford_fo_position
 
 
 class RiskConfig:
@@ -32,14 +33,18 @@ class RiskManager:
         stop_loss_price: float,
         lot_size: int = 1,
     ) -> int:
-        """Lots (or shares if lot_size=1) that keep risk within risk_percent_per_trade."""
-        risk_amount = self.config.capital * (self.config.risk_percent_per_trade / 100)
-        risk_per_unit = abs(entry_price - stop_loss_price)
-        if risk_per_unit <= 0:
-            return 0
-        qty = risk_amount / risk_per_unit
-        lots = int(qty // lot_size)
-        return max(lots, 0)
+        """
+        Calculate lots/quantity using centralized position sizing logic.
+        Automatically handles F&O vs Stock based on lot_size.
+        """
+        lots_or_qty, _, _ = calculate_position_size_auto(
+            capital=self.config.capital,
+            entry_price=entry_price,
+            lot_size=lot_size,
+            stop_loss=stop_loss_price,
+            risk_percent=self.config.risk_percent_per_trade,
+        )
+        return lots_or_qty
 
     def can_trade_today(self, session: dict[str, Any]) -> tuple[bool, str | None]:
         """False if daily loss limit or max trades reached."""
@@ -53,9 +58,8 @@ class RiskManager:
         return True, None
 
     def can_afford_trade(self, premium: float, lot_size: int) -> bool:
-        """True if capital can cover premium * lot_size (for options)."""
-        required = premium * lot_size
-        return required <= self.config.capital
+        """True if capital can cover premium * lot_size (for options). Uses centralized position sizing."""
+        return can_afford_fo_position(self.config.capital, premium, lot_size)
 
     def validate_trade(
         self,

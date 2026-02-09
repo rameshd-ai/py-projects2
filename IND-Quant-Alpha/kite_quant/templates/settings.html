@@ -249,9 +249,25 @@
             </div>
           </div>
 
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="max-daily-loss-percent">Max Daily Loss (%) 🛑</label>
+                <input type="number" class="form-control" id="max-daily-loss-percent" min="1" max="20" step="0.5" value="10">
+                <div class="hint">Stop all trading when daily loss reaches this % of capital</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="alert alert-danger border-0 mb-0 small" style="background: rgba(255, 107, 107, 0.15);">
+                <strong>Kill Switch:</strong> At <strong id="loss-percent-display">10</strong>% max loss with ₹<strong id="sample-capital-display">100,000</strong> capital, 
+                all trading stops at <strong id="calculated-loss-display">₹10,000</strong> loss. Sessions will auto-stop.
+              </div>
+            </div>
+          </div>
+
           <div class="alert alert-warning border-0 small" style="background: rgba(253, 196, 0, 0.15);">
-            <strong>⚠ Example:</strong> With ₹100,000 capital, 2% soft trigger = ₹2,000 loss. Frequency reduces by 50%. 
-            5% hard trigger = ₹5,000 loss. Only 1 trade/hour allowed.
+            <strong id="example-title">⚠ Example:</strong> With ₹<strong id="example-capital-display">100,000</strong> capital, <strong id="example-soft-trigger">2</strong>% soft trigger = <strong id="example-soft-loss">₹2,000</strong> loss. Frequency reduces by <strong id="example-reduce-pct">50</strong>%. 
+            <strong id="example-hard-trigger">5</strong>% hard trigger = <strong id="example-hard-loss">₹5,000</strong> loss. Only 1 trade/hour allowed. <strong id="example-max-pct">10</strong>% max loss = <strong id="example-max-loss">₹10,000</strong> loss. All trading stops.
           </div>
 
           <button type="button" class="btn btn-primary" id="save-frequency-btn">
@@ -383,6 +399,7 @@
               document.getElementById('drawdown-trigger').value = (config.drawdown_trigger_percent || 0.02) * 100;
               document.getElementById('hard-drawdown-trigger').value = (config.hard_drawdown_trigger_percent || 0.05) * 100;
               document.getElementById('drawdown-reduce-percent').value = config.drawdown_reduce_percent || 0.5;
+              document.getElementById('max-daily-loss-percent').value = (config.max_daily_loss_percent || 0.10) * 100;
               
               // Render rules table
               renderFrequencyRules();
@@ -446,7 +463,8 @@
           max_hourly_cap: parseInt(document.getElementById('max-hourly-cap').value) || 5,
           drawdown_trigger_percent: parseFloat(document.getElementById('drawdown-trigger').value) / 100 || 0.02,
           hard_drawdown_trigger_percent: parseFloat(document.getElementById('hard-drawdown-trigger').value) / 100 || 0.05,
-          drawdown_reduce_percent: parseFloat(document.getElementById('drawdown-reduce-percent').value) || 0.5
+          drawdown_reduce_percent: parseFloat(document.getElementById('drawdown-reduce-percent').value) || 0.5,
+          max_daily_loss_percent: parseFloat(document.getElementById('max-daily-loss-percent').value) / 100 || 0.10
         };
         
         fetch('/api/settings/trade-frequency', {
@@ -467,8 +485,70 @@
         });
       });
       
-      // Load frequency settings on page load
+      // Store actual Zerodha balance
+      var actualZerodhaBalance = null;
+      
+      // Fetch actual Zerodha balance
+      function loadZerodhaBalance() {
+        fetch('/api/zerodha/profile')
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.connected && data.balance) {
+              actualZerodhaBalance = parseFloat(data.balance);
+              updateLossLimitDisplay();
+            }
+          })
+          .catch(function(e) {
+            console.warn('Could not fetch Zerodha balance, using sample capital');
+          });
+      }
+      
+      // Update loss limit display and example when percentages change
+      function updateLossLimitDisplay() {
+        // Use actual Zerodha balance if available, otherwise use sample
+        var sampleCapital = actualZerodhaBalance || 100000;
+        var isActualBalance = actualZerodhaBalance !== null;
+        
+        // Get all values
+        var lossPercent = parseFloat(document.getElementById('max-daily-loss-percent').value) || 10;
+        var softTrigger = parseFloat(document.getElementById('drawdown-trigger').value) || 2;
+        var hardTrigger = parseFloat(document.getElementById('hard-drawdown-trigger').value) || 5;
+        var reducePct = parseFloat(document.getElementById('drawdown-reduce-percent').value) || 0.5;
+        
+        // Calculate losses
+        var maxLoss = sampleCapital * (lossPercent / 100);
+        var softLoss = sampleCapital * (softTrigger / 100);
+        var hardLoss = sampleCapital * (hardTrigger / 100);
+        
+        // Update kill switch display
+        document.getElementById('loss-percent-display').textContent = lossPercent.toFixed(1);
+        document.getElementById('sample-capital-display').textContent = sampleCapital.toLocaleString('en-IN');
+        document.getElementById('calculated-loss-display').textContent = '₹' + maxLoss.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+        
+        // Update example display
+        document.getElementById('example-title').textContent = isActualBalance ? '💰 Your Zerodha Balance:' : '⚠ Example:';
+        document.getElementById('example-capital-display').textContent = sampleCapital.toLocaleString('en-IN');
+        document.getElementById('example-soft-trigger').textContent = softTrigger.toFixed(1);
+        document.getElementById('example-soft-loss').textContent = '₹' + softLoss.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+        document.getElementById('example-reduce-pct').textContent = (reducePct * 100).toFixed(0);
+        document.getElementById('example-hard-trigger').textContent = hardTrigger.toFixed(1);
+        document.getElementById('example-hard-loss').textContent = '₹' + hardLoss.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+        document.getElementById('example-max-pct').textContent = lossPercent.toFixed(1);
+        document.getElementById('example-max-loss').textContent = '₹' + maxLoss.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+      }
+      
+      // Add event listeners for real-time updates
+      document.getElementById('max-daily-loss-percent').addEventListener('input', updateLossLimitDisplay);
+      document.getElementById('drawdown-trigger').addEventListener('input', updateLossLimitDisplay);
+      document.getElementById('hard-drawdown-trigger').addEventListener('input', updateLossLimitDisplay);
+      document.getElementById('drawdown-reduce-percent').addEventListener('input', updateLossLimitDisplay);
+      
+      // Load frequency settings and Zerodha balance on page load
       loadFrequencySettings();
+      loadZerodhaBalance();
+      
+      // Initial update
+      updateLossLimitDisplay();
       
     })();
   </script>

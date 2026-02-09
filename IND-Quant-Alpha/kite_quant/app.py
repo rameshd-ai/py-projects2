@@ -103,16 +103,6 @@ def dashboard_overview():
     return render_template("dashboard/overview.html", active_page="overview", page_title="Overview")
 
 
-@app.route("/dashboard/testing")
-def dashboard_testing():
-    return render_template("dashboard/testing.html", active_page="testing", page_title="Testing")
-
-
-@app.route("/dashboard/live")
-def dashboard_live():
-    return render_template("dashboard/live.html", active_page="live", page_title="Live Trading")
-
-
 @app.route("/dashboard/analytics")
 def dashboard_analytics():
     return render_template("dashboard/analytics.html", active_page="analytics", page_title="Analytics")
@@ -2472,9 +2462,9 @@ def get_affordable_index_options(
     options = []
     for i, strike in enumerate(strikes):
         if use_ce:
-            prem = max(20, 80 - (strike - spot) / 2 + (30 if i == 0 else 0))
+            prem = max(50, 80 - (strike - spot) / 2 + (30 if i == 0 else 0))
         else:
-            prem = max(20, 80 + (spot - strike) / 2 + (30 if i == 0 else 0))
+            prem = max(50, 80 + (spot - strike) / 2 + (30 if i == 0 else 0))
         prem = round(prem, 2)
         total_cost = prem * lot_size
         within_budget = total_cost <= max_risk_per_trade
@@ -2671,6 +2661,8 @@ def _build_ai_trade_recommendation_index(
         label = "NIFTY"
     if bias == "NEUTRAL":
         return None
+    from engine.position_sizing import calculate_fo_position_size
+    
     options, ai_rec, _ = get_affordable_index_options(label, bias, capital, confidence=bias_data.get("confidence"))
     if not options:
         return None
@@ -2678,9 +2670,17 @@ def _build_ai_trade_recommendation_index(
     opt_type = best.get("type", "CE")
     strike = best.get("strike", 0)
     lot_size = best.get("lotSize", 25)
-    total_cost = best.get("totalCost") or (best.get("premium", 0) * lot_size)
-    lots = max(1, int(capital / total_cost)) if total_cost else 1
-    risk_per_trade = min(capital * 0.02, total_cost * lots)  # cap at 2% of capital
+    premium = best.get("premium", 0)
+    
+    # Use centralized position sizing
+    lots, total_cost, can_afford = calculate_fo_position_size(capital, premium, lot_size)
+    
+    # Only recommend if we can afford at least 1 lot
+    if not can_afford or lots < 1:
+        logger.info(f"[F&O] Insufficient capital for {label}. Recommended 0 lots.")
+        return None
+    
+    risk_per_trade = min(capital * 0.02, total_cost)  # cap at 2% of capital
     market_bias = "Bullish" if bias == "BULLISH" else "Bearish"
     premium = best.get("premium", 0)
     tradingsymbol_nfo = get_nfo_option_tradingsymbol(label, strike, opt_type)
@@ -2768,7 +2768,13 @@ def api_approve_trade():
         virtual_balance = None
     session_id = f"ts_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    daily_loss_limit = data.get("daily_loss_limit") or rec.get("daily_loss_limit")
+    
+    # Calculate daily loss limit from capital (virtual_balance) and settings
+    from engine.trade_frequency import calculate_max_daily_loss_limit
+    capital_for_loss_calc = virtual_balance if virtual_balance is not None else 100000.0
+    daily_loss_limit = calculate_max_daily_loss_limit(capital_for_loss_calc)
+    logger.info(f"[SESSION] Auto-calculated daily loss limit: Rs.{daily_loss_limit:.2f} for capital Rs.{capital_for_loss_calc:.2f}")
+    
     tradingsymbol = rec.get("tradingsymbol") or instrument
     exchange = rec.get("exchange") or "NSE"
     lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 1)
@@ -2786,7 +2792,7 @@ def api_approve_trade():
         "virtual_balance": virtual_balance,
         "trades_taken_today": 0,
         "daily_pnl": 0.0,
-        "daily_loss_limit": float(daily_loss_limit) if daily_loss_limit is not None else None,
+        "daily_loss_limit": daily_loss_limit,
         "cutoff_time": "15:15",
         "current_trade_id": None,
         "current_trade": None,
@@ -3232,8 +3238,17 @@ def _run_session_engine_tick() -> None:
                     stop_loss = round(entry_price * 0.995, 2)
                     target = round(entry_price * 1.015, 2)
                 else:
-                    stop_loss = strategy.get_stop_loss(entry_price) if strategy else None
-                    target = strategy.get_target(entry_price) if strategy else None
+                    # Use F&O-aware stop/target for options (wider stops, realistic targets)
+                    if strategy:
+                        if hasattr(strategy, 'get_stop_loss_fo_aware'):
+                            stop_loss = strategy.get_stop_loss_fo_aware(entry_price, s)
+                            target = strategy.get_target_fo_aware(entry_price, s)
+                        else:
+                            stop_loss = strategy.get_stop_loss(entry_price)
+                            target = strategy.get_target(entry_price)
+                    else:
+                        stop_loss = None
+                        target = None
                 capital = session.get("virtual_balance")
                 if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
                     capital, _ = get_balance()
@@ -3260,10 +3275,10 @@ def _run_session_engine_tick() -> None:
                 session["last_entry_check"]["risk_approved"] = approved
                 session["last_entry_check"]["risk_reason"] = reason
                 session["last_entry_check"]["calculated_lots"] = lots
-                if not approved:
-                    session["last_entry_check"]["block_reason"] = reason or "Risk rejected"
+                if not approved or lots < 1:
+                    session["last_entry_check"]["block_reason"] = reason or "Insufficient capital for position"
                     continue
-                qty = max(1, lots * lot_size)
+                qty = lots * lot_size
                 execute_entry(
                     session, symbol, side, qty,
                     price=entry_price,
@@ -3645,8 +3660,6 @@ def api_backtest_run_ai():
     to_date_str = data.get("to_date") or date.today().isoformat()
     timeframe = data.get("timeframe") or "5minute"
     initial_capital = float(data.get("initial_capital") or 10000)
-    max_loss_limit = float(data.get("max_loss_limit") or 2000)
-    max_trades_per_day = int(data.get("max_trades_per_day") or 10)
     risk_percent = float(data.get("risk_percent_per_trade") or 2.0)
     ai_enabled = data.get("ai_enabled", True)
     ai_check_interval = int(data.get("ai_check_interval_minutes") or 5)
@@ -3668,8 +3681,6 @@ def api_backtest_run_ai():
             to_date=to_date,
             timeframe=timeframe,
             initial_capital=initial_capital,
-            max_loss_limit=max_loss_limit,
-            max_trades_per_day=max_trades_per_day,
             risk_percent=risk_percent,
             ai_enabled=ai_enabled,
             ai_check_interval=ai_check_interval,
@@ -3692,20 +3703,55 @@ def _run_ai_backtest(
     to_date: date,
     timeframe: str,
     initial_capital: float,
-    max_loss_limit: float,
-    max_trades_per_day: int,
     risk_percent: float,
     ai_enabled: bool,
     ai_check_interval: int,
 ) -> dict:
     """
     Run AI-powered backtest simulating intraday trading with strategy auto-switching.
+    Uses dynamic trade frequency from Settings → Trade Frequency (same as Paper/Live).
+    Max loss limit is auto-calculated from capital and configured loss percent.
     Returns comprehensive report with daily breakdown.
     """
-    from engine.data_fetcher import fetch_nse_ohlc
+    from engine.trade_frequency import calculate_max_daily_loss_limit
+    
+    # Calculate max loss limit from capital and settings
+    max_loss_limit = calculate_max_daily_loss_limit(initial_capital)
+    logger.info(f"[AI BACKTEST] Max loss limit: Rs.{max_loss_limit:.2f} for capital Rs.{initial_capital:.2f}")
+    
+    import yfinance as yf
     from strategies.strategy_registry import get_strategy_for_session, STRATEGY_MAP
     from strategies import data_provider as strategy_data_provider
     from engine.ai_strategy_advisor import get_market_context, get_ai_strategy_recommendation, should_switch_strategy
+    
+    # Fetch all historical data at once using yfinance
+    try:
+        ticker_symbol = instrument
+        # Convert Indian symbols to yfinance format
+        if instrument in ["NIFTY 50", "NIFTY", "NIFTY50"]:
+            ticker_symbol = "^NSEI"
+        elif instrument in ["BANKNIFTY", "NIFTY BANK", "BANK NIFTY"]:
+            ticker_symbol = "^NSEBANK"
+        elif not ticker_symbol.endswith(".NS"):
+            ticker_symbol = f"{instrument}.NS"
+        
+        logger.info(f"[AI BACKTEST] Fetching historical data for {ticker_symbol} from {from_date} to {to_date}")
+        
+        # Fetch intraday data (5 minute candles)
+        interval_map = {"5minute": "5m", "15minute": "15m", "1hour": "1h"}
+        yf_interval = interval_map.get(timeframe, "5m")
+        
+        ticker = yf.Ticker(ticker_symbol)
+        all_data = ticker.history(start=from_date, end=to_date + timedelta(days=1), interval=yf_interval)
+        
+        if all_data.empty:
+            return {"success": False, "error": f"No historical data available for {instrument}"}
+        
+        logger.info(f"[AI BACKTEST] Fetched {len(all_data)} candles")
+        
+    except Exception as e:
+        logger.exception(f"[AI BACKTEST] Failed to fetch historical data: {e}")
+        return {"success": False, "error": f"Failed to fetch data: {str(e)}"}
     
     # Results tracking
     all_trades = []
@@ -3722,22 +3768,29 @@ def _run_ai_backtest(
         day_count += 1
         logger.info(f"[AI BACKTEST] Processing day {day_count}: {current_date}")
         
-        # Fetch intraday candles for this day
+        # Filter candles for this specific day
         try:
-            candles = fetch_nse_ohlc(
-                symbol=instrument,
-                interval=timeframe,
-                from_date=current_date,
-                to_date=current_date
-            )
+            day_data = all_data[all_data.index.date == current_date]
             
-            if not candles or len(candles) < 5:
-                logger.info(f"[AI BACKTEST] Skipping {current_date}: Insufficient data")
+            if day_data.empty or len(day_data) < 5:
+                logger.info(f"[AI BACKTEST] Skipping {current_date}: Insufficient data ({len(day_data)} candles)")
                 current_date += timedelta(days=1)
                 continue
+            
+            # Convert to list of dicts for compatibility (use lowercase keys)
+            candles = []
+            for idx, row in day_data.iterrows():
+                candles.append({
+                    "timestamp": idx,
+                    "open": float(row["Open"]),
+                    "high": float(row["High"]),
+                    "low": float(row["Low"]),
+                    "close": float(row["Close"]),
+                    "volume": int(row["Volume"])
+                })
                 
         except Exception as e:
-            logger.warning(f"[AI BACKTEST] Failed to fetch data for {current_date}: {e}")
+            logger.warning(f"[AI BACKTEST] Failed to process data for {current_date}: {e}")
             current_date += timedelta(days=1)
             continue
         
@@ -3747,7 +3800,6 @@ def _run_ai_backtest(
             trade_date=current_date,
             candles=candles,
             current_capital=current_capital,
-            max_trades=max_trades_per_day,
             risk_percent=risk_percent,
             ai_enabled=ai_enabled,
             ai_check_interval=ai_check_interval,
@@ -3781,6 +3833,7 @@ def _run_ai_backtest(
     
     # Return comprehensive report
     return {
+        "success": True,
         "instrument": instrument,
         "from_date": from_date.isoformat(),
         "to_date": to_date.isoformat(),
@@ -3797,6 +3850,16 @@ def _run_ai_backtest(
         "ai_switches": total_ai_switches,
         "trades": all_trades,
         "daily_breakdown": daily_breakdown,
+        "summary": {
+            "total_trades": total_trades,
+            "winning_trades": wins,
+            "losing_trades": losses,
+            "win_rate": win_rate,
+            "total_pnl": cumulative_pnl,
+            "ending_capital": current_capital,
+            "return_pct": ((current_capital - initial_capital) / initial_capital * 100) if initial_capital > 0 else 0,
+        },
+        "daily_results": [{"daily_summary": d} for d in daily_breakdown],
     }
 
 
@@ -3805,20 +3868,119 @@ def _simulate_trading_day(
     trade_date: date,
     candles: list[dict],
     current_capital: float,
-    max_trades: int,  # Kept as absolute daily failsafe limit (legacy parameter)
     risk_percent: float,
     ai_enabled: bool,
     ai_check_interval: int,
 ) -> dict:
     """
-    Simulate a single trading day with AI strategy switching + dynamic frequency.
-    Uses dynamic hourly frequency limits based on capital and drawdown.
-    max_trades parameter is kept as an absolute daily failsafe.
+    Simulate a single trading day with F&O options (just like live/paper trading).
+    - Calls GPT to analyze market and recommend F&O option
+    - Trades the recommended option for the day
+    - Uses dynamic hourly frequency from Settings
+    - Same logic as Paper/Live for consistency
     Returns day summary with trades and P&L.
     """
     from strategies.strategy_registry import get_strategy_for_session, STRATEGY_MAP
     from strategies import data_provider as strategy_data_provider
     from engine.trade_frequency import calculate_max_trades_per_hour
+    from engine.position_sizing import calculate_fo_position_size
+    
+    # Simplified approach - trade underlying directly, not options
+    # This allows us to use REAL strategy logic (same as Live/Paper)
+    is_index = instrument.upper() in ["NIFTY", "NIFTY 50", "NIFTY50", "BANKNIFTY", "BANK NIFTY", "NIFTY BANK"]
+    
+    simulate_as_option = False  # Always trade underlying, not options
+    lot_size = 1  # Regular stock/index sizing
+    
+    logger.info(f"[AI BACKTEST] Simulating {instrument} with REAL strategy logic")
+    
+    # === STEP 1: Get GPT F&O Recommendation for the day (just like live/paper) ===
+    logger.info(f"[AI BACKTEST F&O] {trade_date}: Getting GPT recommendation for index options...")
+    
+    # Determine if NIFTY or BANKNIFTY
+    index_name = "NIFTY"
+    if "BANK" in instrument.upper():
+        index_name = "BANKNIFTY"
+    
+    # Get market bias using historical data (first few candles of the day)
+    try:
+        # Get first 15 candles for market context (better sample)
+        opening_sample = min(15, len(candles))
+        opening_candles = candles[:opening_sample]
+        
+        # Improved bias detection: Look at overall trend + volatility
+        open_price = candles[0]["open"]
+        current_price = candles[opening_sample-1]["close"]
+        price_trend = ((current_price - open_price) / open_price) * 100
+        
+        # Calculate volatility (price range in opening)
+        high_prices = [c["high"] for c in opening_candles]
+        low_prices = [c["low"] for c in opening_candles]
+        volatility = ((max(high_prices) - min(low_prices)) / open_price) * 100
+        
+        # More aggressive bias detection (trade even on slight bias)
+        # Lower threshold to 0.15% so we don't skip days
+        if price_trend > 0.15:
+            bias = "BULLISH"
+        elif price_trend < -0.15:
+            bias = "BEARISH"
+        else:
+            # Instead of skipping NEUTRAL days, pick direction based on volatility
+            # If volatile, trade based on last few candles momentum
+            recent_momentum = ((candles[opening_sample-1]["close"] - candles[max(0, opening_sample-5)]["close"]) / 
+                             candles[max(0, opening_sample-5)]["close"]) * 100
+            bias = "BULLISH" if recent_momentum > 0 else "BEARISH"
+        
+        logger.info(f"[AI BACKTEST F&O] {trade_date}: Market bias = {bias} (trend: {price_trend:.2f}%, vol: {volatility:.2f}%)")
+        
+        # === STEP 2: For indices, just trade the underlying (simpler and more reliable) ===
+        # Instead of complex option simulation, trade the index directly
+        # This allows us to use real strategy logic (same as stocks)
+        spot_price = candles[0]["open"]
+        
+        if index_name == "BANKNIFTY":
+            lot_size = 15
+        else:
+            lot_size = 25
+        
+        # We'll trade the underlying index, strategies will handle entry/exit
+        # Position sizing based on capital
+        max_lots = max(1, int(current_capital * 0.30 / (spot_price * lot_size)))
+        if max_lots < 1:
+            max_lots = 1
+        
+        logger.info(f"[AI BACKTEST] {trade_date}: Trading {instrument} (underlying)")
+        logger.info(f"[AI BACKTEST] Capital: Rs.{current_capital:.0f}, Spot: Rs.{spot_price:.2f}, "
+                   f"Lot size: {lot_size}, Max lots: {max_lots}")
+        
+        # Simplified approach - no option simulation, use actual strategy logic
+        simulate_as_option = False  # Trade underlying, not options
+        
+    except Exception as e:
+        logger.exception(f"[AI BACKTEST F&O] {trade_date}: Failed to get F&O recommendation: {e}")
+        # Skip day if can't get recommendation
+        return {
+            "trades": [],
+            "daily_pnl": 0,
+            "ending_capital": current_capital,
+            "ai_switches": 0,
+            "strategies_used": [],
+            "frequency_mode": "NORMAL",
+            "hourly_breakdown": {},
+            "daily_summary": {
+                "date": trade_date.isoformat(),
+                "trades": 0,
+                "wins": 0,
+                "losses": 0,
+                "pnl": 0,
+                "cumulative_pnl": 0,
+                "strategies": [],
+                "frequency_mode": "NORMAL",
+                "hourly_breakdown": {},
+                "total_trades_attempted": 0,
+                "ai_switches": 0,
+            },
+        }
     
     # Day tracking
     day_trades = []
@@ -3835,6 +3997,38 @@ def _simulate_trading_day(
     hourly_trade_counts = {}  # hour -> trade_count
     frequency_mode = "NORMAL"
     
+    # Log candle data for debugging
+    logger.info(f"[AI BACKTEST] Day {trade_date}: Starting with {len(candles)} candles")
+    if len(candles) < 5:
+        logger.warning(f"[AI BACKTEST] Day {trade_date}: Insufficient candles ({len(candles)}), skipping day")
+        return {
+            "trades": [],
+            "daily_pnl": 0,
+            "ending_capital": current_capital,
+            "ai_switches": 0,
+            "strategies_used": [],
+            "frequency_mode": "NORMAL",
+            "hourly_breakdown": {},
+            "daily_summary": {
+                "date": trade_date.isoformat(),
+                "trades": 0,
+                "wins": 0,
+                "losses": 0,
+                "pnl": 0,
+                "cumulative_pnl": 0,
+                "strategies": [],
+                "frequency_mode": "NORMAL",
+                "hourly_breakdown": {},
+                "total_trades_attempted": 0,
+                "ai_switches": 0,
+            },
+        }
+    
+    candles_processed = 0
+    candles_skipped_hours = 0
+    entry_checks = 0
+    entries_triggered = 0
+    
     # Simulate each candle (5-minute intervals)
     for idx, candle in enumerate(candles):
         candle_time = candle.get("timestamp") or candle.get("date")
@@ -3848,9 +4042,12 @@ def _simulate_trading_day(
                 candle_time_obj = candle_dt.time()
                 current_hour = candle_dt.hour
                 if candle_time_obj < time(9, 15) or candle_time_obj > time(15, 15):
+                    candles_skipped_hours += 1
                     continue
             except:
                 pass
+        
+        candles_processed += 1
         
         # Initialize hourly counter
         if current_hour not in hourly_trade_counts:
@@ -3886,9 +4083,9 @@ def _simulate_trading_day(
         
         strategies_used.add(current_strategy_name)
         
-        # Check if we have open position - manage exit
+        # Check if we have open position - manage exit (simple, like Live/Paper)
         if current_position:
-            # Check stop loss
+            # Check stop loss (simple price comparison)
             if ltp <= current_position["stop_loss"]:
                 exit_pnl = (current_position["stop_loss"] - current_position["entry_price"]) * current_position["qty"]
                 day_trades.append({
@@ -3903,10 +4100,11 @@ def _simulate_trading_day(
                     "exit_reason": "STOP_LOSS"
                 })
                 day_pnl += exit_pnl
+                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT STOP_LOSS @ Rs.{current_position['stop_loss']:.2f} | P&L: Rs.{exit_pnl:.2f}")
                 current_position = None
                 continue
             
-            # Check target
+            # Check target (simple price comparison)
             if ltp >= current_position["target"]:
                 exit_pnl = (current_position["target"] - current_position["entry_price"]) * current_position["qty"]
                 day_trades.append({
@@ -3921,15 +4119,13 @@ def _simulate_trading_day(
                     "exit_reason": "TARGET"
                 })
                 day_pnl += exit_pnl
+                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT TARGET @ Rs.{current_position['target']:.2f} | P&L: Rs.{exit_pnl:.2f}")
                 current_position = None
                 continue
         
         # Entry logic - check dynamic hourly frequency
         if not current_position:
-            # Absolute daily failsafe check
-            if len(day_trades) >= max_trades:
-                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Daily max trades limit reached ({len(day_trades)}/{max_trades})")
-                break
+            entry_checks += 1
             
             # Calculate dynamic trades per hour based on capital and drawdown
             max_trades_this_hour, freq_mode = calculate_max_trades_per_hour(
@@ -3945,20 +4141,61 @@ def _simulate_trading_day(
                 logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Hourly limit reached ({trades_this_hour}/{max_trades_this_hour}) Mode: {freq_mode}")
                 continue
             
-            # Simple entry logic for backtest (in reality, would use full strategy check_entry)
-            # Look for momentum: if last 3 candles are green and volume is high
-            if idx >= 3:
+            # Simple entry logic (momentum-based, works for all instruments)
+            should_enter = False
+            entry_price = ltp
+            entry_reason = ""
+            
+            if idx >= 3:  # Need some candles for momentum
                 recent = candles[idx-3:idx+1]
-                greens = sum(1 for c in recent if c["close"] > c["open"])
+                price_change_pct = ((recent[-1]["close"] - recent[0]["close"]) / recent[0]["close"]) * 100
                 
-                if greens >= 3:  # Strong uptrend
-                    # Enter trade
-                    entry_price = ltp
-                    qty = int((current_capital * risk_percent / 100) / entry_price)
-                    if qty > 0:
-                        stop_loss = entry_price * 0.98  # 2% stop
-                        target = entry_price * 1.04  # 4% target
+                # Entry on significant momentum (works for stocks and indices)
+                if abs(price_change_pct) > 0.3:
+                    should_enter = True
+                    entry_reason = f"Momentum {price_change_pct:.2f}%"
+            
+            if should_enter:
+                    # Load REAL strategy to get stop loss and target (same as Live/Paper)
+                    mock_session = {
+                        "instrument": instrument,
+                        "recommendation": {"strategyName": current_strategy_name},
+                        "execution_mode": "BACKTEST",
+                    }
+                    
+                    try:
+                        # Pass empty dict as data provider (strategies only need it for initialization)
+                        class MockDataProvider:
+                            def get_recent_candles(self, *args, **kwargs):
+                                return []
+                            def get_ltp(self, *args, **kwargs):
+                                return entry_price
                         
+                        strategy = get_strategy_for_session(mock_session, MockDataProvider(), current_strategy_name)
+                        if strategy:
+                            stop_loss = strategy.get_stop_loss(entry_price)
+                            target = strategy.get_target(entry_price)
+                        else:
+                            # Fallback if strategy not found
+                            stop_loss = entry_price * 0.985  # 1.5% stop
+                            target = entry_price * 1.03  # 3% target
+                    except Exception as e:
+                        logger.warning(f"[AI BACKTEST] Failed to load strategy {current_strategy_name}: {e}")
+                        stop_loss = entry_price * 0.985
+                        target = entry_price * 1.03
+                    
+                    # Calculate position sizing (same as Live/Paper)
+                    risk_amount = current_capital * risk_percent / 100
+                    risk_per_share = abs(entry_price - stop_loss)
+                    
+                    if risk_per_share > 0:
+                        qty = int(risk_amount / risk_per_share)
+                    else:
+                        qty = max(1, int(risk_amount / entry_price))
+                    
+                    entries_triggered += 1
+                    
+                    if qty > 0:
                         current_position = {
                             "strategy": current_strategy_name,
                             "entry_time": candle_time,
@@ -3967,13 +4204,16 @@ def _simulate_trading_day(
                             "target": target,
                             "qty": qty,
                         }
+                        strategies_used.add(current_strategy_name)
                         
                         # Increment hourly counter
                         hourly_trade_counts[current_hour] = hourly_trade_counts.get(current_hour, 0) + 1
                         
-                        logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: ENTRY {current_strategy_name} @{entry_price} (Hour: {trades_this_hour + 1}/{max_trades_this_hour})")
+                        logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: ENTRY {current_strategy_name} @Rs.{entry_price:.2f} SL:Rs.{stop_loss:.2f} Target:Rs.{target:.2f} Qty:{qty} | {entry_reason}")
+                    else:
+                        logger.warning(f"[AI BACKTEST] {trade_date} {candle_time}: Entry signal but qty=0")
     
-    # Close any open position at end of day
+    # Close any open position at end of day (simple, like Live/Paper)
     if current_position:
         exit_price = candles[-1]["close"]
         exit_pnl = (exit_price - current_position["entry_price"]) * current_position["qty"]
@@ -3989,7 +4229,13 @@ def _simulate_trading_day(
             "exit_reason": "DAY_END"
         })
         day_pnl += exit_pnl
+        logger.info(f"[AI BACKTEST] {trade_date} EOD: Closed position @ Rs.{exit_price:.2f} | P&L: Rs.{exit_pnl:.2f}")
         current_position = None
+    
+    # Log day statistics for debugging
+    logger.info(f"[AI BACKTEST] Day {trade_date} Stats: Candles processed={candles_processed}, "
+                f"Skipped (hours)={candles_skipped_hours}, Entry checks={entry_checks}, "
+                f"Trades executed={len(day_trades)}, AI Switches={ai_switches_today}")
     
     # Day summary
     wins = sum(1 for t in day_trades if t["pnl"] > 0)

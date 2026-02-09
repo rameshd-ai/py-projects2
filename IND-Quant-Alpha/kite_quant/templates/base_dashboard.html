@@ -16,7 +16,7 @@
       --bs-body-bg: var(--md-bg); --bs-body-color: var(--md-text); --bs-border-color: var(--md-border);
     }
     body { font-family: 'Roboto', sans-serif; background-color: var(--md-bg); overflow-x: hidden; }
-    .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 260px; background-color: var(--md-surface); border-right: 1px solid var(--md-border); padding-top: 1rem; z-index: 1000; transition: transform 0.3s ease-in-out; }
+    .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 260px; background-color: var(--md-surface); border-right: 1px solid var(--md-border); padding-top: 1rem; z-index: 1000; transition: transform 0.3s ease-in-out; overflow-y: auto; display: block !important; }
     .sidebar-brand { padding: 0 1.5rem 1.5rem; font-size: 1.25rem; font-weight: 700; color: var(--md-primary); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--md-border); }
     .nav-link { color: var(--md-text-muted); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 12px; font-weight: 500; border-radius: 0 50px 50px 0; margin-right: 1rem; transition: all 0.2s; }
     .nav-link:hover { background-color: rgba(168, 199, 250, 0.08); color: var(--md-text); }
@@ -46,24 +46,14 @@
   </style>
 </head>
 <body>
-  <div class="sidebar d-flex flex-column">
+  <div class="sidebar">
     <div class="sidebar-brand">
       <span class="material-icons-round text-primary-custom">trending_up</span> Kite Quant
     </div>
-    <ul class="nav flex-column mt-3">
+    <ul class="nav flex-column mt-3" style="padding-bottom: 2rem;">
       <li class="nav-item mb-2">
         <a href="{{ url_for('dashboard') }}" class="nav-link {{ 'active' if active_page == 'overview' else '' }}">
           <span class="material-icons-round">dashboard</span> Overview
-        </a>
-      </li>
-      <li class="nav-item mb-2">
-        <a href="{{ url_for('dashboard_testing') }}" class="nav-link {{ 'active' if active_page == 'testing' else '' }}">
-          <span class="material-icons-round">science</span> Testing
-        </a>
-      </li>
-      <li class="nav-item mb-2">
-        <a href="{{ url_for('dashboard_live') }}" class="nav-link {{ 'active' if active_page == 'live' else '' }}">
-          <span class="material-icons-round">flash_on</span> Live Trading
         </a>
       </li>
       <li class="nav-item mb-2">
@@ -81,17 +71,17 @@
           <span class="material-icons-round">smart_toy</span> AI Trading Agent
         </a>
       </li>
-      <li class="nav-item mb-2">
+      <li class="nav-item mb-2" style="display: block !important; visibility: visible !important;">
         <a href="{{ url_for('dashboard_algo_library') }}" class="nav-link {{ 'active' if active_page == 'algo_library' else '' }}">
           <span class="material-icons-round">menu_book</span> Strategy Library
         </a>
       </li>
-      <li class="nav-item mb-2">
+      <li class="nav-item mb-2" style="display: block !important; visibility: visible !important;">
         <a href="{{ url_for('dashboard_backtest') }}" class="nav-link {{ 'active' if active_page == 'backtest' else '' }}">
           <span class="material-icons-round">history</span> Backtesting
         </a>
       </li>
-      <li class="nav-item mt-auto mb-3">
+      <li class="nav-item mb-3">
         <a href="{{ url_for('settings') }}" class="nav-link">
           <span class="material-icons-round">settings</span> Settings
         </a>

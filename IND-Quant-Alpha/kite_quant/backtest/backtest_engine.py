@@ -160,8 +160,13 @@ def run_backtest_engine(
             else:
                 can_enter, entry_price = result
             if can_enter and entry_price is not None:
-                stop_loss = strategy.get_stop_loss(entry_price)
-                target = strategy.get_target(entry_price)
+                # Use F&O-aware stop/target for options (wider stops, realistic targets)
+                if hasattr(strategy, 'get_stop_loss_fo_aware'):
+                    stop_loss = strategy.get_stop_loss_fo_aware(entry_price, session)
+                    target = strategy.get_target_fo_aware(entry_price, session)
+                else:
+                    stop_loss = strategy.get_stop_loss(entry_price)
+                    target = strategy.get_target(entry_price)
                 stop_for_risk = stop_loss if stop_loss != entry_price else entry_price * 0.995
                 approved, reason, lots = risk_mgr.validate_trade(session, entry_price, stop_for_risk, 1, premium=None)
                 if approved and lots > 0:

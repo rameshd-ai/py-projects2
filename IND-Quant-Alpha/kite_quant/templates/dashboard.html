@@ -345,16 +345,6 @@
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="{{ url_for('dashboard') }}#testing" class="nav-link" data-section="testing" onclick="showSection('testing', this); return false;">
-          <span class="material-icons-round">science</span> Testing
-        </a>
-      </li>
-      <li class="nav-item mb-2">
-        <a href="{{ url_for('dashboard') }}#live" class="nav-link" data-section="live" onclick="showSection('live', this); return false;">
-          <span class="material-icons-round">flash_on</span> Live Trading
-        </a>
-      </li>
-      <li class="nav-item mb-2">
         <a href="{{ url_for('dashboard') }}#analytics" class="nav-link" data-section="analytics" onclick="showSection('analytics', this); return false;">
           <span class="material-icons-round">insights</span> Analytics
         </a>
@@ -370,11 +360,21 @@
         </a>
       </li>
       <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_algo_library') }}" class="nav-link">
+          <span class="material-icons-round">menu_book</span> Strategy Library
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_backtest') }}" class="nav-link">
+          <span class="material-icons-round">history</span> Backtesting
+        </a>
+      </li>
+      <li class="nav-item mb-2">
         <a href="{{ url_for('dashboard') }}#calendar" class="nav-link" data-section="calendar" onclick="showSection('calendar', this); return false;">
           <span class="material-icons-round">calendar_month</span> Market Calendar
         </a>
       </li>
-      <li class="nav-item mt-auto mb-3">
+      <li class="nav-item mb-3">
         <a href="{{ url_for('settings') }}" class="nav-link">
           <span class="material-icons-round">settings</span> Settings
         </a>
@@ -634,197 +634,6 @@
       </div>
     </div>
     </div><!-- /#dashboard-metrics -->
-
-    <!-- TESTING SECTION -->
-    <div id="section-testing" class="section fade-in">
-      <div class="alert bg-warning-subtle border-0 d-flex align-items-center mb-4" role="alert">
-        <span class="material-icons-round me-2 text-warning-custom">warning</span>
-        <div class="text-warning-custom small">Testing Mode - No real trades will be executed.</div>
-      </div>
-
-      <div class="row g-4">
-        <div class="col-md-4">
-          <div class="card">
-            <div class="card-header">Config</div>
-            <div class="card-body d-grid gap-3">
-              <div>
-                <label class="form-label small text-muted">Symbol</label>
-                <input type="text" class="form-control" id="backtestSymbol" value="RELIANCE">
-          </div>
-              <div>
-                <label class="form-label small text-muted">Days</label>
-                <input type="number" class="form-control" id="backtestDays" value="60">
-        </div>
-              <button class="btn btn-outline-secondary w-100 justify-content-center" onclick="loadTradeSuggestions()">Get Suggestions</button>
-              <button class="btn btn-primary w-100 justify-content-center" onclick="runBacktest()">Run Backtest</button>
-      </div>
-    </div>
-    
-          <div id="tradeSuggestions" class="card bg-primary bg-opacity-10 border-0 mt-3" style="display: none;">
-            <div class="card-body">
-              <h6 class="text-primary-custom fw-bold mb-3">Suggestions for <span id="suggestionSymbol"></span></h6>
-              <div class="d-flex justify-content-between small mb-2"><span>Min:</span> <strong id="suggestionMin">—</strong></div>
-              <div class="d-flex justify-content-between small mb-2"><span>Max:</span> <strong id="suggestionMax">—</strong></div>
-              <div class="d-flex justify-content-between small mb-3"><span>Current:</span> <strong id="suggestionCurrent">—</strong></div>
-              <div class="text-muted small fst-italic border-top border-secondary pt-2" id="suggestionReasoning">—</div>
-            </div>
-          </div>
-      </div>
-      
-        <div class="col-md-8">
-          <div class="card h-100">
-            <div class="card-header">Results</div>
-            <div class="card-body">
-              <div id="backtestResultsPane" style="display: none;">
-                <div id="backtestResults" style="max-height: 400px; overflow-y: auto;"></div>
-          </div>
-              <div id="backtestPlaceholder" class="text-center py-5 text-muted">
-                <span class="material-icons-round fs-1 opacity-25">bar_chart</span>
-                <p>Run a backtest to see results</p>
-          </div>
-        </div>
-            </div>
-              </div>
-            </div>
-          </div>
-
-    <!-- LIVE SECTION -->
-    <div id="section-live" class="section fade-in">
-      <div class="alert bg-danger-subtle border-0 d-flex align-items-center mb-4" role="alert">
-        <span class="material-icons-round me-2 text-danger-custom">dangerous</span>
-        <div class="text-danger-custom small">Live Trading Mode - Real money will be used. Ensure stop-losses are set.</div>
-        </div>
-
-      <div class="row g-4">
-        <!-- Controls -->
-        <div class="col-lg-4">
-          <div class="card mb-4">
-            <div class="card-header">Controls</div>
-            <div class="card-body d-grid gap-3">
-              <!-- 1. Amount to use (first) — saved locally -->
-              <div>
-                <label class="form-label small text-muted">Amount to use for trade (₹)</label>
-                <input type="number" class="form-control" id="liveAmountToUse" placeholder="e.g. 50000" min="0" step="1000" title="Capital for this trade — use with suggestions below">
-              <div id="liveAmountSaveMsg" class="small mt-1 d-none"></div>
-              </div>
-              <button class="btn btn-sm btn-outline-primary" type="button" onclick="saveTradingAmount()">Save amount</button>
-
-              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 py-2 border-bottom border-secondary border-opacity-25">
-                <span class="small text-muted">Available balance (Zerodha)</span>
-                <span class="fw-bold" id="live-balance">—</span>
-              </div>
-              <div class="position-relative">
-                <label class="form-label small text-muted">Trading Symbol <span class="text-muted">(type to search from Zerodha)</span></label>
-                <input type="text" class="form-control" id="liveSymbol" value="RELIANCE" placeholder="Type 2+ letters to search NSE symbols" autocomplete="off" oninput="onLiveSymbolSearchInput()" onchange="updateLiveSymbol()" onfocus="onLiveSymbolSearchInput()">
-                <div id="liveSymbolDropdown" class="position-absolute top-100 start-0 end-0 mt-1 border border-secondary rounded bg-dark overflow-auto d-none" style="max-height: 320px; z-index: 1050;"></div>
-              </div>
-              <button class="btn btn-outline-secondary justify-content-center" onclick="loadLiveTradeSuggestions()">Get Suggestions</button>
-              
-              <div id="liveTradeSuggestions" class="bg-primary bg-opacity-10 p-3 rounded" style="display: none;">
-                <div class="d-flex justify-content-between small mb-2">
-                  <span>Suggested Max:</span> <strong id="liveSuggestionMax" class="text-primary-custom">—</strong>
-        </div>
-                <button class="btn btn-sm btn-primary w-100 justify-content-center" onclick="applySuggestedMax()">Apply</button>
-      </div>
-      
-              <div class="d-grid gap-2 pt-3 border-top border-secondary">
-                <button class="btn btn-success justify-content-center text-white" id="btnStart" onclick="startTrading()">
-                  <span class="material-icons-round fs-5">play_arrow</span> Start
-                </button>
-                <button class="btn btn-warning justify-content-center text-dark" id="btnStop" onclick="stopTrading()" disabled>
-                  <span class="material-icons-round fs-5">stop</span> Stop
-                </button>
-                <button class="btn btn-danger justify-content-center" id="btnKill" onclick="killSwitch()">
-                  <span class="material-icons-round fs-5">cancel</span> Kill Switch
-                </button>
-          </div>
-              
-              <div class="text-center mt-2 small">
-                <div class="text-muted">Auto-close: <span class="text-white" id="auto-close-time-display">2:30 PM</span> IST</div>
-                <div class="text-primary-custom fw-bold" id="live-countdown">—</div>
-          </div>
-          </div>
-          </div>
-          </div>
-
-        <!-- Live Data -->
-        <div class="col-lg-8">
-          <!-- Mini Metrics -->
-          <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
-              <div class="metric-item py-2">
-                <div class="metric-label">Status</div>
-                <div class="metric-value fs-5" id="live-status">—</div>
-          </div>
-          </div>
-            <div class="col-6 col-md-3">
-              <div class="metric-item py-2">
-                <div class="metric-label">Price</div>
-                <div class="metric-value fs-5" id="live-price">—</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="metric-item py-2">
-                <div class="metric-label">P&L</div>
-                <div class="metric-value fs-5" id="live-pnl">—</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="metric-item py-2">
-                <div class="metric-label">Frequency</div>
-                <div class="metric-value fs-6 text-muted">Dynamic</div>
-          </div>
-        </div>
-      </div>
-
-          <!-- Intraday Picks for Trading (with checkboxes to select for trading) -->
-          <div class="card mb-4">
-            <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-              <span>Suggestions in sequence (use with amount above)</span>
-              <div class="d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-primary" id="livePicksLoadBtn" onclick="loadLiveIntradayPicks()">Load Picks</button>
-                <button type="button" class="btn btn-sm btn-primary" id="livePicksApplyBtn" onclick="applySelectedPicksToTrading()" disabled title="Set first selected as trading symbol">Use selected</button>
-              </div>
-            </div>
-            <div class="card-body p-0">
-              <div id="live-picks-loading" class="p-3 text-muted small text-center d-none">Loading…</div>
-              <div id="live-picks-error" class="p-3 text-warning small d-none"></div>
-              <div class="table-responsive" id="live-picks-wrap" style="display: none;">
-                <table class="table table-dark table-hover mb-0 align-middle">
-                  <thead>
-                    <tr class="text-muted text-uppercase" style="font-size: 0.7rem;">
-                      <th class="ps-3" style="width: 2.5rem;">Trade</th>
-                      <th>Symbol</th>
-                      <th>Prediction</th>
-                      <th class="text-end">Score</th>
-                    </tr>
-                  </thead>
-                  <tbody id="live-picks-tbody">
-                  </tbody>
-                </table>
-              </div>
-              <div id="live-picks-empty" class="p-3 text-muted small text-center">Click &quot;Load Picks&quot; to load intraday picks, then check symbols you want to trade.</div>
-            </div>
-          </div>
-      
-          <div class="card mb-4">
-            <div class="card-header">Open Positions</div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-dark table-hover mb-0 align-middle">
-          <thead>
-                    <tr><th class="ps-4">Symbol</th><th>Qty</th><th>P&L</th></tr>
-          </thead>
-          <tbody id="live-positionsBody">
-                    <tr><td colspan="3" class="ps-4 text-muted">No positions</td></tr>
-          </tbody>
-        </table>
-              </div>
-            </div>
-      </div>
-      </div>
-    </div>
-  </div>
 
     <!-- Analytics Section -->
     <div id="section-analytics" class="section fade-in">
@@ -1265,7 +1074,7 @@
       document.getElementById('section-' + sectionName).classList.add('active');
         if(clickedElement) clickedElement.classList.add('active');
       
-        const titles = { 'overview': 'Overview', 'testing': 'Testing', 'live': 'Live Trading', 'analytics': 'Analytics', 'zerodha': 'My Zerodha', 'calendar': 'Market Calendar' };
+        const titles = { 'overview': 'Overview', 'analytics': 'Analytics', 'zerodha': 'My Zerodha', 'calendar': 'Market Calendar' };
         document.getElementById('page-title').textContent = titles[sectionName] || 'Dashboard';
 
       // Update URL to /dashboard#section so the address bar reflects current section
@@ -1298,7 +1107,7 @@
     // On load: if URL has a hash (#overview, #live, etc.), show that section
     function applyHashToSection() {
       var hash = window.location.hash.replace('#', '');
-      var valid = ['overview', 'testing', 'live', 'analytics', 'zerodha', 'calendar'];
+      var valid = ['overview', 'analytics', 'zerodha', 'calendar'];
       if (hash && valid.indexOf(hash) !== -1) {
         var link = document.querySelector('.nav-link[data-section="' + hash + '"]');
         showSection(hash, link);
@@ -1696,8 +1505,6 @@
                 document.getElementById('dashboard-loading') && document.getElementById('dashboard-loading').classList.add('d-none');
                 document.getElementById('dashboard-metrics') && document.getElementById('dashboard-metrics').classList.remove('d-none');
                 updateUI(d, 'overview');
-                updateUI(d, 'testing');
-                updateUI(d, 'live');
             })
             .catch(function(err) {
                 clearTimeout(timeoutId);

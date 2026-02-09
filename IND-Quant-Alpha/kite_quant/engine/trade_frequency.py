@@ -22,6 +22,7 @@ DEFAULT_TRADE_FREQUENCY_CONFIG = {
     "drawdown_trigger_percent": 0.02,  # 2% loss triggers frequency reduction
     "hard_drawdown_trigger_percent": 0.05,  # 5% loss limits to 1 trade/hour
     "drawdown_reduce_percent": 0.5,  # Reduce frequency by 50% during drawdown
+    "max_daily_loss_percent": 0.10,  # 10% max daily loss - kill switch
 }
 
 
@@ -80,6 +81,7 @@ def validate_trade_frequency_config(config: dict[str, Any]) -> bool:
         dd_trigger = config.get("drawdown_trigger_percent", 0.02)
         hard_dd = config.get("hard_drawdown_trigger_percent", 0.05)
         dd_reduce = config.get("drawdown_reduce_percent", 0.5)
+        max_daily_loss = config.get("max_daily_loss_percent", 0.10)
         
         if not (0 < dd_trigger <= 1):
             logger.error("drawdown_trigger_percent must be between 0 and 1")
@@ -91,6 +93,10 @@ def validate_trade_frequency_config(config: dict[str, Any]) -> bool:
         
         if not (0 < dd_reduce <= 1):
             logger.error("drawdown_reduce_percent must be between 0 and 1")
+            return False
+        
+        if not (0 < max_daily_loss <= 1):
+            logger.error("max_daily_loss_percent must be between 0 and 1")
             return False
         
         # Check rules
@@ -203,6 +209,27 @@ def calculate_max_trades_per_hour(
     )
     
     return base_limit, frequency_mode
+
+
+def calculate_max_daily_loss_limit(capital: float, config: dict[str, Any] | None = None) -> float:
+    """
+    Calculate the maximum daily loss limit based on capital and configured percentage.
+    
+    Args:
+        capital: Current capital amount
+        config: Trade frequency configuration (loads from store if None)
+    
+    Returns:
+        Calculated loss limit in rupees (e.g., ₹10,000 for ₹100,000 capital at 10%)
+    """
+    if config is None:
+        config = get_trade_frequency_config()
+    
+    max_loss_percent = config.get("max_daily_loss_percent", 0.10)
+    loss_limit = capital * max_loss_percent
+    
+    logger.debug(f"Calculated loss limit: Rs.{loss_limit:.2f} ({max_loss_percent*100}% of Rs.{capital:.2f})")
+    return loss_limit
 
 
 def get_frequency_status(session: dict) -> dict[str, Any]:

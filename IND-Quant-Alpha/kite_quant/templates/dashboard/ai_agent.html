@@ -54,10 +54,36 @@
             <label class="btn btn-outline-secondary btn-sm" for="mode-btst">BTST</label>
           </div>
         </div>
-        <div class="col-md-3 d-flex align-items-center">
+        <div class="col-md-2 d-flex align-items-center">
           <div class="metric-item flex-grow-1 py-2 px-3">
             <span class="metric-label">Max Risk Per Trade</span>
             <span class="metric-value d-block" id="max-risk-value">₹2,000</span>
+          </div>
+        </div>
+        <div class="col-md-3 d-flex align-items-center">
+          <div class="metric-item flex-grow-1 py-2 px-3 border-danger border-opacity-50">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <span class="metric-label">🛑 Daily Loss Limit</span>
+              <a href="/settings#frequency-pane" target="_blank" class="text-muted small" style="font-size: 0.65rem; text-decoration: none;" title="Change in Settings">⚙️</a>
+            </div>
+            <div class="d-flex gap-2 align-items-baseline">
+              <span class="badge bg-danger bg-opacity-50" id="daily-loss-percent-badge" style="font-size: 0.75rem;">10%</span>
+              <span class="metric-value text-danger" id="daily-loss-limit-value" style="font-size: 1.1rem;">₹10,000</span>
+            </div>
+            <small class="text-muted" style="font-size: 0.65rem;">Set in Trade Frequency settings</small>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Daily Loss Limit Info Box -->
+      <div class="alert alert-danger border-0 mt-3 mb-0 small" style="background: rgba(255, 107, 107, 0.12);">
+        <div class="d-flex align-items-start gap-2">
+          <span class="material-icons-round" style="font-size: 1rem;">warning</span>
+          <div>
+            <strong>Daily Loss Kill Switch:</strong> With <strong id="info-capital-display">₹10,000</strong> capital selected, 
+            trading will automatically STOP if total loss reaches <strong id="info-loss-amount-display">₹1,000</strong> 
+            (<strong id="info-loss-percent-display">10%</strong> from Settings). 
+            <a href="/settings#frequency-pane" target="_blank" class="text-danger">Change percentage in Settings →</a>
           </div>
         </div>
       </div>
@@ -702,12 +728,51 @@
     return '₹' + Math.round(n).toLocaleString('en-IN');
   }
 
+  // Load loss percent from settings
+  let maxDailyLossPercent = 0.10; // Default 10%
+  
+  function loadLossPercentSettings() {
+    fetch('/api/settings/trade-frequency')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok && data.config && data.config.max_daily_loss_percent) {
+          maxDailyLossPercent = data.config.max_daily_loss_percent;
+          updateMaxRiskDisplay();
+        }
+      })
+      .catch(function(e) {
+        console.warn('Could not load loss percent settings, using default 10%');
+      });
+  }
+
   function updateMaxRiskDisplay() {
     const maxRisk = getMaxRiskPerTrade();
     maxRiskValueEl.textContent = formatMoney(maxRisk);
+    
+    // Update daily loss limit display
+    const capital = getTotalCapital();
+    const lossLimit = capital * maxDailyLossPercent;
+    const lossPercent = (maxDailyLossPercent * 100).toFixed(1);
+    
+    const lossLimitEl = document.getElementById('daily-loss-limit-value');
+    const lossPercentBadgeEl = document.getElementById('daily-loss-percent-badge');
+    
+    if (lossLimitEl) lossLimitEl.textContent = formatMoney(lossLimit);
+    if (lossPercentBadgeEl) lossPercentBadgeEl.textContent = lossPercent + '%';
+    
+    // Update info box below
+    const infoCapitalEl = document.getElementById('info-capital-display');
+    const infoLossAmountEl = document.getElementById('info-loss-amount-display');
+    const infoLossPercentEl = document.getElementById('info-loss-percent-display');
+    
+    if (infoCapitalEl) infoCapitalEl.textContent = formatMoney(capital);
+    if (infoLossAmountEl) infoLossAmountEl.textContent = formatMoney(lossLimit);
+    if (infoLossPercentEl) infoLossPercentEl.textContent = lossPercent + '%';
   }
+  
   totalCapitalEl.addEventListener('input', updateMaxRiskDisplay);
   riskPctEl.addEventListener('input', updateMaxRiskDisplay);
+  loadLossPercentSettings(); // Load settings on page load
   updateMaxRiskDisplay();
 
   function getTotalCapital() {

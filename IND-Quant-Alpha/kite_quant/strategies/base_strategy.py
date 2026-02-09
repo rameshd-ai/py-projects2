@@ -40,6 +40,28 @@ class BaseStrategy:
     def get_target(self, entry_price: float) -> float:
         """Return target price for given entry."""
         raise NotImplementedError
+    
+    def _is_option_trading(self, session: dict | None = None) -> bool:
+        """Check if this is F&O option trading (NFO exchange)."""
+        if session and session.get("exchange") == "NFO":
+            return True
+        # Also check instrument name for index options
+        instrument_upper = self.instrument.upper()
+        return any(idx in instrument_upper for idx in ["NIFTY", "BANKNIFTY", "FINNIFTY"])
+    
+    def get_stop_loss_fo_aware(self, entry_price: float, session: dict | None = None) -> float:
+        """
+        Get stop loss with F&O option awareness.
+        For now, just use the base strategy stop loss.
+        """
+        return self.get_stop_loss(entry_price)
+    
+    def get_target_fo_aware(self, entry_price: float, session: dict | None = None) -> float:
+        """
+        Get target with F&O option awareness.
+        For now, just use the base strategy target.
+        """
+        return self.get_target(entry_price)
 
     def _get_exit_ltp(self, trade: dict[str, Any]) -> float:
         """LTP for exit checks: NFO trades use option premium, else instrument LTP."""
