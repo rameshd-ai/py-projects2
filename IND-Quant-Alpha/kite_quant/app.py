@@ -4053,31 +4053,45 @@ def _simulate_trading_day(
         if current_hour not in hourly_trade_counts:
             hourly_trade_counts[current_hour] = 0
         
-        # AI strategy evaluation (every N candles)
+        # AI strategy evaluation (every N candles) - USE REAL GPT API
         candles_since_check = idx - last_ai_check_idx
         if ai_enabled and candles_since_check >= (ai_check_interval // 5) and not current_position:
-            # Get market context for AI
-            recent_candles = candles[max(0, idx-10):idx+1]
+            # Get market context for REAL AI
+            recent_candles = candles[max(0, idx-20):idx+1]
             
-            # Simplified AI decision (in real scenario, would call full AI advisor)
-            # For backtest, we'll rotate through strategies based on market conditions
-            available_strategies = ["Momentum Breakout", "VWAP Trend Ride", "RSI Reversal Fade", 
-                                   "Pullback Continuation", "EMA Ribbon Trend Alignment"]
-            
-            # Simple logic: pick based on trend
-            if len(recent_candles) >= 3:
-                trend = recent_candles[-1]["close"] - recent_candles[0]["close"]
-                if trend > 0:
-                    new_strategy = "Momentum Breakout"
-                elif abs(trend) < 20:
-                    new_strategy = "RSI Reversal Fade"
-                else:
-                    new_strategy = "Pullback Continuation"
+            try:
+                # Build market context (same as Live/Paper)
+                context = {
+                    "instrument": instrument,
+                    "current_price": ltp,
+                    "recent_candles": recent_candles[-10:],  # Last 10 candles
+                    "time": str(candle_time)
+                }
                 
-                if new_strategy != current_strategy_name:
-                    current_strategy_name = new_strategy
-                    ai_switches_today += 1
-                    logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Switched to {new_strategy}")
+                # Call REAL GPT API for strategy recommendation
+                ai_recommendation = get_ai_strategy_recommendation(context, current_strategy_name)
+                
+                if not ai_recommendation:
+                    logger.info(f"[AI BACKTEST] GPT not available or returned no recommendation - keeping {current_strategy_name}")
+                
+                if ai_recommendation:
+                    # Use GPT's recommendation with confidence threshold
+                    should_switch, new_strategy = should_switch_strategy(
+                        ai_recommendation,
+                        current_strategy_name,
+                        min_confidence="medium"  # Only switch if GPT is confident
+                    )
+                    
+                    if should_switch and new_strategy:
+                        current_strategy_name = new_strategy
+                        ai_switches_today += 1
+                        confidence = ai_recommendation.get("confidence", "")
+                        reasoning = ai_recommendation.get("reasoning", "")
+                        logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: GPT switched to {new_strategy} (confidence: {confidence})")
+                        logger.info(f"[AI BACKTEST] GPT reasoning: {reasoning[:100]}...")
+                        
+            except Exception as e:
+                logger.warning(f"[AI BACKTEST] GPT strategy check failed: {e}")
             
             last_ai_check_idx = idx
         
@@ -4141,19 +4155,46 @@ def _simulate_trading_day(
                 logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Hourly limit reached ({trades_this_hour}/{max_trades_this_hour}) Mode: {freq_mode}")
                 continue
             
-            # Simple entry logic (momentum-based, works for all instruments)
+            # Entry logic based on current strategy and market conditions
             should_enter = False
             entry_price = ltp
             entry_reason = ""
             
-            if idx >= 3:  # Need some candles for momentum
-                recent = candles[idx-3:idx+1]
+            if idx >= 5:  # Need enough candles for analysis
+                recent = candles[idx-5:idx+1]
                 price_change_pct = ((recent[-1]["close"] - recent[0]["close"]) / recent[0]["close"]) * 100
                 
-                # Entry on significant momentum (works for stocks and indices)
-                if abs(price_change_pct) > 0.3:
-                    should_enter = True
-                    entry_reason = f"Momentum {price_change_pct:.2f}%"
+                # Calculate momentum indicators
+                last_candle = recent[-1]
+                prev_candle = recent[-2]
+                is_green = last_candle["close"] > last_candle["open"]
+                is_red = last_candle["close"] < last_candle["open"]
+                volume_surge = last_candle.get("volume", 0) > sum(c.get("volume", 0) for c in recent[:-1]) / len(recent[:-1]) * 1.2
+                
+                # Strategy-specific entry conditions (aligned with real strategies)
+                if current_strategy_name == "Momentum Breakout":
+                    # Enter on breakout with volume
+                    if abs(price_change_pct) > 0.2 and (volume_surge or abs(price_change_pct) > 0.4):
+                        should_enter = True
+                        entry_reason = f"Breakout {price_change_pct:.2f}%"
+                        
+                elif current_strategy_name == "RSI Reversal Fade":
+                    # Enter on reversal signs (extreme moves)
+                    if abs(price_change_pct) > 0.5:  # Overextended
+                        should_enter = True
+                        entry_reason = f"Reversal setup {price_change_pct:.2f}%"
+                        
+                elif current_strategy_name == "Pullback Continuation":
+                    # Enter on small pullbacks in trend
+                    if -0.3 < price_change_pct < 0.5:
+                        should_enter = True
+                        entry_reason = f"Pullback {price_change_pct:.2f}%"
+                        
+                else:
+                    # Default: moderate momentum
+                    if abs(price_change_pct) > 0.25:
+                        should_enter = True
+                        entry_reason = f"Momentum {price_change_pct:.2f}%"
             
             if should_enter:
                     # Load REAL strategy to get stop loss and target (same as Live/Paper)
