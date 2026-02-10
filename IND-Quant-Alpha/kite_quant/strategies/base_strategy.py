@@ -30,8 +30,54 @@ class BaseStrategy:
         """
         Check if trade should exit. Returns "STOP_LOSS", "TARGET", "TRAILING", or None.
         trade has entry_price, stop_loss, target, entry_time, etc.
+        
+        This implementation includes TRAILING STOP LOSS logic.
         """
-        raise NotImplementedError
+        # Get current price for exit check
+        ltp = self._get_exit_ltp(trade)
+        if ltp <= 0:
+            return None
+        
+        entry_price = trade.get("entry_price", 0)
+        stop_loss = trade.get("stop_loss", 0)
+        target = trade.get("target", 0)
+        
+        # Initialize trailing stop if not present
+        if "trailing_stop" not in trade:
+            trade["trailing_stop"] = stop_loss
+            trade["highest_price"] = entry_price
+        
+        # Update highest price seen
+        if ltp > trade.get("highest_price", entry_price):
+            trade["highest_price"] = ltp
+            
+            # Calculate trailing stop (lock in 50% of profits)
+            profit_so_far = ltp - entry_price
+            new_trailing_stop = entry_price + (profit_so_far * 0.5)
+            
+            # Only move trailing stop up, never down
+            if new_trailing_stop > trade.get("trailing_stop", stop_loss):
+                old_trailing = trade.get("trailing_stop", stop_loss)
+                trade["trailing_stop"] = new_trailing_stop
+                # Log trailing stop update
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(
+                    f"[TRAILING STOP] Updated for {trade.get('symbol', 'unknown')} | "
+                    f"Price: ₹{ltp:.2f} → New Trailing Stop: ₹{new_trailing_stop:.2f} "
+                    f"(was ₹{old_trailing:.2f})"
+                )
+        
+        # Check exits (use trailing stop if it's higher than original stop)
+        active_stop = max(stop_loss, trade.get("trailing_stop", stop_loss))
+        
+        if ltp <= active_stop:
+            return "TRAILING" if active_stop > stop_loss else "STOP_LOSS"
+        
+        if target and ltp >= target:
+            return "TARGET"
+        
+        return None
 
     def get_stop_loss(self, entry_price: float) -> float:
         """Return stop loss price for given entry."""

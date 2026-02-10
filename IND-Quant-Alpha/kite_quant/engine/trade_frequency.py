@@ -10,19 +10,19 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Default trade frequency configuration
+# Default trade frequency configuration - AGGRESSIVE SETTINGS
 DEFAULT_TRADE_FREQUENCY_CONFIG = {
     "rules": [
-        {"min_capital": 0, "max_capital": 50000, "max_trades_per_hour": 2},
-        {"min_capital": 50000, "max_capital": 200000, "max_trades_per_hour": 3},
-        {"min_capital": 200000, "max_capital": 500000, "max_trades_per_hour": 4},
-        {"min_capital": 500000, "max_capital": None, "max_trades_per_hour": 5},
+        {"min_capital": 0, "max_capital": 50000, "max_trades_per_hour": 10},
+        {"min_capital": 50000, "max_capital": 200000, "max_trades_per_hour": 15},
+        {"min_capital": 200000, "max_capital": 500000, "max_trades_per_hour": 20},
+        {"min_capital": 500000, "max_capital": None, "max_trades_per_hour": 20},
     ],
-    "max_hourly_cap": 5,
-    "drawdown_trigger_percent": 0.02,  # 2% loss triggers frequency reduction
-    "hard_drawdown_trigger_percent": 0.05,  # 5% loss limits to 1 trade/hour
-    "drawdown_reduce_percent": 0.5,  # Reduce frequency by 50% during drawdown
-    "max_daily_loss_percent": 0.10,  # 10% max daily loss - kill switch
+    "max_hourly_cap": 20,
+    "drawdown_trigger_percent": 0.02,
+    "hard_drawdown_trigger_percent": 0.05,
+    "drawdown_reduce_percent": 0.5,
+    "max_daily_loss_percent": 0.10,
 }
 
 
@@ -73,8 +73,8 @@ def validate_trade_frequency_config(config: dict[str, Any]) -> bool:
         
         # Check max_hourly_cap
         max_cap = config.get("max_hourly_cap", 5)
-        if not (1 <= max_cap <= 10):
-            logger.error("max_hourly_cap must be between 1 and 10")
+        if not (1 <= max_cap <= 15):  # Increased from 10 to 15
+            logger.error("max_hourly_cap must be between 1 and 15")
             return False
         
         # Check drawdown percentages
@@ -114,8 +114,8 @@ def validate_trade_frequency_config(config: dict[str, Any]) -> bool:
             trades_per_hour = rule.get("max_trades_per_hour", 1)
             
             # Validate trades per hour
-            if not (1 <= trades_per_hour <= 10):
-                logger.error(f"max_trades_per_hour must be between 1 and 10 in rule {i}")
+            if not (1 <= trades_per_hour <= 15):  # Increased from 10 to 15
+                logger.error(f"max_trades_per_hour must be between 1 and 15 in rule {i}")
                 return False
             
             # Check overlap with next rule

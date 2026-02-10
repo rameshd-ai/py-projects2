@@ -463,9 +463,16 @@
       '<button type="button" class="btn btn-sm ' + (s.ai_auto_switching_enabled ? 'btn-primary' : 'btn-outline-secondary') + ' session-ai-toggle-btn me-2" data-session-id="' + sessionId + '" title="' + (s.ai_auto_switching_enabled ? 'Disable AI auto-switching' : 'Enable AI auto-switching') + '">' +
       '<span class="material-icons-round fs-6">smart_toy</span> ' + (s.ai_auto_switching_enabled ? '🤖 AI ON' : 'Enable AI') + '</button>' : '';
     var actionButton = isStopped ?
-      '<div class="d-flex gap-2"><button type="button" class="btn btn-outline-success btn-sm session-resume-btn" data-session-id="' + sessionId + '">Resume</button>' +
+      '<div class="d-flex gap-2">' +
+      '<button type="button" class="btn btn-outline-info btn-sm view-logs-btn" data-session-id="' + sessionId + '" data-mode="' + (s.execution_mode || 'paper').toLowerCase() + '" title="View Logs">' +
+      '<span class="material-icons-round" style="font-size: 1rem;">visibility</span></button>' +
+      '<button type="button" class="btn btn-outline-success btn-sm session-resume-btn" data-session-id="' + sessionId + '">Resume</button>' +
       '<button type="button" class="btn btn-outline-danger btn-sm session-delete-btn" data-session-id="' + sessionId + '">Delete</button></div>' :
-      '<div class="d-flex gap-2">' + aiToggleButton + '<button type="button" class="btn btn-outline-danger btn-sm session-kill-btn" data-session-id="' + sessionId + '">Stop</button></div>';
+      '<div class="d-flex gap-2">' + 
+      '<button type="button" class="btn btn-outline-info btn-sm view-logs-btn" data-session-id="' + sessionId + '" data-mode="' + (s.execution_mode || 'paper').toLowerCase() + '" title="View Logs">' +
+      '<span class="material-icons-round" style="font-size: 1rem;">visibility</span></button>' +
+      aiToggleButton + 
+      '<button type="button" class="btn btn-outline-danger btn-sm session-kill-btn" data-session-id="' + sessionId + '">Stop</button></div>';
     card.innerHTML =
       '<div class="card-body py-3">' +
         '<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">' +
@@ -1037,6 +1044,106 @@
     btn.addEventListener('click', function() { openOptionsPanel(this.dataset.stock); });
   });
   document.getElementById('optionsPanel').addEventListener('shown.bs.offcanvas', function() {});
+
+  // Logs Modal Handler
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.view-logs-btn')) {
+      const btn = e.target.closest('.view-logs-btn');
+      const mode = btn.dataset.mode || 'live';
+      const sessionId = btn.dataset.sessionId || '';
+      openLogsModal(mode, sessionId);
+    }
+  });
+
+  function openLogsModal(mode, sessionId) {
+    const modal = document.getElementById('logsModal');
+    if (!modal) {
+      createLogsModal();
+      setTimeout(() => openLogsModal(mode, sessionId), 100);
+      return;
+    }
+    
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+    const modeLabel = mode === 'live' ? 'Live Trading' : (mode === 'paper' ? 'Paper Trading' : 'Backtest');
+    
+    if (modalTitle) modalTitle.textContent = `${modeLabel} Logs`;
+    if (modalBody) modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">Loading logs...</div></div>';
+    
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    fetch(`/api/logs?mode=${mode}&lines=200`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          displayLogs(data, mode, sessionId);
+        } else {
+          if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">Error loading logs: ${data.error || 'Unknown error'}</div>`;
+        }
+      })
+      .catch(err => {
+        if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">Failed to fetch logs: ${err.message}</div>`;
+      });
+  }
+
+  function displayLogs(data, mode, sessionId) {
+    const modal = document.getElementById('logsModal');
+    const modalBody = modal.querySelector('.modal-body');
+    
+    let html = '';
+    
+    if (data.note) {
+      html += `<div class="alert alert-info small mb-3">${data.note}</div>`;
+    }
+    
+    html += '<div class="card bg-dark border-secondary mb-3">';
+    html += '<div class="card-header py-2 small"><strong>Log Filters (what to look for in console/terminal)</strong></div>';
+    html += '<div class="card-body small">';
+    html += '<ul class="mb-0">';
+    
+    if (data.logs && data.logs.length > 0) {
+      data.logs.forEach(log => {
+        if (log.message) {
+          html += `<li class="mb-1"><code class="text-info">${log.message}</code></li>`;
+        }
+      });
+    }
+    
+    html += '</ul></div></div>';
+    
+    html += '<div class="alert alert-warning small">';
+    html += '<strong>📋 How to view full logs:</strong><br>';
+    html += '1. Check your terminal/console where Flask is running<br>';
+    html += '2. Look for timestamps and the filters mentioned above<br>';
+    html += '3. Logs show: AI decisions, order placements, trailing stops, entry/exit signals<br>';
+    html += '4. For persistent logs, configure file logging in <code>app.py</code>';
+    html += '</div>';
+    
+    if (modalBody) modalBody.innerHTML = html;
+  }
+
+  function createLogsModal() {
+    const modal = document.createElement('div');
+    modal.id = 'logsModal';
+    modal.className = 'modal fade';
+    modal.setAttribute('tabindex', '-1');
+    modal.innerHTML = `
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light border-secondary">
+          <div class="modal-header border-secondary">
+            <h5 class="modal-title">Logs</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body"></div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
 
 })();
 </script>

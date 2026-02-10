@@ -21,22 +21,17 @@ class RSIReversal(BaseStrategy):
         return False, None
 
     def get_stop_loss(self, entry_price: float) -> float:
-        return round(entry_price * 0.993, 2)  # 0.7% SL
+        return round(entry_price * 0.985, 2)  # 1.5% SL - balanced
 
     def get_target(self, entry_price: float) -> float:
-        return round(entry_price * 1.008, 2)  # 0.8% target (mean reversion)
+        return round(entry_price * 1.02, 2)  # 2% target - very easy to hit
 
     def check_exit(self, trade: dict) -> str | None:
         rsi = self.data.get_rsi(self.instrument, interval="5minute", period=14)
-        ltp = self._get_exit_ltp(trade)
-        if ltp <= 0:
-            return None
-
-        if trade.get("stop_loss") is not None and ltp <= trade["stop_loss"]:
-            return "STOP_LOSS"
-        if trade.get("target") is not None and ltp >= trade["target"]:
-            return "TARGET"
+        
+        # Check RSI mean reversion first (early exit on good signal)
         if rsi is not None and rsi > 55:
             return "RSI_MEAN_REVERSION_COMPLETE"
-
-        return None
+        
+        # Use base strategy's trailing stop loss
+        return super().check_exit(trade)

@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, render_template, request, url_for, Response
 from apscheduler.schedulers.background import BackgroundScheduler
 
 load_dotenv()
@@ -2520,6 +2520,7 @@ _sessions_lock = Lock()
 _trade_sessions: list[dict] = []
 # Engine state: running = tick runs; last_tick = timestamp of last successful tick (for UI)
 engine_state: dict = {"running": True, "last_tick": None}
+_backtest_progress: dict = {}  # Storage for live backtest progress updates
 _last_session_engine_tick_time: datetime | None = None  # For next-scan countdown (set each tick)
 
 
@@ -2960,62 +2961,68 @@ def _fetch_session_ltp(session: dict) -> float | None:
 
 
 def _check_entry_real(session: dict, strategy_name_override: str | None = None) -> tuple[bool, float | None]:
-    """Use registered strategy to check entry. Fetches LTP first, stores full entry_diagnostics (visibility only)."""
+    """
+    UNIFIED ENTRY CHECK - Uses shared logic with backtest.
+    """
+    from engine.unified_entry import should_enter_trade
+    
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    strategy_name = strategy_name_override or (session.get("recommendation") or {}).get("strategyName") or "—"
+    strategy_name = strategy_name_override or (session.get("recommendation") or {}).get("strategyName") or "Momentum Breakout"
     instrument = session.get("instrument") or "—"
     ltp = _fetch_session_ltp(session)
-    try:
-        strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override)
-        if not strategy:
-            diag = {
-                "last_check": now.isoformat(),
-                "strategy": strategy_name,
-                "ltp": ltp,
-                "entry_price": None,
-                "can_enter": False,
-                "blocked_reason": "No strategy loaded",
-                "conditions": {},
-            }
-            session["entry_diagnostics"] = diag
-            logger.info("ENTRY CHECK | %s | LTP=%s | can_enter=False | reason=No strategy loaded", instrument, ltp)
-            return False, None
-        result = strategy.check_entry()
-        if isinstance(result, dict):
-            can_enter = result.get("can_enter", False)
-            entry_price = result.get("entry_price")
-            reason = result.get("reason") or ("Condition met" if can_enter else "Condition not met")
-            conditions = result.get("conditions") or {}
-        else:
-            can_enter, entry_price = result
-            reason = "Condition met" if can_enter else "Condition not met"
-            conditions = {}
-        blocked_reason = None if can_enter else reason
-        diag = {
-            "last_check": now.isoformat(),
-            "strategy": strategy_name,
-            "ltp": ltp,
-            "entry_price": entry_price,
-            "can_enter": bool(can_enter),
-            "blocked_reason": blocked_reason,
-            "conditions": conditions,
-        }
-        session["entry_diagnostics"] = diag
-        logger.info("ENTRY CHECK | %s | LTP=%s | can_enter=%s | reason=%s", instrument, ltp, can_enter, reason)
-        return can_enter, entry_price
-    except Exception as e:
-        logger.exception("Entry check error: %s", str(e))
+    execution_mode = session.get("execution_mode", "PAPER")
+    
+    if ltp is None or ltp <= 0:
+        logger.warning(f"ENTRY CHECK | {instrument} | Invalid LTP={ltp}")
         session["entry_diagnostics"] = {
             "last_check": now.isoformat(),
             "strategy": strategy_name,
             "ltp": ltp,
             "entry_price": None,
             "can_enter": False,
-            "blocked_reason": f"Error: {e!s}",
+            "blocked_reason": "Invalid price",
             "conditions": {},
         }
-        logger.info("ENTRY CHECK | %s | LTP=%s | can_enter=False | reason=Error: %s", instrument, ltp, str(e))
         return False, None
+    
+    # Get recent candles for analysis
+    recent_candles = None
+    try:
+        from engine.data_fetcher import get_ohlc_for_date
+        today = now.date()
+        recent_candles = get_ohlc_for_date(instrument, today, interval="5m")
+        if recent_candles and len(recent_candles) > 10:
+            recent_candles = recent_candles[-10:]  # Last 10 candles
+    except Exception as e:
+        logger.debug(f"Could not get recent candles for {instrument}: {e}")
+    
+    # USE UNIFIED ENTRY LOGIC (same as backtest)
+    should_enter, reason = should_enter_trade(
+        mode=execution_mode,
+        current_price=ltp,
+        recent_candles=recent_candles,
+        strategy_name=strategy_name,
+        frequency_check_passed=True,  # Frequency checked separately
+    )
+    
+    # Store diagnostics
+    diag = {
+        "last_check": now.isoformat(),
+        "strategy": strategy_name,
+        "ltp": ltp,
+        "entry_price": ltp if should_enter else None,
+        "can_enter": should_enter,
+        "blocked_reason": None if should_enter else reason,
+        "conditions": {"unified_entry": True, "same_as_backtest": True},
+    }
+    session["entry_diagnostics"] = diag
+    
+    logger.info(
+        "ENTRY CHECK | %s | Strategy=%s | LTP=%s | can_enter=%s | reason=%s",
+        instrument, strategy_name, ltp, should_enter, reason
+    )
+    
+    return should_enter, ltp if should_enter else None
 
 
 def _manage_trade_real(session: dict) -> bool:
@@ -3106,7 +3113,6 @@ def _run_session_engine_tick() -> None:
             should_run_ai = True
             if last_ai_check:
                 try:
-                    from datetime import datetime
                     last_check_dt = datetime.fromisoformat(last_ai_check)
                     minutes_since = (now - last_check_dt).total_seconds() / 60
                     should_run_ai = minutes_since >= ai_check_interval_minutes
@@ -3149,12 +3155,42 @@ def _run_session_engine_tick() -> None:
                     )
                     
                     current_strategy = (session.get("recommendation") or {}).get("strategyName")
+                    
+                    # === ENHANCED AI DECISION LOGGING ===
+                    logger.info(
+                        "╔══════════════════════════════════════════════════════════════╗\n"
+                        "║ AI STRATEGY EVALUATION                                       ║\n"
+                        "╠══════════════════════════════════════════════════════════════╣"
+                    )
+                    logger.info(f"║ Instrument: {session.get('instrument', 'Unknown'):<48} ║")
+                    logger.info(f"║ Current Strategy: {current_strategy or 'None':<42} ║")
+                    logger.info(f"║ NIFTY: {context.get('nifty_price', 'N/A'):<10} | Change: {context.get('nifty_change_pct', 0):.2f}%{' '*19} ║")
+                    vix_value = context.get('vix', 'N/A')
+                    vix_str = str(vix_value) if not isinstance(vix_value, dict) else str(vix_value.get('value', 'N/A'))
+                    logger.info(f"║ VIX: {vix_str:<10}{' '*43} ║")
+                    logger.info("╠══════════════════════════════════════════════════════════════╣")
+                    
                     ai_recommendation = get_ai_strategy_recommendation(context, current_strategy)
                     
                     session["last_ai_strategy_check"] = now.isoformat()
                     session["last_ai_recommendation"] = ai_recommendation
                     
                     if ai_recommendation:
+                        recommended_strategy = ai_recommendation.get("recommended_strategy", "N/A")
+                        confidence = ai_recommendation.get("confidence", "N/A")
+                        reasoning = ai_recommendation.get("reasoning", "No reasoning provided")
+                        market_condition = ai_recommendation.get("market_condition", "N/A")
+                        
+                        logger.info(f"║ GPT Recommended: {recommended_strategy:<43} ║")
+                        logger.info(f"║ Confidence: {confidence:<48} ║")
+                        logger.info(f"║ Market Condition: {market_condition:<44} ║")
+                        logger.info("╠══════════════════════════════════════════════════════════════╣")
+                        logger.info(f"║ GPT Reasoning:")
+                        for line in reasoning.split('. '):
+                            if line.strip():
+                                logger.info(f"║   • {line.strip()[:58]:<58} ║")
+                        logger.info("╠══════════════════════════════════════════════════════════════╣")
+                        
                         should_switch, new_strategy = should_switch_strategy(
                             ai_recommendation,
                             current_strategy,
@@ -3163,10 +3199,9 @@ def _run_session_engine_tick() -> None:
                         
                         if should_switch and new_strategy:
                             logger.info(
-                                "[AI SWITCH] %s → %s | Reason: %s",
-                                current_strategy,
-                                new_strategy,
-                                ai_recommendation.get("reasoning", "AI recommendation"),
+                                f"║ DECISION: SWITCH TO {new_strategy:<39} ║\n"
+                                f"║ Reason: Confidence threshold met ({confidence})         ║\n"
+                                "╚══════════════════════════════════════════════════════════════╝"
                             )
                             # Update session strategy
                             if "recommendation" not in session:
@@ -3174,6 +3209,18 @@ def _run_session_engine_tick() -> None:
                             session["recommendation"]["strategyName"] = new_strategy
                             session["ai_strategy_switches"] = session.get("ai_strategy_switches", 0) + 1
                             _save_trade_sessions()
+                        else:
+                            logger.info(
+                                f"║ DECISION: KEEP {current_strategy or 'current strategy':<42} ║\n"
+                                f"║ Reason: {'Low confidence' if not should_switch else 'Same strategy recommended':<51} ║\n"
+                                "╚══════════════════════════════════════════════════════════════╝"
+                            )
+                    else:
+                        logger.info(
+                            "║ GPT Response: NOT AVAILABLE (check API key/config)          ║\n"
+                            f"║ DECISION: KEEP {current_strategy or 'current strategy':<42} ║\n"
+                            "╚══════════════════════════════════════════════════════════════╝"
+                        )
                 except Exception as e:
                     logger.exception("[AI ADVISOR] Error during strategy evaluation: %s", str(e))
         
@@ -3223,6 +3270,18 @@ def _run_session_engine_tick() -> None:
         }
         if can_enter and entry_price is not None:
             try:
+                # === ENHANCED ORDER PLACEMENT LOGGING ===
+                logger.info(
+                    "\n"
+                    "╔══════════════════════════════════════════════════════════════╗\n"
+                    "║ ORDER PLACEMENT CHECK                                        ║\n"
+                    "╠══════════════════════════════════════════════════════════════╣"
+                )
+                logger.info(f"║ Instrument: {session.get('instrument', 'Unknown'):<48} ║")
+                logger.info(f"║ Strategy: {strategy_name:<50} ║")
+                logger.info(f"║ Entry Signal: YES | Entry Price: ₹{entry_price:<23.2f} ║")
+                logger.info("╠══════════════════════════════════════════════════════════════╣")
+                
                 strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override=strategy_name)
                 rec = session.get("recommendation") or {}
                 symbol = session.get("instrument", "")
@@ -3237,30 +3296,47 @@ def _run_session_engine_tick() -> None:
                     entry_price = float(opt_quote.get("last", 0) or opt_quote.get("last_price", 0)) or entry_price
                     stop_loss = round(entry_price * 0.995, 2)
                     target = round(entry_price * 1.015, 2)
+                    logger.info(f"║ Option Type: F&O ({session.get('tradingsymbol')}){' '*(60-len(session.get('tradingsymbol', '')))} ║")
                 else:
                     # Use F&O-aware stop/target for options (wider stops, realistic targets)
                     if strategy:
                         if hasattr(strategy, 'get_stop_loss_fo_aware'):
-                            stop_loss = strategy.get_stop_loss_fo_aware(entry_price, s)
-                            target = strategy.get_target_fo_aware(entry_price, s)
+                            stop_loss = strategy.get_stop_loss_fo_aware(entry_price, session)
+                            target = strategy.get_target_fo_aware(entry_price, session)
                         else:
                             stop_loss = strategy.get_stop_loss(entry_price)
                             target = strategy.get_target(entry_price)
                     else:
                         stop_loss = None
                         target = None
+                    logger.info(f"║ Instrument Type: Equity/Index{' '*35} ║")
+                
+                logger.info(f"║ Stop Loss: ₹{stop_loss:<46.2f} ║")
+                logger.info(f"║ Target: ₹{target:<49.2f} ║")
+                risk_reward = ((target - entry_price) / (entry_price - stop_loss)) if stop_loss and stop_loss < entry_price else 0
+                logger.info(f"║ Risk/Reward Ratio: 1:{risk_reward:<36.2f} ║")
+                logger.info("╠══════════════════════════════════════════════════════════════╣")
                 capital = session.get("virtual_balance")
-                if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
+                execution_mode = (session.get("execution_mode") or "PAPER").upper()
+                if execution_mode == "LIVE":
                     capital, _ = get_balance()
                     capital = capital or 0
                 if capital is None or capital <= 0:
                     capital = 100000.0
+                
+                logger.info(f"║ Execution Mode: {execution_mode:<44} ║")
+                logger.info(f"║ Capital Available: ₹{capital:<41.2f} ║")
+                logger.info("╠══════════════════════════════════════════════════════════════╣")
+                
                 risk_config = RiskConfig(
                     capital=float(capital),
                     risk_percent_per_trade=float(rec.get("risk_percent_per_trade") or 1.0),
                     max_daily_loss_percent=float(rec.get("max_daily_loss_percent") or 3.0),
                     max_trades=100,  # No longer used - dynamic hourly frequency controls this
                 )
+                logger.info(f"║ Risk Per Trade: {risk_config.risk_percent_per_trade:.1f}%{' '*40} ║")
+                logger.info(f"║ Max Daily Loss: {risk_config.max_daily_loss_percent:.1f}%{' '*40} ║")
+                
                 risk_mgr = RiskManager(risk_config)
                 premium = rec.get("premium")
                 if premium is not None:
@@ -3275,10 +3351,33 @@ def _run_session_engine_tick() -> None:
                 session["last_entry_check"]["risk_approved"] = approved
                 session["last_entry_check"]["risk_reason"] = reason
                 session["last_entry_check"]["calculated_lots"] = lots
+                
+                logger.info("╠══════════════════════════════════════════════════════════════╣")
+                logger.info(f"║ Risk Check Result: {('APPROVED' if approved else 'REJECTED'):<43} ║")
+                if approved:
+                    logger.info(f"║ Lot Size: {lot_size:<50} ║")
+                    logger.info(f"║ Lots Calculated: {lots:<45} ║")
+                    qty = lots * lot_size
+                    logger.info(f"║ Total Quantity: {qty:<46} ║")
+                    risk_amount = abs(entry_price - stop_for_risk) * qty
+                    logger.info(f"║ Risk Amount: ₹{risk_amount:<45.2f} ║")
+                    logger.info("╠══════════════════════════════════════════════════════════════╣")
+                    logger.info(f"║ ACTION: PLACING ORDER{' '*39} ║")
+                    logger.info("╚══════════════════════════════════════════════════════════════╝\n")
+                else:
+                    logger.info(f"║ Reason: {reason:<52} ║")
+                    logger.info("╠══════════════════════════════════════════════════════════════╣")
+                    logger.info(f"║ ACTION: ORDER REJECTED{' '*37} ║")
+                    logger.info("╚══════════════════════════════════════════════════════════════╝\n")
+                    
                 if not approved or lots < 1:
                     session["last_entry_check"]["block_reason"] = reason or "Insufficient capital for position"
                     continue
                 qty = lots * lot_size
+                
+                # Log pre-execution state
+                logger.info(f"[ORDER EXECUTION] Calling execute_entry for {symbol} | Mode: {execution_mode}")
+                
                 execute_entry(
                     session, symbol, side, qty,
                     price=entry_price,
@@ -3286,6 +3385,13 @@ def _run_session_engine_tick() -> None:
                     stop_loss=stop_loss,
                     target=target,
                 )
+                
+                # Log post-execution
+                logger.info(
+                    f"[ORDER SUCCESS] Trade executed | {symbol} | Qty: {qty} | "
+                    f"Entry: ₹{entry_price:.2f} | SL: ₹{stop_loss:.2f} | Target: ₹{target:.2f}"
+                )
+                
                 # Increment hourly trade count after successful entry
                 session["hourly_trade_count"] = session.get("hourly_trade_count", 0) + 1
                 logger.info(
@@ -3295,7 +3401,13 @@ def _run_session_engine_tick() -> None:
                 )
                 _save_trade_sessions()
             except Exception as e:
-                logger.exception("Engine tick entry execution error: %s", str(e))
+                logger.exception(f"[ORDER ERROR] Entry execution failed: {str(e)}")
+                logger.error(
+                    "╔══════════════════════════════════════════════════════════════╗\n"
+                    f"║ ERROR DURING ORDER PLACEMENT{' '*32} ║\n"
+                    f"║ {str(e)[:59]:<59} ║\n"
+                    "╚══════════════════════════════════════════════════════════════╝\n"
+                )
                 session["last_entry_check"]["block_reason"] = f"Error: {e!s}"
                 session["last_entry_check"]["risk_approved"] = False
     engine_state["last_tick"] = now.isoformat()
@@ -3540,6 +3652,52 @@ def api_engine_status():
     })
 
 
+@app.route("/api/logs")
+def api_get_logs():
+    """GET /api/logs?mode=live|paper|backtest&lines=100: Fetch recent logs for specified mode."""
+    mode = request.args.get("mode", "all").lower()
+    max_lines = int(request.args.get("lines", 200))
+    
+    # Build log filter instructions
+    logs = []
+    
+    try:
+        from datetime import datetime as dt
+        from zoneinfo import ZoneInfo as ZI
+        
+        logs.append({
+            "timestamp": dt.now(ZI("Asia/Kolkata")).isoformat(),
+            "level": "INFO",
+            "message": "Real-time log viewing: Check your terminal/console for detailed logs.",
+            "mode": mode
+        })
+        
+        # Add filter instructions
+        if mode == "live":
+            logs.append({"level": "INFO", "message": "Filter logs with: [LIVE] or ENGINE TICK", "mode": mode})
+        elif mode == "paper":
+            logs.append({"level": "INFO", "message": "Filter logs with: [PAPER] or ENGINE TICK", "mode": mode})
+        elif mode == "backtest":
+            logs.append({"level": "INFO", "message": "Filter logs with: [AI BACKTEST]", "mode": mode})
+        
+        # Add note about AI decision logs
+        logs.append({"level": "INFO", "message": "AI Decisions: Look for [AI STRATEGY EVAL] in logs", "mode": mode})
+        logs.append({"level": "INFO", "message": "Order Execution: Look for [ORDER PLACEMENT] in logs", "mode": mode})
+        logs.append({"level": "INFO", "message": "Trailing Stops: Look for [TRAILING STOP] in logs", "mode": mode})
+        
+        return jsonify({
+            "ok": True,
+            "mode": mode,
+            "logs": logs,
+            "total": len(logs),
+            "note": "Logs are printed to console/terminal. Configure file logging in app.py for persistent logs."
+        })
+    
+    except Exception as e:
+        logger.exception("Failed to fetch logs")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/quote")
 def api_quote():
     """GET /api/quote?symbol=...&exchange=NSE|NFO. Returns LTP for terminal UI (e.g. unrealized PnL)."""
@@ -3651,6 +3809,7 @@ def api_backtest_run_ai():
     """
     POST /api/backtest/run-ai: AI-powered backtest with strategy auto-switching.
     Simulates intraday trading day by day with AI evaluating and switching strategies every N minutes.
+    Returns streaming progress updates.
     """
     data = request.get_json() or {}
     
@@ -3673,28 +3832,149 @@ def api_backtest_run_ai():
     
     logger.info(f"[AI BACKTEST] Starting: {instrument} from {from_date} to {to_date}, AI={ai_enabled}")
     
+    def generate_progress():
+        """Generator function for streaming progress updates"""
+        import json
+        import threading
+        import queue
+        
+        # Create a queue for thread-safe communication
+        progress_queue = queue.Queue()
+        result_container = {"result": None, "error": None}
+        
+        def progress_callback(data):
+            """Callback to send progress updates to queue"""
+            progress_queue.put(data)
+        
+        def run_backtest_thread():
+            """Run backtest in separate thread"""
+            try:
+                result = _run_ai_backtest(
+                    instrument=instrument,
+                    from_date=from_date,
+                    to_date=to_date,
+                    timeframe=timeframe,
+                    initial_capital=initial_capital,
+                    risk_percent=risk_percent,
+                    ai_enabled=ai_enabled,
+                    ai_check_interval=ai_check_interval,
+                    progress_callback=progress_callback
+                )
+                result_container["result"] = result
+            except Exception as e:
+                logger.exception(f"[AI BACKTEST] Error: {str(e)}")
+                result_container["error"] = str(e)
+            finally:
+                progress_queue.put({"type": "done"})
+        
+        # Start backtest in background thread
+        thread = threading.Thread(target=run_backtest_thread)
+        thread.daemon = True
+        thread.start()
+        
+        # Send initial progress
+        yield f"data: {json.dumps({'type': 'start', 'message': 'Starting backtest...', 'progress': 0})}\n\n"
+        
+        # Stream progress updates
+        while True:
+            try:
+                data = progress_queue.get(timeout=1)
+                
+                if data.get("type") == "done":
+                    # Backtest completed
+                    if result_container["error"]:
+                        yield f"data: {json.dumps({'type': 'error', 'error': result_container['error']})}\n\n"
+                    elif result_container["result"]:
+                        result = result_container["result"]
+                        if result.get("error"):
+                            yield f"data: {json.dumps({'type': 'error', 'error': result['error']})}\n\n"
+                        else:
+                            yield f"data: {json.dumps({'type': 'complete', 'result': result})}\n\n"
+                    break
+                else:
+                    # Send progress update
+                    yield f"data: {json.dumps(data)}\n\n"
+                    
+            except queue.Empty:
+                # Send keep-alive ping
+                yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+            except Exception as e:
+                logger.exception(f"[AI BACKTEST] Stream error: {str(e)}")
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+                break
+    
+    return Response(generate_progress(), mimetype='text/event-stream', headers={
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no'
+    })
+
+
+@app.route("/api/backtest/run-ai-sync", methods=["POST"])
+def api_backtest_run_ai_sync():
+    """
+    POST /api/backtest/run-ai-sync: Non-streaming version (returns all at once).
+    Use this for simple requests without progress updates.
+    """
+    data = request.get_json() or {}
+    
+    # Extract parameters
+    instrument = (data.get("instrument") or "").strip().upper() or "NIFTY"
+    from_date_str = data.get("from_date") or (date.today() - timedelta(days=5)).isoformat()
+    to_date_str = data.get("to_date") or date.today().isoformat()
+    timeframe = data.get("timeframe") or "5minute"
+    initial_capital = float(data.get("initial_capital") or 10000)
+    risk_percent = float(data.get("risk_percent_per_trade") or 2.0)
+    ai_enabled = data.get("ai_enabled", True)
+    ai_check_interval = int(data.get("ai_check_interval_minutes") or 5)
+    
     try:
-        # Run AI-powered backtest
-        result = _run_ai_backtest(
-            instrument=instrument,
-            from_date=from_date,
-            to_date=to_date,
-            timeframe=timeframe,
-            initial_capital=initial_capital,
-            risk_percent=risk_percent,
-            ai_enabled=ai_enabled,
-            ai_check_interval=ai_check_interval,
-        )
+        from datetime import datetime as dt
+        from_date = dt.fromisoformat(from_date_str).date()
+        to_date = dt.fromisoformat(to_date_str).date()
+    except:
+        return jsonify({"ok": False, "error": "Invalid date format"}), 400
+    
+    logger.info(f"[AI BACKTEST STREAM] Starting: {instrument} from {from_date} to {to_date}, AI={ai_enabled}")
+    
+    def generate_progress():
+        """Generator function to stream results LIVE as each day completes"""
+        import json
         
-        if result.get("error"):
-            return jsonify({"ok": False, "error": result["error"]}), 400
+        collected_updates = []
         
-        logger.info(f"[AI BACKTEST] Completed: Net P&L={result.get('net_pnl')}, Trades={result.get('total_trades')}")
-        return jsonify({"ok": True, "result": result})
+        def callback(update):
+            """Callback to collect updates"""
+            collected_updates.append(update)
         
-    except Exception as e:
-        logger.exception(f"[AI BACKTEST] Error: {str(e)}")
-        return jsonify({"ok": False, "error": str(e)}), 500
+        try:
+            # Run backtest with callback
+            result = _run_ai_backtest(
+                instrument=instrument,
+                from_date=from_date,
+                to_date=to_date,
+                timeframe=timeframe,
+                initial_capital=initial_capital,
+                risk_percent=risk_percent,
+                ai_enabled=ai_enabled,
+                ai_check_interval=ai_check_interval,
+                progress_callback=callback,
+            )
+            
+            # Stream all collected updates
+            for update in collected_updates:
+                yield f"data: {json.dumps(update)}\n\n"
+            
+            # Send final result
+            if result.get("success"):
+                yield f"data: {json.dumps({'type': 'complete', 'result': result})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'error', 'error': result.get('error', 'Unknown error')})}\n\n"
+                
+        except Exception as e:
+            logger.exception(f"[AI BACKTEST STREAM] Error: {str(e)}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+    
+    return Response(generate_progress(), mimetype='text/event-stream')
 
 
 def _run_ai_backtest(
@@ -3706,6 +3986,7 @@ def _run_ai_backtest(
     risk_percent: float,
     ai_enabled: bool,
     ai_check_interval: int,
+    progress_callback=None,
 ) -> dict:
     """
     Run AI-powered backtest simulating intraday trading with strategy auto-switching.
@@ -3760,13 +4041,30 @@ def _run_ai_backtest(
     cumulative_pnl = 0
     total_ai_switches = 0
     
+    # Calculate total days for progress percentage
+    total_days = (to_date - from_date).days + 1
+    
     # Iterate through each trading day
     current_date = from_date
     day_count = 0
     
     while current_date <= to_date:
         day_count += 1
-        logger.info(f"[AI BACKTEST] Processing day {day_count}: {current_date}")
+        progress_pct = int((day_count / total_days) * 100)
+        
+        # Store progress for streaming API
+        if progress_callback:
+            progress_callback({
+                "type": "progress",
+                "day": day_count,
+                "total_days": total_days,
+                "progress": progress_pct,
+                "date": current_date.isoformat(),
+                "capital": current_capital,
+                "cumulative_pnl": cumulative_pnl
+            })
+        
+        logger.info(f"[AI BACKTEST] Processing day {day_count}/{total_days}: {current_date} ({progress_pct}%)")
         
         # Filter candles for this specific day
         try:
@@ -3781,7 +4079,7 @@ def _run_ai_backtest(
             candles = []
             for idx, row in day_data.iterrows():
                 candles.append({
-                    "timestamp": idx,
+                    "timestamp": idx.isoformat(),  # Convert Timestamp to ISO string
                     "open": float(row["Open"]),
                     "high": float(row["High"]),
                     "low": float(row["Low"]),
@@ -3812,6 +4110,21 @@ def _run_ai_backtest(
         daily_breakdown.append(day_result["daily_summary"])
         current_capital = day_result["ending_capital"]
         total_ai_switches += day_result["ai_switches"]
+        
+        # Send day completion update
+        if progress_callback:
+            progress_callback({
+                "type": "day_complete",
+                "date": current_date.isoformat(),
+                "trades": len(day_result["trades"]),
+                "daily_pnl": day_result["daily_pnl"],
+                "cumulative_pnl": cumulative_pnl,
+                "capital": current_capital,
+                "strategies": day_result["daily_summary"].get("strategies", []),
+                "ai_switches": day_result["ai_switches"]
+            })
+        
+        logger.info(f"[AI BACKTEST] Day {current_date} complete: {len(day_result['trades'])} trades, P&L: ₹{day_result['daily_pnl']:.2f}")
         
         # Check if max loss limit exceeded
         if cumulative_pnl <= -max_loss_limit:
@@ -3882,17 +4195,18 @@ def _simulate_trading_day(
     """
     from strategies.strategy_registry import get_strategy_for_session, STRATEGY_MAP
     from strategies import data_provider as strategy_data_provider
-    from engine.trade_frequency import calculate_max_trades_per_hour
+    from engine.trade_frequency import calculate_max_trades_per_hour, get_trade_frequency_config
     from engine.position_sizing import calculate_fo_position_size
     
-    # Simplified approach - trade underlying directly, not options
-    # This allows us to use REAL strategy logic (same as Live/Paper)
+    # F&O options approach - use GPT recommendation for daily option selection
+    # This allows us to trade F&O options (same as Live/Paper)
     is_index = instrument.upper() in ["NIFTY", "NIFTY 50", "NIFTY50", "BANKNIFTY", "BANK NIFTY", "NIFTY BANK"]
     
-    simulate_as_option = False  # Always trade underlying, not options
-    lot_size = 1  # Regular stock/index sizing
+    # Default values (will be set by F&O logic below)
+    simulate_as_option = False
+    lot_size = 1
     
-    logger.info(f"[AI BACKTEST] Simulating {instrument} with REAL strategy logic")
+    logger.info(f"[AI BACKTEST] Simulating {instrument} with REAL strategy logic and F&O options")
     
     # === STEP 1: Get GPT F&O Recommendation for the day (just like live/paper) ===
     logger.info(f"[AI BACKTEST F&O] {trade_date}: Getting GPT recommendation for index options...")
@@ -3933,28 +4247,69 @@ def _simulate_trading_day(
         
         logger.info(f"[AI BACKTEST F&O] {trade_date}: Market bias = {bias} (trend: {price_trend:.2f}%, vol: {volatility:.2f}%)")
         
-        # === STEP 2: For indices, just trade the underlying (simpler and more reliable) ===
-        # Instead of complex option simulation, trade the index directly
-        # This allows us to use real strategy logic (same as stocks)
+        # === STEP 2: Select F&O option based on bias and capital ===
         spot_price = candles[0]["open"]
         
+        # Determine lot size
         if index_name == "BANKNIFTY":
             lot_size = 15
-        else:
+            strike_step = 100
+        else:  # NIFTY
             lot_size = 25
+            strike_step = 50
         
-        # We'll trade the underlying index, strategies will handle entry/exit
-        # Position sizing based on capital
-        max_lots = max(1, int(current_capital * 0.30 / (spot_price * lot_size)))
-        if max_lots < 1:
-            max_lots = 1
+        # Select option type based on bias
+        option_type = "CE" if bias == "BULLISH" else "PE"
         
-        logger.info(f"[AI BACKTEST] {trade_date}: Trading {instrument} (underlying)")
-        logger.info(f"[AI BACKTEST] Capital: Rs.{current_capital:.0f}, Spot: Rs.{spot_price:.2f}, "
-                   f"Lot size: {lot_size}, Max lots: {max_lots}")
+        # Calculate ATM strike
+        atm_strike = round(spot_price / strike_step) * strike_step
         
-        # Simplified approach - no option simulation, use actual strategy logic
-        simulate_as_option = False  # Trade underlying, not options
+        # Select slightly OTM strike for better risk/reward
+        if option_type == "CE":
+            selected_strike = atm_strike + strike_step  # 1 strike OTM
+        else:
+            selected_strike = atm_strike - strike_step  # 1 strike OTM
+        
+        # Base premium estimation (realistic values)
+        base_premium = 120 if index_name == "NIFTY" else 150
+        premium_per_contract = base_premium
+        
+        # Calculate max lots we can afford
+        from engine.position_sizing import calculate_fo_position_size
+        max_lots, total_cost, can_afford = calculate_fo_position_size(
+            capital=current_capital,
+            premium=premium_per_contract,
+            lot_size=lot_size
+        )
+        
+        if not can_afford or max_lots < 1:
+            logger.info(f"[AI BACKTEST F&O] {trade_date}: Insufficient capital for {index_name} options. Skipping day.")
+            return {
+                "trades": [],
+                "daily_pnl": 0,
+                "ending_capital": current_capital,
+                "ai_switches": 0,
+                "frequency_mode": "NORMAL",
+                "hourly_breakdown": {},
+                "daily_summary": {
+                    "date": trade_date.isoformat(),
+                    "trades": 0,
+                    "wins": 0,
+                    "losses": 0,
+                    "pnl": 0,
+                    "cumulative_pnl": 0,
+                    "strategies": [],
+                    "ai_switches": 0,
+                    "frequency_mode": "NORMAL",
+                }
+            }
+        
+        logger.info(f"[AI BACKTEST F&O] {trade_date}: Trading {index_name} {selected_strike} {option_type}")
+        logger.info(f"[AI BACKTEST] Capital: Rs.{current_capital:.0f}, Premium: Rs.{premium_per_contract:.2f}, "
+                   f"Lot size: {lot_size}, Max lots: {max_lots}, Total cost: Rs.{total_cost:.2f}")
+        
+        # Trade F&O options
+        simulate_as_option = True
         
     except Exception as e:
         logger.exception(f"[AI BACKTEST F&O] {trade_date}: Failed to get F&O recommendation: {e}")
@@ -4053,60 +4408,96 @@ def _simulate_trading_day(
         if current_hour not in hourly_trade_counts:
             hourly_trade_counts[current_hour] = 0
         
-        # AI strategy evaluation (every N candles) - USE REAL GPT API
+        # AI strategy evaluation (every N candles) - CHECK MORE FREQUENTLY
         candles_since_check = idx - last_ai_check_idx
-        if ai_enabled and candles_since_check >= (ai_check_interval // 5) and not current_position:
-            # Get market context for REAL AI
-            recent_candles = candles[max(0, idx-20):idx+1]
-            
-            try:
-                # Build market context (same as Live/Paper)
-                context = {
-                    "instrument": instrument,
-                    "current_price": ltp,
-                    "recent_candles": recent_candles[-10:],  # Last 10 candles
-                    "time": str(candle_time)
-                }
+        # Check every 6 candles (30 min for 5min candles) OR every 12 candles if we have a position
+        check_interval = 12 if current_position else 6  # More frequent when no position
+        
+        if candles_since_check >= check_interval:
+            # Try AI first if enabled
+            if ai_enabled:
+                # Get market context for REAL AI
+                recent_candles = candles[max(0, idx-20):idx+1]
                 
-                # Call REAL GPT API for strategy recommendation
-                ai_recommendation = get_ai_strategy_recommendation(context, current_strategy_name)
-                
-                if not ai_recommendation:
-                    logger.info(f"[AI BACKTEST] GPT not available or returned no recommendation - keeping {current_strategy_name}")
-                
-                if ai_recommendation:
-                    # Use GPT's recommendation with confidence threshold
-                    should_switch, new_strategy = should_switch_strategy(
-                        ai_recommendation,
-                        current_strategy_name,
-                        min_confidence="medium"  # Only switch if GPT is confident
-                    )
+                try:
+                    # Build market context FOR AI (needs proper format)
+                    # AI expects: nifty, banknifty, vix, timestamp
+                    context = {
+                        "instrument": instrument,
+                        "current_price": ltp,
+                        "timestamp": str(candle_time),
+                        "nifty": {
+                            "price": ltp if is_index else candles[0].get("close", ltp),  # Use first candle as reference
+                            "change_pct": 0.0  # Not available in backtest
+                        },
+                        "banknifty": {
+                            "price": 0.0,  # Not available in backtest
+                            "change_pct": 0.0
+                        },
+                        "vix": 15.0,  # Assume moderate volatility
+                        "recent_candles": recent_candles[-10:],  # Last 10 candles
+                    }
                     
-                    if should_switch and new_strategy:
-                        current_strategy_name = new_strategy
-                        ai_switches_today += 1
-                        confidence = ai_recommendation.get("confidence", "")
-                        reasoning = ai_recommendation.get("reasoning", "")
-                        logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: GPT switched to {new_strategy} (confidence: {confidence})")
-                        logger.info(f"[AI BACKTEST] GPT reasoning: {reasoning[:100]}...")
+                    # Call REAL GPT API for strategy recommendation
+                    ai_recommendation = get_ai_strategy_recommendation(context, current_strategy_name)
+                    
+                    if not ai_recommendation:
+                        logger.info(f"[AI BACKTEST] GPT not available or returned no recommendation - keeping {current_strategy_name}")
+                    
+                    if ai_recommendation:
+                        # Use GPT's recommendation with confidence threshold
+                        should_switch, new_strategy = should_switch_strategy(
+                            ai_recommendation,
+                            current_strategy_name,
+                            min_confidence="medium"  # Only switch if GPT is confident
+                        )
                         
-            except Exception as e:
-                logger.warning(f"[AI BACKTEST] GPT strategy check failed: {e}")
+                        if should_switch and new_strategy:
+                            current_strategy_name = new_strategy
+                            ai_switches_today += 1
+                            confidence = ai_recommendation.get("confidence", "")
+                            reasoning = ai_recommendation.get("reasoning", "")
+                            logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: GPT switched to {new_strategy} (confidence: {confidence})")
+                            logger.info(f"[AI BACKTEST] GPT reasoning: {reasoning[:100]}...")
+                            
+                except Exception as e:
+                    logger.warning(f"[AI BACKTEST] GPT strategy check failed: {e}")
+            else:
+                # AI disabled - rotate strategies manually for diversity
+                strategies_list = ["Momentum Breakout", "RSI Reversal Fade", "Pullback Continuation"]
+                current_idx = strategies_list.index(current_strategy_name) if current_strategy_name in strategies_list else 0
+                next_idx = (current_idx + 1) % len(strategies_list)
+                new_strategy = strategies_list[next_idx]
+                if new_strategy != current_strategy_name:
+                    current_strategy_name = new_strategy
+                    ai_switches_today += 1
+                    logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Rotated to {new_strategy} (AI disabled - auto-rotation)")
             
             last_ai_check_idx = idx
         
         strategies_used.add(current_strategy_name)
         
-        # Check if we have open position - manage exit (simple, like Live/Paper)
+        # Check if we have open position - manage exit (with F&O premium calculation)
         if current_position:
+            # For F&O options, calculate current premium based on underlying movement
+            if current_position.get("is_option"):
+                underlying_move = ltp - current_position["index_price_at_entry"]
+                delta_effect = 0.5 if option_type == "CE" else -0.5
+                premium_change = underlying_move * abs(delta_effect)
+                option_ltp = current_position["entry_price"] + premium_change
+                option_ltp = max(10, option_ltp)  # Floor at Rs.10
+                exit_price_check = option_ltp
+            else:
+                exit_price_check = ltp
+            
             # Check stop loss (simple price comparison)
-            if ltp <= current_position["stop_loss"]:
+            if exit_price_check <= current_position["stop_loss"]:
                 exit_pnl = (current_position["stop_loss"] - current_position["entry_price"]) * current_position["qty"]
                 day_trades.append({
                     "date": trade_date.isoformat(),
                     "strategy": current_position["strategy"],
-                    "entry_time": current_position["entry_time"],
-                    "exit_time": candle_time,
+                    "entry_time": str(current_position["entry_time"]),
+                    "exit_time": str(candle_time),
                     "entry_price": current_position["entry_price"],
                     "exit_price": current_position["stop_loss"],
                     "qty": current_position["qty"],
@@ -4119,13 +4510,13 @@ def _simulate_trading_day(
                 continue
             
             # Check target (simple price comparison)
-            if ltp >= current_position["target"]:
+            if exit_price_check >= current_position["target"]:
                 exit_pnl = (current_position["target"] - current_position["entry_price"]) * current_position["qty"]
                 day_trades.append({
                     "date": trade_date.isoformat(),
                     "strategy": current_position["strategy"],
-                    "entry_time": current_position["entry_time"],
-                    "exit_time": candle_time,
+                    "entry_time": str(current_position["entry_time"]),
+                    "exit_time": str(candle_time),
                     "entry_price": current_position["entry_price"],
                     "exit_price": current_position["target"],
                     "qty": current_position["qty"],
@@ -4148,121 +4539,152 @@ def _simulate_trading_day(
             )
             frequency_mode = freq_mode
             
+            # Check if frequency limiting is disabled in backtest (from Settings)
+            freq_config = get_trade_frequency_config()
+            backtest_disable_limit = freq_config.get("backtest_disable_frequency_limit", False)
+            
             trades_this_hour = hourly_trade_counts.get(current_hour, 0)
             
-            # Block if hourly limit reached
-            if trades_this_hour >= max_trades_this_hour:
+            # Block if hourly limit reached (unless disabled for backtest)
+            if not backtest_disable_limit and trades_this_hour >= max_trades_this_hour:
                 logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: Hourly limit reached ({trades_this_hour}/{max_trades_this_hour}) Mode: {freq_mode}")
                 continue
             
-            # Entry logic based on current strategy and market conditions
+            # Entry logic - USE UNIFIED FUNCTION (same as Live/Paper)
             should_enter = False
             entry_price = ltp
             entry_reason = ""
             
-            if idx >= 5:  # Need enough candles for analysis
-                recent = candles[idx-5:idx+1]
-                price_change_pct = ((recent[-1]["close"] - recent[0]["close"]) / recent[0]["close"]) * 100
-                
-                # Calculate momentum indicators
-                last_candle = recent[-1]
-                prev_candle = recent[-2]
-                is_green = last_candle["close"] > last_candle["open"]
-                is_red = last_candle["close"] < last_candle["open"]
-                volume_surge = last_candle.get("volume", 0) > sum(c.get("volume", 0) for c in recent[:-1]) / len(recent[:-1]) * 1.2
-                
-                # Strategy-specific entry conditions (aligned with real strategies)
-                if current_strategy_name == "Momentum Breakout":
-                    # Enter on breakout with volume
-                    if abs(price_change_pct) > 0.2 and (volume_surge or abs(price_change_pct) > 0.4):
-                        should_enter = True
-                        entry_reason = f"Breakout {price_change_pct:.2f}%"
-                        
-                elif current_strategy_name == "RSI Reversal Fade":
-                    # Enter on reversal signs (extreme moves)
-                    if abs(price_change_pct) > 0.5:  # Overextended
-                        should_enter = True
-                        entry_reason = f"Reversal setup {price_change_pct:.2f}%"
-                        
-                elif current_strategy_name == "Pullback Continuation":
-                    # Enter on small pullbacks in trend
-                    if -0.3 < price_change_pct < 0.5:
-                        should_enter = True
-                        entry_reason = f"Pullback {price_change_pct:.2f}%"
-                        
-                else:
-                    # Default: moderate momentum
-                    if abs(price_change_pct) > 0.25:
-                        should_enter = True
-                        entry_reason = f"Momentum {price_change_pct:.2f}%"
+            # Use shared entry logic
+            from engine.unified_entry import should_enter_trade
+            
+            should_enter, entry_reason = should_enter_trade(
+                mode="BACKTEST",
+                current_price=ltp,
+                recent_candles=candles[max(0, idx-10):idx+1],  # Last 10 candles
+                strategy_name=current_strategy_name,
+                frequency_check_passed=True,  # Already checked above
+            )
             
             if should_enter:
-                    # Load REAL strategy to get stop loss and target (same as Live/Paper)
-                    mock_session = {
-                        "instrument": instrument,
-                        "recommendation": {"strategyName": current_strategy_name},
-                        "execution_mode": "BACKTEST",
-                    }
+                # Load REAL strategy to get stop loss and target (same as Live/Paper)
+                mock_session = {
+                    "instrument": instrument,
+                    "recommendation": {"strategyName": current_strategy_name},
+                    "execution_mode": "BACKTEST",
+                }
+                
+                try:
+                    class MockDataProvider:
+                        def get_recent_candles(self, *args, **kwargs):
+                            return []
+                        def get_ltp(self, *args, **kwargs):
+                            return entry_price
                     
-                    try:
-                        # Pass empty dict as data provider (strategies only need it for initialization)
-                        class MockDataProvider:
-                            def get_recent_candles(self, *args, **kwargs):
-                                return []
-                            def get_ltp(self, *args, **kwargs):
-                                return entry_price
+                    strategy = get_strategy_for_session(mock_session, MockDataProvider(), current_strategy_name)
+                    
+                    # For F&O options, calculate premium and use option-specific sizing
+                    if simulate_as_option:
+                        from engine.position_sizing import calculate_fo_position_size
                         
-                        strategy = get_strategy_for_session(mock_session, MockDataProvider(), current_strategy_name)
+                        # Calculate current option premium based on underlying movement
+                        underlying_move_from_spot = ltp - spot_price
+                        delta_effect = 0.5 if option_type == "CE" else -0.5
+                        premium_change = underlying_move_from_spot * abs(delta_effect)
+                        option_premium = premium_per_contract + premium_change
+                        option_premium = max(50, option_premium)  # Floor at Rs.50
+                        
+                        # Use centralized F&O position sizing
+                        lots, position_cost, can_afford = calculate_fo_position_size(
+                            capital=current_capital,
+                            premium=option_premium,
+                            lot_size=lot_size
+                        )
+                        lots = min(max_lots, lots)  # Cap at max_lots
+                        
+                        if not can_afford or lots < 1:
+                            continue
+                        
+                        qty = lots * lot_size
+                        entry_price = option_premium
+                        
+                        # F&O-specific stop/target - BALANCED FOR VOLUME
+                        stop_loss = option_premium * 0.88  # 12% stop (wider to avoid noise)
+                        target = option_premium * 1.15  # 15% target (VERY achievable)
+                        
+                        logger.info(f"[AI BACKTEST F&O] {index_name} {selected_strike} {option_type}: "
+                                  f"Premium={option_premium:.2f}, Lots={lots}, Qty={qty}, "
+                                  f"Target=Rs.{target:.2f} (15% - quick exit for volume)")
+                    else:
+                        # Regular stock/index (fallback)
                         if strategy:
                             stop_loss = strategy.get_stop_loss(entry_price)
                             target = strategy.get_target(entry_price)
                         else:
-                            # Fallback if strategy not found
-                            stop_loss = entry_price * 0.985  # 1.5% stop
-                            target = entry_price * 1.03  # 3% target
-                    except Exception as e:
-                        logger.warning(f"[AI BACKTEST] Failed to load strategy {current_strategy_name}: {e}")
-                        stop_loss = entry_price * 0.985
-                        target = entry_price * 1.03
-                    
-                    # Calculate position sizing (same as Live/Paper)
-                    risk_amount = current_capital * risk_percent / 100
-                    risk_per_share = abs(entry_price - stop_loss)
-                    
-                    if risk_per_share > 0:
-                        qty = int(risk_amount / risk_per_share)
-                    else:
-                        qty = max(1, int(risk_amount / entry_price))
-                    
-                    entries_triggered += 1
-                    
-                    if qty > 0:
-                        current_position = {
-                            "strategy": current_strategy_name,
-                            "entry_time": candle_time,
-                            "entry_price": entry_price,
-                            "stop_loss": stop_loss,
-                            "target": target,
-                            "qty": qty,
-                        }
-                        strategies_used.add(current_strategy_name)
+                            stop_loss = entry_price * 0.985
+                            target = entry_price * 1.03
                         
-                        # Increment hourly counter
-                        hourly_trade_counts[current_hour] = hourly_trade_counts.get(current_hour, 0) + 1
+                        # Calculate position sizing
+                        risk_amount = current_capital * risk_percent / 100
+                        risk_per_share = abs(entry_price - stop_loss)
                         
-                        logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: ENTRY {current_strategy_name} @Rs.{entry_price:.2f} SL:Rs.{stop_loss:.2f} Target:Rs.{target:.2f} Qty:{qty} | {entry_reason}")
-                    else:
-                        logger.warning(f"[AI BACKTEST] {trade_date} {candle_time}: Entry signal but qty=0")
+                        if risk_per_share > 0:
+                            qty_float = risk_amount / risk_per_share
+                            qty = max(1, int(qty_float))
+                        else:
+                            qty = max(1, int(risk_amount / entry_price))
+                        
+                        logger.info(f"[AI BACKTEST] Position Sizing: Qty={qty}, Entry={entry_price:.2f}, SL={stop_loss:.2f}")
+                    
+                except Exception as e:
+                    logger.warning(f"[AI BACKTEST] Failed to calculate position: {e}")
+                    continue
+                
+                entries_triggered += 1
+                
+                if qty > 0:
+                    current_position = {
+                        "strategy": current_strategy_name,
+                        "entry_time": candle_time,
+                        "entry_price": entry_price,
+                        "stop_loss": stop_loss,
+                        "target": target,
+                        "qty": qty,
+                        "is_option": simulate_as_option,
+                        "lot_size": lot_size,
+                        "index_price_at_entry": ltp if simulate_as_option else None,
+                    }
+                    strategies_used.add(current_strategy_name)
+                    
+                    # Increment hourly counter
+                    hourly_trade_counts[current_hour] = hourly_trade_counts.get(current_hour, 0) + 1
+                    
+                    logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: ENTRY {current_strategy_name} @Rs.{entry_price:.2f} SL:Rs.{stop_loss:.2f} Target:Rs.{target:.2f} Qty:{qty} | {entry_reason}")
+                else:
+                    logger.warning(f"[AI BACKTEST] {trade_date} {candle_time}: Entry signal but qty=0")
     
-    # Close any open position at end of day (simple, like Live/Paper)
+    # Close any open position at end of day
     if current_position:
-        exit_price = candles[-1]["close"]
+        # Calculate exit price based on position type
+        if current_position.get("is_option"):
+            # For F&O options, calculate final premium based on underlying movement
+            underlying_move = candles[-1]["close"] - current_position["index_price_at_entry"]
+            delta_effect = 0.5 if option_type == "CE" else -0.5
+            premium_change = underlying_move * abs(delta_effect)
+            exit_price = current_position["entry_price"] + premium_change
+            exit_price = max(10, exit_price)  # Floor at Rs.10
+            
+            logger.info(f"[AI BACKTEST F&O] EOD: Index moved from {current_position['index_price_at_entry']:.2f} to {candles[-1]['close']:.2f}, "
+                       f"Option premium: {current_position['entry_price']:.2f} → {exit_price:.2f}")
+        else:
+            exit_price = candles[-1]["close"]
+        
         exit_pnl = (exit_price - current_position["entry_price"]) * current_position["qty"]
         day_trades.append({
             "date": trade_date.isoformat(),
             "strategy": current_position["strategy"],
-            "entry_time": current_position["entry_time"],
-            "exit_time": candles[-1].get("timestamp") or candles[-1].get("date"),
+            "entry_time": str(current_position["entry_time"]),
+            "exit_time": str(candles[-1].get("timestamp", "")),
             "entry_price": current_position["entry_price"],
             "exit_price": exit_price,
             "qty": current_position["qty"],

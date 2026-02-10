@@ -186,9 +186,14 @@
   <div class="card mb-4 d-none" id="backtest-last-result-card">
     <div class="card-header d-flex align-items-center justify-content-between">
       <span>Backtest Results</span>
-      <button type="button" class="btn btn-sm btn-outline-secondary" id="export-results-btn">
-        <span class="material-icons-round fs-6">download</span> Export CSV
-      </button>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-outline-info" id="view-backtest-logs-btn" title="View Backtest Logs">
+          <span class="material-icons-round fs-6">visibility</span> View Logs
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="export-results-btn">
+          <span class="material-icons-round fs-6">download</span> Export CSV
+        </button>
+      </div>
     </div>
     <div class="card-body">
       <!-- Summary Metrics -->
@@ -649,20 +654,56 @@
     
     progressBar.style.width = '30%';
     
+    // Use EventSource for streaming progress updates
     fetch('/api/backtest/run-ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    }).then(function(r) {
-      progressBar.style.width = '80%';
-      return r.json();
-    }).then(function(data) {
-      btn.disabled = false;
-      progress.classList.add('d-none');
+    }).then(function(response) {
+      if (!response.ok) throw new Error('Request failed');
       
-      if (data.ok && data.result) {
-        status.innerHTML = '<span class="text-success">Backtest completed successfully!</span>';
-        var r = data.result;
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+      var completedDays = 0;
+      
+      function readStream() {
+        reader.read().then(function({done, value}) {
+          if (done) {
+            btn.disabled = false;
+            return;
+          }
+          
+          buffer += decoder.decode(value, {stream: true});
+          var lines = buffer.split('\n');
+          buffer = lines.pop(); // Keep incomplete line in buffer
+          
+          lines.forEach(function(line) {
+            if (!line.startsWith('data: ')) return;
+            try {
+              var data = JSON.parse(line.substring(6));
+              
+              if (data.type === 'start') {
+                progressBar.style.width = '5%';
+                status.innerHTML = '<span class="text-primary">Starting backtest...</span>';
+              }
+              else if (data.type === 'progress') {
+                var pct = Math.min(95, data.progress || 0);
+                progressBar.style.width = pct + '%';
+                status.innerHTML = '<span class="text-primary">Processing ' + data.date + ' (' + data.day + '/' + data.total_days + ')...</span>';
+              }
+              else if (data.type === 'day_complete') {
+                completedDays++;
+                var pnlColor = data.daily_pnl >= 0 ? 'success' : 'danger';
+                status.innerHTML = '<span class="text-' + pnlColor + '">' + data.date + ': ' + 
+                  data.trades + ' trades, P&L: ₹' + data.daily_pnl.toFixed(2) + ' | ' +
+                  'Total: ₹' + data.cumulative_pnl.toFixed(2) + '</span>';
+              }
+              else if (data.type === 'complete') {
+                btn.disabled = false;
+                progress.classList.add('d-none');
+                status.innerHTML = '<span class="text-success">Backtest completed successfully!</span>';
+                var r = data.result;
         lastResultsData = r;
         
         // Show results card
@@ -743,17 +784,127 @@
           tradesTbody.appendChild(tr);
         });
         
-        // Scroll to results
-        document.getElementById('backtest-last-result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        status.innerHTML = '<span class="text-danger">Error: ' + (data.error || 'Unknown error') + '</span>';
+                // Scroll to results
+                document.getElementById('backtest-last-result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+              else if (data.type === 'error') {
+                btn.disabled = false;
+                progress.classList.add('d-none');
+                status.innerHTML = '<span class="text-danger">Error: ' + (data.error || 'Unknown error') + '</span>';
+              }
+            } catch (e) {
+              console.error('Failed to parse stream data:', e);
+            }
+          });
+          
+          readStream(); // Continue reading
+        }).catch(function(e) {
+          btn.disabled = false;
+          progress.classList.add('d-none');
+          status.innerHTML = '<span class="text-danger">Stream error: ' + e.message + '</span>';
+        });
       }
+      
+      readStream(); // Start reading stream
     }).catch(function(e) {
       btn.disabled = false;
       progress.classList.add('d-none');
       status.innerHTML = '<span class="text-danger">Request failed: ' + e.message + '</span>';
     });
   });
+
+  // View Backtest Logs button handler
+  document.getElementById('view-backtest-logs-btn').addEventListener('click', function() {
+    openBacktestLogsModal();
+  });
+
+  function openBacktestLogsModal() {
+    const modal = document.getElementById('backtestLogsModal');
+    if (!modal) {
+      createBacktestLogsModal();
+      setTimeout(() => openBacktestLogsModal(), 100);
+      return;
+    }
+    
+    const modalBody = modal.querySelector('.modal-body');
+    if (modalBody) modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2">Loading logs...</div></div>';
+    
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    fetch('/api/logs?mode=backtest&lines=200')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          displayBacktestLogs(data);
+        } else {
+          if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">Error loading logs: ${data.error || 'Unknown error'}</div>`;
+        }
+      })
+      .catch(err => {
+        if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">Failed to fetch logs: ${err.message}</div>`;
+      });
+  }
+
+  function displayBacktestLogs(data) {
+    const modal = document.getElementById('backtestLogsModal');
+    const modalBody = modal.querySelector('.modal-body');
+    
+    let html = '';
+    
+    if (data.note) {
+      html += `<div class="alert alert-info small mb-3">${data.note}</div>`;
+    }
+    
+    html += '<div class="card bg-dark border-secondary mb-3">';
+    html += '<div class="card-header py-2 small"><strong>Log Filters (what to look for in console/terminal)</strong></div>';
+    html += '<div class="card-body small">';
+    html += '<ul class="mb-0">';
+    
+    if (data.logs && data.logs.length > 0) {
+      data.logs.forEach(log => {
+        if (log.message) {
+          html += `<li class="mb-1"><code class="text-info">${log.message}</code></li>`;
+        }
+      });
+    }
+    
+    html += '</ul></div></div>';
+    
+    html += '<div class="alert alert-warning small">';
+    html += '<strong>📋 How to view full backtest logs:</strong><br>';
+    html += '1. Check your terminal/console where Flask is running<br>';
+    html += '2. Look for <code>[AI BACKTEST]</code> or <code>[AI BACKTEST F&O]</code><br>';
+    html += '3. Logs show: Market bias, F&O option selection, entry/exit signals, premiums, P&L<br>';
+    html += '4. Example: <code>[AI BACKTEST F&O] Trading NIFTY 26150 PE</code><br>';
+    html += '5. For persistent logs, configure file logging in <code>app.py</code>';
+    html += '</div>';
+    
+    if (modalBody) modalBody.innerHTML = html;
+  }
+
+  function createBacktestLogsModal() {
+    const modal = document.createElement('div');
+    modal.id = 'backtestLogsModal';
+    modal.className = 'modal fade';
+    modal.setAttribute('tabindex', '-1');
+    modal.innerHTML = `
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light border-secondary">
+          <div class="modal-header border-secondary">
+            <h5 class="modal-title">Backtest Logs</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body"></div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
 })();
 </script>
 
