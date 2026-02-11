@@ -3356,10 +3356,19 @@ def _run_session_engine_tick() -> None:
                 if is_nfo and session.get("tradingsymbol"):
                     from engine.zerodha_client import get_quote as kite_get_quote
                     opt_quote = kite_get_quote(session["tradingsymbol"], exchange="NFO")
-                    entry_price = float(opt_quote.get("last", 0) or opt_quote.get("last_price", 0)) or entry_price
-                    stop_loss = round(entry_price * 0.995, 2)
-                    target = round(entry_price * 1.015, 2)
-                    logger.info(f"║ Option Type: F&O ({session.get('tradingsymbol')}){' '*(60-len(session.get('tradingsymbol', '')))} ║")
+                    option_premium = float(opt_quote.get("last", 0) or opt_quote.get("last_price", 0))
+                    if option_premium and option_premium > 0:
+                        entry_price = option_premium
+                    else:
+                        entry_price = float(rec.get("premium") or 0)
+                    if not entry_price or entry_price <= 0:
+                        session["last_entry_check"]["block_reason"] = "Option price unavailable"
+                        session["last_entry_check"]["risk_approved"] = False
+                        session["last_entry_check"]["risk_reason"] = "Option price unavailable"
+                        continue
+                    stop_loss = round(entry_price * 0.90, 2)
+                    target = round(entry_price * 1.15, 2)
+                    logger.info(f"║ Option Type: F&O ({session.get('tradingsymbol')}) | Premium: ₹{entry_price:.2f}{' '*(60-len(session.get('tradingsymbol', ''))-20)} ║")
                 else:
                     # Use F&O-aware stop/target for options (wider stops, realistic targets)
                     if strategy:
@@ -3437,6 +3446,13 @@ def _run_session_engine_tick() -> None:
                     session["last_entry_check"]["block_reason"] = reason or "Insufficient capital for position"
                     continue
                 qty = lots * lot_size
+                
+                # Cap loss at ₹300 per trade (greedy: keep full profit, limit loss)
+                MAX_LOSS_PER_TRADE = 300.0
+                if is_nfo and stop_loss is not None and (entry_price - stop_loss) * qty > MAX_LOSS_PER_TRADE and qty > 0:
+                    stop_loss = round(entry_price - (MAX_LOSS_PER_TRADE / qty), 2)
+                    stop_loss = max(1.0, stop_loss)
+                    logger.info(f"[ORDER] Stop tightened to cap loss at ₹{MAX_LOSS_PER_TRADE:.0f} | SL: ₹{stop_loss:.2f}")
                 
                 # Log pre-execution state
                 logger.info(f"[ORDER EXECUTION] Calling execute_entry for {symbol} | Mode: {execution_mode}")
@@ -4731,10 +4747,15 @@ def _simulate_trading_day(
                         
                         logger.info(f"[AI BACKTEST POSITION] Premium: Rs.{option_premium:.2f}, Affordable lots: {lots}, Total capital used: Rs.{position_cost:.2f} ({position_cost/current_capital*100:.1f}%)")
                         
-                        # F&O-specific stop/target - RISK:REWARD = 1:1.5
-                        # TIGHT STOP, BIGGER TARGET for profitable trades
-                        stop_loss = option_premium * 0.92  # 8% stop (cut losses fast)
-                        target = option_premium * 1.12  # 12% target (let winners run)
+                        # F&O-specific stop/target - TARGET unchanged (greedy), LOSS capped at ₹300/trade
+                        stop_loss = option_premium * 0.90   # 10% stop base
+                        target = option_premium * 1.15      # 15% target (keep full profit)
+                        MAX_LOSS_PER_TRADE = 300.0         # Cap gross loss per trade (≤ ₹300; net ≈ ₹350 after charges)
+                        loss_at_stop = (entry_price - stop_loss) * qty
+                        if loss_at_stop > MAX_LOSS_PER_TRADE and qty > 0:
+                            stop_loss = entry_price - (MAX_LOSS_PER_TRADE / qty)
+                            stop_loss = round(max(1.0, stop_loss), 2)
+                            logger.info(f"[AI BACKTEST F&O] Stop tightened to cap loss at ₹{MAX_LOSS_PER_TRADE:.0f} | SL: Rs.{stop_loss:.2f}")
                         
                         logger.info(f"[AI BACKTEST F&O] {index_name} {selected_strike} {option_type}: "
                                   f"Premium={option_premium:.2f}, Lots={lots}, Qty={qty}, "

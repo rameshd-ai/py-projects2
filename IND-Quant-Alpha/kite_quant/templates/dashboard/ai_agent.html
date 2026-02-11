@@ -1,21 +1,14 @@
 {% extends "base_dashboard.html" %}
 {% block content %}
 <div class="fade-in ai-agent-dashboard">
-  <!-- GLOBAL MODE SELECTOR -->
+  <!-- EXECUTION MODE (Paper / Live) — Approve & Run only -->
   <div class="card mb-3">
     <div class="card-body py-3">
       <div class="row align-items-center g-3">
         <div class="col-auto">
-          <label class="form-label small text-muted mb-0">Trading Mode</label>
-          <select class="form-select form-select-sm" id="trading-mode-select" style="min-width: 280px;">
-            <option value="agent">🤖 AI Mode (Auto Trade)</option>
-            <option value="manual" selected>🧍‍♂️ Manual Mode (User Selects Strikes)</option>
-          </select>
+          <span class="badge px-3 py-2 rounded-pill bg-primary bg-opacity-25 text-primary-custom">🤖 AI Mode</span>
         </div>
-        <div class="col-auto">
-          <span class="badge px-3 py-2 rounded-pill bg-secondary bg-opacity-50" id="trading-mode-badge">Manual Mode</span>
-        </div>
-        <div class="col-auto ms-md-3 border-start ps-md-3">
+        <div class="col-auto border-start ps-md-3">
           <label class="form-label small text-muted mb-0">Execution</label>
           <select class="form-select form-select-sm" id="execution-mode-select" style="min-width: 160px;" title="Paper = simulated orders, Live = real Zerodha orders">
             <option value="PAPER" selected>📄 Paper (simulated)</option>
@@ -23,7 +16,7 @@
           </select>
         </div>
         <div class="col-auto">
-          <span class="small text-muted" id="execution-mode-hint">Paper: no real orders</span>
+          <span class="small text-muted" id="execution-mode-hint">AI selects and executes. Paper: no real orders.</span>
         </div>
       </div>
     </div>
@@ -202,17 +195,6 @@
     </div>
   </div>
 
-  <!-- EXECUTION (Manual mode only: strike-level selection in options popup) -->
-  <div class="card mb-4" id="execution-card">
-    <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <span class="small text-muted" id="execution-hint">Open a stock or index, select strikes in the options view, then execute.</span>
-      <button type="button" class="btn btn-primary" id="execution-btn">
-        <span class="material-icons-round me-1" style="vertical-align: middle;">send</span>
-        <span id="execution-btn-text">Execute Selected Trades</span>
-      </button>
-    </div>
-  </div>
-
   <!-- ACTIVE SESSIONS & ENGINE CONTROL (Live terminal view) -->
   <div class="card mb-4 border-warning border-opacity-50">
     <div class="card-header d-flex align-items-center gap-2" style="background: rgba(255, 193, 7, 0.15);">
@@ -270,7 +252,7 @@
           <p class="mb-0 text-muted" id="rec-reason">—</p>
         </div>
       </div>
-      <!-- AI SUGGESTED ALGOS (Manual mode only: Detected Market + clickable tags → Strategy Library) -->
+      <!-- AI SUGGESTED ALGOS (hidden when using AI mode; kept for compatibility) -->
       <div class="px-3 pt-2 pb-2 border-bottom d-none" id="options-suggested-algos-block" style="background: rgba(168, 199, 250, 0.06);">
         <p class="small mb-1"><strong>Detected Market:</strong> <span id="options-detected-market" class="text-primary-custom">—</span></p>
         <p class="small text-muted mb-2"><strong>Recommended strategies for <span id="options-suggested-algos-stock">—</span>:</strong></p>
@@ -334,54 +316,21 @@
   const optionsPanelStock = document.getElementById('options-panel-stock');
   let currentRecommendation = null;
 
-  // Trading mode: "manual" | "agent" — selection exists ONLY at strike level (in options popup / index tables)
-  let tradingMode = 'manual';
-
-  function setTradingMode(mode) {
-    if (mode === tradingMode) return;
-    tradingMode = mode;
-    document.querySelectorAll('.trade-child-cb:checked').forEach(cb => { cb.checked = false; });
-    updateTradingModeUI();
-    refreshOptionsViewForMode();
-    loadIndexOpportunities();
-  }
-
   function updateTradingModeUI() {
-    const badge = document.getElementById('trading-mode-badge');
-    const execCard = document.getElementById('execution-card');
-    const execHint = document.getElementById('execution-hint');
+    const execHint = document.getElementById('execution-mode-hint');
     const indexAiMsg = document.getElementById('index-ai-mode-msg');
     const indexCardButtons = document.querySelectorAll('#index-recommendation-cards .d-flex.gap-2');
-    if (tradingMode === 'agent') {
-      if (badge) { badge.textContent = 'AI Mode'; badge.className = 'badge px-3 py-2 rounded-pill bg-primary bg-opacity-25 text-primary-custom'; }
-      if (execCard) execCard.classList.add('d-none');
-      if (execHint) execHint.textContent = 'AI selects and executes trades. No approval step.';
-      if (indexAiMsg) indexAiMsg.classList.remove('d-none');
-      indexCardButtons.forEach(function(el) { el.style.display = 'none'; });
-    } else {
-      if (badge) { badge.textContent = 'Manual Mode'; badge.className = 'badge px-3 py-2 rounded-pill bg-secondary bg-opacity-50'; }
-      if (execCard) execCard.classList.remove('d-none');
-      if (execHint) execHint.textContent = 'Open a stock or index; AI shows one recommendation. Approve or reject only.';
-      if (indexAiMsg) indexAiMsg.classList.add('d-none');
-      indexCardButtons.forEach(function(el) { el.style.display = ''; });
-    }
+    if (execHint) execHint.textContent = 'AI recommends; you Approve & Run (Paper or Live).';
+    if (indexAiMsg) indexAiMsg.classList.remove('d-none');
+    indexCardButtons.forEach(function(el) { el.style.display = ''; });
   }
-
-  function refreshOptionsViewForMode() {
-    const stock = optionsPanelStock.textContent;
-    if (stock && stock !== '—') loadRecommendationForInstrument(stock);
-  }
-
-  document.getElementById('trading-mode-select').addEventListener('change', function() {
-    setTradingMode(this.value);
-  });
   function getExecutionMode() {
     const sel = document.getElementById('execution-mode-select');
     return (sel && sel.value) ? sel.value.toUpperCase() : 'PAPER';
   }
   document.getElementById('execution-mode-select').addEventListener('change', function() {
     const hint = document.getElementById('execution-mode-hint');
-    if (hint) hint.textContent = this.value === 'LIVE' ? 'Live: real Zerodha orders' : 'Paper: no real orders';
+    if (hint) hint.textContent = this.value === 'LIVE' ? 'AI recommends; you Approve & Run. Live: real Zerodha orders.' : 'AI recommends; you Approve & Run. Paper: no real orders.';
   });
 
   function loadEngineStatus() {
@@ -712,11 +661,6 @@
   setInterval(loadActiveSessions, 8000);
   setInterval(loadEngineStatus, 8000);
 
-  document.getElementById('execution-btn').addEventListener('click', function() {
-    document.getElementById('optionsPanel').querySelector('.offcanvas-title') && document.getElementById('optionsPanel').querySelector('.offcanvas-title').click();
-    alert('Open a stock or index from the cards above; use Approve & Run Trade on the AI recommendation card.');
-  });
-
   document.getElementById('options-allow-ai-trade-btn').addEventListener('click', function() {
     alert('Allow AI to Trade This Strategy: ' + (optionsPanelStock.textContent || 'Stock') + '. (Backend integration pending.)');
   });
@@ -867,7 +811,7 @@
   riskPctEl.addEventListener('input', refreshIndexOpportunities);
   // Run all initial data loads in parallel for faster page load
   Promise.all([loadEngineStatus(), loadActiveSessions(), loadIndexOpportunities(), loadSignals()]);
-  // Apply initial trading mode UI (manual by default)
+  // Apply initial trading mode UI (AI mode only)
   updateTradingModeUI();
 
   function renderStockCard(item, listId) {
@@ -976,32 +920,17 @@
       document.getElementById('rec-confidence').textContent = (rec.confidence != null ? rec.confidence + '%' : '—');
       document.getElementById('rec-holding').textContent = '30-90 min';
       document.getElementById('rec-reason').textContent = rec.entryCondition || '—';
-      const suggestedAlgos = rec.suggestedAlgos || [];
-      const detectedMarket = rec.detectedMarket || [];
-      const isManual = tradingMode === 'manual';
       const suggestedBlock = document.getElementById('options-suggested-algos-block');
-      const suggestedStockEl = document.getElementById('options-suggested-algos-stock');
-      const suggestedTagsEl = document.getElementById('options-suggested-algos-tags');
-      const detectedMarketEl = document.getElementById('options-detected-market');
       const aiSelectedLine = document.getElementById('options-ai-selected-algo-line');
       const aiSelectedName = document.getElementById('options-ai-selected-algo-name');
       const aiSelectedGroupEl = document.getElementById('options-ai-selected-algo-group');
-      if (isManual) {
-        suggestedBlock.classList.remove('d-none');
-        suggestedStockEl.textContent = rec.instrument || instrument;
-        if (detectedMarketEl) detectedMarketEl.textContent = detectedMarket.length ? detectedMarket.join(' + ') : '—';
-        suggestedTagsEl.innerHTML = suggestedAlgos.length ? suggestedAlgos.map(function(a) {
-          return '<a href="/dashboard/algo-library#' + (a.id || '') + '" class="badge bg-primary bg-opacity-25 text-primary-custom text-decoration-none" title="View strategy: ' + (a.name || a.id) + '">' + (a.name || a.id) + '</a>';
-        }).join('') : '<span class="small text-muted">No strategies suggested.</span>';
-      } else {
-        suggestedBlock.classList.add('d-none');
-        if (aiSelectedLine && aiSelectedName) {
-          if (rec.selectedAlgoName) {
-            aiSelectedLine.classList.remove('d-none');
-            aiSelectedName.textContent = rec.selectedAlgoName;
-            if (aiSelectedGroupEl) aiSelectedGroupEl.textContent = rec.selectedAlgoGroup ? '(' + rec.selectedAlgoGroup + ')' : '';
-          } else { aiSelectedLine.classList.add('d-none'); }
-        }
+      suggestedBlock.classList.add('d-none');
+      if (aiSelectedLine && aiSelectedName) {
+        if (rec.selectedAlgoName) {
+          aiSelectedLine.classList.remove('d-none');
+          aiSelectedName.textContent = rec.selectedAlgoName;
+          if (aiSelectedGroupEl) aiSelectedGroupEl.textContent = rec.selectedAlgoGroup ? '(' + rec.selectedAlgoGroup + ')' : '';
+        } else { aiSelectedLine.classList.add('d-none'); }
       }
       document.getElementById('rec-card-instrument').textContent = rec.instrument || instrument;
       document.getElementById('rec-card-bias').textContent = rec.marketBias || '—';
@@ -1014,7 +943,7 @@
       document.getElementById('rec-card-risk').textContent = (rec.riskPerTrade != null ? Math.round(rec.riskPerTrade).toLocaleString('en-IN') : '—');
       document.getElementById('rec-card-lots').textContent = rec.positionSizeLots != null ? rec.positionSizeLots : '—';
       const optionsAiMsg = document.getElementById('options-ai-mode-msg');
-      if (optionsAiMsg) optionsAiMsg.classList.toggle('d-none', isManual);
+      if (optionsAiMsg) optionsAiMsg.classList.remove('d-none');
       if (cardWrap) cardWrap.classList.remove('d-none');
     } catch (e) {
       if (loadingEl) loadingEl.classList.add('d-none');
