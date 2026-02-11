@@ -4623,7 +4623,9 @@ def _simulate_trading_day(
                     "capital_used": current_position.get("capital_used", 0),
                     "capital_remaining": current_position.get("capital_remaining", 0),
                     "lots": current_position.get("lots", 1),
-                    "price_per_lot": current_position.get("price_per_lot", 0)
+                    "price_per_lot": current_position.get("price_per_lot", 0),
+                    "option_type": current_position.get("option_type"),
+                    "strike": current_position.get("strike"),
                 })
                 day_pnl += net_pnl  # Use NET P&L for capital tracking
                 logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT STOP_LOSS @ Rs.{current_position['stop_loss']:.2f} | Gross P&L: Rs.{exit_pnl:.2f} | Charges: Rs.{charges['total_charges']:.2f} | Net P&L: Rs.{net_pnl:.2f}")
@@ -4659,7 +4661,9 @@ def _simulate_trading_day(
                     "capital_used": current_position.get("capital_used", 0),
                     "capital_remaining": current_position.get("capital_remaining", 0),
                     "lots": current_position.get("lots", 1),
-                    "price_per_lot": current_position.get("price_per_lot", 0)
+                    "price_per_lot": current_position.get("price_per_lot", 0),
+                    "option_type": current_position.get("option_type"),
+                    "strike": current_position.get("strike"),
                 })
                 day_pnl += net_pnl  # Use NET P&L for capital tracking
                 logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT TARGET @ Rs.{current_position['target']:.2f} | Gross P&L: Rs.{exit_pnl:.2f} | Charges: Rs.{charges['total_charges']:.2f} | Net P&L: Rs.{net_pnl:.2f}")
@@ -4813,6 +4817,8 @@ def _simulate_trading_day(
                         "capital_remaining": capital_remaining,
                         "lots": lots_used,
                         "price_per_lot": price_per_lot,
+                        "option_type": option_type if simulate_as_option else None,
+                        "strike": selected_strike if simulate_as_option else None,
                     }
                     strategies_used.add(current_strategy_name)
                     
@@ -4867,7 +4873,9 @@ def _simulate_trading_day(
             "capital_used": current_position.get("capital_used", 0),
             "capital_remaining": current_position.get("capital_remaining", 0),
             "lots": current_position.get("lots", 1),
-            "price_per_lot": current_position.get("price_per_lot", 0)
+            "price_per_lot": current_position.get("price_per_lot", 0),
+            "option_type": current_position.get("option_type"),
+            "strike": current_position.get("strike"),
         })
         day_pnl += net_pnl  # Use NET P&L for capital tracking
         logger.info(f"[AI BACKTEST] {trade_date} EOD: Closed position @ Rs.{exit_price:.2f} | Gross P&L: Rs.{exit_pnl:.2f} | Charges: Rs.{charges['total_charges']:.2f} | Net P&L: Rs.{net_pnl:.2f}")

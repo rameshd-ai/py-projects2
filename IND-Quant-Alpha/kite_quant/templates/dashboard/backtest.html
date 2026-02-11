@@ -28,26 +28,15 @@
       </div>
     </div>
     <div class="card-body">
-      <!-- Stock Selection -->
+      <!-- Index Selection (NIFTY / BANKNIFTY only) -->
       <div class="row g-3 mb-3">
         <div class="col-md-4">
-          <label class="form-label">Search Stock <span class="text-muted small">(type 2+ letters from Zerodha)</span></label>
-          <div class="position-relative">
-            <input type="text" class="form-control" id="backtest-stock-search" placeholder="Type stock name or symbol..." autocomplete="off">
-            <div id="backtest-stock-dropdown" class="position-absolute top-100 start-0 end-0 mt-1 border border-secondary rounded bg-dark overflow-auto d-none" style="max-height: 320px; z-index: 1050;"></div>
-          </div>
-          <div id="backtest-selected-stock" class="mt-2 d-none">
-            <div class="d-flex align-items-center justify-content-between p-2 bg-primary bg-opacity-10 rounded">
-              <div>
-                <strong id="backtest-selected-symbol">—</strong>
-                <div class="small text-muted" id="backtest-selected-name">—</div>
-              </div>
-              <div class="text-end">
-                <div class="small">LTP: <strong id="backtest-selected-ltp">—</strong></div>
-                <div class="small" id="backtest-selected-change">—</div>
-              </div>
-            </div>
-          </div>
+          <label class="form-label">Index</label>
+          <select class="form-select" id="backtest-instrument-select">
+            <option value="NIFTY" selected>NIFTY 50</option>
+            <option value="BANKNIFTY">BANK NIFTY</option>
+          </select>
+          <small class="text-muted">Backtest runs on index options (same as Live/Paper).</small>
         </div>
         <div class="col-md-4" id="strategy-select-container">
           <label class="form-label">Strategy (disabled when AI ON)</label>
@@ -326,14 +315,16 @@
         </div>
       </div>
 
-      <!-- All Trades -->
+      <!-- All Trades (horizontal scroll if needed) -->
       <div>
         <h6 class="mb-3">All Trades</h6>
-        <div class="table-responsive">
-          <table class="table table-sm table-dark table-hover">
+        <div class="table-responsive overflow-x-auto" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+          <table class="table table-sm table-dark table-hover mb-0" style="min-width: 1200px;">
             <thead>
               <tr>
                 <th>Date</th>
+                <th>CE/PE</th>
+                <th>Strike</th>
                 <th>Strategy</th>
                 <th>Entry Time</th>
                 <th>Exit Time</th>
@@ -344,8 +335,8 @@
                 <th>Capital Used</th>
                 <th>Balance Left</th>
                 <th>Gross P&L</th>
-                <th>Charges (Brokerage+Tax)</th>
-                <th>Net P&L (After Deductions)</th>
+                <th>Charges</th>
+                <th>Net P&L</th>
                 <th>Exit Reason</th>
               </tr>
             </thead>
@@ -480,116 +471,6 @@
     }
   });
 
-  // Zerodha stock search functionality
-  var stockSearchInput = document.getElementById('backtest-stock-search');
-  var stockDropdown = document.getElementById('backtest-stock-dropdown');
-  var selectedStockDiv = document.getElementById('backtest-selected-stock');
-  var selectedSymbolSpan = document.getElementById('backtest-selected-symbol');
-  var selectedNameSpan = document.getElementById('backtest-selected-name');
-  var selectedLtpSpan = document.getElementById('backtest-selected-ltp');
-  var selectedChangeSpan = document.getElementById('backtest-selected-change');
-  var selectedStockData = null;
-  var searchTimeout = null;
-
-  stockSearchInput.addEventListener('input', function() {
-    var query = this.value.trim();
-    
-    if (query.length < 2) {
-      stockDropdown.classList.add('d-none');
-      return;
-    }
-    
-    // Debounce search
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(function() {
-      fetch('/api/zerodha/search-symbols?q=' + encodeURIComponent(query))
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (data.ok && data.symbols && data.symbols.length > 0) {
-            renderStockDropdown(data.symbols);
-          } else {
-            stockDropdown.innerHTML = '<div class="p-3 text-muted small">No results found</div>';
-            stockDropdown.classList.remove('d-none');
-          }
-        })
-        .catch(function(e) {
-          console.error('Stock search failed:', e);
-          stockDropdown.classList.add('d-none');
-        });
-    }, 300);
-  });
-
-  function renderStockDropdown(symbols) {
-    stockDropdown.innerHTML = '';
-    
-    symbols.forEach(function(sym) {
-      var item = document.createElement('div');
-      item.className = 'p-2 border-bottom border-secondary';
-      item.style.cursor = 'pointer';
-      
-      var changePct = sym.change_pct || 0;
-      var changeClass = changePct >= 0 ? 'text-success' : 'text-danger';
-      
-      item.innerHTML = 
-        '<div class="d-flex justify-content-between align-items-center">' +
-          '<div>' +
-            '<strong>' + (sym.symbol || sym.tradingsymbol || '') + '</strong>' +
-            '<div class="small text-muted">' + (sym.name || '') + '</div>' +
-          '</div>' +
-          '<div class="text-end">' +
-            '<div class="small">₹' + (sym.last || 0).toFixed(2) + '</div>' +
-            '<div class="small ' + changeClass + '">' + (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%</div>' +
-          '</div>' +
-        '</div>';
-      
-      item.addEventListener('mouseenter', function() {
-        this.style.background = 'rgba(168, 199, 250, 0.1)';
-      });
-      
-      item.addEventListener('mouseleave', function() {
-        this.style.background = 'transparent';
-      });
-      
-      item.addEventListener('click', function() {
-        selectStock(sym);
-      });
-      
-      stockDropdown.appendChild(item);
-    });
-    
-    stockDropdown.classList.remove('d-none');
-  }
-
-  function selectStock(stock) {
-    selectedStockData = stock;
-    var symbol = stock.symbol || stock.tradingsymbol || '';
-    
-    // Update search input
-    stockSearchInput.value = symbol;
-    
-    // Hide dropdown
-    stockDropdown.classList.add('d-none');
-    
-    // Show selected stock card
-    selectedSymbolSpan.textContent = symbol;
-    selectedNameSpan.textContent = stock.name || symbol;
-    selectedLtpSpan.textContent = '₹' + (stock.last || 0).toFixed(2);
-    
-    var changePct = stock.change_pct || 0;
-    var changeClass = changePct >= 0 ? 'text-success' : 'text-danger';
-    selectedChangeSpan.className = 'small ' + changeClass;
-    selectedChangeSpan.textContent = (changePct >= 0 ? '+' : '') + changePct.toFixed(2) + '%';
-    
-    selectedStockDiv.classList.remove('d-none');
-  }
-
-  // Close dropdown when clicking outside
-  document.addEventListener('click', function(e) {
-    if (!stockSearchInput.contains(e.target) && !stockDropdown.contains(e.target)) {
-      stockDropdown.classList.add('d-none');
-    }
-  });
-
   // Period quick selectors
   document.querySelectorAll('.period-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -655,10 +536,12 @@
   // Export results
   document.getElementById('export-results-btn').addEventListener('click', function() {
     if (!lastResultsData) return;
-    var csv = 'Date,Strategy,Entry Time,Exit Time,Entry Price,Exit Price,Qty,Lots,Capital Used,Balance Remaining,P&L,Exit Reason\n';
+    var csv = 'Date,CE/PE,Strike,Strategy,Entry Time,Exit Time,Entry Price,Exit Price,Qty,Lots,Capital Used,Balance Remaining,P&L,Exit Reason\n';
     (lastResultsData.trades || []).forEach(function(t) {
       csv += [
         t.date || '',
+        t.option_type || '',
+        t.strike != null && t.strike !== '' ? t.strike : '',
         t.strategy || '',
         t.entry_time || '',
         t.exit_time || '',
@@ -688,15 +571,10 @@
     var progress = document.getElementById('backtest-progress');
     var progressBar = progress.querySelector('.progress-bar');
     
-    // Get selected stock (from Zerodha API or manual input)
-    var instrument = selectedStockData ? 
-      (selectedStockData.symbol || selectedStockData.tradingsymbol) : 
-      (document.getElementById('backtest-stock-search').value.trim().toUpperCase() || 'NIFTY');
-    
-    if (!instrument) {
-      alert('Please select or enter a stock symbol');
-      return;
-    }
+    // Get selected index (NIFTY or BANKNIFTY)
+    var instrumentSelect = document.getElementById('backtest-instrument-select');
+    var instrument = instrumentSelect ? instrumentSelect.value.trim().toUpperCase() : 'NIFTY';
+    if (!instrument) instrument = 'NIFTY';
     
     btn.disabled = true;
     status.classList.remove('d-none');
@@ -870,9 +748,14 @@
           var charges = t.charges || {};
           var totalCharges = charges.total_charges || 0;
           var netPnl = t.net_pnl || (tradePnl - totalCharges);
+          var optionType = t.option_type || '—';
+          var strike = t.strike != null && t.strike !== '' ? t.strike : '—';
+          var cePeClass = optionType === 'CE' ? 'text-info' : (optionType === 'PE' ? 'text-warning' : 'text-muted');
           
           tr.innerHTML = 
             '<td>' + (t.date || '') + '</td>' +
+            '<td><span class="badge ' + cePeClass + ' bg-opacity-25">' + optionType + '</span></td>' +
+            '<td>' + strike + '</td>' +
             '<td><small>' + (t.strategy || '') + '</small></td>' +
             '<td>' + (t.entry_time || '') + '</td>' +
             '<td>' + (t.exit_time || '') + '</td>' +
