@@ -1902,35 +1902,94 @@ def api_market_calendar():
 
 @app.route("/api/zerodha/search-symbols")
 def api_zerodha_search_symbols():
-    """Search NSE equity symbols from Zerodha with live price, OHLC, change% (Kite-style)."""
+    """Search NSE equity symbols from Zerodha with live price (fast with fallback)."""
     apply_config_to_env()
     q = (request.args.get("q") or "").strip()
     limit = min(30, max(5, int(request.args.get("limit", 20))))
     if len(q) < 2:
         return jsonify({"ok": True, "symbols": []})
     try:
+        # Fast search without waiting for quotes
         results = search_instruments(q, limit=limit)
         if not results:
             return jsonify({"ok": True, "symbols": []})
+        
+        # Try to get quotes quickly (with timeout)
         nse_symbols = [r.get("symbol") or r.get("tradingsymbol", "") for r in results if (r.get("exchange") or "NSE") == "NSE" and (r.get("symbol") or r.get("tradingsymbol"))]
-        quotes = get_quotes_bulk(nse_symbols)
+        
+        quotes = {}
+        try:
+            # Try Zerodha quotes first
+            quotes = get_quotes_bulk(nse_symbols) or {}
+        except Exception as e:
+            logger.debug(f"Zerodha quote fetch failed: {e}")
+            quotes = {}
+        
+        # If Zerodha failed, try NSE fallback for important symbols
+        if not quotes:
+            try:
+                from engine.data_fetcher import fetch_nifty50_live, fetch_bank_nifty_live
+                # Fetch major indices as fallback
+                for sym in ["NIFTY 50", "NIFTY50", "NIFTY"]:
+                    if any(sym in r.get("tradingsymbol", "") for r in results):
+                        nifty_data = fetch_nifty50_live()
+                        if nifty_data:
+                            quotes["NIFTY 50"] = {
+                                "last": nifty_data.get("last_price"),
+                                "open": nifty_data.get("open"),
+                                "high": nifty_data.get("high"),
+                                "low": nifty_data.get("low"),
+                                "change": nifty_data.get("change"),
+                                "change_pct": nifty_data.get("change_percent")
+                            }
+                        break
+                
+                for sym in ["NIFTY BANK", "BANKNIFTY", "BANK NIFTY"]:
+                    if any(sym in r.get("tradingsymbol", "") for r in results):
+                        bnf_data = fetch_bank_nifty_live()
+                        if bnf_data:
+                            quotes["NIFTY BANK"] = {
+                                "last": bnf_data.get("last_price"),
+                                "open": bnf_data.get("open"),
+                                "high": bnf_data.get("high"),
+                                "low": bnf_data.get("low"),
+                                "change": bnf_data.get("change"),
+                                "change_pct": bnf_data.get("change_percent")
+                            }
+                        break
+            except Exception as e2:
+                logger.debug(f"NSE fallback also failed: {e2}")
+        
         for r in results:
             sym = (r.get("symbol") or r.get("tradingsymbol") or "").strip().upper()
             r["exchange"] = r.get("exchange", "NSE")
-            if sym and sym in quotes:
-                r["last"] = quotes[sym].get("last")
-                r["open"] = quotes[sym].get("open")
-                r["high"] = quotes[sym].get("high")
-                r["low"] = quotes[sym].get("low")
-                r["change"] = quotes[sym].get("change")
-                r["change_pct"] = quotes[sym].get("change_pct")
+            
+            # Try to match symbol in quotes
+            found_quote = None
+            if sym in quotes:
+                found_quote = quotes[sym]
+            elif sym.replace(" ", "") in quotes:
+                found_quote = quotes[sym.replace(" ", "")]
+            elif "NIFTY 50" in sym and "NIFTY 50" in quotes:
+                found_quote = quotes["NIFTY 50"]
+            elif "NIFTY BANK" in sym and "NIFTY BANK" in quotes:
+                found_quote = quotes["NIFTY BANK"]
+            
+            if found_quote:
+                r["last"] = found_quote.get("last", 0) or 0
+                r["open"] = found_quote.get("open", 0) or 0
+                r["high"] = found_quote.get("high", 0) or 0
+                r["low"] = found_quote.get("low", 0) or 0
+                r["change"] = found_quote.get("change", 0) or 0
+                r["change_pct"] = found_quote.get("change_pct", 0) or 0
             else:
-                r["last"] = r.get("last", 0)
-                r["open"] = r.get("open", 0)
-                r["high"] = r.get("high", 0)
-                r["low"] = r.get("low", 0)
-                r["change"] = r.get("change", 0)
-                r["change_pct"] = r.get("change_pct", 0)
+                # No quotes available - show 0 (market closed or data unavailable)
+                r["last"] = 0
+                r["open"] = 0
+                r["high"] = 0
+                r["low"] = 0
+                r["change"] = 0
+                r["change_pct"] = 0
         return jsonify({"ok": True, "symbols": results})
     except Exception as e:
         return jsonify({"ok": False, "symbols": [], "error": str(e)})
@@ -2996,13 +3055,17 @@ def _check_entry_real(session: dict, strategy_name_override: str | None = None) 
     except Exception as e:
         logger.debug(f"Could not get recent candles for {instrument}: {e}")
     
-    # USE UNIFIED ENTRY LOGIC (same as backtest)
+    # USE UNIFIED ENTRY LOGIC (same as backtest) WITH AI VALIDATION
+    ai_enabled = session.get("ai_auto_switching_enabled", False)  # Check if AI is enabled for this session
+    
     should_enter, reason = should_enter_trade(
         mode=execution_mode,
         current_price=ltp,
         recent_candles=recent_candles,
         strategy_name=strategy_name,
         frequency_check_passed=True,  # Frequency checked separately
+        instrument=instrument,  # Pass instrument for AI context
+        use_ai=ai_enabled,  # Enable AI validation if session has AI enabled
     )
     
     # Store diagnostics
@@ -4092,12 +4155,12 @@ def _run_ai_backtest(
             current_date += timedelta(days=1)
             continue
         
-        # Simulate trading for this day
+        # Simulate trading for this day (WITH FRESH CAPITAL EACH DAY)
         day_result = _simulate_trading_day(
             instrument=instrument,
             trade_date=current_date,
             candles=candles,
-            current_capital=current_capital,
+            current_capital=initial_capital,  # RESET TO INITIAL CAPITAL EACH DAY
             risk_percent=risk_percent,
             ai_enabled=ai_enabled,
             ai_check_interval=ai_check_interval,
@@ -4105,10 +4168,15 @@ def _run_ai_backtest(
         
         # Update tracking
         all_trades.extend(day_result["trades"])
-        cumulative_pnl += day_result["daily_pnl"]
+        daily_pnl = day_result["daily_pnl"]  # This day's P&L
+        cumulative_pnl += daily_pnl  # Track cumulative for reporting
         day_result["daily_summary"]["cumulative_pnl"] = cumulative_pnl
         daily_breakdown.append(day_result["daily_summary"])
-        current_capital = day_result["ending_capital"]
+        
+        # IMPORTANT: Keep current_capital = initial_capital for next day
+        # Each day starts fresh with same capital
+        current_capital = initial_capital
+        
         total_ai_switches += day_result["ai_switches"]
         
         # Send day completion update
@@ -4117,19 +4185,19 @@ def _run_ai_backtest(
                 "type": "day_complete",
                 "date": current_date.isoformat(),
                 "trades": len(day_result["trades"]),
-                "daily_pnl": day_result["daily_pnl"],
+                "daily_pnl": daily_pnl,
                 "cumulative_pnl": cumulative_pnl,
-                "capital": current_capital,
+                "capital": initial_capital,  # Report initial capital (reset each day)
                 "strategies": day_result["daily_summary"].get("strategies", []),
                 "ai_switches": day_result["ai_switches"]
             })
         
-        logger.info(f"[AI BACKTEST] Day {current_date} complete: {len(day_result['trades'])} trades, P&L: ₹{day_result['daily_pnl']:.2f}")
+        logger.info(f"[AI BACKTEST] Day {current_date} complete: {len(day_result['trades'])} trades, Daily P&L: ₹{daily_pnl:.2f}, Cumulative: ₹{cumulative_pnl:.2f}")
         
-        # Check if max loss limit exceeded
-        if cumulative_pnl <= -max_loss_limit:
-            logger.info(f"[AI BACKTEST] Max loss limit reached: {cumulative_pnl}")
-            break
+        # Check if THIS DAY exceeded daily loss limit (not cumulative)
+        if daily_pnl <= -max_loss_limit:
+            logger.warning(f"[AI BACKTEST] Day {current_date}: Daily loss limit exceeded (₹{daily_pnl:.2f} <= -₹{max_loss_limit:.2f}), but continuing to next day with fresh capital")
+            # Continue to next day (don't break) - each day is independent
         
         current_date += timedelta(days=1)
     
@@ -4502,7 +4570,11 @@ def _simulate_trading_day(
                     "exit_price": current_position["stop_loss"],
                     "qty": current_position["qty"],
                     "pnl": exit_pnl,
-                    "exit_reason": "STOP_LOSS"
+                    "exit_reason": "STOP_LOSS",
+                    "capital_used": current_position.get("capital_used", 0),
+                    "capital_remaining": current_position.get("capital_remaining", 0),
+                    "lots": current_position.get("lots", 1),
+                    "price_per_lot": current_position.get("price_per_lot", 0)
                 })
                 day_pnl += exit_pnl
                 logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT STOP_LOSS @ Rs.{current_position['stop_loss']:.2f} | P&L: Rs.{exit_pnl:.2f}")
@@ -4521,7 +4593,11 @@ def _simulate_trading_day(
                     "exit_price": current_position["target"],
                     "qty": current_position["qty"],
                     "pnl": exit_pnl,
-                    "exit_reason": "TARGET"
+                    "exit_reason": "TARGET",
+                    "capital_used": current_position.get("capital_used", 0),
+                    "capital_remaining": current_position.get("capital_remaining", 0),
+                    "lots": current_position.get("lots", 1),
+                    "price_per_lot": current_position.get("price_per_lot", 0)
                 })
                 day_pnl += exit_pnl
                 logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT TARGET @ Rs.{current_position['target']:.2f} | P&L: Rs.{exit_pnl:.2f}")
@@ -4564,6 +4640,8 @@ def _simulate_trading_day(
                 recent_candles=candles[max(0, idx-10):idx+1],  # Last 10 candles
                 strategy_name=current_strategy_name,
                 frequency_check_passed=True,  # Already checked above
+                instrument=instrument,  # Pass instrument for AI context
+                use_ai=ai_enabled,  # Use AI validation if enabled
             )
             
             if should_enter:
@@ -4594,23 +4672,28 @@ def _simulate_trading_day(
                         option_premium = premium_per_contract + premium_change
                         option_premium = max(50, option_premium)  # Floor at Rs.50
                         
-                        # Use centralized F&O position sizing
+                        # Use centralized F&O position sizing (NO CAP - use full 80%)
                         lots, position_cost, can_afford = calculate_fo_position_size(
                             capital=current_capital,
                             premium=option_premium,
                             lot_size=lot_size
                         )
-                        lots = min(max_lots, lots)  # Cap at max_lots
+                        # REMOVED CAP: Use maximum affordable lots (80% of capital)
+                        # lots = min(max_lots, lots)  # OLD: Artificial cap removed
                         
                         if not can_afford or lots < 1:
+                            logger.debug(f"[AI BACKTEST] Cannot afford trade: Premium={option_premium:.2f}, Lots={lots}")
                             continue
                         
                         qty = lots * lot_size
                         entry_price = option_premium
                         
-                        # F&O-specific stop/target - BALANCED FOR VOLUME
-                        stop_loss = option_premium * 0.88  # 12% stop (wider to avoid noise)
-                        target = option_premium * 1.15  # 15% target (VERY achievable)
+                        logger.info(f"[AI BACKTEST POSITION] Premium: Rs.{option_premium:.2f}, Affordable lots: {lots}, Total capital used: Rs.{position_cost:.2f} ({position_cost/current_capital*100:.1f}%)")
+                        
+                        # F&O-specific stop/target - RISK:REWARD = 1:1.5
+                        # TIGHT STOP, BIGGER TARGET for profitable trades
+                        stop_loss = option_premium * 0.92  # 8% stop (cut losses fast)
+                        target = option_premium * 1.12  # 12% target (let winners run)
                         
                         logger.info(f"[AI BACKTEST F&O] {index_name} {selected_strike} {option_type}: "
                                   f"Premium={option_premium:.2f}, Lots={lots}, Qty={qty}, "
@@ -4643,6 +4726,12 @@ def _simulate_trading_day(
                 entries_triggered += 1
                 
                 if qty > 0:
+                    # Calculate capital usage for this trade
+                    capital_used = entry_price * qty
+                    capital_remaining = current_capital - capital_used
+                    lots_used = qty // lot_size if lot_size > 1 else 1
+                    price_per_lot = entry_price * lot_size  # Cost of 1 lot
+                    
                     current_position = {
                         "strategy": current_strategy_name,
                         "entry_time": candle_time,
@@ -4653,13 +4742,18 @@ def _simulate_trading_day(
                         "is_option": simulate_as_option,
                         "lot_size": lot_size,
                         "index_price_at_entry": ltp if simulate_as_option else None,
+                        "capital_used": capital_used,
+                        "capital_remaining": capital_remaining,
+                        "lots": lots_used,
+                        "price_per_lot": price_per_lot,
                     }
                     strategies_used.add(current_strategy_name)
                     
                     # Increment hourly counter
                     hourly_trade_counts[current_hour] = hourly_trade_counts.get(current_hour, 0) + 1
                     
-                    logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: ENTRY {current_strategy_name} @Rs.{entry_price:.2f} SL:Rs.{stop_loss:.2f} Target:Rs.{target:.2f} Qty:{qty} | {entry_reason}")
+                    logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: ENTRY {current_strategy_name} @Rs.{entry_price:.2f} × {qty} (Lots:{lots_used} @ Rs.{price_per_lot:.2f}/lot) | SL:Rs.{stop_loss:.2f} Target:Rs.{target:.2f}")
+                    logger.info(f"[AI BACKTEST] Capital Used: Rs.{capital_used:.2f} ({capital_used/current_capital*100:.1f}%) | Remaining: Rs.{capital_remaining:.2f} | {entry_reason}")
                 else:
                     logger.warning(f"[AI BACKTEST] {trade_date} {candle_time}: Entry signal but qty=0")
     
@@ -4689,7 +4783,11 @@ def _simulate_trading_day(
             "exit_price": exit_price,
             "qty": current_position["qty"],
             "pnl": exit_pnl,
-            "exit_reason": "DAY_END"
+            "exit_reason": "DAY_END",
+            "capital_used": current_position.get("capital_used", 0),
+            "capital_remaining": current_position.get("capital_remaining", 0),
+            "lots": current_position.get("lots", 1),
+            "price_per_lot": current_position.get("price_per_lot", 0)
         })
         day_pnl += exit_pnl
         logger.info(f"[AI BACKTEST] {trade_date} EOD: Closed position @ Rs.{exit_price:.2f} | P&L: Rs.{exit_pnl:.2f}")

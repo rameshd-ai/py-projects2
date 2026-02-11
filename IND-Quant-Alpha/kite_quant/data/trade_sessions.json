@@ -4,7 +4,7 @@
       "sessionId": "ts_20260210040616_0",
       "instrument": "NIFTY",
       "mode": "INTRADAY",
-      "status": "ACTIVE",
+      "status": "STOPPED",
       "execution_mode": "PAPER",
       "virtual_balance": 100000.0,
       "trades_taken_today": 0,
@@ -44,14 +44,14 @@
       "createdAt": "2026-02-10T09:36:16.907869+05:30",
       "ai_auto_switching_enabled": true,
       "ai_check_interval_minutes": 5,
-      "last_ai_strategy_check": "2026-02-10T10:20:12.233519+05:30",
+      "last_ai_strategy_check": "2026-02-10T14:50:57.177300+05:30",
       "last_ai_recommendation": null,
       "ai_strategy_switches": 0,
-      "current_hour_block": 10,
+      "current_hour_block": 14,
       "hourly_trade_count": 0,
       "frequency_mode": "NORMAL",
       "entry_diagnostics": {
-        "last_check": "2026-02-10T10:23:20.277003+05:30",
+        "last_check": "2026-02-10T14:51:02.052263+05:30",
         "strategy": "Index Momentum",
         "ltp": null,
         "entry_price": null,
@@ -60,7 +60,7 @@
         "conditions": {}
       },
       "last_entry_check": {
-        "timestamp": "2026-02-10T10:23:20.275126+05:30",
+        "timestamp": "2026-02-10T14:50:57.177300+05:30",
         "strategy": "Index Momentum",
         "can_enter": false,
         "entry_price": null,
@@ -74,5 +74,5 @@
       }
     }
   ],
-  "updatedAt": "2026-02-10T04:53:22.332324"
+  "updatedAt": "2026-02-10T09:57:57.176915"
 }

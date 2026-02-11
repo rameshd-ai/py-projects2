@@ -8,7 +8,7 @@ from typing import Tuple, Optional
 logger = logging.getLogger(__name__)
 
 # Configuration constants
-FO_POSITION_SIZE_PERCENT = 0.30  # Use 30% of capital for F&O positions
+FO_POSITION_SIZE_PERCENT = 0.95  # Use 95% of capital for F&O positions (max utilization)
 STOCK_RISK_PERCENT = 2.0  # Use 2% risk per trade for stocks
 MIN_PREMIUM_FLOOR = 50.0  # Minimum realistic premium for options (Rs.)
 
