@@ -200,7 +200,19 @@
       <div class="row g-3 mb-4">
         <div class="col-md-2">
           <div class="metric-item">
-            <div class="metric-label">Net P&L</div>
+            <div class="metric-label">Gross P&L</div>
+            <div class="metric-value text-muted" id="bt-gross-pnl">—</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">Total Charges</div>
+            <div class="metric-value text-danger" id="bt-total-charges">—</div>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="metric-item">
+            <div class="metric-label">Net P&L (After Charges)</div>
             <div class="metric-value" id="bt-net-pnl">—</div>
           </div>
         </div>
@@ -218,20 +230,53 @@
         </div>
         <div class="col-md-2">
           <div class="metric-item">
-            <div class="metric-label">Best Day</div>
-            <div class="metric-value text-success-custom" id="bt-best-day">—</div>
-          </div>
-        </div>
-        <div class="col-md-2">
-          <div class="metric-item">
-            <div class="metric-label">Worst Day</div>
-            <div class="metric-value text-danger-custom" id="bt-worst-day">—</div>
-          </div>
-        </div>
-        <div class="col-md-2">
-          <div class="metric-item">
             <div class="metric-label">AI Switches</div>
             <div class="metric-value" id="bt-ai-switches">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Net Total Card (After All Deductions) -->
+      <div class="alert mb-4 border-0" id="bt-net-total-card" style="background: rgba(40, 167, 69, 0.15); display: none;">
+        <div class="d-flex align-items-center">
+          <span class="material-icons-round me-2 fs-4">account_balance_wallet</span>
+          <div>
+            <div class="small text-muted">Net Total (After Brokerage &amp; Tax)</div>
+            <div class="fs-4 fw-bold" id="bt-net-total-value">₹0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charges Breakdown Card -->
+      <div class="alert alert-warning border-0 mb-4" style="background: rgba(255, 193, 7, 0.1);">
+        <div class="d-flex align-items-start mb-2">
+          <span class="material-icons-round me-2">receipt_long</span>
+          <strong>Brokerage & Tax Breakdown</strong>
+        </div>
+        <div class="row g-2 small">
+          <div class="col-md-2">
+            <div class="text-muted">Brokerage</div>
+            <div class="fw-bold">₹<span id="bt-charge-brokerage">0</span></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted">STT</div>
+            <div class="fw-bold">₹<span id="bt-charge-stt">0</span></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted">Exchange</div>
+            <div class="fw-bold">₹<span id="bt-charge-exchange">0</span></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted">GST</div>
+            <div class="fw-bold">₹<span id="bt-charge-gst">0</span></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted">Stamp Duty</div>
+            <div class="fw-bold">₹<span id="bt-charge-stamp">0</span></div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted">Per Trade Avg</div>
+            <div class="fw-bold text-danger">₹<span id="bt-charge-avg">0</span></div>
           </div>
         </div>
       </div>
@@ -298,7 +343,9 @@
                 <th>Price/Lot</th>
                 <th>Capital Used</th>
                 <th>Balance Left</th>
-                <th>P&L</th>
+                <th>Gross P&L</th>
+                <th>Charges (Brokerage+Tax)</th>
+                <th>Net P&L (After Deductions)</th>
                 <th>Exit Reason</th>
               </tr>
             </thead>
@@ -727,16 +774,44 @@
         document.getElementById('backtest-last-result-card').classList.remove('d-none');
         
         // Summary metrics
-        var pnlEl = document.getElementById('bt-net-pnl');
-        var pnl = r.net_pnl != null ? r.net_pnl : 0;
-        pnlEl.textContent = '₹' + pnl.toFixed(2);
-        pnlEl.className = 'metric-value ' + (pnl >= 0 ? 'text-success-custom' : 'text-danger-custom');
+        var grossPnl = r.gross_pnl != null ? r.gross_pnl : 0;
+        var totalCharges = r.total_charges != null ? r.total_charges : 0;
+        var netPnl = r.net_pnl != null ? r.net_pnl : 0;
+        
+        // Gross P&L
+        var grossPnlEl = document.getElementById('bt-gross-pnl');
+        grossPnlEl.textContent = '₹' + grossPnl.toFixed(2);
+        grossPnlEl.className = 'metric-value text-muted';
+        
+        // Total Charges
+        document.getElementById('bt-total-charges').textContent = '₹' + totalCharges.toFixed(2);
+        
+        // Net P&L
+        var netPnlEl = document.getElementById('bt-net-pnl');
+        netPnlEl.textContent = '₹' + netPnl.toFixed(2);
+        netPnlEl.className = 'metric-value ' + (netPnl >= 0 ? 'text-success-custom' : 'text-danger-custom');
+        
+        // Net Total card (after all deductions)
+        var netTotalCard = document.getElementById('bt-net-total-card');
+        var netTotalVal = document.getElementById('bt-net-total-value');
+        netTotalCard.style.display = '';
+        netTotalVal.textContent = '₹' + netPnl.toFixed(2);
+        netTotalVal.className = 'fs-4 fw-bold ' + (netPnl >= 0 ? 'text-success-custom' : 'text-danger-custom');
+        netTotalCard.style.background = netPnl >= 0 ? 'rgba(40, 167, 69, 0.15)' : 'rgba(220, 53, 69, 0.15)';
         
         document.getElementById('bt-trades').textContent = r.total_trades || 0;
         document.getElementById('bt-win-rate').textContent = (r.win_rate != null ? r.win_rate.toFixed(1) + '%' : '—');
-        document.getElementById('bt-best-day').textContent = r.best_day_pnl != null ? '₹' + r.best_day_pnl.toFixed(2) : '—';
-        document.getElementById('bt-worst-day').textContent = r.worst_day_pnl != null ? '₹' + r.worst_day_pnl.toFixed(2) : '—';
         document.getElementById('bt-ai-switches').textContent = r.ai_switches || 0;
+        
+        // Charges breakdown
+        var chargesBreakdown = r.charges_breakdown || {};
+        document.getElementById('bt-charge-brokerage').textContent = (chargesBreakdown.total_brokerage || 0).toFixed(2);
+        document.getElementById('bt-charge-stt').textContent = (chargesBreakdown.total_stt || 0).toFixed(2);
+        document.getElementById('bt-charge-exchange').textContent = (chargesBreakdown.total_exchange_charges || 0).toFixed(2);
+        document.getElementById('bt-charge-gst').textContent = (chargesBreakdown.total_gst || 0).toFixed(2);
+        document.getElementById('bt-charge-stamp').textContent = (chargesBreakdown.total_stamp_duty || 0).toFixed(2);
+        var avgCharge = r.total_trades > 0 ? totalCharges / r.total_trades : 0;
+        document.getElementById('bt-charge-avg').textContent = avgCharge.toFixed(2);
         
         // Calculate frequency statistics
         var normalDays = 0, reducedDays = 0, hardLimitDays = 0;
@@ -792,6 +867,9 @@
           var capitalRemaining = t.capital_remaining || 0;
           var lots = t.lots || 1;
           var pricePerLot = t.price_per_lot || 0;
+          var charges = t.charges || {};
+          var totalCharges = charges.total_charges || 0;
+          var netPnl = t.net_pnl || (tradePnl - totalCharges);
           
           tr.innerHTML = 
             '<td>' + (t.date || '') + '</td>' +
@@ -805,6 +883,8 @@
             '<td class="text-info">₹' + capitalUsed.toFixed(0) + '</td>' +
             '<td class="text-muted">₹' + capitalRemaining.toFixed(0) + '</td>' +
             '<td class="' + (tradePnl >= 0 ? 'text-success-custom' : 'text-danger-custom') + '">₹' + tradePnl.toFixed(2) + '</td>' +
+            '<td class="text-warning">₹' + totalCharges.toFixed(2) + '</td>' +
+            '<td class="' + (netPnl >= 0 ? 'text-success-custom' : 'text-danger-custom') + '"><strong>₹' + netPnl.toFixed(2) + '</strong></td>' +
             '<td><small>' + (t.exit_reason || '') + '</small></td>';
           tradesTbody.appendChild(tr);
         });

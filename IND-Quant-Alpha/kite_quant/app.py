@@ -4202,12 +4202,21 @@ def _run_ai_backtest(
         current_date += timedelta(days=1)
     
     # Calculate summary metrics
-    wins = sum(1 for t in all_trades if t.get("pnl", 0) > 0)
-    losses = sum(1 for t in all_trades if t.get("pnl", 0) < 0)
+    wins = sum(1 for t in all_trades if t.get("net_pnl", t.get("pnl", 0)) > 0)
+    losses = sum(1 for t in all_trades if t.get("net_pnl", t.get("pnl", 0)) < 0)
     total_trades = len(all_trades)
     win_rate = (wins / total_trades * 100) if total_trades > 0 else 0
     
-    # Best and worst days
+    # Calculate total charges
+    from engine.brokerage_calculator import get_charges_summary
+    charges_summary = get_charges_summary(all_trades)
+    total_charges = charges_summary.get("total_charges", 0)
+    
+    # Calculate gross vs net P&L
+    gross_pnl = sum(t.get("pnl", 0) for t in all_trades)
+    net_pnl_calculated = sum(t.get("net_pnl", t.get("pnl", 0)) for t in all_trades)
+    
+    # Best and worst days (use net P&L)
     day_pnls = [d["pnl"] for d in daily_breakdown]
     best_day_pnl = max(day_pnls) if day_pnls else 0
     worst_day_pnl = min(day_pnls) if day_pnls else 0
@@ -4220,7 +4229,10 @@ def _run_ai_backtest(
         "to_date": to_date.isoformat(),
         "initial_capital": initial_capital,
         "ending_capital": current_capital,
-        "net_pnl": cumulative_pnl,
+        "gross_pnl": gross_pnl,
+        "net_pnl": net_pnl_calculated,
+        "total_charges": total_charges,
+        "charges_breakdown": charges_summary,
         "total_trades": total_trades,
         "wins": wins,
         "losses": losses,
@@ -4236,7 +4248,9 @@ def _run_ai_backtest(
             "winning_trades": wins,
             "losing_trades": losses,
             "win_rate": win_rate,
-            "total_pnl": cumulative_pnl,
+            "gross_pnl": gross_pnl,
+            "total_charges": total_charges,
+            "net_pnl": net_pnl_calculated,
             "ending_capital": current_capital,
             "return_pct": ((current_capital - initial_capital) / initial_capital * 100) if initial_capital > 0 else 0,
         },
@@ -4265,6 +4279,7 @@ def _simulate_trading_day(
     from strategies import data_provider as strategy_data_provider
     from engine.trade_frequency import calculate_max_trades_per_hour, get_trade_frequency_config
     from engine.position_sizing import calculate_fo_position_size
+    from engine.brokerage_calculator import calculate_fo_charges, calculate_net_pnl
     
     # F&O options approach - use GPT recommendation for daily option selection
     # This allows us to trade F&O options (same as Live/Paper)
@@ -4561,6 +4576,17 @@ def _simulate_trading_day(
             # Check stop loss (simple price comparison)
             if exit_price_check <= current_position["stop_loss"]:
                 exit_pnl = (current_position["stop_loss"] - current_position["entry_price"]) * current_position["qty"]
+                
+                # Calculate brokerage & taxes
+                from engine.brokerage_calculator import calculate_fo_charges, calculate_net_pnl
+                charges = calculate_fo_charges(
+                    entry_price=current_position["entry_price"],
+                    exit_price=current_position["stop_loss"],
+                    qty=current_position["qty"],
+                    lot_size=current_position.get("lot_size", 50)
+                )
+                net_pnl = calculate_net_pnl(exit_pnl, charges)
+                
                 day_trades.append({
                     "date": trade_date.isoformat(),
                     "strategy": current_position["strategy"],
@@ -4570,20 +4596,33 @@ def _simulate_trading_day(
                     "exit_price": current_position["stop_loss"],
                     "qty": current_position["qty"],
                     "pnl": exit_pnl,
+                    "charges": charges,
+                    "net_pnl": net_pnl,
                     "exit_reason": "STOP_LOSS",
                     "capital_used": current_position.get("capital_used", 0),
                     "capital_remaining": current_position.get("capital_remaining", 0),
                     "lots": current_position.get("lots", 1),
                     "price_per_lot": current_position.get("price_per_lot", 0)
                 })
-                day_pnl += exit_pnl
-                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT STOP_LOSS @ Rs.{current_position['stop_loss']:.2f} | P&L: Rs.{exit_pnl:.2f}")
+                day_pnl += net_pnl  # Use NET P&L for capital tracking
+                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT STOP_LOSS @ Rs.{current_position['stop_loss']:.2f} | Gross P&L: Rs.{exit_pnl:.2f} | Charges: Rs.{charges['total_charges']:.2f} | Net P&L: Rs.{net_pnl:.2f}")
                 current_position = None
                 continue
             
             # Check target (simple price comparison)
             if exit_price_check >= current_position["target"]:
                 exit_pnl = (current_position["target"] - current_position["entry_price"]) * current_position["qty"]
+                
+                # Calculate brokerage & taxes
+                from engine.brokerage_calculator import calculate_fo_charges, calculate_net_pnl
+                charges = calculate_fo_charges(
+                    entry_price=current_position["entry_price"],
+                    exit_price=current_position["target"],
+                    qty=current_position["qty"],
+                    lot_size=current_position.get("lot_size", 50)
+                )
+                net_pnl = calculate_net_pnl(exit_pnl, charges)
+                
                 day_trades.append({
                     "date": trade_date.isoformat(),
                     "strategy": current_position["strategy"],
@@ -4593,14 +4632,16 @@ def _simulate_trading_day(
                     "exit_price": current_position["target"],
                     "qty": current_position["qty"],
                     "pnl": exit_pnl,
+                    "charges": charges,
+                    "net_pnl": net_pnl,
                     "exit_reason": "TARGET",
                     "capital_used": current_position.get("capital_used", 0),
                     "capital_remaining": current_position.get("capital_remaining", 0),
                     "lots": current_position.get("lots", 1),
                     "price_per_lot": current_position.get("price_per_lot", 0)
                 })
-                day_pnl += exit_pnl
-                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT TARGET @ Rs.{current_position['target']:.2f} | P&L: Rs.{exit_pnl:.2f}")
+                day_pnl += net_pnl  # Use NET P&L for capital tracking
+                logger.info(f"[AI BACKTEST] {trade_date} {candle_time}: EXIT TARGET @ Rs.{current_position['target']:.2f} | Gross P&L: Rs.{exit_pnl:.2f} | Charges: Rs.{charges['total_charges']:.2f} | Net P&L: Rs.{net_pnl:.2f}")
                 current_position = None
                 continue
         
@@ -4774,6 +4815,17 @@ def _simulate_trading_day(
             exit_price = candles[-1]["close"]
         
         exit_pnl = (exit_price - current_position["entry_price"]) * current_position["qty"]
+        
+        # Calculate brokerage & taxes
+        from engine.brokerage_calculator import calculate_fo_charges, calculate_net_pnl
+        charges = calculate_fo_charges(
+            entry_price=current_position["entry_price"],
+            exit_price=exit_price,
+            qty=current_position["qty"],
+            lot_size=current_position.get("lot_size", 50)
+        )
+        net_pnl = calculate_net_pnl(exit_pnl, charges)
+        
         day_trades.append({
             "date": trade_date.isoformat(),
             "strategy": current_position["strategy"],
@@ -4783,14 +4835,16 @@ def _simulate_trading_day(
             "exit_price": exit_price,
             "qty": current_position["qty"],
             "pnl": exit_pnl,
+            "charges": charges,
+            "net_pnl": net_pnl,
             "exit_reason": "DAY_END",
             "capital_used": current_position.get("capital_used", 0),
             "capital_remaining": current_position.get("capital_remaining", 0),
             "lots": current_position.get("lots", 1),
             "price_per_lot": current_position.get("price_per_lot", 0)
         })
-        day_pnl += exit_pnl
-        logger.info(f"[AI BACKTEST] {trade_date} EOD: Closed position @ Rs.{exit_price:.2f} | P&L: Rs.{exit_pnl:.2f}")
+        day_pnl += net_pnl  # Use NET P&L for capital tracking
+        logger.info(f"[AI BACKTEST] {trade_date} EOD: Closed position @ Rs.{exit_price:.2f} | Gross P&L: Rs.{exit_pnl:.2f} | Charges: Rs.{charges['total_charges']:.2f} | Net P&L: Rs.{net_pnl:.2f}")
         current_position = None
     
     # Log day statistics for debugging
