@@ -22,6 +22,15 @@
     .nav-link:hover { background-color: rgba(168, 199, 250, 0.08); color: var(--md-text); }
     .nav-link.active { background-color: rgba(168, 199, 250, 0.16); color: var(--md-primary); }
     .nav-link .material-icons-round { font-size: 24px; }
+    .nav-item.dropdown .dropdown-menu { background: var(--md-surface-2); border: 1px solid var(--md-border); border-radius: 12px; padding: 0.5rem; margin-top: 0.25rem; }
+    .nav-item.dropdown .dropdown-item { color: var(--md-text-muted); border-radius: 8px; padding: 0.6rem 1rem; }
+    .nav-item.dropdown .dropdown-item:hover { background: rgba(168, 199, 250, 0.12); color: var(--md-primary); }
+    .nav-item.dropdown .nav-link.dropdown-toggle::after { margin-left: 6px; }
+    .nav-toggle { cursor: pointer; user-select: none; }
+    .nav-toggle .toggle-chevron { margin-left: auto; transition: transform 0.2s ease; font-size: 20px; color: var(--md-text-muted); }
+    .nav-toggle[aria-expanded="true"] .toggle-chevron { transform: rotate(180deg); }
+    .nav-sub { list-style: none; padding-left: 0; margin: 0.25rem 0 0 0; overflow: hidden; }
+    .nav-sub .nav-link { padding: 0.6rem 1.5rem 0.6rem 3rem; font-size: 0.95rem; }
     .main-content { margin-left: 260px; padding: 2rem; }
     @media (max-width: 768px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } .sidebar.show { transform: translateX(0); } }
     .card { background-color: var(--md-surface); border: 1px solid var(--md-border); border-radius: 16px; margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -77,9 +86,18 @@
         </a>
       </li>
       <li class="nav-item mb-2" style="display: block !important; visibility: visible !important;">
-        <a href="{{ url_for('dashboard_backtest') }}" class="nav-link {{ 'active' if active_page == 'backtest' else '' }}">
-          <span class="material-icons-round">history</span> Backtesting
+        <a class="nav-link nav-toggle {{ 'active' if active_page == 'backtest' else '' }}" href="#" role="button" data-bs-toggle="collapse" data-bs-target="#nav-nifty-banknifty" aria-expanded="{{ 'true' if active_page == 'backtest' else 'false' }}" aria-controls="nav-nifty-banknifty">
+          <span class="material-icons-round">candlestick_chart</span>
+          <span>NIFTY / BANKNIFTY</span>
+          <span class="material-icons-round toggle-chevron">expand_more</span>
         </a>
+        <ul class="nav flex-column collapse {{ 'show' if active_page == 'backtest' else '' }}" id="nav-nifty-banknifty">
+          <li class="nav-sub">
+            <a href="{{ url_for('dashboard_backtest') }}" class="nav-link {{ 'active' if active_page == 'backtest' else '' }}">
+              <span class="material-icons-round">history</span> Backtesting
+            </a>
+          </li>
+        </ul>
       </li>
       <li class="nav-item mb-3">
         <a href="{{ url_for('settings') }}" class="nav-link">
