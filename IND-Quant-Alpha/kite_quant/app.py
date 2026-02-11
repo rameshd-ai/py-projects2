@@ -2464,6 +2464,71 @@ def get_index_market_bias() -> dict:
     return out
 
 
+def _get_index_option_candidates(
+    index_name: str, bias: str, spot: float
+) -> list[dict]:
+    """
+    Build option candidates (ATM, 1 OTM, 2 OTM) for index in the given direction.
+    CE for BULLISH, PE for BEARISH. Same premium model used by Live, Paper, and Backtest.
+    Returns list of dicts: type, strike, premium, lotSize, distanceFromATM, etc.
+    """
+    index_name = (index_name or "").upper().replace(" ", "")
+    if "BANK" in index_name:
+        strike_step, lot_size = 100, 15
+    else:
+        strike_step, lot_size = 50, 25
+    if spot <= 0:
+        spot = 24500.0 if index_name == "NIFTY" else 52000.0
+    base_strike = round(spot / strike_step) * strike_step
+    use_ce = bias == "BULLISH"
+    strikes = (
+        [base_strike, base_strike + strike_step, base_strike + 2 * strike_step]
+        if use_ce
+        else [base_strike, base_strike - strike_step, base_strike - 2 * strike_step]
+    )
+    options = []
+    for i, strike in enumerate(strikes):
+        if use_ce:
+            prem = max(50, 80 - (strike - spot) / 2 + (30 if i == 0 else 0))
+        else:
+            prem = max(50, 80 + (spot - strike) / 2 + (30 if i == 0 else 0))
+        prem = round(prem, 2)
+        total_cost = prem * lot_size
+        options.append({
+            "type": "CE" if use_ce else "PE",
+            "strike": strike,
+            "premium": prem,
+            "lotSize": lot_size,
+            "lotCost": total_cost,
+            "totalCost": round(total_cost, 2),
+            "distanceFromATM": i,
+        })
+    return options
+
+
+def _pick_best_index_option(
+    candidates: list[dict], capital: float
+) -> dict | None:
+    """
+    Pick best index option: lower premium = more lots (same logic for Live, Paper, Backtest).
+    Sorts by premium ascending, then by distanceFromATM; returns first affordable option.
+    """
+    from engine.position_sizing import calculate_fo_position_size
+    # Prefer lower premium first (maximize lots), then closer to ATM
+    sorted_candidates = sorted(
+        candidates, key=lambda x: (x["premium"], x["distanceFromATM"])
+    )
+    for opt in sorted_candidates:
+        lots, total_cost, can_afford = calculate_fo_position_size(
+            capital, opt["premium"], opt["lotSize"]
+        )
+        if can_afford and lots >= 1:
+            opt["status"] = "Affordable"
+            opt["canTrade"] = True
+            return opt
+    return None
+
+
 def get_affordable_index_options(
     index_name: str,
     bias: str,
@@ -2471,27 +2536,20 @@ def get_affordable_index_options(
     confidence: int | None = None,
 ) -> tuple[list, dict, bool]:
     """
-    Get 2–3 affordable weekly index options (ATM, 1 OTM, 2 OTM) filtered by max_risk_per_trade.
-    Returns (options_list, ai_recommendation, safe_to_show).
+    Get affordable index options. AI selects best premium = lower premium for more lots.
+    CE/PE auto from bias (BULLISH→CE, BEARISH→PE). Same logic used in Backtest and Live/Paper.
+    Returns (options_list sorted by premium, ai_recommendation, safe_to_show).
     """
     index_name = (index_name or "").upper().replace(" ", "")
     if index_name not in ("NIFTY", "BANKNIFTY", "NIFTY50", "BANKNIFTY50"):
-        if "BANK" in index_name:
-            index_name = "BANKNIFTY"
-        else:
-            index_name = "NIFTY"
+        index_name = "BANKNIFTY" if "BANK" in index_name else "NIFTY"
 
     if bias == "NEUTRAL":
         return [], {}, False
 
-    # Index config: strike step, lot size, symbol for quote
     if index_name == "BANKNIFTY":
-        strike_step = 100
-        lot_size = 15
         quote_symbol = "NIFTY BANK"
     else:
-        strike_step = 50
-        lot_size = 25
         quote_symbol = "NIFTY 50"
 
     try:
@@ -2502,58 +2560,28 @@ def get_affordable_index_options(
         spot = float(live.get("price") or live.get("open") or 0)
     except Exception:
         spot = 24500.0 if index_name == "NIFTY" else 52000.0
-
     if spot <= 0:
         spot = 24500.0 if index_name == "NIFTY" else 52000.0
 
-    base_strike = round(spot / strike_step) * strike_step
+    candidates = _get_index_option_candidates(index_name, bias, spot)
+    # Best premium = lower premium first (more lots), then closer to ATM
+    options_sorted = sorted(
+        candidates, key=lambda x: (x["premium"], x["distanceFromATM"])
+    )
+    for o in options_sorted:
+        total_cost = o["premium"] * o["lotSize"]
+        o["status"] = "Affordable" if total_cost <= max_risk_per_trade else "Over Budget"
+        o["canTrade"] = total_cost <= max_risk_per_trade
+    top = options_sorted[:3]
+
     use_ce = bias == "BULLISH"
-
-    # ATM, 1 OTM, 2 OTM (for CE: OTM = strike > spot; for PE: OTM = strike < spot)
-    strikes = []
-    if use_ce:
-        strikes = [base_strike, base_strike + strike_step, base_strike + 2 * strike_step]
-    else:
-        strikes = [base_strike, base_strike - strike_step, base_strike - 2 * strike_step]
-
-    # Mock premiums (index options: typically tens to low hundreds)
-    # Budget check: total_cost = premium * lot_size (user pays this); compare total_cost <= budget
-    options = []
-    for i, strike in enumerate(strikes):
-        if use_ce:
-            prem = max(50, 80 - (strike - spot) / 2 + (30 if i == 0 else 0))
-        else:
-            prem = max(50, 80 + (spot - strike) / 2 + (30 if i == 0 else 0))
-        prem = round(prem, 2)
-        total_cost = prem * lot_size
-        within_budget = total_cost <= max_risk_per_trade
-        options.append({
-            "type": "CE" if use_ce else "PE",
-            "strike": strike,
-            "premium": prem,
-            "lotSize": lot_size,
-            "lotCost": total_cost,
-            "totalCost": round(total_cost, 2),
-            "distanceFromATM": i,
-            "status": "Affordable" if within_budget else "Over Budget",
-            "canTrade": within_budget,
-        })
-
-    # Sort by closest to ATM, then by premium; return all (frontend shows status per row)
-    options.sort(key=lambda x: (x["distanceFromATM"], x["premium"]))
-    top = options[:3]
-
-    # AI recommendation text
     direction = "BUY CE" if use_ce else "BUY PE"
-    move_type = "Momentum" if bias == "BULLISH" else "Reversal"
-    if bias == "BEARISH":
-        move_type = "Momentum"
+    move_type = "Momentum" if bias in ("BULLISH", "BEARISH") else "Reversal"
     summary = (
         f"{'NIFTY' if index_name == 'NIFTY' else 'Bank Nifty'} is trading "
         f"{'above' if bias == 'BULLISH' else 'below'} open with {bias.lower()} intraday bias. "
-        "Suitable for small-capital weekly options."
+        "AI selects best premium (lower premium = more lots)."
     )
-
     rec = {
         "direction": direction,
         "confidence": confidence if confidence is not None else 65,
@@ -2561,8 +2589,6 @@ def get_affordable_index_options(
         "holdingTime": "20-90 min",
         "summary": summary,
     }
-
-    # Safe to show only if bias is clear
     safe = bias != "NEUTRAL" and (float(max_risk_per_trade) > 0)
     return top, rec, safe
 
@@ -4346,42 +4372,12 @@ def _simulate_trading_day(
         
         logger.info(f"[AI BACKTEST F&O] {trade_date}: Market bias = {bias} (trend: {price_trend:.2f}%, vol: {volatility:.2f}%)")
         
-        # === STEP 2: Select F&O option based on bias and capital ===
+        # === STEP 2: Select F&O option (same logic as Live/Paper: best premium = lower premium, more lots) ===
         spot_price = candles[0]["open"]
-        
-        # Determine lot size
-        if index_name == "BANKNIFTY":
-            lot_size = 15
-            strike_step = 100
-        else:  # NIFTY
-            lot_size = 25
-            strike_step = 50
-        
-        # Select option type based on bias
-        option_type = "CE" if bias == "BULLISH" else "PE"
-        
-        # Calculate ATM strike
-        atm_strike = round(spot_price / strike_step) * strike_step
-        
-        # Select slightly OTM strike for better risk/reward
-        if option_type == "CE":
-            selected_strike = atm_strike + strike_step  # 1 strike OTM
-        else:
-            selected_strike = atm_strike - strike_step  # 1 strike OTM
-        
-        # Base premium estimation (realistic values)
-        base_premium = 120 if index_name == "NIFTY" else 150
-        premium_per_contract = base_premium
-        
-        # Calculate max lots we can afford
-        from engine.position_sizing import calculate_fo_position_size
-        max_lots, total_cost, can_afford = calculate_fo_position_size(
-            capital=current_capital,
-            premium=premium_per_contract,
-            lot_size=lot_size
-        )
-        
-        if not can_afford or max_lots < 1:
+        candidates = _get_index_option_candidates(index_name, bias, spot_price)
+        best_option = _pick_best_index_option(candidates, current_capital)
+
+        if not best_option:
             logger.info(f"[AI BACKTEST F&O] {trade_date}: Insufficient capital for {index_name} options. Skipping day.")
             return {
                 "trades": [],
@@ -4402,8 +4398,17 @@ def _simulate_trading_day(
                     "frequency_mode": "NORMAL",
                 }
             }
-        
-        logger.info(f"[AI BACKTEST F&O] {trade_date}: Trading {index_name} {selected_strike} {option_type}")
+
+        selected_strike = best_option["strike"]
+        option_type = best_option["type"]
+        premium_per_contract = best_option["premium"]
+        lot_size = best_option["lotSize"]
+        from engine.position_sizing import calculate_fo_position_size
+        max_lots, total_cost, _ = calculate_fo_position_size(
+            capital=current_capital, premium=premium_per_contract, lot_size=lot_size
+        )
+
+        logger.info(f"[AI BACKTEST F&O] {trade_date}: Trading {index_name} {selected_strike} {option_type} (best premium Rs.{premium_per_contract:.2f} = more lots)")
         logger.info(f"[AI BACKTEST] Capital: Rs.{current_capital:.0f}, Premium: Rs.{premium_per_contract:.2f}, "
                    f"Lot size: {lot_size}, Max lots: {max_lots}, Total cost: Rs.{total_cost:.2f}")
         
