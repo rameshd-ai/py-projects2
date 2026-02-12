@@ -7,16 +7,7 @@ from typing import Any
 
 from engine.data_fetcher import fetch_nse_ohlc
 from engine.zerodha_client import get_quote as _kite_get_quote
-
-
-def _nse_symbol(instrument: str) -> str:
-    """Map session instrument to NSE symbol for OHLC/quote."""
-    instrument = (instrument or "").strip().upper()
-    if instrument == "NIFTY":
-        return "NIFTY 50"
-    if instrument == "BANKNIFTY":
-        return "NIFTY BANK"
-    return instrument
+from nifty_banknifty_engine.constants import nse_symbol as _nse_symbol
 
 
 def _interval_kite(interval: str) -> str:

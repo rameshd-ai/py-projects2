@@ -12,15 +12,7 @@ from typing import Any
 from engine.data_fetcher import fetch_nse_ohlc
 from strategies.strategy_registry import STRATEGY_MAP
 from risk.risk_manager import RiskConfig, RiskManager
-
-
-def _nse_symbol(instrument: str) -> str:
-    instrument = (instrument or "").strip().upper()
-    if instrument == "NIFTY":
-        return "NIFTY 50"
-    if instrument == "BANKNIFTY":
-        return "NIFTY BANK"
-    return instrument
+from nifty_banknifty_engine.constants import nse_symbol as _nse_symbol
 
 
 def _interval_kite(interval: str) -> str:
@@ -32,7 +24,7 @@ def _interval_kite(interval: str) -> str:
 
 
 def _load_candles(instrument: str, from_date: str, to_date: str, timeframe: str) -> list[dict[str, Any]]:
-    """Load historical candles for instrument and date range."""
+    """Load historical candles for instrument and date range. Uses NIFTY/BANKNIFTY symbol mapping."""
     symbol = _nse_symbol(instrument)
     kite_interval = _interval_kite(timeframe)
     try:
