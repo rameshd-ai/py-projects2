@@ -60,6 +60,11 @@ def place_paper_trade(
         "stop_loss": stop_loss,
         "target": target,
     }
+    # Deduct capital used so Balance Left reflects available amount
+    vb = session.get("virtual_balance")
+    if vb is not None:
+        capital_used = round(entry_price * qty, 2)
+        session["virtual_balance"] = round(float(vb) - capital_used, 2)
     logger.info("PAPER ENTRY | %s | %s qty=%s @ %s", symbol, side, qty, entry_price)
     return {"success": True, "trade_id": trade_id, "entry_price": entry_price}
 
@@ -85,9 +90,10 @@ def exit_paper_trade(session: dict, exit_price: float | None = None) -> dict[str
     trade["exit_price"] = exit_price
     trade["pnl"] = pnl
     session["daily_pnl"] = (session.get("daily_pnl") or 0) + pnl
+    # Add back exit proceeds (capital released + P&L = entry*qty + pnl, so vb + exit*qty gives initial + pnl)
     vb = session.get("virtual_balance")
     if vb is not None:
-        session["virtual_balance"] = round(float(vb) + pnl, 2)
+        session["virtual_balance"] = round(float(vb) + exit_price * qty, 2)
     record = {
         "session_id": session.get("sessionId"),
         "mode": "PAPER",

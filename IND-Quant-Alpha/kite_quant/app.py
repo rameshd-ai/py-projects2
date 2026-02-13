@@ -5,10 +5,18 @@ from __future__ import annotations
 
 import logging
 import os
+from functools import wraps
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
 from dotenv import load_dotenv
 
+# Configure logging FIRST before any other imports
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
 from flask import Flask, jsonify, redirect, render_template, request, url_for, Response
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -74,10 +82,26 @@ PREDICTION_CACHE_TTL = timedelta(minutes=3)  # 3 min during market — trading d
 US_BIAS_CACHE_TTL = timedelta(hours=2)  # 2h so India morning gets latest US close
 US_BIAS_ERROR_CACHE_TTL = timedelta(minutes=1)  # Retry quickly if fetch failed
 
+# Thread pool for timeout-protected API calls
+_timeout_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="timeout_worker")
+
+def call_with_timeout(func, *args, timeout_seconds=10, **kwargs):
+    """Execute function with timeout. Returns (success: bool, result: Any)."""
+    try:
+        future = _timeout_executor.submit(func, *args, **kwargs)
+        result = future.result(timeout=timeout_seconds)
+        return True, result
+    except FutureTimeoutError:
+        logger.warning(f"{func.__name__} timed out after {timeout_seconds}s")
+        return False, None
+    except Exception as e:
+        logger.error(f"{func.__name__} error: {str(e)}")
+        return False, None
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-in-production")
-# Enable auto-reload for templates and code
-app.config["TEMPLATES_AUTO_RELOAD"] = True
+# Disable auto-reload for stability
+app.config["TEMPLATES_AUTO_RELOAD"] = False
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # Disable caching for development
 
 # Never cache API responses (real money: avoid any stale data in browser)
@@ -132,12 +156,13 @@ def dashboard_backtest():
 
 @app.route("/dashboard/paper-trade")
 def dashboard_paper_trade():
-    return render_template("dashboard/backtest.html", active_page="paper_trade", page_title="Paper Trade")
+    return render_template("dashboard/paper_trade.html", active_page="paper_trade", page_title="Trade")
 
 
 @app.route("/dashboard/live-trade")
 def dashboard_live_trade():
-    return render_template("dashboard/backtest.html", active_page="live_trade", page_title="Live Trade")
+    """Redirect to unified Trade page (paper_trade)."""
+    return redirect(url_for("dashboard_paper_trade"))
 
 
 # Algo ids that have executable strategy logic (check_entry, check_exit, SL/target). Others fall back to MomentumBreakout.
@@ -2360,6 +2385,7 @@ _trade_sessions: list[dict] = []
 engine_state: dict = {"running": True, "last_tick": None}
 _backtest_progress: dict = {}  # Storage for live backtest progress updates
 _last_session_engine_tick_time: datetime | None = None  # For next-scan countdown (set each tick)
+_tick_lock = Lock()  # Prevents overlapping tick runs; scheduler returns immediately so "Last scan" updates every 60s
 
 
 def is_market_open(now: datetime | None = None) -> bool:
@@ -2592,6 +2618,187 @@ def api_approve_trade():
     })
 
 
+@app.route("/api/paper-trade/risk-config")
+def api_paper_trade_risk_config():
+    """GET /api/paper-trade/risk-config?investment_amount=10000&risk_percent=2. Returns risk_percent, max_risk_per_trade, daily_loss_limit. risk_percent is editable (default 2)."""
+    try:
+        investment_amount = float(request.args.get("investment_amount") or 100000.0)
+    except (TypeError, ValueError):
+        investment_amount = 100000.0
+    try:
+        risk_percent = float(request.args.get("risk_percent") or 2.0)
+    except (TypeError, ValueError):
+        risk_percent = 2.0
+    risk_percent = max(0.5, min(10.0, risk_percent))
+    from engine.trade_frequency import get_trade_frequency_config, calculate_max_daily_loss_limit
+    config = get_trade_frequency_config()
+    max_risk_per_trade = round(investment_amount * (risk_percent / 100.0), 2)
+    daily_loss_limit = calculate_max_daily_loss_limit(investment_amount, config)
+    max_daily_loss_percent = config.get("max_daily_loss_percent", 0.10)
+    return jsonify({
+        "risk_percent": risk_percent,
+        "max_risk_per_trade": max_risk_per_trade,
+        "daily_loss_limit": round(daily_loss_limit, 2),
+        "max_daily_loss_percent": round(max_daily_loss_percent * 100, 1),
+    })
+
+
+@app.route("/api/paper-trade/execute", methods=["POST"])
+def api_paper_trade_execute():
+    """
+    POST /api/paper-trade/execute: Start a PAPER trading session (same flow as backtest).
+    Body: { instrument, investment_amount, ai_auto_switching_enabled (optional) }.
+    Creates session with AI recommendation; engine ticks every 60s, gets candles, runs same
+    entry/exit logic as backtest, and places paper order when conditions are met.
+    """
+    global _trade_sessions
+    data = request.get_json() or {}
+    instrument = (data.get("instrument") or "").strip().upper()
+    if instrument not in ("NIFTY", "BANKNIFTY"):
+        return jsonify({"ok": False, "error": "instrument must be NIFTY or BANKNIFTY"}), 400
+    try:
+        investment_amount = float(data.get("investment_amount") or 100000.0)
+    except (TypeError, ValueError):
+        investment_amount = 100000.0
+    if investment_amount <= 0:
+        return jsonify({"ok": False, "error": "investment_amount must be positive"}), 400
+
+    rec = build_ai_trade_recommendation_index(instrument, investment_amount)
+    if not rec:
+        return jsonify({"ok": False, "error": "No recommendation (e.g. neutral bias). Try again later."}), 400
+
+    session_id = f"pt_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    from engine.trade_frequency import calculate_max_daily_loss_limit
+    daily_loss_limit = calculate_max_daily_loss_limit(investment_amount)
+    tradingsymbol = rec.get("tradingsymbol") or instrument
+    exchange = rec.get("exchange") or "NFO"
+    lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 25)
+    ai_enabled = data.get("ai_auto_switching_enabled", True)
+
+    session = {
+        "sessionId": session_id,
+        "instrument": instrument,
+        "mode": "INTRADAY",
+        "status": "ACTIVE",
+        "execution_mode": "PAPER",
+        "virtual_balance": investment_amount,
+        "trades_taken_today": 0,
+        "daily_pnl": 0.0,
+        "daily_loss_limit": daily_loss_limit,
+        "cutoff_time": "15:15",
+        "current_trade_id": None,
+        "current_trade": None,
+        "recommendation": rec,
+        "tradingsymbol": tradingsymbol,
+        "exchange": exchange,
+        "lot_size": lot_size,
+        "createdAt": now.isoformat(),
+        "current_hour_block": now.hour,
+        "hourly_trade_count": 0,
+        "frequency_mode": "NORMAL",
+        "ai_auto_switching_enabled": ai_enabled,
+        "ai_check_interval_minutes": 5,
+    }
+    _trade_sessions.append(session)
+    _save_trade_sessions()
+
+    rec_display = {
+        "strike": rec.get("strike"),
+        "optionType": rec.get("optionType") or ("CE" if rec.get("tradeType") == "CALL" else "PE"),
+        "strategyName": rec.get("strategyName") or rec.get("strategyId") or "",
+        "premium": rec.get("premium"),
+        "tradingsymbol": rec.get("tradingsymbol"),
+        "lot_size": int(rec.get("lot_size") or rec.get("lotSize") or 25),
+    }
+    return jsonify({
+        "ok": True,
+        "session_id": session_id,
+        "instrument": instrument,
+        "message": "Paper session started. Engine will get candles every 60s and place trade when conditions are met (same logic as backtest).",
+        "recommendation": rec_display,
+        "virtual_balance": investment_amount,
+    })
+
+
+@app.route("/api/live-trade/execute", methods=["POST"])
+def api_live_trade_execute():
+    """
+    POST /api/live-trade/execute: Start a LIVE trading session (same flow as backtest).
+    Body: { instrument, investment_amount, ai_auto_switching_enabled (optional) }.
+    Creates session with AI recommendation; engine ticks every 60s, gets candles, runs same
+    entry/exit logic as backtest, and places real Zerodha order when conditions are met.
+    """
+    global _trade_sessions
+    data = request.get_json() or {}
+    instrument = (data.get("instrument") or "").strip().upper()
+    if instrument not in ("NIFTY", "BANKNIFTY"):
+        return jsonify({"ok": False, "error": "instrument must be NIFTY or BANKNIFTY"}), 400
+    try:
+        investment_amount = float(data.get("investment_amount") or 100000.0)
+    except (TypeError, ValueError):
+        investment_amount = 100000.0
+    if investment_amount <= 0:
+        return jsonify({"ok": False, "error": "investment_amount must be positive"}), 400
+
+    rec = build_ai_trade_recommendation_index(instrument, investment_amount)
+    if not rec:
+        return jsonify({"ok": False, "error": "No recommendation (e.g. neutral bias). Try again later."}), 400
+
+    session_id = f"lt_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    from engine.trade_frequency import calculate_max_daily_loss_limit
+    daily_loss_limit = calculate_max_daily_loss_limit(investment_amount)
+    tradingsymbol = rec.get("tradingsymbol") or instrument
+    exchange = rec.get("exchange") or "NFO"
+    lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 25)
+    ai_enabled = data.get("ai_auto_switching_enabled", True)
+
+    session = {
+        "sessionId": session_id,
+        "instrument": instrument,
+        "mode": "INTRADAY",
+        "status": "ACTIVE",
+        "execution_mode": "LIVE",
+        "virtual_balance": investment_amount,
+        "trades_taken_today": 0,
+        "daily_pnl": 0.0,
+        "daily_loss_limit": daily_loss_limit,
+        "cutoff_time": "15:15",
+        "current_trade_id": None,
+        "current_trade": None,
+        "recommendation": rec,
+        "tradingsymbol": tradingsymbol,
+        "exchange": exchange,
+        "lot_size": lot_size,
+        "createdAt": now.isoformat(),
+        "current_hour_block": now.hour,
+        "hourly_trade_count": 0,
+        "frequency_mode": "NORMAL",
+        "ai_auto_switching_enabled": ai_enabled,
+        "ai_check_interval_minutes": 5,
+    }
+    _trade_sessions.append(session)
+    _save_trade_sessions()
+
+    rec_display = {
+        "strike": rec.get("strike"),
+        "optionType": rec.get("optionType") or ("CE" if rec.get("tradeType") == "CALL" else "PE"),
+        "strategyName": rec.get("strategyName") or rec.get("strategyId") or "",
+        "premium": rec.get("premium"),
+        "tradingsymbol": rec.get("tradingsymbol"),
+        "lot_size": int(rec.get("lot_size") or rec.get("lotSize") or 25),
+    }
+    return jsonify({
+        "ok": True,
+        "session_id": session_id,
+        "instrument": instrument,
+        "message": "Live session started. Engine will get candles every 60s and place real order when conditions are met (same logic as backtest).",
+        "recommendation": rec_display,
+        "virtual_balance": investment_amount,
+    })
+
+
 def _pick_best_strategy(instrument: str, session: dict | None = None) -> tuple[str, str]:
     """
     Return (strategy_id, strategy_name) for current market.
@@ -2819,16 +3026,40 @@ def _manage_trade_real(session: dict) -> bool:
 
 
 def _run_session_engine_tick() -> None:
-    """Background tick: for each ACTIVE session, apply guard rails, manage open trade or scan for entry."""
+    """Scheduler callback: update last_tick immediately, then run tick in background so scheduler never blocks."""
     global _last_session_engine_tick_time
-    if not engine_state.get("running", True):
-        return
-    if not is_market_open():
-        return
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     _last_session_engine_tick_time = now
-    active_count = sum(1 for s in _trade_sessions if s.get("status") == "ACTIVE")
-    logger.info("ENGINE TICK | active_sessions=%s", active_count)
+    engine_state["last_tick"] = now.isoformat()
+    if not _tick_lock.acquire(blocking=False):
+        logger.warning("ENGINE TICK skipped: previous tick still running")
+        return
+
+    def _tick_body() -> None:
+        try:
+            _do_session_engine_tick(now)
+        finally:
+            _tick_lock.release()
+
+    Thread(target=_tick_body, daemon=True).start()
+
+
+def _do_session_engine_tick(now: datetime) -> None:
+    """Actual tick logic (run in background thread)."""
+    tick_start_time = now
+    MAX_TICK_DURATION_SEC = 50  # Force exit if tick takes longer than 50s
+    try:
+        if not engine_state.get("running", True):
+            logger.debug("ENGINE TICK skipped: engine not running")
+            return
+        if not is_market_open(now):
+            logger.debug("ENGINE TICK skipped: market closed (outside 9:15-15:30 IST or weekend)")
+            return
+        active_count = sum(1 for s in _trade_sessions if s.get("status") == "ACTIVE")
+        logger.info("ENGINE TICK | active_sessions=%s", active_count)
+    except Exception as e:
+        logger.exception("ENGINE TICK | pre-check error: %s", str(e))
+        return
     for s in _trade_sessions:
         if s.get("status") == "ACTIVE":
             logger.info(
@@ -2851,6 +3082,12 @@ def _run_session_engine_tick() -> None:
         logger.exception("Engine tick cutoff error: %s", str(e))
         return
     for session in _trade_sessions:
+        # Check if we're exceeding max tick duration
+        elapsed = (datetime.now(ZoneInfo("Asia/Kolkata")) - tick_start_time).total_seconds()
+        if elapsed > MAX_TICK_DURATION_SEC:
+            logger.warning(f"ENGINE TICK exceeded max duration ({MAX_TICK_DURATION_SEC}s), stopping processing")
+            break
+            
         if session.get("status") != "ACTIVE":
             continue
         if (session.get("execution_mode") or "").upper() == "BACKTEST":
@@ -2876,126 +3113,152 @@ def _run_session_engine_tick() -> None:
                 if _manage_trade_real(session):
                     _save_trade_sessions()
             except Exception as e:
-                logger.exception("Engine tick manage trade error: %s", str(e))
+                logger.exception("Engine tick manage trade error for %s: %s", session.get("instrument"), str(e))
             continue
         
         # AI Strategy Auto-Switching (if enabled)
         if session.get("ai_auto_switching_enabled", False):
-            last_ai_check = session.get("last_ai_strategy_check")
-            ai_check_interval_minutes = session.get("ai_check_interval_minutes", 5)  # Default: check every 5 min
-            should_run_ai = True
-            if last_ai_check:
-                try:
-                    last_check_dt = datetime.fromisoformat(last_ai_check)
-                    minutes_since = (now - last_check_dt).total_seconds() / 60
-                    should_run_ai = minutes_since >= ai_check_interval_minutes
-                except Exception:
-                    pass
-            
-            if should_run_ai:
-                try:
-                    # Gather market context
-                    nifty = fetch_nifty50_live()
-                    banknifty = fetch_bank_nifty_live()
-                    vix = fetch_india_vix()
-                    
-                    # Get recent candles for price action analysis
-                    instrument = session.get("instrument", "")
-                    recent_candles = None
+            try:
+                last_ai_check = session.get("last_ai_strategy_check")
+                ai_check_interval_minutes = session.get("ai_check_interval_minutes", 5)
+                should_run_ai = True
+                if last_ai_check:
                     try:
-                        candles_df = strategy_data_provider.get_recent_candles(instrument, interval="5m", count=10, period="1d")
-                        if candles_df:
-                            recent_candles = [
-                                {
-                                    "high": c.get("high", 0),
-                                    "low": c.get("low", 0),
-                                    "close": c.get("close", 0),
-                                    "volume": c.get("volume", 0),
-                                }
-                                for c in candles_df
-                            ]
+                        last_check_dt = datetime.fromisoformat(last_ai_check)
+                        minutes_since = (now - last_check_dt).total_seconds() / 60
+                        should_run_ai = minutes_since >= ai_check_interval_minutes
                     except Exception:
                         pass
-                    
-                    context = get_market_context(
-                        nifty_price=nifty.get("last_price") if nifty else None,
-                        nifty_change_pct=nifty.get("change_percent") if nifty else None,
-                        banknifty_price=banknifty.get("last_price") if banknifty else None,
-                        banknifty_change_pct=banknifty.get("change_percent") if banknifty else None,
-                        vix=vix,
-                        current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
-                        recent_candles=recent_candles,
-                    )
-                    
-                    current_strategy = (session.get("recommendation") or {}).get("strategyName")
-                    
-                    # === ENHANCED AI DECISION LOGGING ===
-                    logger.info(
-                        "╔══════════════════════════════════════════════════════════════╗\n"
-                        "║ AI STRATEGY EVALUATION                                       ║\n"
-                        "╠══════════════════════════════════════════════════════════════╣"
-                    )
-                    logger.info(f"║ Instrument: {session.get('instrument', 'Unknown'):<48} ║")
-                    logger.info(f"║ Current Strategy: {current_strategy or 'None':<42} ║")
-                    logger.info(f"║ NIFTY: {context.get('nifty_price', 'N/A'):<10} | Change: {context.get('nifty_change_pct', 0):.2f}%{' '*19} ║")
-                    vix_value = context.get('vix', 'N/A')
-                    vix_str = str(vix_value) if not isinstance(vix_value, dict) else str(vix_value.get('value', 'N/A'))
-                    logger.info(f"║ VIX: {vix_str:<10}{' '*43} ║")
-                    logger.info("╠══════════════════════════════════════════════════════════════╣")
-                    
-                    ai_recommendation = get_ai_strategy_recommendation(context, current_strategy)
-                    
-                    session["last_ai_strategy_check"] = now.isoformat()
-                    session["last_ai_recommendation"] = ai_recommendation
-                    
-                    if ai_recommendation:
-                        recommended_strategy = ai_recommendation.get("recommended_strategy", "N/A")
-                        confidence = ai_recommendation.get("confidence", "N/A")
-                        reasoning = ai_recommendation.get("reasoning", "No reasoning provided")
-                        market_condition = ai_recommendation.get("market_condition", "N/A")
+            
+                if should_run_ai:
+                    try:
+                        # Gather market context with timeouts
+                        success, nifty = call_with_timeout(fetch_nifty50_live, timeout_seconds=5)
+                        if not success:
+                            nifty = None
                         
-                        logger.info(f"║ GPT Recommended: {recommended_strategy:<43} ║")
-                        logger.info(f"║ Confidence: {confidence:<48} ║")
-                        logger.info(f"║ Market Condition: {market_condition:<44} ║")
-                        logger.info("╠══════════════════════════════════════════════════════════════╣")
-                        logger.info(f"║ GPT Reasoning:")
-                        for line in reasoning.split('. '):
-                            if line.strip():
-                                logger.info(f"║   • {line.strip()[:58]:<58} ║")
-                        logger.info("╠══════════════════════════════════════════════════════════════╣")
+                        success, banknifty = call_with_timeout(fetch_bank_nifty_live, timeout_seconds=5)
+                        if not success:
+                            banknifty = None
                         
-                        should_switch, new_strategy = should_switch_strategy(
-                            ai_recommendation,
-                            current_strategy,
-                            min_confidence="medium",
-                        )
-                        
-                        if should_switch and new_strategy:
-                            logger.info(
-                                f"║ DECISION: SWITCH TO {new_strategy:<39} ║\n"
-                                f"║ Reason: Confidence threshold met ({confidence})         ║\n"
-                                "╚══════════════════════════════════════════════════════════════╝"
+                        success, vix = call_with_timeout(fetch_india_vix, timeout_seconds=5)
+                        if not success:
+                            vix = None
+                    
+                        # Get recent candles for price action analysis
+                        instrument = session.get("instrument", "")
+                        recent_candles = None
+                        try:
+                            success, candles_df = call_with_timeout(
+                                strategy_data_provider.get_recent_candles, 
+                                instrument, 
+                                interval="5m", 
+                                count=10, 
+                                period="1d",
+                                timeout_seconds=8
                             )
-                            # Update session strategy
-                            if "recommendation" not in session:
-                                session["recommendation"] = {}
-                            session["recommendation"]["strategyName"] = new_strategy
-                            session["ai_strategy_switches"] = session.get("ai_strategy_switches", 0) + 1
-                            _save_trade_sessions()
+                            if success and candles_df:
+                                recent_candles = [
+                                    {
+                                        "high": c.get("high", 0),
+                                        "low": c.get("low", 0),
+                                        "close": c.get("close", 0),
+                                        "volume": c.get("volume", 0),
+                                    }
+                                    for c in candles_df
+                                ]
+                        except Exception:
+                            pass
+                    
+                        context = get_market_context(
+                            nifty_price=nifty.get("last_price") if nifty else None,
+                            nifty_change_pct=nifty.get("change_percent") if nifty else None,
+                            banknifty_price=banknifty.get("last_price") if banknifty else None,
+                            banknifty_change_pct=banknifty.get("change_percent") if banknifty else None,
+                            vix=vix,
+                            current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
+                            recent_candles=recent_candles,
+                        )
+                    
+                        current_strategy = (session.get("recommendation") or {}).get("strategyName")
+                    
+                        # === ENHANCED AI DECISION LOGGING ===
+                        logger.info(
+                            "╔══════════════════════════════════════════════════════════════╗\n"
+                            "║ AI STRATEGY EVALUATION                                       ║\n"
+                            "╠══════════════════════════════════════════════════════════════╣"
+                        )
+                        logger.info(f"║ Instrument: {session.get('instrument', 'Unknown'):<48} ║")
+                        logger.info(f"║ Current Strategy: {current_strategy or 'None':<42} ║")
+                        logger.info(f"║ NIFTY: {context.get('nifty_price', 'N/A'):<10} | Change: {context.get('nifty_change_pct', 0):.2f}%{' '*19} ║")
+                        vix_value = context.get('vix', 'N/A')
+                        vix_str = str(vix_value) if not isinstance(vix_value, dict) else str(vix_value.get('value', 'N/A'))
+                        logger.info(f"║ VIX: {vix_str:<10}{' '*43} ║")
+                        logger.info("╠══════════════════════════════════════════════════════════════╣")
+                    
+                        # Call AI with timeout (GPT can be slow)
+                        success, ai_recommendation = call_with_timeout(
+                            get_ai_strategy_recommendation, 
+                            context, 
+                            current_strategy,
+                            timeout_seconds=15
+                        )
+                        if not success:
+                            ai_recommendation = None
+                    
+                        session["last_ai_strategy_check"] = now.isoformat()
+                        session["last_ai_recommendation"] = ai_recommendation
+                    
+                        if ai_recommendation:
+                            recommended_strategy = ai_recommendation.get("recommended_strategy", "N/A")
+                            confidence = ai_recommendation.get("confidence", "N/A")
+                            reasoning = ai_recommendation.get("reasoning", "No reasoning provided")
+                            market_condition = ai_recommendation.get("market_condition", "N/A")
+                        
+                            logger.info(f"║ GPT Recommended: {recommended_strategy:<43} ║")
+                            logger.info(f"║ Confidence: {confidence:<48} ║")
+                            logger.info(f"║ Market Condition: {market_condition:<44} ║")
+                            logger.info("╠══════════════════════════════════════════════════════════════╣")
+                            logger.info(f"║ GPT Reasoning:")
+                            for line in reasoning.split('. '):
+                                if line.strip():
+                                    logger.info(f"║   • {line.strip()[:58]:<58} ║")
+                            logger.info("╠══════════════════════════════════════════════════════════════╣")
+                        
+                            should_switch, new_strategy = should_switch_strategy(
+                                ai_recommendation,
+                                current_strategy,
+                                min_confidence="medium",
+                            )
+                        
+                            if should_switch and new_strategy:
+                                logger.info(
+                                    f"║ DECISION: SWITCH TO {new_strategy:<39} ║\n"
+                                    f"║ Reason: Confidence threshold met ({confidence})         ║\n"
+                                    "╚══════════════════════════════════════════════════════════════╝"
+                                )
+                                # Update session strategy
+                                if "recommendation" not in session:
+                                    session["recommendation"] = {}
+                                session["recommendation"]["strategyName"] = new_strategy
+                                session["ai_strategy_switches"] = session.get("ai_strategy_switches", 0) + 1
+                                _save_trade_sessions()
+                            else:
+                                logger.info(
+                                    f"║ DECISION: KEEP {current_strategy or 'current strategy':<42} ║\n"
+                                    f"║ Reason: {'Low confidence' if not should_switch else 'Same strategy recommended':<51} ║\n"
+                                    "╚══════════════════════════════════════════════════════════════╝"
+                                )
                         else:
                             logger.info(
+                                "║ GPT Response: NOT AVAILABLE (check API key/config)          ║\n"
                                 f"║ DECISION: KEEP {current_strategy or 'current strategy':<42} ║\n"
-                                f"║ Reason: {'Low confidence' if not should_switch else 'Same strategy recommended':<51} ║\n"
                                 "╚══════════════════════════════════════════════════════════════╝"
                             )
-                    else:
-                        logger.info(
-                            "║ GPT Response: NOT AVAILABLE (check API key/config)          ║\n"
-                            f"║ DECISION: KEEP {current_strategy or 'current strategy':<42} ║\n"
-                            "╚══════════════════════════════════════════════════════════════╝"
-                        )
-                except Exception as e:
-                    logger.exception("[AI ADVISOR] Error during strategy evaluation: %s", str(e))
+                    except Exception as e:
+                        logger.exception("[AI ADVISOR] Error during strategy evaluation: %s", str(e))
+            except Exception as e:
+                logger.exception("[AI ADVISOR] Outer error for %s: %s", session.get("instrument"), str(e))
         
         # Check dynamic hourly trade frequency
         capital = session.get("virtual_balance") or 100000
@@ -3221,11 +3484,19 @@ def _engine_status_for_api() -> dict:
 @app.route("/api/trade-sessions")
 def api_trade_sessions():
     """GET /api/trade-sessions: list all trade sessions (active and stopped) for UI; includes engine state and current_ltp."""
-    sessions_with_ltp = [
-        {**s, "current_ltp": (s.get("entry_diagnostics") or {}).get("ltp")}
-        for s in _trade_sessions
-    ]
-    payload = {"sessions": sessions_with_ltp, **_engine_status_for_api()}
+    out = []
+    for s in _trade_sessions:
+        current_ltp = (s.get("entry_diagnostics") or {}).get("ltp")
+        if s.get("current_trade"):
+            sym = s.get("tradingsymbol") or (s.get("current_trade") or {}).get("symbol")
+            if sym and (s.get("exchange") or "").upper() == "NFO":
+                try:
+                    q = strategy_data_provider.get_quote(sym, exchange="NFO")
+                    current_ltp = float(q.get("last", 0) or q.get("last_price", 0)) or current_ltp
+                except Exception:
+                    pass
+        out.append({**s, "current_ltp": current_ltp})
+    payload = {"sessions": out, **_engine_status_for_api()}
     return jsonify(payload)
 
 
@@ -3543,10 +3814,14 @@ def api_account_balance():
 
 @app.route("/api/trade-history")
 def api_trade_history():
-    """GET /api/trade-history?mode=LIVE|PAPER|BACKTEST&session_id=... Optional filters."""
+    """GET /api/trade-history?mode=LIVE|PAPER|BACKTEST&session_id=...&today=1. Optional filters."""
     mode = request.args.get("mode")
     session_id = request.args.get("session_id")
+    today_only = request.args.get("today", "").strip().lower() in ("1", "true", "yes")
     trades = get_stored_trade_history(mode=mode, session_id=session_id)
+    if today_only and trades:
+        today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+        trades = [t for t in trades if (t.get("entry_time") or "")[:10] == today_ist]
     return jsonify({"trades": trades})
 
 
@@ -4808,27 +5083,46 @@ def api_options(stock: str):
         return jsonify({"aiRecommendation": {}, "options": [], "stock": stock.upper(), "suggestedAlgos": [], "selectedAlgoName": None, "selectedAlgoGroup": "", "detectedMarket": [], "error": str(e)})
 
 
-scheduler = BackgroundScheduler(timezone=os.getenv("TZ", "Asia/Kolkata"))
-scheduler.add_job(_do_auto_close, "interval", minutes=1, id="auto_close", replace_existing=True)
-scheduler.add_job(
-    _run_session_engine_tick,
-    "interval",
-    seconds=SESSION_ENGINE_INTERVAL_SEC,
-    id="session_engine",
-    replace_existing=True,
-)
-scheduler.start()
-logger.info("Session engine scheduler started")
+try:
+    logger.info("=" * 60)
+    logger.info("INITIALIZING TRADING ENGINE")
+    logger.info("=" * 60)
+    
+    scheduler = BackgroundScheduler(timezone=os.getenv("TZ", "Asia/Kolkata"))
+    scheduler.add_job(_do_auto_close, "interval", minutes=1, id="auto_close", replace_existing=True, max_instances=1, coalesce=True)
+    scheduler.add_job(
+        _run_session_engine_tick,
+        "interval",
+        seconds=SESSION_ENGINE_INTERVAL_SEC,
+        id="session_engine",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,  # Skip missed runs if one is already running
+    )
+    scheduler.start()
+    # Set initial engine status so UI shows "Running" and countdown immediately (before first tick)
+    _last_session_engine_tick_time = datetime.now(ZoneInfo("Asia/Kolkata"))
+    engine_state["last_tick"] = _last_session_engine_tick_time.isoformat()
+    logger.info("✓ Session engine scheduler started successfully")
+    logger.info("✓ Tick interval: %s seconds", SESSION_ENGINE_INTERVAL_SEC)
+    logger.info("✓ Auto-close enabled (runs every 1 minute)")
+    logger.info("=" * 60)
+except Exception as e:
+    logger.exception("CRITICAL: Failed to start scheduler: %s", str(e))
+    raise
 
 
 def main():
-    is_dev = os.getenv("FLASK_ENV", "development").lower() == "development"
+    # CRITICAL: use_reloader=False. Reloader restarts the process and kills the scheduler,
+    # causing "Last scan: Xm ago" to freeze and sessions to stop being processed.
+    logger.info("Starting Flask application on port 5000...")
     app.run(
-        host="0.0.0.0", 
-        port=5000, 
-        debug=is_dev,
-        use_reloader=is_dev,  # Auto-reload on code changes
-        use_debugger=is_dev   # Enable debugger
+        host="0.0.0.0",
+        port=5000,
+        debug=False,
+        use_reloader=False,
+        use_debugger=False,
+        threaded=True,
     )
 
 

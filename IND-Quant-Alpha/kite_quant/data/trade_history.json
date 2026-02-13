@@ -1,0 +1,17 @@
+{
+  "trades": [
+    {
+      "session_id": "pt_20260212170238_1",
+      "mode": "PAPER",
+      "symbol": "NIFTY2621725750PE",
+      "strategy": "Index Momentum",
+      "entry_time": "2026-02-12T22:32:42.083795+05:30",
+      "exit_time": "2026-02-13T06:36:30.218589+05:30",
+      "entry_price": 76.15,
+      "exit_price": 0.0,
+      "qty": 850,
+      "pnl": -64727.5
+    }
+  ],
+  "updatedAt": "2026-02-13T01:06:30.221817"
+}

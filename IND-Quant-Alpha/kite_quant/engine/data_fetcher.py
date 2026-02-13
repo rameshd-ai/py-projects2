@@ -264,12 +264,19 @@ def fetch_nse_ohlc(
         
         # Calculate from/to dates based on period
         from datetime import datetime, timedelta
-        to_date = datetime.now()
+        from zoneinfo import ZoneInfo
+        to_date = datetime.now(ZoneInfo("Asia/Kolkata"))
         
-        # For intraday intervals, fetch from recent days to get enough candles
+        # For intraday intervals, fetch from market open (9:15 AM IST) to capture full day's movement
         if "minute" in kite_interval.lower() and period == "1d":
-            # Default to 1 day of minute data
-            from_date = to_date - timedelta(days=1)
+            # Fetch from today's market open at 9:15 AM IST
+            today_market_open = to_date.replace(hour=9, minute=15, second=0, microsecond=0)
+            if to_date.time() < today_market_open.time():
+                # Before market open - fetch from previous trading day
+                from_date = (today_market_open - timedelta(days=1))
+            else:
+                # After market open - fetch from today's 9:15 AM
+                from_date = today_market_open
         elif period == "1d":
             from_date = to_date - timedelta(days=1)
         elif period == "5d":
