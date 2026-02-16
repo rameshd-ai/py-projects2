@@ -75,6 +75,15 @@ def exit_paper_trade(session: dict, exit_price: float | None = None) -> dict[str
     trade = session.get("current_trade")
     if not trade or not trade.get("symbol"):
         return {"success": False, "error": "No current trade"}
+    trade_id = trade.get("trade_id")
+    # If a previous exit partially completed, finalize session state idempotently.
+    if trade.get("exit_time") and trade.get("exit_price") is not None and trade.get("pnl") is not None:
+        if session.get("last_closed_trade_id") != trade_id:
+            session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1
+            session["last_closed_trade_id"] = trade_id
+        session["current_trade_id"] = None
+        session["current_trade"] = None
+        return {"success": True, "pnl": trade.get("pnl"), "exit_price": trade.get("exit_price")}
     symbol = trade["symbol"]
     exchange = trade.get("exchange") or "NSE"
     if exit_price is None:
@@ -99,16 +108,30 @@ def exit_paper_trade(session: dict, exit_price: float | None = None) -> dict[str
         "mode": "PAPER",
         "symbol": symbol,
         "strategy": trade.get("strategy_name"),
+        "option_type": ((session.get("recommendation") or {}).get("optionType") or ("CE" if str(symbol).endswith("CE") else ("PE" if str(symbol).endswith("PE") else None))),
+        "strike": (session.get("recommendation") or {}).get("strike"),
         "entry_time": trade.get("entry_time"),
         "exit_time": trade.get("exit_time"),
         "entry_price": entry_price,
         "exit_price": exit_price,
         "qty": qty,
+        "lot_size": int(session.get("lot_size") or 0) or None,
+        "price_per_lot": round(entry_price * float(session.get("lot_size") or 0), 2) if (session.get("lot_size") or 0) else None,
+        "capital_used": round(entry_price * qty, 2),
+        "balance_left": session.get("virtual_balance"),
+        "charges": 0.0,
         "pnl": pnl,
     }
-    append_trade(record)
+    # Finalize in-memory state before history write to avoid duplicate exits on retries.
     session["current_trade_id"] = None
     session["current_trade"] = None
-    session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1
+    if session.get("last_closed_trade_id") != trade_id:
+        session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1
+        session["last_closed_trade_id"] = trade_id
+    try:
+        append_trade(record)
+    except Exception:
+        # Keep engine running even if history persistence fails.
+        pass
     logger.info("TRADE CLOSED | %s | P&L: %s", symbol, pnl)
     return {"success": True, "pnl": pnl, "exit_price": exit_price}

@@ -1,0 +1,226 @@
+{% extends "base_dashboard.html" %}
+{% block content %}
+<div class="fade-in">
+  <div class="alert alert-info border-0 mb-4" style="background: rgba(168, 199, 250, 0.12);">
+    <div class="d-flex align-items-start gap-2">
+      <span class="material-icons-round text-primary">show_chart</span>
+      <div>
+        <strong>Live Trade History</strong>
+        <p class="mb-0 mt-1 small">Closed live (real money) trades only. Same table structure as the Trade page.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center gap-3 gap-md-4">
+      <label class="d-flex align-items-center gap-2 mb-0 small">
+        <input type="checkbox" id="filter-today" class="form-check-input">
+        <span>Today only</span>
+      </label>
+      <div class="d-flex align-items-center gap-2 small">
+        <label class="mb-0 text-muted">From</label>
+        <input type="date" id="filter-from-date" class="form-control form-control-sm" style="width: auto;">
+      </div>
+      <div class="d-flex align-items-center gap-2 small">
+        <label class="mb-0 text-muted">To</label>
+        <input type="date" id="filter-to-date" class="form-control form-control-sm" style="width: auto;">
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="filter-apply">Apply</button>
+      <span class="text-muted small" id="refresh-countdown">Next refresh in 10s</span>
+      <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="live-history-count">0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="material-icons-round text-primary-custom">history</span>
+        Live trades
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive overflow-x-auto" style="min-width: 1200px;">
+        <table class="table table-sm table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>CE/PE</th>
+              <th>Strike</th>
+              <th>Strategy</th>
+              <th>Entry Time</th>
+              <th>Exit Time</th>
+              <th>Entry Price</th>
+              <th>Exit Price</th>
+              <th>Current price</th>
+              <th>Qty</th>
+              <th>Price/Lot</th>
+              <th>Capital Used</th>
+              <th>Balance Left</th>
+              <th>Gross P&L</th>
+              <th>Charges</th>
+              <th>Net P&L</th>
+              <th>Status</th>
+              <th>Exit Reason</th>
+            </tr>
+          </thead>
+          <tbody id="live-history-tbody">
+            <tr><td colspan="19" class="text-center text-muted py-4">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function() {
+  let countdownSecs = 10;
+  let countdownTimer = null;
+  let todayOnly = false;
+
+  function formatTime(iso) {
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch (e) { return iso; }
+  }
+  function formatDate(iso) {
+    if (!iso) return '—';
+    try { return (iso + '').slice(0, 10); } catch (e) { return iso; }
+  }
+  function fmtNum(v) {
+    if (v == null || v === '' || v === '—') return '—';
+    const n = Number(v);
+    if (isNaN(n)) return '—';
+    return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function parseSymbol(symbol) {
+    if (!symbol || typeof symbol !== 'string') return { ce_pe: '—', strike: '—' };
+    const s = symbol.trim();
+    if (s.endsWith('CE')) return { ce_pe: 'CE', strike: s.replace(/CE$/, '').replace(/^.*?(\d+)$/, '$1') || '—' };
+    if (s.endsWith('PE')) return { ce_pe: 'PE', strike: s.replace(/PE$/, '').replace(/^.*?(\d+)$/, '$1') || '—' };
+    return { ce_pe: '—', strike: '—' };
+  }
+
+  function fetchHistory() {
+    let url = '/api/trade-history?mode=LIVE';
+    if (todayOnly) {
+      url += '&today=1';
+    } else {
+      const fromEl = document.getElementById('filter-from-date');
+      const toEl = document.getElementById('filter-to-date');
+      const fromVal = fromEl && fromEl.value ? fromEl.value.trim() : '';
+      const toVal = toEl && toEl.value ? toEl.value.trim() : '';
+      if (fromVal) url += '&from_date=' + encodeURIComponent(fromVal);
+      if (toVal) url += '&to_date=' + encodeURIComponent(toVal);
+    }
+    fetch(url)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('API ' + r.status)))
+      .then(data => {
+        const trades = (data && data.trades) ? data.trades : [];
+        renderTable(trades);
+      })
+      .catch(() => {
+        document.getElementById('live-history-tbody').innerHTML =
+          '<tr><td colspan="19" class="text-center text-muted py-4">Failed to load. Check connection.</td></tr>';
+        document.getElementById('live-history-count').textContent = '0';
+      });
+  }
+
+  function renderTable(trades) {
+    const tbody = document.getElementById('live-history-tbody');
+    const countEl = document.getElementById('live-history-count');
+    countEl.textContent = trades.length;
+
+    if (trades.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="19" class="text-center text-muted py-4">No live trades.</td></tr>';
+      return;
+    }
+
+    const sorted = [...trades].sort((a, b) => {
+      const ta = (a.entry_time || '') + (a.exit_time || '');
+      const tb = (b.entry_time || '') + (b.exit_time || '');
+      return tb.localeCompare(ta);
+    });
+
+    const rows = sorted.map(t => {
+      const parsed = parseSymbol(t.symbol);
+      const pnl = t.pnl != null ? Number(t.pnl) : null;
+      return `
+        <tr>
+          <td>${formatDate(t.entry_time)}</td>
+          <td>${parsed.ce_pe}</td>
+          <td>${parsed.strike}</td>
+          <td>${(t.strategy || '—').toString().replace(/</g, '&lt;')}</td>
+          <td>${formatTime(t.entry_time)}</td>
+          <td>${formatTime(t.exit_time)}</td>
+          <td>${fmtNum(t.entry_price)}</td>
+          <td>${fmtNum(t.exit_price)}</td>
+          <td>—</td>
+          <td>${t.qty != null ? t.qty : '—'}</td>
+          <td>—</td>
+          <td>—</td>
+          <td>—</td>
+          <td>${pnl != null ? fmtNum(pnl) : '—'}</td>
+          <td>${t.charges != null ? fmtNum(t.charges) : '—'}</td>
+          <td>${pnl != null ? fmtNum(pnl) : '—'}</td>
+          <td><span class="badge bg-secondary">CLOSED</span></td>
+          <td>${(t.exit_reason || '—').toString().replace(/</g, '&lt;')}</td>
+        </tr>
+      `;
+    });
+
+    tbody.innerHTML = rows.join('');
+  }
+
+  function runRefresh() {
+    countdownSecs = 10;
+    const el = document.getElementById('refresh-countdown');
+    if (el) el.textContent = 'Next refresh in 10s';
+    fetchHistory();
+  }
+
+  document.getElementById('filter-today').addEventListener('change', function() {
+    todayOnly = this.checked;
+    if (todayOnly) {
+      const fromEl = document.getElementById('filter-from-date');
+      const toEl = document.getElementById('filter-to-date');
+      if (fromEl) fromEl.value = '';
+      if (toEl) toEl.value = '';
+    }
+    runRefresh();
+  });
+
+  document.getElementById('filter-apply').addEventListener('click', function() {
+    todayOnly = false;
+    document.getElementById('filter-today').checked = false;
+    runRefresh();
+  });
+
+  function startCountdown() {
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownSecs = 10;
+    const el = document.getElementById('refresh-countdown');
+    function tick() {
+      if (countdownSecs > 0) {
+        if (el) el.textContent = 'Next refresh in ' + countdownSecs + 's';
+        countdownSecs--;
+      } else {
+        runRefresh();
+      }
+    }
+    tick();
+    countdownTimer = setInterval(tick, 1000);
+  }
+
+  runRefresh();
+  startCountdown();
+})();
+</script>
+{% endblock %}

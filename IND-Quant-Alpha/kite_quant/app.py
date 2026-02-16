@@ -81,9 +81,11 @@ NEWS_CACHE_TTL = timedelta(minutes=5)  # 5 min max — affects sentiment
 PREDICTION_CACHE_TTL = timedelta(minutes=3)  # 3 min during market — trading decisions
 US_BIAS_CACHE_TTL = timedelta(hours=2)  # 2h so India morning gets latest US close
 US_BIAS_ERROR_CACHE_TTL = timedelta(minutes=1)  # Retry quickly if fetch failed
+DEFAULT_INVESTMENT_AMOUNT = 10000.0
 
-# Thread pool for timeout-protected API calls
-_timeout_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="timeout_worker")
+# Shared thread pool for timeout-protected API calls.
+# Keep this comfortably above per-tick fanout to avoid self-queue starvation.
+_timeout_executor = ThreadPoolExecutor(max_workers=24, thread_name_prefix="timeout_worker")
 
 def call_with_timeout(func, *args, timeout_seconds=10, **kwargs):
     """Execute function with timeout. Returns (success: bool, result: Any)."""
@@ -92,10 +94,10 @@ def call_with_timeout(func, *args, timeout_seconds=10, **kwargs):
         result = future.result(timeout=timeout_seconds)
         return True, result
     except FutureTimeoutError:
-        logger.warning(f"{func.__name__} timed out after {timeout_seconds}s")
+        logger.warning(f"{getattr(func, '__name__', 'function')} timed out after {timeout_seconds}s")
         return False, None
     except Exception as e:
-        logger.error(f"{func.__name__} error: {str(e)}")
+        logger.error(f"{getattr(func, '__name__', 'function')} error: {str(e)}")
         return False, None
 
 app = Flask(__name__)
@@ -131,17 +133,20 @@ def dashboard():
 
 @app.route("/dashboard/overview")
 def dashboard_overview():
-    return render_template("dashboard/overview.html", active_page="overview", page_title="Overview")
+    """Redirect to single dashboard to avoid confusion."""
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/dashboard/analytics")
 def dashboard_analytics():
-    return render_template("dashboard/analytics.html", active_page="analytics", page_title="Analytics")
+    """Redirect to single dashboard to avoid confusion."""
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/dashboard/zerodha")
 def dashboard_zerodha():
-    return render_template("dashboard/zerodha.html", active_page="zerodha", page_title="My Zerodha")
+    """Redirect to single dashboard to avoid confusion."""
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/dashboard/ai-agent")
@@ -163,6 +168,16 @@ def dashboard_paper_trade():
 def dashboard_live_trade():
     """Redirect to unified Trade page (paper_trade)."""
     return redirect(url_for("dashboard_paper_trade"))
+
+
+@app.route("/dashboard/live-history")
+def dashboard_live_history():
+    """Live trade history: closed LIVE trades only, same table structure as Trade page."""
+    return render_template(
+        "dashboard/live_trade_history.html",
+        active_page="live_history",
+        page_title="Live Trade History",
+    )
 
 
 # Algo ids that have executable strategy logic (check_entry, check_exit, SL/target). Others fall back to MomentumBreakout.
@@ -2410,7 +2425,7 @@ def _load_trade_sessions() -> None:
                 data = json.load(f)
             _trade_sessions = data.get("sessions") or []
             
-            # Backward compatibility: Initialize new frequency fields for old sessions
+            # Backward compatibility: Initialize new frequency and AI fields for old sessions
             now = datetime.now(ZoneInfo("Asia/Kolkata"))
             for session in _trade_sessions:
                 if "current_hour_block" not in session:
@@ -2419,6 +2434,14 @@ def _load_trade_sessions() -> None:
                     session["hourly_trade_count"] = 0
                 if "frequency_mode" not in session:
                     session["frequency_mode"] = "NORMAL"
+                if "ai_auto_switching_enabled" not in session and session.get("status") == "ACTIVE":
+                    session["ai_auto_switching_enabled"] = True
+                if "ai_check_interval_minutes" not in session:
+                    session["ai_check_interval_minutes"] = 1
+                if "last_ai_strategy_check" not in session:
+                    session["last_ai_strategy_check"] = None
+                if "last_ai_recommendation" not in session:
+                    session["last_ai_recommendation"] = None
             
         except Exception as e:
             logger.exception("Load trade sessions error: %s", str(e))
@@ -2515,7 +2538,7 @@ def api_ai_trade_recommendation():
     instrument = (request.args.get("instrument") or "").strip().upper()
     if not instrument:
         return jsonify({"error": "Missing instrument"}), 400
-    capital = request.args.get("capital", type=float) or 100000.0
+    capital = request.args.get("capital", type=float) or DEFAULT_INVESTMENT_AMOUNT
     risk_pct = request.args.get("risk_pct", type=float) or 2.0
     try:
         if instrument in ("NIFTY", "BANKNIFTY"):
@@ -2532,7 +2555,7 @@ def api_ai_trade_recommendation():
 @app.route("/api/ai-trade-recommendations-index")
 def api_ai_trade_recommendations_index():
     """GET /api/ai-trade-recommendations-index?capital=... Returns NIFTY and BANKNIFTY in one response (one bias fetch)."""
-    capital = request.args.get("capital", type=float) or 100000.0
+    capital = request.args.get("capital", type=float) or DEFAULT_INVESTMENT_AMOUNT
     try:
         bias_data = get_index_market_bias()
         nifty_rec = build_ai_trade_recommendation_index("NIFTY", capital, bias_data=bias_data)
@@ -2557,9 +2580,9 @@ def api_approve_trade():
     virtual_balance = data.get("virtual_balance")
     if execution_mode in ("PAPER", "BACKTEST"):
         try:
-            virtual_balance = float(virtual_balance) if virtual_balance is not None else 100000.0
+            virtual_balance = float(virtual_balance) if virtual_balance is not None else DEFAULT_INVESTMENT_AMOUNT
         except (TypeError, ValueError):
-            virtual_balance = 100000.0
+            virtual_balance = DEFAULT_INVESTMENT_AMOUNT
     else:
         virtual_balance = None
     session_id = f"ts_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
@@ -2567,7 +2590,7 @@ def api_approve_trade():
     
     # Calculate daily loss limit from capital (virtual_balance) and settings
     from engine.trade_frequency import calculate_max_daily_loss_limit
-    capital_for_loss_calc = virtual_balance if virtual_balance is not None else 100000.0
+    capital_for_loss_calc = virtual_balance if virtual_balance is not None else DEFAULT_INVESTMENT_AMOUNT
     daily_loss_limit = calculate_max_daily_loss_limit(capital_for_loss_calc)
     logger.info(f"[SESSION] Auto-calculated daily loss limit: Rs.{daily_loss_limit:.2f} for capital Rs.{capital_for_loss_calc:.2f}")
     
@@ -2577,7 +2600,7 @@ def api_approve_trade():
     
     # AI Auto-Switching configuration (enabled by default)
     ai_auto_switching_enabled = data.get("ai_auto_switching_enabled", True)  # Default: AI ON
-    ai_check_interval = data.get("ai_check_interval_minutes", 5)  # Default: 5 min
+    ai_check_interval = data.get("ai_check_interval_minutes", 1)  # Default: 1 min (aligned with engine)
     
     session = {
         "sessionId": session_id,
@@ -2614,7 +2637,7 @@ def api_approve_trade():
         "ok": True,
         "sessionId": session_id,
         "execution_mode": execution_mode,
-        "message": "Session active (%s). Engine will trade up to %d times until cutoff." % (execution_mode, max_trades),
+        "message": f"Session active ({execution_mode}). Engine will monitor entry/exit until cutoff.",
     })
 
 
@@ -2622,9 +2645,9 @@ def api_approve_trade():
 def api_paper_trade_risk_config():
     """GET /api/paper-trade/risk-config?investment_amount=10000&risk_percent=2. Returns risk_percent, max_risk_per_trade, daily_loss_limit. risk_percent is editable (default 2)."""
     try:
-        investment_amount = float(request.args.get("investment_amount") or 100000.0)
+        investment_amount = float(request.args.get("investment_amount") or DEFAULT_INVESTMENT_AMOUNT)
     except (TypeError, ValueError):
-        investment_amount = 100000.0
+        investment_amount = DEFAULT_INVESTMENT_AMOUNT
     try:
         risk_percent = float(request.args.get("risk_percent") or 2.0)
     except (TypeError, ValueError):
@@ -2657,9 +2680,9 @@ def api_paper_trade_execute():
     if instrument not in ("NIFTY", "BANKNIFTY"):
         return jsonify({"ok": False, "error": "instrument must be NIFTY or BANKNIFTY"}), 400
     try:
-        investment_amount = float(data.get("investment_amount") or 100000.0)
+        investment_amount = float(data.get("investment_amount") or DEFAULT_INVESTMENT_AMOUNT)
     except (TypeError, ValueError):
-        investment_amount = 100000.0
+        investment_amount = DEFAULT_INVESTMENT_AMOUNT
     if investment_amount <= 0:
         return jsonify({"ok": False, "error": "investment_amount must be positive"}), 400
 
@@ -2698,7 +2721,9 @@ def api_paper_trade_execute():
         "hourly_trade_count": 0,
         "frequency_mode": "NORMAL",
         "ai_auto_switching_enabled": ai_enabled,
-        "ai_check_interval_minutes": 5,
+        "ai_check_interval_minutes": 1,
+        "last_ai_strategy_check": None,
+        "last_ai_recommendation": None,
     }
     _trade_sessions.append(session)
     _save_trade_sessions()
@@ -2735,11 +2760,26 @@ def api_live_trade_execute():
     if instrument not in ("NIFTY", "BANKNIFTY"):
         return jsonify({"ok": False, "error": "instrument must be NIFTY or BANKNIFTY"}), 400
     try:
-        investment_amount = float(data.get("investment_amount") or 100000.0)
+        investment_amount = float(data.get("investment_amount") or DEFAULT_INVESTMENT_AMOUNT)
     except (TypeError, ValueError):
-        investment_amount = 100000.0
+        investment_amount = DEFAULT_INVESTMENT_AMOUNT
     if investment_amount <= 0:
         return jsonify({"ok": False, "error": "investment_amount must be positive"}), 400
+
+    # LIVE only: block if investment amount exceeds Zerodha balance
+    live_balance, balance_ok = get_balance()
+    if live_balance is None or not balance_ok:
+        return jsonify({
+            "ok": False,
+            "error": "Could not fetch Zerodha balance. Check your connection and try again.",
+        }), 400
+    if investment_amount > live_balance:
+        return jsonify({
+            "ok": False,
+            "error": f"Investment amount (₹{investment_amount:,.0f}) cannot exceed your Zerodha balance (₹{live_balance:,.0f}). Reduce the amount or add funds to continue.",
+            "balance": live_balance,
+            "investment_amount": investment_amount,
+        }), 400
 
     rec = build_ai_trade_recommendation_index(instrument, investment_amount)
     if not rec:
@@ -2776,7 +2816,9 @@ def api_live_trade_execute():
         "hourly_trade_count": 0,
         "frequency_mode": "NORMAL",
         "ai_auto_switching_enabled": ai_enabled,
-        "ai_check_interval_minutes": 5,
+        "ai_check_interval_minutes": 1,
+        "last_ai_strategy_check": None,
+        "last_ai_recommendation": None,
     }
     _trade_sessions.append(session)
     _save_trade_sessions()
@@ -2840,7 +2882,7 @@ def _get_ai_recommended_strategy(session: dict) -> tuple[str, str] | None:
     
     # Check if we need to refresh AI recommendation
     last_check = session.get("ai_last_check_time")
-    check_interval_minutes = session.get("ai_check_interval_minutes", 15)  # Default 15 min
+    check_interval_minutes = session.get("ai_check_interval_minutes", 1)  # Default 1 min
     
     if last_check:
         last_check_dt = datetime.fromisoformat(last_check)
@@ -2919,11 +2961,14 @@ def _fetch_session_ltp(session: dict) -> float | None:
     ltp = None
     try:
         if exchange == "NFO" and tradingsymbol:
-            q = strategy_data_provider.get_quote(tradingsymbol, exchange="NFO")
-            ltp = float(q.get("last", 0) or q.get("last_price", 0)) or None
+            success, q = call_with_timeout(strategy_data_provider.get_quote, tradingsymbol, exchange="NFO", timeout_seconds=5)
+            if success and q:
+                ltp = float(q.get("last", 0) or q.get("last_price", 0)) or None
         else:
             if instrument:
-                ltp = strategy_data_provider.get_ltp(instrument)
+                success, val = call_with_timeout(strategy_data_provider.get_ltp, instrument, timeout_seconds=5)
+                if success:
+                    ltp = val
     except Exception as e:
         logger.error(
             "LTP FETCH FAILED | instrument=%s | tradingsymbol=%s | exchange=%s | error=%s",
@@ -2964,11 +3009,18 @@ def _check_entry_real(session: dict, strategy_name_override: str | None = None) 
     # Get recent candles for analysis
     recent_candles = None
     try:
-        from engine.data_fetcher import get_ohlc_for_date
-        today = now.date()
-        recent_candles = get_ohlc_for_date(instrument, today, interval="5m")
-        if recent_candles and len(recent_candles) > 10:
-            recent_candles = recent_candles[-10:]  # Last 10 candles
+        success, candles = call_with_timeout(
+            strategy_data_provider.get_recent_candles,
+            instrument,
+            interval="5m",
+            count=10,
+            period="1d",
+            timeout_seconds=8,
+        )
+        if success and candles:
+            recent_candles = candles
+            if len(recent_candles) > 10:
+                recent_candles = recent_candles[-10:]  # Last 10 candles
     except Exception as e:
         logger.debug(f"Could not get recent candles for {instrument}: {e}")
     
@@ -3010,38 +3062,45 @@ def _manage_trade_real(session: dict) -> bool:
     trade = session.get("current_trade")
     if not trade:
         return False
+    # Recovery path: trade already has exit fields but session wasn't finalized.
+    if trade.get("exit_time") and trade.get("exit_price") is not None:
+        trade_id = trade.get("trade_id")
+        if session.get("last_closed_trade_id") != trade_id:
+            session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1
+            session["last_closed_trade_id"] = trade_id
+        session["current_trade_id"] = None
+        session["current_trade"] = None
+        logger.warning("Recovered partially closed trade for %s", session.get("instrument"))
+        return True
     try:
         strategy_name = trade.get("strategy_name")
         strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override=strategy_name)
         if not strategy:
             return False
-        exit_reason = strategy.check_exit(trade)
-        if not exit_reason:
+        success, exit_reason = call_with_timeout(strategy.check_exit, trade, timeout_seconds=10)
+        if not success or not exit_reason:
             return False
-        execute_exit(session)
-        return True
+        mode = (session.get("execution_mode") or "PAPER").upper()
+        if mode == "LIVE":
+            success, result = call_with_timeout(execute_exit, session, timeout_seconds=15)
+            if not success or not (result and result.get("success")):
+                logger.warning("Exit execution timed out/failed for %s", session.get("instrument"))
+                return False
+            return True
+        result = execute_exit(session)
+        return bool(result and result.get("success"))
     except Exception as e:
         logger.exception("Manage trade exit error: %s", str(e))
         return False
 
 
 def _run_session_engine_tick() -> None:
-    """Scheduler callback: update last_tick immediately, then run tick in background so scheduler never blocks."""
+    """Scheduler callback: run one engine tick in scheduler thread."""
     global _last_session_engine_tick_time
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     _last_session_engine_tick_time = now
     engine_state["last_tick"] = now.isoformat()
-    if not _tick_lock.acquire(blocking=False):
-        logger.warning("ENGINE TICK skipped: previous tick still running")
-        return
-
-    def _tick_body() -> None:
-        try:
-            _do_session_engine_tick(now)
-        finally:
-            _tick_lock.release()
-
-    Thread(target=_tick_body, daemon=True).start()
+    _do_session_engine_tick(now)
 
 
 def _do_session_engine_tick(now: datetime) -> None:
@@ -3075,6 +3134,13 @@ def _do_session_engine_tick(now: datetime) -> None:
             for s in _trade_sessions:
                 if s.get("status") == "ACTIVE":
                     s["status"] = "STOPPED"
+                    s["stop_reason"] = "CUTOFF_TIME"
+                    s["stoppedAt"] = now.isoformat()
+                    logger.info(
+                        "[SESSION STOPPED] %s | reason=CUTOFF_TIME | cutoff=%s",
+                        s.get("sessionId"),
+                        cutoff.strftime("%H:%M"),
+                    )
             _save_trade_sessions()
             engine_state["last_tick"] = now.isoformat()
             return
@@ -3095,6 +3161,14 @@ def _do_session_engine_tick(now: datetime) -> None:
         session_date = _session_date(session)
         if session_date is not None and session_date < today:
             session["status"] = "STOPPED"
+            session["stop_reason"] = "NEW_DAY"
+            session["stoppedAt"] = now.isoformat()
+            logger.info(
+                "[SESSION STOPPED] %s | reason=NEW_DAY | session_date=%s | today=%s",
+                session.get("sessionId"),
+                str(session_date),
+                str(today),
+            )
             continue
         
         # Reset hourly trade count if hour changed
@@ -3105,8 +3179,33 @@ def _do_session_engine_tick(now: datetime) -> None:
             logger.info(f"[FREQ] Hour changed to {current_hour}, resetting hourly count for {session.get('instrument')}")
         
         daily_limit = session.get("daily_loss_limit")
-        if daily_limit is not None and (session.get("daily_pnl") or 0) <= -float(daily_limit):
+        # Ensure numeric types so we don't stop sessions due to type issues
+        try:
+            daily_limit_f = float(daily_limit) if daily_limit is not None else None
+        except Exception:
+            daily_limit_f = None
+        daily_pnl_raw = session.get("daily_pnl") or 0.0
+        try:
+            daily_pnl_f = float(daily_pnl_raw)
+        except Exception:
+            logger.warning(
+                "[SESSION] Invalid daily_pnl type for %s: %r (resetting to 0.0)",
+                session.get("sessionId"),
+                daily_pnl_raw,
+            )
+            daily_pnl_f = 0.0
+            session["daily_pnl"] = 0.0
+
+        if daily_limit_f is not None and daily_pnl_f <= -daily_limit_f:
             session["status"] = "STOPPED"
+            session["stop_reason"] = "DAILY_LOSS_LIMIT"
+            session["stoppedAt"] = now.isoformat()
+            logger.info(
+                "[SESSION STOPPED] %s | reason=DAILY_LOSS_LIMIT | daily_pnl=%.2f | limit=%.2f",
+                session.get("sessionId"),
+                daily_pnl_f,
+                daily_limit_f,
+            )
             continue
         if session.get("current_trade_id"):
             try:
@@ -3120,7 +3219,7 @@ def _do_session_engine_tick(now: datetime) -> None:
         if session.get("ai_auto_switching_enabled", False):
             try:
                 last_ai_check = session.get("last_ai_strategy_check")
-                ai_check_interval_minutes = session.get("ai_check_interval_minutes", 5)
+                ai_check_interval_minutes = session.get("ai_check_interval_minutes", 1)
                 should_run_ai = True
                 if last_ai_check:
                     try:
@@ -3131,6 +3230,10 @@ def _do_session_engine_tick(now: datetime) -> None:
                         pass
             
                 if should_run_ai:
+                    # Heartbeat timestamp first, so UI timer doesn't drift to large overdue
+                    # if AI context/logging fails for this cycle.
+                    session["last_ai_strategy_check"] = now.isoformat()
+                    ai_recommendation = None
                     try:
                         # Gather market context with timeouts
                         success, nifty = call_with_timeout(fetch_nifty50_live, timeout_seconds=5)
@@ -3190,7 +3293,14 @@ def _do_session_engine_tick(now: datetime) -> None:
                         )
                         logger.info(f"║ Instrument: {session.get('instrument', 'Unknown'):<48} ║")
                         logger.info(f"║ Current Strategy: {current_strategy or 'None':<42} ║")
-                        logger.info(f"║ NIFTY: {context.get('nifty_price', 'N/A'):<10} | Change: {context.get('nifty_change_pct', 0):.2f}%{' '*19} ║")
+                        nifty_change = context.get("nifty_change_pct")
+                        try:
+                            nifty_change = float(nifty_change) if nifty_change is not None else 0.0
+                        except Exception:
+                            nifty_change = 0.0
+                        logger.info(
+                            f"║ NIFTY: {context.get('nifty_price', 'N/A'):<10} | Change: {nifty_change:.2f}%{' '*19} ║"
+                        )
                         vix_value = context.get('vix', 'N/A')
                         vix_str = str(vix_value) if not isinstance(vix_value, dict) else str(vix_value.get('value', 'N/A'))
                         logger.info(f"║ VIX: {vix_str:<10}{' '*43} ║")
@@ -3206,7 +3316,6 @@ def _do_session_engine_tick(now: datetime) -> None:
                         if not success:
                             ai_recommendation = None
                     
-                        session["last_ai_strategy_check"] = now.isoformat()
                         session["last_ai_recommendation"] = ai_recommendation
                     
                         if ai_recommendation:
@@ -3261,11 +3370,13 @@ def _do_session_engine_tick(now: datetime) -> None:
                 logger.exception("[AI ADVISOR] Outer error for %s: %s", session.get("instrument"), str(e))
         
         # Check dynamic hourly trade frequency
-        capital = session.get("virtual_balance") or 100000
+        capital = session.get("virtual_balance") or DEFAULT_INVESTMENT_AMOUNT
         if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
-            live_capital, _ = get_balance()
-            if live_capital and live_capital > 0:
-                capital = live_capital
+            success, bal = call_with_timeout(get_balance, timeout_seconds=5)
+            if success and bal:
+                live_capital = bal[0]
+                if live_capital and live_capital > 0:
+                    capital = live_capital
         
         daily_pnl = session.get("daily_pnl", 0)
         max_trades_this_hour, freq_mode = calculate_max_trades_per_hour(capital, daily_pnl)
@@ -3328,7 +3439,10 @@ def _do_session_engine_tick(now: datetime) -> None:
                 is_nfo = (session.get("exchange") or "").upper() == "NFO"
                 if is_nfo and session.get("tradingsymbol"):
                     from engine.zerodha_client import get_quote as kite_get_quote
-                    opt_quote = kite_get_quote(session["tradingsymbol"], exchange="NFO")
+                    success, opt_quote = call_with_timeout(kite_get_quote, session["tradingsymbol"], exchange="NFO", timeout_seconds=5)
+                    if not success or not opt_quote:
+                        opt_quote = {}
+                    
                     option_premium = float(opt_quote.get("last", 0) or opt_quote.get("last_price", 0))
                     if option_premium and option_premium > 0:
                         entry_price = option_premium
@@ -3364,10 +3478,14 @@ def _do_session_engine_tick(now: datetime) -> None:
                 capital = session.get("virtual_balance")
                 execution_mode = (session.get("execution_mode") or "PAPER").upper()
                 if execution_mode == "LIVE":
-                    capital, _ = get_balance()
-                    capital = capital or 0
+                    success, balance_data = call_with_timeout(get_balance, timeout_seconds=5)
+                    if success and balance_data:
+                        live_capital = balance_data[0]
+                        capital = live_capital or 0
+                    else:
+                        capital = 0
                 if capital is None or capital <= 0:
-                    capital = 100000.0
+                    capital = DEFAULT_INVESTMENT_AMOUNT
                 
                 logger.info(f"║ Execution Mode: {execution_mode:<44} ║")
                 logger.info(f"║ Capital Available: ₹{capital:<41.2f} ║")
@@ -3383,11 +3501,13 @@ def _do_session_engine_tick(now: datetime) -> None:
                 logger.info(f"║ Max Daily Loss: {risk_config.max_daily_loss_percent:.1f}%{' '*40} ║")
                 
                 risk_mgr = RiskManager(risk_config)
-                premium = rec.get("premium")
-                if premium is not None:
-                    premium = float(premium)
-                elif is_nfo:
-                    premium = entry_price
+                # For options always size on live premium, not stale recommendation premium.
+                if is_nfo:
+                    premium = float(entry_price)
+                else:
+                    premium = rec.get("premium")
+                    if premium is not None:
+                        premium = float(premium)
                 stop_for_risk = stop_loss if stop_loss is not None and stop_loss != entry_price else entry_price * 0.995
                 approved, reason, lots = risk_mgr.validate_trade(
                     session, entry_price, stop_for_risk, lot_size, premium=premium
@@ -3422,6 +3542,22 @@ def _do_session_engine_tick(now: datetime) -> None:
                 
                 # Cap loss at ₹300 per trade (greedy: keep full profit, limit loss)
                 MAX_LOSS_PER_TRADE = 300.0
+                # Strict daily-loss guard: don't allow new entry if remaining loss budget is below one trade risk.
+                if daily_limit_f is not None:
+                    remaining_daily_budget = daily_limit_f + min(0.0, daily_pnl_f)
+                    if remaining_daily_budget < MAX_LOSS_PER_TRADE:
+                        session["last_entry_check"]["block_reason"] = (
+                            f"Daily loss budget low (₹{remaining_daily_budget:.0f} left)"
+                        )
+                        session["last_entry_check"]["risk_approved"] = False
+                        session["last_entry_check"]["risk_reason"] = "Daily loss budget guard"
+                        logger.info(
+                            "[RISK GUARD] Entry blocked | %s | remaining_daily_budget=₹%.2f | required=₹%.2f",
+                            session.get("instrument"),
+                            remaining_daily_budget,
+                            MAX_LOSS_PER_TRADE,
+                        )
+                        continue
                 if is_nfo and stop_loss is not None and (entry_price - stop_loss) * qty > MAX_LOSS_PER_TRADE and qty > 0:
                     stop_loss = round(entry_price - (MAX_LOSS_PER_TRADE / qty), 2)
                     stop_loss = max(1.0, stop_loss)
@@ -3430,12 +3566,14 @@ def _do_session_engine_tick(now: datetime) -> None:
                 # Log pre-execution state
                 logger.info(f"[ORDER EXECUTION] Calling execute_entry for {symbol} | Mode: {execution_mode}")
                 
-                execute_entry(
+                call_with_timeout(
+                    execute_entry,
                     session, symbol, side, qty,
                     price=entry_price,
                     strategy_name=strategy_name,
                     stop_loss=stop_loss,
                     target=target,
+                    timeout_seconds=15
                 )
                 
                 # Log post-execution
@@ -3467,17 +3605,53 @@ def _do_session_engine_tick(now: datetime) -> None:
 
 
 def _engine_status_for_api() -> dict:
-    """Engine fields for API responses (running, last_tick, next_scan)."""
+    """Engine fields for API responses (running, last_tick, next_scan, next_ai_check_secs)."""
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    market_open = is_market_open(now)
+    engine_window_open = market_open and now.time() < INTRADAY_CUTOFF_TIME
+    engine_running = bool(engine_state.get("running", True) and engine_window_open)
     next_scan = None
-    if _last_session_engine_tick_time:
+    if engine_running and _last_session_engine_tick_time:
         elapsed = (now - _last_session_engine_tick_time).total_seconds()
-        next_scan = max(0, int(SESSION_ENGINE_INTERVAL_SEC - elapsed))
+        next_scan = int(SESSION_ENGINE_INTERVAL_SEC - elapsed)
     last_tick = engine_state.get("last_tick") or (_last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None)
+    # Next AI check: soonest among active sessions with AI switching enabled
+    next_ai_check_secs = None
+    if engine_running:
+        for s in _trade_sessions:
+            if s.get("status") != "ACTIVE" or not s.get("ai_auto_switching_enabled", False):
+                continue
+            interval_min = int(s.get("ai_check_interval_minutes") or 1)
+            if s.get("current_trade"):
+                # AI switching is skipped while a trade is open; show next check after current interval.
+                secs = interval_min * 60
+                if next_ai_check_secs is None or secs < next_ai_check_secs:
+                    next_ai_check_secs = secs
+                continue
+            last_ai = s.get("last_ai_strategy_check")
+            if last_ai:
+                try:
+                    last_dt = datetime.fromisoformat(last_ai.replace("Z", "+00:00"))
+                    if last_dt.tzinfo is None:
+                        last_dt = last_dt.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+                    elif last_dt.tzinfo != ZoneInfo("Asia/Kolkata"):
+                        last_dt = last_dt.astimezone(ZoneInfo("Asia/Kolkata"))
+                    next_ai_at = last_dt.timestamp() + (interval_min * 60)
+                    secs = int(next_ai_at - now.timestamp())
+                    if next_ai_check_secs is None or secs < next_ai_check_secs:
+                        next_ai_check_secs = secs
+                except Exception:
+                    pass
+            else:
+                # No previous AI check yet → due now
+                secs = 0
+                if next_ai_check_secs is None or secs < next_ai_check_secs:
+                    next_ai_check_secs = secs
     return {
-        "engine_running": engine_state.get("running", True),
+        "engine_running": engine_running,
         "last_tick": last_tick,
         "next_scan": next_scan,
+        "next_ai_check_secs": next_ai_check_secs,
     }
 
 
@@ -3491,8 +3665,9 @@ def api_trade_sessions():
             sym = s.get("tradingsymbol") or (s.get("current_trade") or {}).get("symbol")
             if sym and (s.get("exchange") or "").upper() == "NFO":
                 try:
-                    q = strategy_data_provider.get_quote(sym, exchange="NFO")
-                    current_ltp = float(q.get("last", 0) or q.get("last_price", 0)) or current_ltp
+                    success, q = call_with_timeout(strategy_data_provider.get_quote, sym, exchange="NFO", timeout_seconds=5)
+                    if success and q:
+                        current_ltp = float(q.get("last", 0) or q.get("last_price", 0)) or current_ltp
                 except Exception:
                     pass
         out.append({**s, "current_ltp": current_ltp})
@@ -3638,7 +3813,7 @@ def api_trade_session_ai_mode(session_id: str):
         return jsonify({"ok": False, "error": "Session not found"}), 404
     
     ai_enabled = data.get("enabled", True)
-    ai_interval = data.get("interval_minutes", 5)  # Default 5 minutes
+    ai_interval = data.get("interval_minutes", 1)  # Default 1 minute (aligned with engine)
     
     session["ai_auto_switching_enabled"] = ai_enabled
     session["ai_check_interval_minutes"] = ai_interval
@@ -3814,14 +3989,23 @@ def api_account_balance():
 
 @app.route("/api/trade-history")
 def api_trade_history():
-    """GET /api/trade-history?mode=LIVE|PAPER|BACKTEST&session_id=...&today=1. Optional filters."""
+    """GET /api/trade-history?mode=LIVE|PAPER|BACKTEST&session_id=...&today=1&from_date=YYYY-MM-DD&to_date=YYYY-MM-DD. Optional filters."""
     mode = request.args.get("mode")
     session_id = request.args.get("session_id")
     today_only = request.args.get("today", "").strip().lower() in ("1", "true", "yes")
+    from_date = request.args.get("from_date", "").strip() or None
+    to_date = request.args.get("to_date", "").strip() or None
     trades = get_stored_trade_history(mode=mode, session_id=session_id)
     if today_only and trades:
         today_ist = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
         trades = [t for t in trades if (t.get("entry_time") or "")[:10] == today_ist]
+    if trades and (from_date or to_date):
+        def entry_date(t):
+            return (t.get("entry_time") or "")[:10]
+        if from_date:
+            trades = [t for t in trades if entry_date(t) >= from_date]
+        if to_date:
+            trades = [t for t in trades if entry_date(t) <= to_date]
     return jsonify({"trades": trades})
 
 
@@ -3885,7 +4069,7 @@ def api_backtest_run_ai():
     initial_capital = float(data.get("initial_capital") or 10000)
     risk_percent = float(data.get("risk_percent_per_trade") or 2.0)
     ai_enabled = data.get("ai_enabled", True)
-    ai_check_interval = int(data.get("ai_check_interval_minutes") or 5)
+    ai_check_interval = int(data.get("ai_check_interval_minutes") or 1)
     
     try:
         from datetime import datetime as dt
@@ -3989,7 +4173,7 @@ def api_backtest_run_ai_sync():
     initial_capital = float(data.get("initial_capital") or 10000)
     risk_percent = float(data.get("risk_percent_per_trade") or 2.0)
     ai_enabled = data.get("ai_enabled", True)
-    ai_check_interval = int(data.get("ai_check_interval_minutes") or 5)
+    ai_check_interval = int(data.get("ai_check_interval_minutes") or 1)
     
     try:
         from datetime import datetime as dt
@@ -5083,6 +5267,7 @@ def api_options(stock: str):
         return jsonify({"aiRecommendation": {}, "options": [], "stock": stock.upper(), "suggestedAlgos": [], "selectedAlgoName": None, "selectedAlgoGroup": "", "detectedMarket": [], "error": str(e)})
 
 
+scheduler = None
 try:
     logger.info("=" * 60)
     logger.info("INITIALIZING TRADING ENGINE")
@@ -5109,7 +5294,8 @@ try:
     logger.info("=" * 60)
 except Exception as e:
     logger.exception("CRITICAL: Failed to start scheduler: %s", str(e))
-    raise
+    # Do not raise: allow Flask to start so dashboard/APIs still work; engine tick will be down.
+    scheduler = None
 
 
 def main():

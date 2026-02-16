@@ -370,6 +370,16 @@
         </a>
       </li>
       <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_paper_trade') }}" class="nav-link">
+          <span class="material-icons-round">edit_note</span> Trade
+        </a>
+      </li>
+      <li class="nav-item mb-2">
+        <a href="{{ url_for('dashboard_live_history') }}" class="nav-link">
+          <span class="material-icons-round">list_alt</span> Live History
+        </a>
+      </li>
+      <li class="nav-item mb-2">
         <a href="{{ url_for('dashboard') }}#calendar" class="nav-link" data-section="calendar" onclick="showSection('calendar', this); return false;">
           <span class="material-icons-round">calendar_month</span> Market Calendar
         </a>
@@ -392,6 +402,10 @@
         <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center" id="gpt-status-btn" onclick="checkGptStatus()" title="Check if OpenAI (GPT) token is working">
           <span class="material-icons-round fs-6 me-1">smart_toy</span>
           <span id="gpt-status-text">GPT: Check</span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center" id="zerodha-token-btn" onclick="regenerateZerodhaToken()" title="Regenerate Zerodha access token (daily login)">
+          <span class="material-icons-round fs-6 me-1">refresh</span>
+          <span id="zerodha-token-text">Zerodha Token</span>
         </button>
         <span class="badge bg-primary bg-opacity-10 text-primary-custom px-3 py-2 rounded-pill d-flex align-items-center">
           <span class="material-icons-round fs-6 me-2">schedule</span>
@@ -610,11 +624,13 @@
                       <tr class="border-bottom border-secondary border-opacity-25 text-muted text-uppercase" style="font-size: 0.75rem; letter-spacing: 0.5px;">
                         <th class="fw-medium py-3">Date</th>
                         <th class="fw-medium py-3">Pred</th>
+                        <th class="fw-medium py-3">Conf %</th>
                         <th class="fw-medium py-3">USA Bias</th>
                         <th class="fw-medium py-3">Actual</th>
                         <th class="fw-medium py-3">Res</th>
                         <th class="fw-medium py-3">Day Δ%</th>
                         <th class="fw-medium py-3">Analysis</th>
+                        <th class="fw-medium py-3">Factors</th>
                       </tr>
                     </thead>
                     <tbody id="prediction-history-body"></tbody>
@@ -1438,7 +1454,7 @@
             const icon = document.getElementById('prediction-reasoning-icon');
             
             if(data.prediction_factors && data.prediction_factors.length > 0) {
-                factorsEl.innerHTML = '<div class="fw-bold mb-2">Analysis Factors:</div>' + data.prediction_factors.map(f => `<div class="mb-1">• ${f}</div>`).join('');
+                factorsEl.innerHTML = '<div class="fw-bold mb-2">Analysis Factors <span class="text-muted fw-normal" style="font-size: 0.75rem;">(all tracked for history / AI)</span>:</div>' + data.prediction_factors.map(f => `<div class="mb-1">• ${f}</div>`).join('');
                 if(icon) {
                     icon.style.display = 'inline-flex';
                     const tooltipContent = '<strong>Prediction Basis:</strong><br>' + data.prediction_factors.map(f => '• ' + f).join('<br>');
@@ -1688,7 +1704,7 @@
         const nextBtn = document.getElementById('next-page-btn');
 
         if (allHistoryData.length === 0) {
-            body.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No history</td></tr>';
+            body.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No history</td></tr>';
             info.textContent = '0-0 of 0';
             prevBtn.disabled = true;
             nextBtn.disabled = true;
@@ -1714,15 +1730,22 @@
             // Format analysis - truncate if too long and add tooltip
             const analysis = h.analysis || 'N/A';
             const analysisShort = analysis.length > 30 ? analysis.substring(0, 30) + '...' : analysis;
+            const confidencePct = h.confidence != null ? (h.market_closed && h.analysis === 'Market closed' ? '—' : (h.confidence + '%')) : '—';
+            const factorsList = h.factors && Array.isArray(h.factors) ? h.factors : [];
+            const factorsStr = factorsList.join('; ');
+            const factorsShort = factorsStr.length > 40 ? factorsStr.substring(0, 40) + '…' : factorsStr;
+            const factorsTitle = factorsStr ? factorsStr.replace(/"/g, '&quot;') : '—';
             
             return `<tr>
                 <td>${h.date}</td>
                 <td class="${h.prediction==='BULLISH'?'text-success-custom':h.prediction==='BEARISH'?'text-danger-custom':''}">${predIcon} ${h.prediction}</td>
+                <td class="text-muted">${confidencePct}</td>
                 <td class="${usaBiasClass}">${usaBiasDisplay}</td>
                 <td class="${actualCellClass}">${actualIcon} ${actualDisplay}</td>
                 <td>${h.market_closed ? '—' : (h.accuracy||'-')}</td>
                 <td>${h.market_closed ? '—' : (h.price_change_pct + '%')}</td>
-                <td class="small" title="${analysis}">${analysisShort}</td>
+                <td class="small" title="${analysis.replace(/"/g, '&quot;')}">${analysisShort}</td>
+                <td class="small" title="${factorsTitle}">${factorsShort || '—'}</td>
             </tr>`;
         }).join('');
 
@@ -2073,6 +2096,29 @@
             .catch(() => {
                 if (txt) txt.textContent = 'GPT: Check';
                 if (btn) { btn.disabled = false; btn.classList.remove('btn-outline-success', 'btn-outline-danger'); btn.classList.add('btn-outline-secondary'); }
+            });
+    }
+
+    function regenerateZerodhaToken() {
+        const btn = document.getElementById('zerodha-token-btn');
+        const txt = document.getElementById('zerodha-token-text');
+        if (btn) btn.disabled = true;
+        if (txt) txt.textContent = 'Opening…';
+        api('/api/zerodha/start-auth')
+            .then(r => r.json())
+            .then(data => {
+                if (data.ok && data.login_url) {
+                    window.location.href = data.login_url;
+                } else {
+                    if (txt) txt.textContent = 'Zerodha Token';
+                    if (btn) btn.disabled = false;
+                    alert(data.error || 'Could not get Zerodha login URL. Check Settings → Zerodha API Key.');
+                }
+            })
+            .catch(() => {
+                if (txt) txt.textContent = 'Zerodha Token';
+                if (btn) btn.disabled = false;
+                alert('Request failed. Check connection.');
             });
     }
 

@@ -8,8 +8,10 @@
         <strong>Paper &amp; Live Trading (NIFTY / BANKNIFTY):</strong>
         <ul class="mb-0 mt-2 small">
           <li>One page for both: switch between <strong>Paper money</strong> (no real orders) and <strong>Real money</strong> (live Zerodha orders). Same engine as Backtest.</li>
-          <li>Zerodha balance and execution list refresh every 5 seconds.</li>
+          <li>Engine, table and AI refresh every 1 minute (no conflict).</li>
           <li>Select money mode, index, capital, and click Trade to place an order.</li>
+          <li><strong>P&L:</strong> Unrealized P&L updates with price. When stop is hit, loss is capped at ₹300 per trade (same as backtest).</li>
+          <li><strong>Refresh:</strong> Active sessions are saved on the server; refreshing the page does not stop them.</li>
         </ul>
       </div>
     </div>
@@ -67,7 +69,7 @@
           Investment Amount
         </div>
         <div class="card-body">
-          <input type="number" class="form-control" id="investment-amount" value="100000" min="1000" step="5000" placeholder="e.g. 100000">
+          <input type="number" class="form-control" id="investment-amount" value="10000" min="1000" step="5000" placeholder="e.g. 10000">
           <p class="text-muted small mb-0 mt-1">Capital for today</p>
         </div>
       </div>
@@ -120,13 +122,12 @@
 
   <div class="card mb-3">
     <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center gap-3 gap-md-4">
-      <span class="text-muted small" id="refresh-countdown">Next refresh in 5s</span>
       <span class="text-muted small d-flex align-items-center gap-1" id="engine-status-wrap">
         <span class="rounded-circle d-inline-block" id="engine-dot" style="width: 8px; height: 8px; background: var(--bs-secondary);"></span>
         <span id="engine-status-text">Engine: —</span>
       </span>
       <span class="text-muted small" id="engine-scan-countdown">Next engine scan: —</span>
-      <span class="text-muted small" id="engine-last-scan">Last scan: —</span>
+      <span class="text-muted small" id="ai-check-countdown">Next AI check: —</span>
       <span class="text-muted small" id="session-active-badge" style="display: none;"></span>
     </div>
   </div>
@@ -234,14 +235,16 @@
 {{ super() }}
 <script>
 (function() {
-  let countdownSecs = 5;
+  let dataRefreshSecs = 60;
   let countdownTimer = null;
   let optimisticRows = [];
   let activePaperSessionId = null;
   let activeLiveSessionId = null;
   let engineNextScanSecs = null;
-  let engineRunning = true;  // Default to Running until API says otherwise (avoids "—" on load)
-  let engineLastTickIso = null;
+  let nextAiCheckSecs = null;
+  let nextAiCheckDisplaySecs = null;
+  let engineRunning = true;
+  let lastStatusSyncMs = 0;
 
   function getTradeMode() {
     return (document.getElementById('money-mode') && document.getElementById('money-mode').value) || 'PAPER';
@@ -268,7 +271,7 @@
   }
 
   function fetchRiskConfig() {
-    const amt = parseFloat(document.getElementById('investment-amount').value) || 100000;
+    const amt = parseFloat(document.getElementById('investment-amount').value) || 10000;
     const riskPct = parseFloat(document.getElementById('paper-risk-pct').value) || 2;
     fetch('/api/paper-trade/risk-config?investment_amount=' + encodeURIComponent(amt) + '&risk_percent=' + encodeURIComponent(riskPct))
       .then(r => r.json())
@@ -303,9 +306,7 @@
   }
 
   function runRefresh() {
-    countdownSecs = 5;
-    const el = document.getElementById('refresh-countdown');
-    if (el) el.textContent = 'Next refresh in 5s';
+    dataRefreshSecs = 60;
     fetchBalance();
     fetchExecutions();
   }
@@ -315,11 +316,19 @@
     return r.json().catch(function() { throw new Error('Invalid JSON'); });
   }
 
+  function fetchJsonWithTimeout(url, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs || 12000);
+    return fetch(url, { signal: controller.signal })
+      .then(safeJson)
+      .finally(() => clearTimeout(timer));
+  }
+
   function fetchExecutions() {
     Promise.all([
-      fetch('/api/trade-history?mode=PAPER&today=1').then(safeJson),
-      fetch('/api/trade-history?mode=LIVE&today=1').then(safeJson),
-      fetch('/api/trade-sessions').then(safeJson)
+      fetchJsonWithTimeout('/api/trade-history?mode=PAPER&today=1', 12000),
+      fetchJsonWithTimeout('/api/trade-history?mode=LIVE&today=1', 12000),
+      fetchJsonWithTimeout('/api/trade-sessions', 12000)
     ]).then(([paperData, liveData, sessionsData]) => {
       try {
         const paperTrades = (paperData && paperData.trades) ? paperData.trades : [];
@@ -335,11 +344,16 @@
         
         if (paperOpen.length > 0) optimisticRows = optimisticRows.filter(o => (o.mode || 'PAPER') !== 'PAPER');
         if (liveOpen.length > 0) optimisticRows = optimisticRows.filter(o => (o.mode || 'PAPER') !== 'LIVE');
-        // Engine status: defensive so UI never shows "—" when server is up
         if (sessionsData != null) {
           engineRunning = sessionsData.engine_running !== false;
           engineNextScanSecs = typeof sessionsData.next_scan === 'number' ? sessionsData.next_scan : null;
-          engineLastTickIso = sessionsData.last_tick || null;
+          var raw = sessionsData.next_ai_check_secs;
+          nextAiCheckSecs = (typeof raw === 'number' && !isNaN(raw)) ? raw : null;
+          if (nextAiCheckSecs == null && (paperActive.length > 0 || liveActive.length > 0)) {
+            nextAiCheckSecs = 60;
+          }
+          if (nextAiCheckSecs != null && nextAiCheckSecs >= 0) nextAiCheckDisplaySecs = nextAiCheckSecs;
+          lastStatusSyncMs = Date.now();
         }
         updateEngineStatusUI();
         var paperActiveCount = paperActive.length;
@@ -362,19 +376,22 @@
         renderModeExecutions('PAPER', paperTrades, paperOpen, paperWaiting.length, paperActive);
         renderModeExecutions('LIVE', liveTrades, liveOpen, liveWaiting.length, liveActive);
       } catch (e) {
-        renderModeExecutions('PAPER', [], [], 0, []);
-        renderModeExecutions('LIVE', [], [], 0, []);
+        // Keep last-rendered table if parsing fails; avoid "vanishing" active sessions.
       }
     }).catch(function() {
+      engineRunning = null;
+      engineNextScanSecs = null;
+      nextAiCheckSecs = null;
+      nextAiCheckDisplaySecs = null;
       var txt = document.getElementById('engine-status-text');
       var dot = document.getElementById('engine-dot');
       if (txt) txt.textContent = 'Engine: reconnecting…';
       if (dot) { dot.style.background = 'orange'; }
-      document.getElementById('engine-scan-countdown').textContent = 'Next engine scan: —';
-      var lastEl = document.getElementById('engine-last-scan');
-      if (lastEl) lastEl.textContent = 'Last scan: —';
-      renderModeExecutions('PAPER', [], [], 0, []);
-      renderModeExecutions('LIVE', [], [], 0, []);
+      var scanEl = document.getElementById('engine-scan-countdown');
+      if (scanEl) scanEl.textContent = 'Next engine scan: —';
+      var aiEl = document.getElementById('ai-check-countdown');
+      if (aiEl) aiEl.textContent = 'Next AI check: —';
+      // Keep last-rendered table while reconnecting.
     });
   }
 
@@ -382,6 +399,7 @@
     var txt = document.getElementById('engine-status-text');
     var dot = document.getElementById('engine-dot');
     var scanEl = document.getElementById('engine-scan-countdown');
+    var aiEl = document.getElementById('ai-check-countdown');
     if (txt) {
       if (engineRunning === true) txt.textContent = 'Engine: Running';
       else if (engineRunning === false) txt.textContent = 'Engine: Stopped';
@@ -391,28 +409,41 @@
       dot.style.background = engineRunning === true ? 'var(--bs-success)' : (engineRunning === false ? '#dc3545' : 'var(--bs-secondary)');
     }
     if (scanEl) {
+      const staleStatus = !lastStatusSyncMs || (Date.now() - lastStatusSyncMs > 90000);
+      if (staleStatus) {
+        scanEl.textContent = 'Next engine scan: —';
+      } else
       if (engineNextScanSecs != null) {
-        if (engineNextScanSecs <= 0) {
-          scanEl.textContent = 'Next engine scan: due now';
+        if (engineNextScanSecs < 0) {
+          scanEl.innerHTML = '<span class="text-danger">Overdue: ' + Math.abs(engineNextScanSecs) + 's</span>';
         } else {
-          scanEl.textContent = 'Next engine scan in ' + engineNextScanSecs + 's';
+          scanEl.textContent = 'Next engine scan: ' + engineNextScanSecs + 's';
         }
       } else {
         scanEl.textContent = 'Next engine scan: —';
       }
     }
-    var lastEl = document.getElementById('engine-last-scan');
-    if (lastEl) {
-      if (engineLastTickIso) {
-        try {
-          var lastMs = new Date(engineLastTickIso).getTime();
-          var agoSec = Math.floor((Date.now() - lastMs) / 1000);
-          if (agoSec < 60) lastEl.textContent = 'Last scan: ' + agoSec + 's ago';
-          else if (agoSec < 3600) lastEl.textContent = 'Last scan: ' + Math.floor(agoSec / 60) + 'm ago';
-          else lastEl.textContent = 'Last scan: ' + Math.floor(agoSec / 3600) + 'h ago';
-        } catch (e) { lastEl.textContent = 'Last scan: —'; }
+    if (aiEl) {
+      const staleStatus = !lastStatusSyncMs || (Date.now() - lastStatusSyncMs > 90000);
+      if (staleStatus) {
+        aiEl.textContent = 'Next AI check: —';
+        return;
+      }
+      var aiSecs = nextAiCheckDisplaySecs != null ? nextAiCheckDisplaySecs : nextAiCheckSecs;
+      if (aiSecs != null) {
+        if (aiSecs < 0) {
+          aiEl.innerHTML = '<span class="text-danger">Next AI check: Overdue ' + Math.abs(aiSecs) + 's</span>';
+        } else {
+          if (aiSecs >= 60) {
+            var m = Math.floor(aiSecs / 60);
+            var s = aiSecs % 60;
+            aiEl.textContent = 'Next AI check: ' + m + 'm ' + s + 's';
+          } else {
+            aiEl.textContent = 'Next AI check: ' + aiSecs + 's';
+          }
+        }
       } else {
-        lastEl.textContent = 'Last scan: —';
+        aiEl.textContent = 'Next AI check: —';
       }
     }
   }
@@ -424,8 +455,18 @@
     return '<span class="badge bg-secondary">CLOSED</span>';
   }
 
+  function pnlClass(pnl) {
+    if (pnl == null || pnl === '') return '';
+    if (typeof pnl === 'number') return pnl < 0 ? 'text-danger' : (pnl > 0 ? 'text-success' : '');
+    if (typeof pnl === 'string' && pnl !== '—' && pnl.startsWith('-')) return 'text-danger';
+    if (typeof pnl === 'string' && pnl !== '—' && pnl.length) return 'text-success';
+    return '';
+  }
+
   function rowToBacktest(r) {
     const statusHtml = r.status_badge || statusBadge(r.status);
+    const grossClass = r.gross_pnl_class != null ? r.gross_pnl_class : pnlClass(r.gross_pnl_raw);
+    const netClass = r.net_pnl_class != null ? r.net_pnl_class : pnlClass(r.net_pnl_raw);
     return `
       <tr>
         <td>${r.date}</td>
@@ -441,9 +482,9 @@
         <td>${r.price_per_lot}</td>
         <td>${r.capital_used}</td>
         <td>${r.balance_left}</td>
-        <td>${r.gross_pnl}</td>
+        <td class="${grossClass}">${r.gross_pnl}</td>
         <td>${r.charges}</td>
-        <td>${r.net_pnl}</td>
+        <td class="${netClass}">${r.net_pnl}</td>
         <td>${statusHtml}</td>
         <td>${r.exit_reason}</td>
       </tr>
@@ -460,6 +501,8 @@
       if (s.current_trade) return; // Skip - will be handled by openSessions below
       
       const rec = s.recommendation || {};
+      const recPremium = rec.premium != null ? Number(rec.premium) : null;
+      const recLotSize = rec.lotSize || rec.lot_size || '—';
       rows.push({
         date: new Date().toISOString().split('T')[0],
         ce_pe: rec.optionType || rec.ce_pe || rec.direction || '—',
@@ -467,16 +510,18 @@
         strategy: rec.strategyName || rec.strategy || '—',
         entry_time: '—',
         exit_time: '—',
-        entry_price: rec.premium != null ? '₹' + rec.premium.toFixed(2) : '—',
+        entry_price: recPremium != null && !isNaN(recPremium) ? fmtNum(recPremium) : '—',
         exit_price: '—',
-        current_price: rec.premium != null ? '₹' + rec.premium.toFixed(2) : '—',
-        qty: rec.lotSize || '—',
+        current_price: recPremium != null && !isNaN(recPremium) ? fmtNum(recPremium) : '—',
+        qty: recLotSize,
         price_per_lot: '—',
         capital_used: '—',
-        balance_left: s.virtual_balance != null ? '₹' + s.virtual_balance.toFixed(2) : '—',
+        balance_left: s.virtual_balance != null ? fmtNum(s.virtual_balance) : '—',
         gross_pnl: '—',
         charges: '—',
         net_pnl: '—',
+        gross_pnl_raw: null,
+        net_pnl_raw: null,
         exit_reason: '—',
         status_badge: '<span class="badge bg-info text-dark">Waiting to enter</span>'
       });
@@ -517,6 +562,8 @@
         gross_pnl: grossPnl != null ? (grossPnl >= 0 ? fmtNum(grossPnl) : '-' + fmtNum(Math.abs(grossPnl))) : '—',
         charges: '—',
         net_pnl: grossPnl != null ? (grossPnl >= 0 ? fmtNum(grossPnl) : '-' + fmtNum(Math.abs(grossPnl))) : '—',
+        gross_pnl_raw: grossPnl,
+        net_pnl_raw: grossPnl,
         exit_reason: '—',
         status_badge: '<span class="badge bg-warning text-dark">OPEN</span>'
       });
@@ -528,6 +575,17 @@
       const exitPrice = t.exit_price;
       const qty = t.qty || 0;
       const pnl = t.pnl != null ? Number(t.pnl) : null;
+      const parsedLotSize = t.lot_size != null ? Number(t.lot_size) : null;
+      const inferredLotSize = (!parsedLotSize && qty)
+        ? ((Number(qty) % 25 === 0) ? 25 : ((Number(qty) % 15 === 0) ? 15 : null))
+        : null;
+      const lotSize = parsedLotSize || inferredLotSize;
+      const pricePerLot = t.price_per_lot != null
+        ? Number(t.price_per_lot)
+        : ((entryPrice != null && lotSize) ? (Number(entryPrice) * lotSize) : null);
+      const capitalUsed = t.capital_used != null
+        ? Number(t.capital_used)
+        : ((entryPrice != null && qty != null) ? (Number(entryPrice) * Number(qty)) : null);
       rows.push({
         date: formatDate(t.entry_time),
         ce_pe: t.option_type || '—',
@@ -539,12 +597,14 @@
         exit_price: fmtNum(exitPrice),
         current_price: '—',
         qty: qty,
-        price_per_lot: '—',
-        capital_used: '—',
-        balance_left: '—',
-        gross_pnl: pnl != null ? fmtNum(pnl) : '—',
+        price_per_lot: pricePerLot != null && !isNaN(pricePerLot) ? fmtNum(pricePerLot) : '—',
+        capital_used: capitalUsed != null && !isNaN(capitalUsed) ? fmtNum(capitalUsed) : '—',
+        balance_left: t.balance_left != null ? fmtNum(t.balance_left) : '—',
+        gross_pnl: pnl != null ? (pnl >= 0 ? fmtNum(pnl) : '-' + fmtNum(Math.abs(pnl))) : '—',
         charges: t.charges != null ? fmtNum(t.charges) : '—',
-        net_pnl: pnl != null ? fmtNum(pnl) : '—',
+        net_pnl: pnl != null ? (pnl >= 0 ? fmtNum(pnl) : '-' + fmtNum(Math.abs(pnl))) : '—',
+        gross_pnl_raw: pnl,
+        net_pnl_raw: pnl,
         exit_reason: t.exit_reason || '—',
         status_badge: '<span class="badge bg-secondary">CLOSED</span>'
       });
@@ -588,21 +648,24 @@
 
   function startCountdown() {
     if (countdownTimer) clearInterval(countdownTimer);
-    countdownSecs = 5;
-    const el = document.getElementById('refresh-countdown');
+    dataRefreshSecs = 60;
     function tick() {
-      if (countdownSecs > 0) {
-        el.textContent = 'Next refresh in ' + countdownSecs + 's';
-        countdownSecs--;
-      } else {
-        runRefresh();
-      }
-      if (typeof engineNextScanSecs === 'number' && engineNextScanSecs > 0) {
+      if (dataRefreshSecs > 0) dataRefreshSecs--; else { runRefresh(); }
+      
+      if (typeof engineNextScanSecs === 'number') {
         engineNextScanSecs--;
-        updateEngineStatusUI();
-      } else if (typeof engineNextScanSecs === 'number' && engineNextScanSecs === 0) {
-        updateEngineStatusUI();
+        // Trigger refresh when we exactly hit 0 to sync with expected engine tick
+        if (engineNextScanSecs === 0) runRefresh();
       }
+      
+      if (typeof nextAiCheckSecs === 'number' && nextAiCheckSecs > 0) nextAiCheckSecs--;
+      if (typeof nextAiCheckDisplaySecs === 'number') {
+        nextAiCheckDisplaySecs--;
+        if (nextAiCheckDisplaySecs < 0) nextAiCheckDisplaySecs = 60;
+      } else if (nextAiCheckSecs != null && nextAiCheckSecs >= 0) {
+        nextAiCheckDisplaySecs = nextAiCheckSecs;
+      }
+      updateEngineStatusUI();
     }
     tick();
     countdownTimer = setInterval(tick, 1000);
@@ -647,7 +710,7 @@
     const btn = this;
     const status = document.getElementById('paper-trade-status');
     const instrument = document.getElementById('paper-instrument').value;
-    const investmentAmount = parseFloat(document.getElementById('investment-amount').value) || 100000;
+    const investmentAmount = parseFloat(document.getElementById('investment-amount').value) || 10000;
     const mode = getTradeMode();
     const isLive = mode === 'LIVE';
     const today = new Date().toISOString().slice(0, 10);

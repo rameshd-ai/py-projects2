@@ -4,14 +4,96 @@ Persist closed trades to data/trade_history.json.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
-from threading import Lock
+from threading import RLock
 from typing import Any
 
 _BASE = Path(__file__).resolve().parent.parent
 _DATA_DIR = _BASE / "data"
 _HISTORY_FILE = _DATA_DIR / "trade_history.json"
-_lock = Lock()
+_lock = RLock()
+
+
+def _to_float(v: Any) -> float | None:
+    try:
+        if v is None:
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+
+def _to_int(v: Any) -> int | None:
+    try:
+        if v is None:
+            return None
+        return int(v)
+    except Exception:
+        return None
+
+
+def _infer_option_fields(symbol: Any) -> tuple[str | None, int | None]:
+    s = str(symbol or "").upper()
+    option_type = "CE" if s.endswith("CE") else ("PE" if s.endswith("PE") else None)
+    m = re.search(r"(\d{4,6})(?:CE|PE)$", s)
+    strike = int(m.group(1)) if m else None
+    return option_type, strike
+
+
+def _normalize_trade_record(trade: dict[str, Any]) -> dict[str, Any]:
+    symbol = trade.get("symbol")
+    entry_price = _to_float(trade.get("entry_price"))
+    exit_price = _to_float(trade.get("exit_price"))
+    qty = _to_int(trade.get("qty")) or 0
+    lot_size = _to_int(trade.get("lot_size"))
+    option_type = trade.get("option_type")
+    strike = _to_int(trade.get("strike"))
+    inferred_opt, inferred_strike = _infer_option_fields(symbol)
+    if option_type is None:
+        option_type = inferred_opt
+    if strike is None:
+        strike = inferred_strike
+    if lot_size is None and qty > 0:
+        lot_size = 25 if qty % 25 == 0 else (15 if qty % 15 == 0 else None)
+
+    pnl = _to_float(trade.get("pnl"))
+    charges = _to_float(trade.get("charges"))
+    if charges is None:
+        charges = 0.0
+    net_pnl = _to_float(trade.get("net_pnl"))
+    if net_pnl is None:
+        net_pnl = (pnl - charges) if pnl is not None else None
+
+    price_per_lot = _to_float(trade.get("price_per_lot"))
+    if price_per_lot is None and entry_price is not None and lot_size:
+        price_per_lot = round(entry_price * lot_size, 2)
+    capital_used = _to_float(trade.get("capital_used"))
+    if capital_used is None and entry_price is not None and qty:
+        capital_used = round(entry_price * qty, 2)
+
+    return {
+        "session_id": trade.get("session_id"),
+        "mode": trade.get("mode"),
+        "symbol": symbol,
+        "strategy": trade.get("strategy"),
+        "option_type": option_type,
+        "strike": strike,
+        "entry_time": trade.get("entry_time"),
+        "exit_time": trade.get("exit_time"),
+        "entry_price": entry_price,
+        "exit_price": exit_price,
+        "qty": qty,
+        "lot_size": lot_size,
+        "price_per_lot": price_per_lot,
+        "capital_used": capital_used,
+        "balance_left": _to_float(trade.get("balance_left")),
+        "gross_pnl": pnl,
+        "charges": charges,
+        "net_pnl": net_pnl,
+        "pnl": pnl,
+        "exit_reason": trade.get("exit_reason"),
+    }
 
 
 def _load_all() -> list[dict[str, Any]]:
@@ -34,7 +116,7 @@ def append_trade(trade: dict[str, Any]) -> None:
             data = {"trades": _load_all()}
             if not isinstance(data["trades"], list):
                 data["trades"] = []
-            data["trades"].append(trade)
+            data["trades"].append(_normalize_trade_record(trade))
             data["updatedAt"] = __import__("datetime").datetime.now().isoformat()
             with open(_HISTORY_FILE, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
