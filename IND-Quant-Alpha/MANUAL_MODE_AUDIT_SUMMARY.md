@@ -8,7 +8,7 @@
 | **B. Algo library** | ✅ Implemented & working | Strategies in `strategies/`, `_pick_best_strategy()` + `get_suggested_algos`/`get_algo_by_id` (2714–2735), `get_strategy_for_session()` from registry (strategy_registry.py), multiple strategies per day. |
 | **C. Entry logic** | ✅ Implemented & working | Real `_check_entry_real` → `strategy.check_entry()` (2739–2746), real conditions (e.g. momentum_breakout), auto entry in tick (2810–2860), stocks + index options (NFO symbol/exchange at entry). |
 | **D. Exit logic** | ✅ Implemented & working | SL/target/strategy exit; NFO uses option premium via `BaseStrategy._get_exit_ltp(trade)` + `data_provider.get_quote(symbol, exchange="NFO")`; all strategies use it in `check_exit`. |
-| **E. Continuous loop** | ✅ Implemented & working | Re-evaluate and re-pick strategy each tick (2809), no re-approval, `trades_taken_today` updated in all executors. |
+| **E. Continuous loop** | ✅ Implemented & working | Re-evaluate and re-pick strategy each tick (2809), no re-approval, `daily_trade_count` is updated via risk engine. |
 | **F. Risk manager** | ✅ Implemented & working | `validate_trade()` before every entry (2841–2852), dynamic lots, reject on risk/capital/daily limit, same for LIVE/PAPER/BACKTEST. |
 | **G. Execution modes** | ✅ Implemented & working | LIVE → Zerodha, PAPER → virtual balance + NFO quotes, BACKTEST → separate engine; strategy logic shared. |
 | **H. Trade history & alerts** | ✅ Implemented & working | `append_trade()` from paper/live executors, records include strategy, entry/exit, PnL, mode; `logger.info` on close. |

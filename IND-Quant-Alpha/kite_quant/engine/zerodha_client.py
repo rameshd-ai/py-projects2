@@ -233,6 +233,7 @@ def place_order(
     quantity: int,
     order_type: str = "MARKET",
     price: float | None = None,
+    trigger_price: float | None = None,
     sl: float | None = None,
     tp: float | None = None,
     exchange: str | None = None,
@@ -251,7 +252,11 @@ def place_order(
     if not use_tradingsymbol:
         return {"error": "Missing symbol or tradingsymbol", "success": False}
     try:
-        kite_order_type = "MARKET" if order_type.upper() == "MARKET" else "LIMIT"
+        order_type_upper = order_type.upper()
+        if order_type_upper in ("MARKET", "LIMIT", "SL", "SL-M"):
+            kite_order_type = order_type_upper
+        else:
+            kite_order_type = "MARKET"
         transaction_type = "BUY" if side.upper() == "BUY" else "SELL"
         product_type = "MIS"
         order_params = {
@@ -263,8 +268,10 @@ def place_order(
             "product": product_type,
             "validity": "DAY",
         }
-        if price is not None and kite_order_type == "LIMIT":
+        if price is not None and kite_order_type in ("LIMIT", "SL"):
             order_params["price"] = price
+        if trigger_price is not None and kite_order_type in ("SL", "SL-M"):
+            order_params["trigger_price"] = trigger_price
         order_id = kite.place_order(**order_params)
         result = {"order_id": order_id, "success": True, "symbol": use_tradingsymbol}
         if sl is not None or tp is not None:
@@ -274,6 +281,94 @@ def place_order(
         return result
     except Exception as e:
         return {"error": str(e), "success": False}
+
+
+def get_order_status(order_id: str) -> dict[str, Any]:
+    """Fetch latest broker order status and fill details for an order_id."""
+    kite = _get_kite()
+    if not kite:
+        return {"success": False, "error": "Kite Connect not initialized"}
+    if not order_id:
+        return {"success": False, "error": "Missing order_id"}
+    try:
+        import socket
+
+        socket.setdefaulttimeout(10)
+        history = kite.order_history(order_id)
+        if not history:
+            return {"success": False, "error": f"No order history found for {order_id}"}
+
+        latest = history[-1] if isinstance(history, list) else history
+        status = str(latest.get("status") or "").upper()
+        filled_quantity = int(latest.get("filled_quantity") or 0)
+        avg_fill_price = latest.get("average_price")
+        try:
+            avg_fill_price = float(avg_fill_price) if avg_fill_price is not None else None
+        except (TypeError, ValueError):
+            avg_fill_price = None
+        reject_reason = latest.get("status_message") or latest.get("status_message_raw")
+
+        return {
+            "success": True,
+            "order_id": order_id,
+            "status": status,
+            "filled_quantity": filled_quantity,
+            "avg_fill_price": avg_fill_price,
+            "reject_reason": reject_reason,
+            "raw": latest,
+            "fills": [],
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def cancel_order(order_id: str, variety: str = "regular") -> dict[str, Any]:
+    """Cancel an order at broker and return normalized result."""
+    kite = _get_kite()
+    if not kite:
+        return {"success": False, "cancelled": False, "error": "Kite Connect not initialized"}
+    if not order_id:
+        return {"success": False, "cancelled": False, "error": "Missing order_id"}
+    try:
+        kite.cancel_order(variety=variety, order_id=order_id)
+        return {"success": True, "cancelled": True, "order_id": order_id}
+    except Exception as e:
+        return {"success": False, "cancelled": False, "error": str(e), "order_id": order_id}
+
+
+def get_open_orders() -> list[dict[str, Any]]:
+    """Return broker open/pending orders with normalized keys."""
+    kite = _get_kite()
+    if not kite:
+        return []
+    try:
+        import socket
+
+        socket.setdefaulttimeout(10)
+        orders = kite.orders()
+        out: list[dict[str, Any]] = []
+        for o in orders or []:
+            status = str(o.get("status") or "").upper()
+            if status not in ("OPEN", "TRIGGER PENDING", "AMO REQ RECEIVED", "PUT ORDER REQ RECEIVED"):
+                continue
+            out.append(
+                {
+                    "order_id": o.get("order_id"),
+                    "status": status,
+                    "symbol": o.get("tradingsymbol"),
+                    "exchange": o.get("exchange"),
+                    "side": o.get("transaction_type"),
+                    "quantity": int(o.get("quantity") or 0),
+                    "filled_quantity": int(o.get("filled_quantity") or 0),
+                    "pending_quantity": int(o.get("pending_quantity") or 0),
+                    "order_type": o.get("order_type"),
+                    "price": float(o.get("price") or 0.0),
+                    "trigger_price": float(o.get("trigger_price") or 0.0),
+                }
+            )
+        return out
+    except Exception:
+        return []
 
 
 def get_positions() -> list[dict[str, Any]]:

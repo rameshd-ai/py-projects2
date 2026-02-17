@@ -12,6 +12,7 @@ try:
 except ImportError:
     from backports.zoneinfo import ZoneInfo
 
+from engine.risk_engine import evaluate_post_exit
 from execution.trade_history_store import append_trade
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,8 @@ def simulate_exit(session: dict, candle: dict[str, Any], exit_price: float | Non
     trade["exit_time"] = ts
     trade["exit_price"] = exit_price
     trade["pnl"] = pnl
-    session["daily_pnl"] = (session.get("daily_pnl") or 0) + pnl
+    risk_decision = evaluate_post_exit(session, trade_pnl=pnl)
+    session.update(risk_decision.updated_session_state)
     vb = session.get("virtual_balance")
     if vb is not None:
         session["virtual_balance"] = round(float(vb) + pnl, 2)
@@ -97,6 +99,5 @@ def simulate_exit(session: dict, candle: dict[str, Any], exit_price: float | Non
     append_trade(record)
     session["current_trade_id"] = None
     session["current_trade"] = None
-    session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1
     logger.info("TRADE CLOSED | %s | P&L: %s (backtest)", symbol, pnl)
     return {"success": True, "pnl": pnl, "exit_price": exit_price}

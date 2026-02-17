@@ -82,11 +82,13 @@
         </div>
         <div class="card-body">
           <div class="mb-2">
-            <label class="form-label small mb-1">Risk Per Trade (%)</label>
-            <input type="number" class="form-control form-control-sm" id="paper-risk-pct" value="2" min="0.5" max="10" step="0.5" placeholder="2">
+            <label class="form-label small mb-1">Risk Per Trade (Value)</label>
+            <input type="number" class="form-control form-control-sm" id="paper-risk-amount" value="300" min="1" step="50" placeholder="300">
           </div>
-          <div class="small mb-1"><strong>Max Risk Per Trade:</strong> <span id="max-risk-trade">—</span></div>
-          <div class="small mb-0"><strong>Daily Loss Limit:</strong> <span id="daily-loss-limit">—</span></div>
+          <div class="mb-0">
+            <label class="form-label small mb-1">Daily Loss Limit (Value)</label>
+            <input type="number" class="form-control form-control-sm" id="paper-daily-loss-limit" value="3000" min="1" step="100" placeholder="3000">
+          </div>
         </div>
       </div>
     </div>
@@ -128,7 +130,21 @@
       </span>
       <span class="text-muted small" id="engine-scan-countdown">Next engine scan: —</span>
       <span class="text-muted small" id="ai-check-countdown">Next AI check: —</span>
+      <span class="badge bg-warning text-dark" id="cooldown-active-badge" style="display: none;"></span>
       <span class="text-muted small" id="session-active-badge" style="display: none;"></span>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+      <span class="material-icons-round text-primary-custom">summarize</span>
+      Today Overall Status
+    </div>
+    <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center gap-3 gap-md-4">
+      <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="overall-trades-count">0 trades</span>
+      <span class="text-muted small">Paper Net: <span id="overall-paper-net">₹0.00</span></span>
+      <span class="text-muted small">Live Net: <span id="overall-live-net">₹0.00</span></span>
+      <span class="text-muted small">Total Net: <strong id="overall-total-net">₹0.00</strong></span>
     </div>
   </div>
 
@@ -148,8 +164,8 @@
     </div>
     <div id="paper-sessions-waiting-msg" class="alert alert-secondary border-0 mb-0 rounded-0 small py-2 px-3" style="display: none;"></div>
     <div class="card-body p-0">
-      <div class="table-responsive overflow-x-auto" style="min-width: 1200px;">
-        <table class="table table-sm table-dark table-hover mb-0">
+      <div class="table-responsive overflow-x-auto" style="max-width: 100%; overflow-x: auto;">
+        <table class="table table-sm table-dark table-hover mb-0" style="min-width: 1500px; white-space: nowrap;">
           <thead>
             <tr>
               <th>Date</th>
@@ -168,12 +184,13 @@
               <th>Gross P&L</th>
               <th>Charges</th>
               <th>Net P&L</th>
+              <th>Risk-Capped P&L</th>
               <th>Status</th>
               <th>Exit Reason</th>
             </tr>
           </thead>
           <tbody id="paper-executions-tbody">
-            <tr><td colspan="19" class="text-center text-muted py-4">No paper trades today.</td></tr>
+            <tr><td colspan="20" class="text-center text-muted py-4">No paper trades today.</td></tr>
           </tbody>
         </table>
       </div>
@@ -196,8 +213,8 @@
     </div>
     <div id="live-sessions-waiting-msg" class="alert alert-secondary border-0 mb-0 rounded-0 small py-2 px-3" style="display: none;"></div>
     <div class="card-body p-0">
-      <div class="table-responsive overflow-x-auto" style="min-width: 1200px;">
-        <table class="table table-sm table-dark table-hover mb-0">
+      <div class="table-responsive overflow-x-auto" style="max-width: 100%; overflow-x: auto;">
+        <table class="table table-sm table-dark table-hover mb-0" style="min-width: 1500px; white-space: nowrap;">
           <thead>
             <tr>
               <th>Date</th>
@@ -216,12 +233,13 @@
               <th>Gross P&L</th>
               <th>Charges</th>
               <th>Net P&L</th>
+              <th>Risk-Capped P&L</th>
               <th>Status</th>
               <th>Exit Reason</th>
             </tr>
           </thead>
           <tbody id="live-executions-tbody">
-            <tr><td colspan="19" class="text-center text-muted py-4">No live trades today.</td></tr>
+            <tr><td colspan="20" class="text-center text-muted py-4">No live trades today.</td></tr>
           </tbody>
         </table>
       </div>
@@ -272,17 +290,16 @@
 
   function fetchRiskConfig() {
     const amt = parseFloat(document.getElementById('investment-amount').value) || 10000;
-    const riskPct = parseFloat(document.getElementById('paper-risk-pct').value) || 2;
-    fetch('/api/paper-trade/risk-config?investment_amount=' + encodeURIComponent(amt) + '&risk_percent=' + encodeURIComponent(riskPct))
+    const riskAmount = parseFloat(document.getElementById('paper-risk-amount').value) || 300;
+    fetch('/api/paper-trade/risk-config?investment_amount=' + encodeURIComponent(amt) + '&risk_amount=' + encodeURIComponent(riskAmount))
       .then(r => r.json())
       .then(data => {
-        document.getElementById('max-risk-trade').textContent = data.max_risk_per_trade != null ? fmtNum(data.max_risk_per_trade) : '—';
-        document.getElementById('daily-loss-limit').textContent = data.daily_loss_limit != null ? fmtNum(data.daily_loss_limit) : '—';
+        const dailyInput = document.getElementById('paper-daily-loss-limit');
+        if (dailyInput && (!dailyInput.value || Number(dailyInput.value) <= 0)) {
+          dailyInput.value = data.daily_loss_limit != null ? Number(data.daily_loss_limit) : 3000;
+        }
       })
-      .catch(() => {
-        document.getElementById('max-risk-trade').textContent = '—';
-        document.getElementById('daily-loss-limit').textContent = '—';
-      });
+      .catch(() => {});
   }
 
   function fetchBalance() {
@@ -333,6 +350,7 @@
       try {
         const paperTrades = (paperData && paperData.trades) ? paperData.trades : [];
         const liveTrades = (liveData && liveData.trades) ? liveData.trades : [];
+        updateOverallStatus(paperTrades, liveTrades);
         const sessions = (sessionsData && sessionsData.sessions) ? sessionsData.sessions : [];
         var modeKey = function(s) { return (s.execution_mode || s.mode || '').toUpperCase(); };
         const paperOpen = sessions.filter(s => modeKey(s) === 'PAPER' && s.status === 'ACTIVE' && s.current_trade);
@@ -341,6 +359,7 @@
         const liveOpen = sessions.filter(s => modeKey(s) === 'LIVE' && s.status === 'ACTIVE' && s.current_trade);
         const liveWaiting = sessions.filter(s => modeKey(s) === 'LIVE' && s.status === 'ACTIVE' && !s.current_trade);
         const liveActive = sessions.filter(s => modeKey(s) === 'LIVE' && s.status === 'ACTIVE');
+        updateCooldownBadge(sessions);
         
         if (paperOpen.length > 0) optimisticRows = optimisticRows.filter(o => (o.mode || 'PAPER') !== 'PAPER');
         if (liveOpen.length > 0) optimisticRows = optimisticRows.filter(o => (o.mode || 'PAPER') !== 'LIVE');
@@ -393,6 +412,81 @@
       if (aiEl) aiEl.textContent = 'Next AI check: —';
       // Keep last-rendered table while reconnecting.
     });
+  }
+
+  function updateCooldownBadge(sessions) {
+    const badge = document.getElementById('cooldown-active-badge');
+    if (!badge) return;
+    const now = new Date();
+    let nearest = null;
+    let nearestMode = null;
+    let nearestSessionId = null;
+    (sessions || []).forEach(s => {
+      if ((s.status || '').toUpperCase() !== 'ACTIVE') return;
+      if (!s.cooldown_until) return;
+      const dt = new Date(s.cooldown_until);
+      if (isNaN(dt.getTime())) return;
+      if (dt <= now) return;
+      if (!nearest || dt < nearest) {
+        nearest = dt;
+        nearestMode = ((s.execution_mode || s.mode || '') + '').toUpperCase() || 'SESSION';
+        nearestSessionId = s.sessionId || s.session_id || null;
+      }
+    });
+    if (!nearest) {
+      badge.style.display = 'none';
+      badge.dataset.sessionId = '';
+      badge.style.cursor = '';
+      badge.title = '';
+      return;
+    }
+    const t = nearest.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    badge.textContent = `${nearestMode} COOLDOWN ACTIVE until ${t} (Click to reset)`;
+    badge.style.display = '';
+    badge.dataset.sessionId = nearestSessionId || '';
+    badge.style.cursor = nearestSessionId ? 'pointer' : '';
+    badge.title = nearestSessionId ? 'Click to reset cooldown now' : '';
+  }
+
+  function sumNetPnl(trades) {
+    if (!Array.isArray(trades)) return 0;
+    return trades.reduce((acc, t) => {
+      const net = t && t.net_pnl != null ? Number(t.net_pnl) : (t && t.pnl != null ? Number(t.pnl) : 0);
+      return acc + (isNaN(net) ? 0 : net);
+    }, 0);
+  }
+
+  function applyPnlColor(el, value) {
+    if (!el) return;
+    el.classList.remove('text-success', 'text-danger');
+    if (value > 0) el.classList.add('text-success');
+    else if (value < 0) el.classList.add('text-danger');
+  }
+
+  function updateOverallStatus(paperTrades, liveTrades) {
+    const paperNet = sumNetPnl(paperTrades);
+    const liveNet = sumNetPnl(liveTrades);
+    const totalNet = paperNet + liveNet;
+    const tradesCount = (Array.isArray(paperTrades) ? paperTrades.length : 0) + (Array.isArray(liveTrades) ? liveTrades.length : 0);
+
+    const countEl = document.getElementById('overall-trades-count');
+    const paperEl = document.getElementById('overall-paper-net');
+    const liveEl = document.getElementById('overall-live-net');
+    const totalEl = document.getElementById('overall-total-net');
+
+    if (countEl) countEl.textContent = `${tradesCount} trade${tradesCount === 1 ? '' : 's'}`;
+    if (paperEl) {
+      paperEl.textContent = fmtNum(paperNet);
+      applyPnlColor(paperEl, paperNet);
+    }
+    if (liveEl) {
+      liveEl.textContent = fmtNum(liveNet);
+      applyPnlColor(liveEl, liveNet);
+    }
+    if (totalEl) {
+      totalEl.textContent = fmtNum(totalNet);
+      applyPnlColor(totalEl, totalNet);
+    }
   }
 
   function updateEngineStatusUI() {
@@ -467,6 +561,8 @@
     const statusHtml = r.status_badge || statusBadge(r.status);
     const grossClass = r.gross_pnl_class != null ? r.gross_pnl_class : pnlClass(r.gross_pnl_raw);
     const netClass = r.net_pnl_class != null ? r.net_pnl_class : pnlClass(r.net_pnl_raw);
+    const cappedClass = r.risk_capped_pnl_class != null ? r.risk_capped_pnl_class : pnlClass(r.risk_capped_pnl_raw);
+    const qtyCell = (r.qty_display != null && r.qty_display !== '') ? r.qty_display : r.qty;
     return `
       <tr>
         <td>${r.date}</td>
@@ -478,13 +574,14 @@
         <td>${r.entry_price}</td>
         <td>${r.exit_price}</td>
         <td>${r.current_price}</td>
-        <td>${r.qty}</td>
+        <td>${qtyCell}</td>
         <td>${r.price_per_lot}</td>
         <td>${r.capital_used}</td>
         <td>${r.balance_left}</td>
         <td class="${grossClass}">${r.gross_pnl}</td>
         <td>${r.charges}</td>
         <td class="${netClass}">${r.net_pnl}</td>
+        <td class="${cappedClass}">${r.risk_capped_pnl}</td>
         <td>${statusHtml}</td>
         <td>${r.exit_reason}</td>
       </tr>
@@ -493,6 +590,60 @@
 
   function buildRowsForMode(mode, closedTrades, openSessions, waitingCount, allActiveSessions) {
     const rows = [];
+
+    function formatLots(qty, lotSize) {
+      const q = Number(qty);
+      const ls = Number(lotSize);
+      if (!isFinite(q) || q <= 0 || !isFinite(ls) || ls <= 0) return null;
+      const lots = q / ls;
+      if (!isFinite(lots) || lots <= 0) return null;
+      // Only render lots when quantity is a valid full-lot multiple.
+      // Legacy rows may contain non-multiple qty (older paper simulator behavior).
+      if (!Number.isInteger(lots)) return null;
+      const lotsStr = String(lots);
+      return `${lotsStr} lot${lots === 1 ? '' : 's'} (${q})`;
+    }
+    function toNum(v) {
+      const n = Number(v);
+      return isFinite(n) ? n : null;
+    }
+    function round2(v) {
+      return Math.round((v + Number.EPSILON) * 100) / 100;
+    }
+
+    // Normalize legacy balance values per session for closed rows.
+    // Some older records can be inconsistent; we derive a stable running balance
+    // from net P&L when possible.
+    const bySession = {};
+    (closedTrades || []).forEach(t => {
+      const sid = t.session_id || t.sessionId || '__NO_SESSION__';
+      if (!bySession[sid]) bySession[sid] = [];
+      bySession[sid].push(t);
+    });
+    Object.values(bySession).forEach(group => {
+      group.sort((a, b) => String(a.entry_time || '').localeCompare(String(b.entry_time || '')));
+      let runningBalance = null;
+      group.forEach((t, idx) => {
+        const net = toNum(t.net_pnl != null ? t.net_pnl : t.pnl);
+        let bal = toNum(t.balance_left);
+        if (idx === 0) {
+          if (bal != null) runningBalance = bal;
+          t._computed_balance_left = bal;
+          return;
+        }
+        if (runningBalance != null && net != null) {
+          const expected = round2(runningBalance + net);
+          if (bal == null || Math.abs(bal - expected) > 1.5) {
+            bal = expected;
+          }
+          runningBalance = bal;
+          t._computed_balance_left = bal;
+          return;
+        }
+        if (bal != null) runningBalance = bal;
+        t._computed_balance_left = bal;
+      });
+    });
     
     // Add sessions waiting to enter (no current_trade yet)
     allActiveSessions.forEach(s => {
@@ -503,6 +654,10 @@
       const rec = s.recommendation || {};
       const recPremium = rec.premium != null ? Number(rec.premium) : null;
       const recLotSize = rec.lotSize || rec.lot_size || '—';
+      const recLots = rec.positionSizeLots || rec.position_size_lots || null;
+      const waitingQtyDisplay = (recLots != null && recLotSize !== '—')
+        ? `${recLots} lot${Number(recLots) === 1 ? '' : 's'}`
+        : String(recLotSize);
       rows.push({
         date: new Date().toISOString().split('T')[0],
         ce_pe: rec.optionType || rec.ce_pe || rec.direction || '—',
@@ -514,16 +669,21 @@
         exit_price: '—',
         current_price: recPremium != null && !isNaN(recPremium) ? fmtNum(recPremium) : '—',
         qty: recLotSize,
+        qty_display: waitingQtyDisplay,
         price_per_lot: '—',
         capital_used: '—',
         balance_left: s.virtual_balance != null ? fmtNum(s.virtual_balance) : '—',
         gross_pnl: '—',
         charges: '—',
         net_pnl: '—',
+        risk_capped_pnl: '—',
         gross_pnl_raw: null,
         net_pnl_raw: null,
+        risk_capped_pnl_raw: null,
         exit_reason: '—',
-        status_badge: '<span class="badge bg-info text-dark">Waiting to enter</span>'
+        status_badge: '<span class="badge bg-info text-dark">Waiting to enter</span>',
+        sort_priority: 3,
+        sort_ts: Number(new Date(s.createdAt || Date.now()))
       });
     });
     
@@ -536,6 +696,7 @@
       const entryPrice = t.entry_price;
       const qty = t.qty;
       const lotSize = s.lot_size || rec.lot_size || rec.lotSize || 25;
+      const lotsDisplay = formatLots(qty, lotSize);
       const currentLtp = (s.current_ltp != null && s.current_ltp > 0) ? s.current_ltp : entryPrice;
       const side = (t.side || 'BUY').toUpperCase();
       
@@ -556,16 +717,21 @@
         exit_price: '—',
         current_price: currentLtp != null ? fmtNum(currentLtp) : '—',
         qty: qty || 0,
+        qty_display: lotsDisplay || (qty || 0),
         price_per_lot: entryPrice != null && lotSize ? fmtNum(entryPrice * lotSize) : '—',
         capital_used: entryPrice != null && qty ? fmtNum(entryPrice * qty) : '—',
         balance_left: s.virtual_balance != null ? fmtNum(s.virtual_balance) : '—',
         gross_pnl: grossPnl != null ? (grossPnl >= 0 ? fmtNum(grossPnl) : '-' + fmtNum(Math.abs(grossPnl))) : '—',
         charges: '—',
         net_pnl: grossPnl != null ? (grossPnl >= 0 ? fmtNum(grossPnl) : '-' + fmtNum(Math.abs(grossPnl))) : '—',
+        risk_capped_pnl: '—',
         gross_pnl_raw: grossPnl,
         net_pnl_raw: grossPnl,
+        risk_capped_pnl_raw: null,
         exit_reason: '—',
-        status_badge: '<span class="badge bg-warning text-dark">OPEN</span>'
+        status_badge: '<span class="badge bg-warning text-dark">OPEN</span>',
+        sort_priority: 2,
+        sort_ts: Number(new Date(t.entry_time || s.createdAt || Date.now()))
       });
     });
     
@@ -574,12 +740,25 @@
       const entryPrice = t.entry_price;
       const exitPrice = t.exit_price;
       const qty = t.qty || 0;
-      const pnl = t.pnl != null ? Number(t.pnl) : null;
+      const charges = t.charges != null ? Number(t.charges) : null;
+      const netPnl = t.net_pnl != null ? Number(t.net_pnl) : (t.pnl != null ? Number(t.pnl) : null);
+      const riskCappedPnl = t.risk_capped_pnl != null ? Number(t.risk_capped_pnl) : netPnl;
+      let grossPnl = t.gross_pnl != null ? Number(t.gross_pnl) : null;
+      // Backward compatibility: older records may have gross_pnl copied from net pnl.
+      if (grossPnl == null && netPnl != null && charges != null) {
+        grossPnl = netPnl + charges;
+      } else if (
+        grossPnl != null && netPnl != null && charges != null &&
+        Math.abs(grossPnl - netPnl) < 0.01 && Math.abs(charges) > 0.01
+      ) {
+        grossPnl = netPnl + charges;
+      }
       const parsedLotSize = t.lot_size != null ? Number(t.lot_size) : null;
       const inferredLotSize = (!parsedLotSize && qty)
         ? ((Number(qty) % 25 === 0) ? 25 : ((Number(qty) % 15 === 0) ? 15 : null))
         : null;
       const lotSize = parsedLotSize || inferredLotSize;
+      const lotsDisplay = formatLots(qty, lotSize);
       const pricePerLot = t.price_per_lot != null
         ? Number(t.price_per_lot)
         : ((entryPrice != null && lotSize) ? (Number(entryPrice) * lotSize) : null);
@@ -597,23 +776,31 @@
         exit_price: fmtNum(exitPrice),
         current_price: '—',
         qty: qty,
+        qty_display: lotsDisplay || qty,
         price_per_lot: pricePerLot != null && !isNaN(pricePerLot) ? fmtNum(pricePerLot) : '—',
         capital_used: capitalUsed != null && !isNaN(capitalUsed) ? fmtNum(capitalUsed) : '—',
-        balance_left: t.balance_left != null ? fmtNum(t.balance_left) : '—',
-        gross_pnl: pnl != null ? (pnl >= 0 ? fmtNum(pnl) : '-' + fmtNum(Math.abs(pnl))) : '—',
-        charges: t.charges != null ? fmtNum(t.charges) : '—',
-        net_pnl: pnl != null ? (pnl >= 0 ? fmtNum(pnl) : '-' + fmtNum(Math.abs(pnl))) : '—',
-        gross_pnl_raw: pnl,
-        net_pnl_raw: pnl,
+        balance_left: t._computed_balance_left != null ? fmtNum(t._computed_balance_left) : (t.balance_left != null ? fmtNum(t.balance_left) : '—'),
+        gross_pnl: grossPnl != null ? (grossPnl >= 0 ? fmtNum(grossPnl) : '-' + fmtNum(Math.abs(grossPnl))) : '—',
+        charges: charges != null ? fmtNum(charges) : '—',
+        net_pnl: netPnl != null ? (netPnl >= 0 ? fmtNum(netPnl) : '-' + fmtNum(Math.abs(netPnl))) : '—',
+        risk_capped_pnl: riskCappedPnl != null ? (riskCappedPnl >= 0 ? fmtNum(riskCappedPnl) : '-' + fmtNum(Math.abs(riskCappedPnl))) : '—',
+        gross_pnl_raw: grossPnl,
+        net_pnl_raw: netPnl,
+        risk_capped_pnl_raw: riskCappedPnl,
         exit_reason: t.exit_reason || '—',
-        status_badge: '<span class="badge bg-secondary">CLOSED</span>'
+        status_badge: '<span class="badge bg-secondary">CLOSED</span>',
+        sort_priority: 1,
+        sort_ts: Number(new Date(t.entry_time || t.exit_time || Date.now()))
       });
     });
     
     rows.sort((a, b) => {
-      const at = (a.entry_time === '—' ? '' : a.entry_time) + (a.date || '');
-      const bt = (b.entry_time === '—' ? '' : b.entry_time) + (b.date || '');
-      return bt.localeCompare(at);
+      const aPriority = Number(a.sort_priority || 0);
+      const bPriority = Number(b.sort_priority || 0);
+      if (bPriority !== aPriority) return bPriority - aPriority;
+      const aTs = Number(a.sort_ts || 0);
+      const bTs = Number(b.sort_ts || 0);
+      return bTs - aTs;
     });
     return rows;
   }
@@ -640,7 +827,7 @@
     }
     countEl.textContent = rows.length;
     if (rows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="19" class="text-center text-muted py-4">No ' + prefix.toLowerCase() + ' trades today.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="20" class="text-center text-muted py-4">No ' + prefix.toLowerCase() + ' trades today.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(rowToBacktest).join('');
@@ -673,8 +860,8 @@
 
   document.getElementById('investment-amount').addEventListener('input', fetchRiskConfig);
   document.getElementById('investment-amount').addEventListener('change', fetchRiskConfig);
-  document.getElementById('paper-risk-pct').addEventListener('input', fetchRiskConfig);
-  document.getElementById('paper-risk-pct').addEventListener('change', fetchRiskConfig);
+  document.getElementById('paper-risk-amount').addEventListener('input', fetchRiskConfig);
+  document.getElementById('paper-risk-amount').addEventListener('change', fetchRiskConfig);
 
   document.getElementById('paper-enable-ai-switching').addEventListener('change', function() {
     var strategySelect = document.getElementById('paper-strategy');
@@ -699,11 +886,35 @@
       .finally(() => { if (btn) btn.disabled = false; });
   }
 
+  function resetCooldownFromBadge(btn) {
+    const sessionId = (btn && btn.dataset && btn.dataset.sessionId) ? btn.dataset.sessionId : null;
+    if (!sessionId) return;
+    btn.style.pointerEvents = 'none';
+    fetch('/api/trade-sessions/' + encodeURIComponent(sessionId) + '/cooldown-reset', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        const el = document.getElementById('paper-trade-status');
+        if (el) {
+          if (data && data.ok) el.innerHTML = '<span class="text-success">Cooldown reset successfully.</span>';
+          else el.innerHTML = '<span class="text-danger">' + ((data && data.error) || 'Failed to reset cooldown') + '</span>';
+        }
+        runRefresh();
+      })
+      .catch(() => {
+        const el = document.getElementById('paper-trade-status');
+        if (el) el.innerHTML = '<span class="text-danger">Cooldown reset request failed</span>';
+      })
+      .finally(() => { btn.style.pointerEvents = ''; });
+  }
+
   document.getElementById('paper-stop-btn').addEventListener('click', function() {
     stopSession(activePaperSessionId, 'paper-trade-status', 'Paper', this);
   });
   document.getElementById('live-stop-btn').addEventListener('click', function() {
     stopSession(activeLiveSessionId, 'paper-trade-status', 'Live', this);
+  });
+  document.getElementById('cooldown-active-badge').addEventListener('click', function() {
+    resetCooldownFromBadge(this);
   });
 
   document.getElementById('paper-trade-btn').addEventListener('click', function() {
@@ -711,6 +922,8 @@
     const status = document.getElementById('paper-trade-status');
     const instrument = document.getElementById('paper-instrument').value;
     const investmentAmount = parseFloat(document.getElementById('investment-amount').value) || 10000;
+    const riskAmount = parseFloat(document.getElementById('paper-risk-amount').value) || 300;
+    const dailyLossLimit = parseFloat(document.getElementById('paper-daily-loss-limit').value) || 3000;
     const mode = getTradeMode();
     const isLive = mode === 'LIVE';
     const today = new Date().toISOString().slice(0, 10);
@@ -724,6 +937,8 @@
       body: JSON.stringify({
         instrument: instrument,
         investment_amount: investmentAmount,
+        risk_amount_per_trade: riskAmount,
+        daily_loss_limit: dailyLossLimit,
         ai_auto_switching_enabled: aiEnabled
       })
     })

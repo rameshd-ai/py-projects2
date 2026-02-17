@@ -9,6 +9,8 @@ from datetime import datetime, timedelta
 from typing import Any
 
 logger = logging.getLogger(__name__)
+MIN_AI_CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
+MIN_AI_CONFIDENCE_REQUIRED = "medium"
 
 # Cache for AI market analysis (avoid calling GPT every candle)
 _ai_entry_cache = {
@@ -32,68 +34,84 @@ def get_ai_market_analysis(
     """
     try:
         from datetime import datetime as dt
+
         now = dt.now()
-        
+
         # Check cache validity
         if not force_refresh and _ai_entry_cache["timestamp"]:
             age = (now - _ai_entry_cache["timestamp"]).total_seconds()
             if age < _ai_entry_cache["ttl_seconds"]:
                 logger.debug(f"[AI CACHE] Using cached analysis (age: {age:.0f}s)")
                 return {
+                    "approved": True,
                     "bias": _ai_entry_cache["bias"],
                     "conviction": _ai_entry_cache["conviction"],
-                    "reasoning": _ai_entry_cache["reasoning"]
+                    "reasoning": _ai_entry_cache["reasoning"],
                 }
-        
+
         # Cache expired or force refresh - call AI
         logger.info(f"[AI ENTRY] Calling GPT for market analysis (instrument: {instrument})")
-        
+
         # Import here to avoid circular dependencies
         from engine.ai_strategy_advisor import get_ai_strategy_recommendation
-        
+
         # Build context for AI
         context = {
+            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "nifty": {"price": current_price, "change_pct": 0.0},
+            "banknifty": {"price": current_price, "change_pct": 0.0},
+            "vix": None,
             "instrument": instrument,
             "current_price": current_price,
             "recent_candles": recent_candles[-10:] if recent_candles and len(recent_candles) >= 10 else recent_candles,
-            "time": now.strftime("%H:%M")
+            "time": now.strftime("%H:%M"),
         }
-        
+
         # Get AI recommendation
         ai_rec = get_ai_strategy_recommendation(context, current_strategy=None)
-        
-        if ai_rec:
-            bias = ai_rec.get("market_bias", "neutral")
-            confidence = ai_rec.get("confidence", "medium")
-            reasoning = ai_rec.get("reasoning", "AI analysis complete")
-            
-            # Update cache
-            _ai_entry_cache["bias"] = bias
-            _ai_entry_cache["conviction"] = confidence
-            _ai_entry_cache["reasoning"] = reasoning[:200]  # Truncate
-            _ai_entry_cache["timestamp"] = now
-            
-            logger.info(f"[AI ENTRY] ✅ Bias: {bias} | Conviction: {confidence} | Reasoning: {reasoning[:100]}...")
-            
+        if not ai_rec or ai_rec.get("rejected"):
+            reason = (ai_rec or {}).get("reasoning") if isinstance(ai_rec, dict) else "AI unavailable"
             return {
-                "bias": bias,
-                "conviction": confidence,
-                "reasoning": reasoning
-            }
-        else:
-            logger.warning("[AI ENTRY] ⚠️ GPT returned no recommendation, using neutral bias")
-            return {
-                "bias": "neutral",
+                "approved": False,
+                "bias": "reject",
                 "conviction": "low",
-                "reasoning": "AI unavailable"
+                "reasoning": reason or "AI recommendation rejected",
             }
-            
-    except Exception as e:
-        logger.warning(f"[AI ENTRY] ❌ GPT call failed: {e}, using cached/neutral bias")
+
+        bias = str(ai_rec.get("market_bias", "neutral"))
+        confidence = str(ai_rec.get("confidence", "low")).lower()
+        reasoning = str(ai_rec.get("reasoning", "AI analysis complete"))
+
+        if MIN_AI_CONFIDENCE_ORDER.get(confidence, -1) < MIN_AI_CONFIDENCE_ORDER.get(MIN_AI_CONFIDENCE_REQUIRED, 1):
+            return {
+                "approved": False,
+                "bias": "reject",
+                "conviction": confidence,
+                "reasoning": f"AI confidence below threshold: {confidence}",
+            }
+
+        # Update cache
+        _ai_entry_cache["bias"] = bias
+        _ai_entry_cache["conviction"] = confidence
+        _ai_entry_cache["reasoning"] = reasoning[:200]  # Truncate
+        _ai_entry_cache["timestamp"] = now
+
+        logger.info(f"[AI ENTRY] ✅ Bias: {bias} | Conviction: {confidence} | Reasoning: {reasoning[:100]}...")
+
         return {
-            "bias": _ai_entry_cache.get("bias", "neutral"),
+            "approved": True,
+            "bias": bias,
+            "conviction": confidence,
+            "reasoning": reasoning,
+        }
+
+    except Exception as e:
+        logger.warning(f"[AI ENTRY] ❌ GPT call failed: {e}. Rejecting trade.")
+        return {
+            "approved": False,
+            "bias": "reject",
             "conviction": "low",
-            "reasoning": f"AI error: {str(e)[:100]}"
+            "reasoning": f"AI exception: {str(e)[:120]}",
         }
 
 
@@ -119,8 +137,13 @@ def ai_validate_entry(
             force_refresh=False
         )
         
-        bias = ai_analysis["bias"].lower()
-        conviction = ai_analysis["conviction"].lower()
+        if not ai_analysis.get("approved", False):
+            return False, f"❌ AI REJECT: {ai_analysis.get('reasoning', 'AI unavailable')}"
+
+        bias = str(ai_analysis["bias"]).lower()
+        conviction = str(ai_analysis["conviction"]).lower()
+        if MIN_AI_CONFIDENCE_ORDER.get(conviction, -1) < MIN_AI_CONFIDENCE_ORDER.get(MIN_AI_CONFIDENCE_REQUIRED, 1):
+            return False, f"❌ AI confidence below threshold ({conviction})"
         
         # === SIMPLE SAFETY FILTER - REJECT ONLY OBVIOUS CONFLICTS ===
         
@@ -145,9 +168,9 @@ def ai_validate_entry(
             return True, reason
                 
     except Exception as e:
-        logger.warning(f"[AI ENTRY] AI validation error: {e}, defaulting to APPROVE")
-        # On error, APPROVE (don't block trading)
-        return True, f"⚠️ AI unavailable, allowing entry"
+        logger.warning(f"[AI ENTRY] AI validation error: {e}, defaulting to REJECT")
+        # Fail-safe: no trade on AI errors.
+        return False, f"❌ AI validation error: {e}"
 
 
 def check_unified_entry(
@@ -246,8 +269,9 @@ def check_unified_entry(
                 logger.info(f"[AI AGENT] ✅ Entry APPROVED | {reason}")
                 
         except Exception as e:
-            logger.warning(f"[AI AGENT] AI validation error: {e}, proceeding without AI")
-            # Don't block on AI errors
+            should_enter = False
+            reason = f"❌ AI validation error: {e}"
+            logger.warning(f"[AI AGENT] AI validation error: {e}, rejecting entry")
     
     logger.debug(f"[UNIFIED ENTRY] {strategy_name} | Price: Rs.{current_price:.2f} | Enter: {should_enter} | Reason: {reason}")
     

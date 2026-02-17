@@ -62,8 +62,15 @@ def _normalize_trade_record(trade: dict[str, Any]) -> dict[str, Any]:
     if charges is None:
         charges = 0.0
     net_pnl = _to_float(trade.get("net_pnl"))
+    gross_pnl = _to_float(trade.get("gross_pnl"))
+
+    # Normalize P&L fields:
+    # - pnl is treated as net P&L in current executors.
+    # - gross_pnl may be absent in older records.
     if net_pnl is None:
-        net_pnl = (pnl - charges) if pnl is not None else None
+        net_pnl = pnl
+    if gross_pnl is None and net_pnl is not None:
+        gross_pnl = net_pnl + charges
 
     price_per_lot = _to_float(trade.get("price_per_lot"))
     if price_per_lot is None and entry_price is not None and lot_size:
@@ -88,10 +95,10 @@ def _normalize_trade_record(trade: dict[str, Any]) -> dict[str, Any]:
         "price_per_lot": price_per_lot,
         "capital_used": capital_used,
         "balance_left": _to_float(trade.get("balance_left")),
-        "gross_pnl": pnl,
+        "gross_pnl": gross_pnl,
         "charges": charges,
         "net_pnl": net_pnl,
-        "pnl": pnl,
+        "pnl": net_pnl,
         "exit_reason": trade.get("exit_reason"),
     }
 

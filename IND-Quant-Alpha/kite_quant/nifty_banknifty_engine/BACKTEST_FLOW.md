@@ -61,7 +61,7 @@ flowchart LR
         N1[BacktestDataProvider(candles)]
         N2[Strategy = STRATEGY_MAP[strategy_name]]
         N3[RiskConfig + RiskManager]
-        N4[session: daily_pnl, virtual_balance, trades_taken_today]
+        N4[session: daily_pnl, virtual_balance, daily_trade_count]
         N5[current_trade = null, trades = []]
         L3 --> N1
         I2 --> N2

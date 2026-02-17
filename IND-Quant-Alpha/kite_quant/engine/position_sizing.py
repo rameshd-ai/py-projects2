@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 # Configuration constants
 FO_POSITION_SIZE_PERCENT = 0.95  # Use 95% of capital for F&O positions (max utilization)
 STOCK_RISK_PERCENT = 2.0  # Use 2% risk per trade for stocks
-MIN_PREMIUM_FLOOR = 50.0  # Minimum realistic premium for options (Rs.)
 
 
 def calculate_fo_position_size(
@@ -35,8 +34,11 @@ def calculate_fo_position_size(
     # Use configured percentage of capital for position
     max_position_value = capital * FO_POSITION_SIZE_PERCENT
     
-    # Ensure premium is realistic
-    effective_premium = max(premium, MIN_PREMIUM_FLOOR)
+    # Use actual premium so capital utilization stays close to FO_POSITION_SIZE_PERCENT.
+    # Guard only against non-positive values.
+    effective_premium = float(premium)
+    if effective_premium <= 0:
+        return 0, 0.0, False
     
     # Calculate cost per lot
     cost_per_lot = effective_premium * lot_size
@@ -167,7 +169,9 @@ def get_min_capital_for_fo(premium: float, lot_size: int) -> float:
     Returns:
         Minimum capital required
     """
-    effective_premium = max(premium, MIN_PREMIUM_FLOOR)
+    effective_premium = float(premium)
+    if effective_premium <= 0:
+        return 0.0
     cost_per_lot = effective_premium * lot_size
     min_capital = cost_per_lot / FO_POSITION_SIZE_PERCENT
     return min_capital

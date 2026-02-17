@@ -27,6 +27,7 @@ apply_config_to_env()
 
 from engine.ai_strategy_advisor import get_market_context, get_ai_strategy_recommendation, should_switch_strategy
 from engine.trade_frequency import calculate_max_trades_per_hour, get_frequency_status, get_trade_frequency_config, save_trade_frequency_config
+from engine.reconciliation_worker import BrokerReconciliationWorker
 from engine.strategy import compute_us_bias, suggest_min_trades, consensus_signal, compute_technicals
 from engine.data_fetcher import (
     fetch_nse_quote,
@@ -41,7 +42,7 @@ from engine.data_fetcher import (
 from engine.sentiment_engine import get_sentiment_for_symbol
 from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
-from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol
+from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol, get_open_orders
 from nifty_banknifty_engine import (
     get_index_market_bias as _engine_index_bias,
     get_index_option_candidates,
@@ -62,7 +63,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timedelta, time
 from functools import lru_cache
-from threading import Lock, Thread
+from threading import Lock, RLock, Thread
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -177,6 +178,16 @@ def dashboard_live_history():
         "dashboard/live_trade_history.html",
         active_page="live_history",
         page_title="Live Trade History",
+    )
+
+
+@app.route("/dashboard/paper-history")
+def dashboard_paper_history():
+    """Paper trade history: closed PAPER trades only, same table structure as Trade page."""
+    return render_template(
+        "dashboard/paper_trade_history.html",
+        active_page="paper_history",
+        page_title="Paper Trade History",
     )
 
 
@@ -2394,13 +2405,16 @@ INTRADAY_CUTOFF_TIME = time(15, 15)  # 3:15 PM IST
 SESSION_ENGINE_INTERVAL_SEC = 60
 _SESSIONS_DIR = Path(__file__).resolve().parent / "data"
 _SESSIONS_FILE = _SESSIONS_DIR / "trade_sessions.json"
-_sessions_lock = Lock()
+_SESSIONS_HISTORY_FILE = _SESSIONS_DIR / "trade_sessions_history.json"
+# ALL SESSION MUTATIONS REQUIRE LOCK
+_sessions_lock = RLock()
 _trade_sessions: list[dict] = []
 # Engine state: running = tick runs; last_tick = timestamp of last successful tick (for UI)
 engine_state: dict = {"running": True, "last_tick": None}
 _backtest_progress: dict = {}  # Storage for live backtest progress updates
 _last_session_engine_tick_time: datetime | None = None  # For next-scan countdown (set each tick)
 _tick_lock = Lock()  # Prevents overlapping tick runs; scheduler returns immediately so "Last scan" updates every 60s
+_reconciliation_worker: BrokerReconciliationWorker | None = None
 
 
 def is_market_open(now: datetime | None = None) -> bool:
@@ -2416,14 +2430,66 @@ def is_market_open(now: datetime | None = None) -> bool:
 def _load_trade_sessions() -> None:
     """Load persisted sessions from JSON (called at startup)."""
     global _trade_sessions
-    with _sessions_lock:
-        if not _SESSIONS_FILE.exists():
-            _trade_sessions = []
-            return
+
+    def _read_sessions_file(path: Path) -> list[dict]:
+        if not path.exists():
+            return []
         try:
-            with open(_SESSIONS_FILE, encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-            _trade_sessions = data.get("sessions") or []
+            sessions = data.get("sessions") if isinstance(data, dict) else []
+            return sessions if isinstance(sessions, list) else []
+        except Exception:
+            return []
+
+    def _split_sessions(sessions: list[dict]) -> tuple[list[dict], list[dict]]:
+        def _local_session_date(session: dict) -> date | None:
+            created = session.get("createdAt")
+            if not created or not isinstance(created, str):
+                return None
+            try:
+                return datetime.fromisoformat(created.replace("Z", "+00:00")).date()
+            except Exception:
+                return None
+
+        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        today_sessions: list[dict] = []
+        history_sessions: list[dict] = []
+        for s in sessions:
+            s_date = _local_session_date(s)
+            if s_date is not None and s_date < today:
+                history_sessions.append(s)
+            else:
+                today_sessions.append(s)
+        return today_sessions, history_sessions
+
+    def _write_sessions_file(path: Path, sessions: list[dict]) -> None:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"sessions": sessions, "updatedAt": datetime.now().isoformat()}, f, indent=2)
+
+    with _sessions_lock:
+        try:
+            today_sessions = _read_sessions_file(_SESSIONS_FILE)
+            history_sessions = _read_sessions_file(_SESSIONS_HISTORY_FILE)
+
+            # Backward compatibility: if legacy file contains mixed dates, split and persist.
+            if today_sessions and not history_sessions:
+                split_today, split_history = _split_sessions(today_sessions)
+                if len(split_history) > 0:
+                    _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+                    _write_sessions_file(_SESSIONS_FILE, split_today)
+                    _write_sessions_file(_SESSIONS_HISTORY_FILE, split_history)
+                    today_sessions = split_today
+                    history_sessions = split_history
+
+            # Ensure both files exist so today's and history storage are always separate on disk.
+            _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+            if not _SESSIONS_FILE.exists():
+                _write_sessions_file(_SESSIONS_FILE, today_sessions)
+            if not _SESSIONS_HISTORY_FILE.exists():
+                _write_sessions_file(_SESSIONS_HISTORY_FILE, history_sessions)
+
+            _trade_sessions = (today_sessions or []) + (history_sessions or [])
             
             # Backward compatibility: Initialize new frequency and AI fields for old sessions
             now = datetime.now(ZoneInfo("Asia/Kolkata"))
@@ -2442,6 +2508,8 @@ def _load_trade_sessions() -> None:
                     session["last_ai_strategy_check"] = None
                 if "last_ai_recommendation" not in session:
                     session["last_ai_recommendation"] = None
+                if "risk_amount_per_trade" not in session:
+                    session["risk_amount_per_trade"] = 300.0
             
         except Exception as e:
             logger.exception("Load trade sessions error: %s", str(e))
@@ -2449,18 +2517,45 @@ def _load_trade_sessions() -> None:
 
 
 def _save_trade_sessions() -> None:
-    """Persist sessions to JSON."""
+    """Persist sessions to separate today/history JSON files."""
+    def _split_sessions(sessions: list[dict]) -> tuple[list[dict], list[dict]]:
+        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        today_sessions: list[dict] = []
+        history_sessions: list[dict] = []
+        for s in sessions:
+            s_date = _session_date(s)
+            if s_date is not None and s_date < today:
+                history_sessions.append(s)
+            else:
+                today_sessions.append(s)
+        return today_sessions, history_sessions
+
     _SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
     with _sessions_lock:
         try:
+            today_sessions, history_sessions = _split_sessions(_trade_sessions)
             with open(_SESSIONS_FILE, "w", encoding="utf-8") as f:
-                json.dump({"sessions": _trade_sessions, "updatedAt": datetime.now().isoformat()}, f, indent=2)
+                json.dump({"sessions": today_sessions, "updatedAt": datetime.now().isoformat()}, f, indent=2)
+            with open(_SESSIONS_HISTORY_FILE, "w", encoding="utf-8") as f:
+                json.dump({"sessions": history_sessions, "updatedAt": datetime.now().isoformat()}, f, indent=2)
         except Exception as e:
             logger.exception("Save trade sessions error: %s", str(e))
 
 
 # Load persisted sessions on startup (after first request may have created data dir)
 _load_trade_sessions()
+
+
+def _get_trade_sessions_ref() -> list[dict]:
+    """Return mutable session list reference for worker reconciliation."""
+    with _sessions_lock:
+        return _trade_sessions
+
+
+def _trade_sessions_snapshot() -> list[dict]:
+    """Return shallow snapshot of sessions for read-only API use."""
+    with _sessions_lock:
+        return [dict(s) for s in _trade_sessions]
 
 
 def _session_date(session: dict) -> date | None:
@@ -2568,7 +2663,6 @@ def api_ai_trade_recommendations_index():
 @app.route("/api/approve-trade", methods=["POST"])
 def api_approve_trade():
     """POST /api/approve-trade: create ACTIVE trade session. execution_mode: LIVE | PAPER | BACKTEST."""
-    global _trade_sessions
     data = request.get_json() or {}
     rec = data.get("recommendation") or data
     if not rec or not rec.get("instrument"):
@@ -2585,7 +2679,9 @@ def api_approve_trade():
             virtual_balance = DEFAULT_INVESTMENT_AMOUNT
     else:
         virtual_balance = None
-    session_id = f"ts_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
+    with _sessions_lock:
+        session_seq = len(_trade_sessions)
+    session_id = f"ts_{datetime.now().strftime('%Y%m%d%H%M%S')}_{session_seq}"
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     
     # Calculate daily loss limit from capital (virtual_balance) and settings
@@ -2601,17 +2697,24 @@ def api_approve_trade():
     # AI Auto-Switching configuration (enabled by default)
     ai_auto_switching_enabled = data.get("ai_auto_switching_enabled", True)  # Default: AI ON
     ai_check_interval = data.get("ai_check_interval_minutes", 1)  # Default: 1 min (aligned with engine)
+    try:
+        risk_amount_per_trade = float(data.get("risk_amount_per_trade") or 300.0)
+    except (TypeError, ValueError):
+        risk_amount_per_trade = 300.0
+    risk_amount_per_trade = max(1.0, risk_amount_per_trade)
     
     session = {
         "sessionId": session_id,
         "instrument": instrument,
         "mode": "INTRADAY",
+        "system_state": "NORMAL",
         "status": "ACTIVE",
         "execution_mode": execution_mode,
         "virtual_balance": virtual_balance,
-        "trades_taken_today": 0,
+        "daily_trade_count": 0,
         "daily_pnl": 0.0,
         "daily_loss_limit": daily_loss_limit,
+        "risk_amount_per_trade": risk_amount_per_trade,
         "cutoff_time": "15:15",
         "current_trade_id": None,
         "current_trade": None,
@@ -2631,7 +2734,8 @@ def api_approve_trade():
         "hourly_trade_count": 0,
         "frequency_mode": "NORMAL",
     }
-    _trade_sessions.append(session)
+    with _sessions_lock:
+        _trade_sessions.append(session)
     _save_trade_sessions()
     return jsonify({
         "ok": True,
@@ -2643,23 +2747,33 @@ def api_approve_trade():
 
 @app.route("/api/paper-trade/risk-config")
 def api_paper_trade_risk_config():
-    """GET /api/paper-trade/risk-config?investment_amount=10000&risk_percent=2. Returns risk_percent, max_risk_per_trade, daily_loss_limit. risk_percent is editable (default 2)."""
+    """GET /api/paper-trade/risk-config?investment_amount=10000&risk_amount=300.
+    Returns risk_amount, max_risk_per_trade, daily_loss_limit.
+    risk_amount is editable and defaults to 300.
+    """
     try:
         investment_amount = float(request.args.get("investment_amount") or DEFAULT_INVESTMENT_AMOUNT)
     except (TypeError, ValueError):
         investment_amount = DEFAULT_INVESTMENT_AMOUNT
     try:
-        risk_percent = float(request.args.get("risk_percent") or 2.0)
+        risk_amount = float(request.args.get("risk_amount") or 300.0)
     except (TypeError, ValueError):
-        risk_percent = 2.0
-    risk_percent = max(0.5, min(10.0, risk_percent))
+        risk_amount = 300.0
+    # Backward compatibility with older UI that still sends percent.
+    if request.args.get("risk_amount") is None and request.args.get("risk_percent") is not None:
+        try:
+            risk_percent = float(request.args.get("risk_percent"))
+            risk_amount = investment_amount * (risk_percent / 100.0)
+        except (TypeError, ValueError):
+            risk_amount = 300.0
+    risk_amount = max(1.0, round(risk_amount, 2))
     from engine.trade_frequency import get_trade_frequency_config, calculate_max_daily_loss_limit
     config = get_trade_frequency_config()
-    max_risk_per_trade = round(investment_amount * (risk_percent / 100.0), 2)
+    max_risk_per_trade = risk_amount
     daily_loss_limit = calculate_max_daily_loss_limit(investment_amount, config)
     max_daily_loss_percent = config.get("max_daily_loss_percent", 0.10)
     return jsonify({
-        "risk_percent": risk_percent,
+        "risk_amount": risk_amount,
         "max_risk_per_trade": max_risk_per_trade,
         "daily_loss_limit": round(daily_loss_limit, 2),
         "max_daily_loss_percent": round(max_daily_loss_percent * 100, 1),
@@ -2674,7 +2788,6 @@ def api_paper_trade_execute():
     Creates session with AI recommendation; engine ticks every 60s, gets candles, runs same
     entry/exit logic as backtest, and places paper order when conditions are met.
     """
-    global _trade_sessions
     data = request.get_json() or {}
     instrument = (data.get("instrument") or "").strip().upper()
     if instrument not in ("NIFTY", "BANKNIFTY"):
@@ -2690,10 +2803,23 @@ def api_paper_trade_execute():
     if not rec:
         return jsonify({"ok": False, "error": "No recommendation (e.g. neutral bias). Try again later."}), 400
 
-    session_id = f"pt_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
+    with _sessions_lock:
+        session_seq = len(_trade_sessions)
+    session_id = f"pt_{datetime.now().strftime('%Y%m%d%H%M%S')}_{session_seq}"
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     from engine.trade_frequency import calculate_max_daily_loss_limit
     daily_loss_limit = calculate_max_daily_loss_limit(investment_amount)
+    try:
+        daily_loss_limit_override = float(data.get("daily_loss_limit")) if data.get("daily_loss_limit") is not None else None
+    except (TypeError, ValueError):
+        daily_loss_limit_override = None
+    if daily_loss_limit_override is not None and daily_loss_limit_override > 0:
+        daily_loss_limit = daily_loss_limit_override
+    try:
+        risk_amount_per_trade = float(data.get("risk_amount_per_trade") or 300.0)
+    except (TypeError, ValueError):
+        risk_amount_per_trade = 300.0
+    risk_amount_per_trade = max(1.0, risk_amount_per_trade)
     tradingsymbol = rec.get("tradingsymbol") or instrument
     exchange = rec.get("exchange") or "NFO"
     lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 25)
@@ -2703,12 +2829,14 @@ def api_paper_trade_execute():
         "sessionId": session_id,
         "instrument": instrument,
         "mode": "INTRADAY",
+        "system_state": "NORMAL",
         "status": "ACTIVE",
         "execution_mode": "PAPER",
         "virtual_balance": investment_amount,
-        "trades_taken_today": 0,
+        "daily_trade_count": 0,
         "daily_pnl": 0.0,
         "daily_loss_limit": daily_loss_limit,
+        "risk_amount_per_trade": risk_amount_per_trade,
         "cutoff_time": "15:15",
         "current_trade_id": None,
         "current_trade": None,
@@ -2725,7 +2853,8 @@ def api_paper_trade_execute():
         "last_ai_strategy_check": None,
         "last_ai_recommendation": None,
     }
-    _trade_sessions.append(session)
+    with _sessions_lock:
+        _trade_sessions.append(session)
     _save_trade_sessions()
 
     rec_display = {
@@ -2754,7 +2883,6 @@ def api_live_trade_execute():
     Creates session with AI recommendation; engine ticks every 60s, gets candles, runs same
     entry/exit logic as backtest, and places real Zerodha order when conditions are met.
     """
-    global _trade_sessions
     data = request.get_json() or {}
     instrument = (data.get("instrument") or "").strip().upper()
     if instrument not in ("NIFTY", "BANKNIFTY"):
@@ -2785,10 +2913,23 @@ def api_live_trade_execute():
     if not rec:
         return jsonify({"ok": False, "error": "No recommendation (e.g. neutral bias). Try again later."}), 400
 
-    session_id = f"lt_{datetime.now().strftime('%Y%m%d%H%M%S')}_{len(_trade_sessions)}"
+    with _sessions_lock:
+        session_seq = len(_trade_sessions)
+    session_id = f"lt_{datetime.now().strftime('%Y%m%d%H%M%S')}_{session_seq}"
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     from engine.trade_frequency import calculate_max_daily_loss_limit
     daily_loss_limit = calculate_max_daily_loss_limit(investment_amount)
+    try:
+        daily_loss_limit_override = float(data.get("daily_loss_limit")) if data.get("daily_loss_limit") is not None else None
+    except (TypeError, ValueError):
+        daily_loss_limit_override = None
+    if daily_loss_limit_override is not None and daily_loss_limit_override > 0:
+        daily_loss_limit = daily_loss_limit_override
+    try:
+        risk_amount_per_trade = float(data.get("risk_amount_per_trade") or 300.0)
+    except (TypeError, ValueError):
+        risk_amount_per_trade = 300.0
+    risk_amount_per_trade = max(1.0, risk_amount_per_trade)
     tradingsymbol = rec.get("tradingsymbol") or instrument
     exchange = rec.get("exchange") or "NFO"
     lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 25)
@@ -2798,12 +2939,14 @@ def api_live_trade_execute():
         "sessionId": session_id,
         "instrument": instrument,
         "mode": "INTRADAY",
+        "system_state": "NORMAL",
         "status": "ACTIVE",
         "execution_mode": "LIVE",
         "virtual_balance": investment_amount,
-        "trades_taken_today": 0,
+        "daily_trade_count": 0,
         "daily_pnl": 0.0,
         "daily_loss_limit": daily_loss_limit,
+        "risk_amount_per_trade": risk_amount_per_trade,
         "cutoff_time": "15:15",
         "current_trade_id": None,
         "current_trade": None,
@@ -2820,7 +2963,8 @@ def api_live_trade_execute():
         "last_ai_strategy_check": None,
         "last_ai_recommendation": None,
     }
-    _trade_sessions.append(session)
+    with _sessions_lock:
+        _trade_sessions.append(session)
     _save_trade_sessions()
 
     rec_display = {
@@ -3066,7 +3210,6 @@ def _manage_trade_real(session: dict) -> bool:
     if trade.get("exit_time") and trade.get("exit_price") is not None:
         trade_id = trade.get("trade_id")
         if session.get("last_closed_trade_id") != trade_id:
-            session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1
             session["last_closed_trade_id"] = trade_id
         session["current_trade_id"] = None
         session["current_trade"] = None
@@ -3077,9 +3220,22 @@ def _manage_trade_real(session: dict) -> bool:
         strategy = get_strategy_for_session(session, strategy_data_provider, strategy_name_override=strategy_name)
         if not strategy:
             return False
+
+        # Broker-native protective stop monitor (LIVE). If stop is triggered, trade gets finalized here.
+        if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
+            try:
+                from execution.live_executor import monitor_protective_stop
+
+                handled, stop_info = call_with_timeout(monitor_protective_stop, session, timeout_seconds=8)
+                if handled and stop_info and stop_info.get("closed"):
+                    return True
+            except Exception as stop_e:
+                logger.warning("Protective stop monitor error for %s: %s", session.get("instrument"), str(stop_e))
+
         success, exit_reason = call_with_timeout(strategy.check_exit, trade, timeout_seconds=10)
         if not success or not exit_reason:
             return False
+        trade["exit_reason"] = exit_reason
         mode = (session.get("execution_mode") or "PAPER").upper()
         if mode == "LIVE":
             success, result = call_with_timeout(execute_exit, session, timeout_seconds=15)
@@ -3105,11 +3261,32 @@ def _run_session_engine_tick() -> None:
 
 def _do_session_engine_tick(now: datetime) -> None:
     """Actual tick logic (run in background thread)."""
+    with _sessions_lock:
+        _do_session_engine_tick_locked(now)
+
+
+def _do_session_engine_tick_locked(now: datetime) -> None:
+    """Actual tick logic (run in background thread)."""
     tick_start_time = now
     MAX_TICK_DURATION_SEC = 50  # Force exit if tick takes longer than 50s
     try:
         if not engine_state.get("running", True):
             logger.debug("ENGINE TICK skipped: engine not running")
+            return
+        emergency_sessions = [
+            s for s in _trade_sessions
+            if bool(
+                s.get("emergency_lockdown")
+                or s.get("engine_lockdown_requested")
+                or str(s.get("system_state") or "").upper() == "EMERGENCY"
+            )
+        ]
+        if emergency_sessions:
+            engine_state["running"] = False
+            logger.critical(
+                "ENGINE LOCKDOWN ACTIVE | sessions=%s | reason=emergency_lockdown",
+                [s.get("sessionId") for s in emergency_sessions],
+            )
             return
         if not is_market_open(now):
             logger.debug("ENGINE TICK skipped: market closed (outside 9:15-15:30 IST or weekend)")
@@ -3133,6 +3310,22 @@ def _do_session_engine_tick(now: datetime) -> None:
         if now.time() >= cutoff:
             for s in _trade_sessions:
                 if s.get("status") == "ACTIVE":
+                    # At cutoff, force-close any open trade before stopping session.
+                    if s.get("current_trade"):
+                        try:
+                            exit_ok, exit_result = call_with_timeout(execute_exit, s, timeout_seconds=20)
+                            if not exit_ok or not (exit_result and exit_result.get("success")):
+                                logger.warning(
+                                    "[CUTOFF] Forced exit failed/timed out | session=%s | result=%s",
+                                    s.get("sessionId"),
+                                    exit_result,
+                                )
+                        except Exception as exit_e:
+                            logger.warning(
+                                "[CUTOFF] Forced exit error | session=%s | error=%s",
+                                s.get("sessionId"),
+                                str(exit_e),
+                            )
                     s["status"] = "STOPPED"
                     s["stop_reason"] = "CUTOFF_TIME"
                     s["stoppedAt"] = now.isoformat()
@@ -3177,42 +3370,42 @@ def _do_session_engine_tick(now: datetime) -> None:
             session["current_hour_block"] = current_hour
             session["hourly_trade_count"] = 0
             logger.info(f"[FREQ] Hour changed to {current_hour}, resetting hourly count for {session.get('instrument')}")
-        
-        daily_limit = session.get("daily_loss_limit")
-        # Ensure numeric types so we don't stop sessions due to type issues
-        try:
-            daily_limit_f = float(daily_limit) if daily_limit is not None else None
-        except Exception:
-            daily_limit_f = None
-        daily_pnl_raw = session.get("daily_pnl") or 0.0
-        try:
-            daily_pnl_f = float(daily_pnl_raw)
-        except Exception:
-            logger.warning(
-                "[SESSION] Invalid daily_pnl type for %s: %r (resetting to 0.0)",
-                session.get("sessionId"),
-                daily_pnl_raw,
-            )
-            daily_pnl_f = 0.0
-            session["daily_pnl"] = 0.0
-
-        if daily_limit_f is not None and daily_pnl_f <= -daily_limit_f:
-            session["status"] = "STOPPED"
-            session["stop_reason"] = "DAILY_LOSS_LIMIT"
-            session["stoppedAt"] = now.isoformat()
-            logger.info(
-                "[SESSION STOPPED] %s | reason=DAILY_LOSS_LIMIT | daily_pnl=%.2f | limit=%.2f",
-                session.get("sessionId"),
-                daily_pnl_f,
-                daily_limit_f,
-            )
-            continue
         if session.get("current_trade_id"):
             try:
                 if _manage_trade_real(session):
                     _save_trade_sessions()
             except Exception as e:
                 logger.exception("Engine tick manage trade error for %s: %s", session.get("instrument"), str(e))
+            continue
+
+        # Mandatory centralized risk pre-entry gate (single source of truth).
+        try:
+            from engine.risk_engine import evaluate_entry
+
+            risk_decision = evaluate_entry(session, now=now)
+            session.update(risk_decision.updated_session_state)
+            if session.get("status") != "ACTIVE":
+                if not session.get("stoppedAt"):
+                    session["stoppedAt"] = now.isoformat()
+                logger.info(
+                    "[SESSION STOPPED] %s | reason=%s",
+                    session.get("sessionId"),
+                    session.get("stop_reason") or "RISK_ENGINE",
+                )
+                continue
+            if not risk_decision.approved:
+                # Keep AI heartbeat fresh even when entry is blocked by risk gates
+                # (cooldown/trade caps/etc.), so UI timer does not drift into large overdue values.
+                if session.get("ai_auto_switching_enabled", False):
+                    session["last_ai_strategy_check"] = now.isoformat()
+                logger.info(
+                    "[RISK GATE] Entry blocked | %s | %s",
+                    session.get("sessionId"),
+                    "; ".join(risk_decision.errors) if risk_decision.errors else "Not approved",
+                )
+                continue
+        except Exception as e:
+            logger.exception("[RISK GATE] evaluate_entry failed for %s: %s", session.get("sessionId"), str(e))
             continue
         
         # AI Strategy Auto-Switching (if enabled)
@@ -3540,33 +3733,28 @@ def _do_session_engine_tick(now: datetime) -> None:
                     continue
                 qty = lots * lot_size
                 
-                # Cap loss at ₹300 per trade (greedy: keep full profit, limit loss)
-                MAX_LOSS_PER_TRADE = 300.0
-                # Strict daily-loss guard: don't allow new entry if remaining loss budget is below one trade risk.
-                if daily_limit_f is not None:
-                    remaining_daily_budget = daily_limit_f + min(0.0, daily_pnl_f)
-                    if remaining_daily_budget < MAX_LOSS_PER_TRADE:
-                        session["last_entry_check"]["block_reason"] = (
-                            f"Daily loss budget low (₹{remaining_daily_budget:.0f} left)"
-                        )
-                        session["last_entry_check"]["risk_approved"] = False
-                        session["last_entry_check"]["risk_reason"] = "Daily loss budget guard"
-                        logger.info(
-                            "[RISK GUARD] Entry blocked | %s | remaining_daily_budget=₹%.2f | required=₹%.2f",
-                            session.get("instrument"),
-                            remaining_daily_budget,
-                            MAX_LOSS_PER_TRADE,
-                        )
-                        continue
-                if is_nfo and stop_loss is not None and (entry_price - stop_loss) * qty > MAX_LOSS_PER_TRADE and qty > 0:
-                    stop_loss = round(entry_price - (MAX_LOSS_PER_TRADE / qty), 2)
-                    stop_loss = max(1.0, stop_loss)
-                    logger.info(f"[ORDER] Stop tightened to cap loss at ₹{MAX_LOSS_PER_TRADE:.0f} | SL: ₹{stop_loss:.2f}")
-                
                 # Log pre-execution state
                 logger.info(f"[ORDER EXECUTION] Calling execute_entry for {symbol} | Mode: {execution_mode}")
+                try:
+                    from engine.risk_engine import evaluate_entry
+
+                    pre_exec_decision = evaluate_entry(session, now=now)
+                    session.update(pre_exec_decision.updated_session_state)
+                    if not pre_exec_decision.approved:
+                        reason = "; ".join(pre_exec_decision.errors) if pre_exec_decision.errors else "Risk engine rejected entry"
+                        logger.info("[RISK GATE] Pre-exec reject | %s | %s", session.get("sessionId"), reason)
+                        session["last_entry_check"]["block_reason"] = reason
+                        session["last_entry_check"]["risk_approved"] = False
+                        if session.get("status") != "ACTIVE" and not session.get("stoppedAt"):
+                            session["stoppedAt"] = now.isoformat()
+                        continue
+                except Exception as e:
+                    logger.exception("[RISK GATE] Pre-exec evaluate_entry failed for %s: %s", session.get("sessionId"), str(e))
+                    session["last_entry_check"]["block_reason"] = "Risk engine error"
+                    session["last_entry_check"]["risk_approved"] = False
+                    continue
                 
-                call_with_timeout(
+                exec_ok, exec_result = call_with_timeout(
                     execute_entry,
                     session, symbol, side, qty,
                     price=entry_price,
@@ -3575,11 +3763,22 @@ def _do_session_engine_tick(now: datetime) -> None:
                     target=target,
                     timeout_seconds=15
                 )
+                if not exec_ok or not (exec_result and exec_result.get("success")):
+                    err = (exec_result or {}).get("error") if isinstance(exec_result, dict) else None
+                    logger.warning(
+                        "[ORDER FAILED] Entry not confirmed | %s | reason=%s",
+                        session.get("instrument"),
+                        err or "timeout/failure",
+                    )
+                    session["last_entry_check"]["block_reason"] = err or "Order not confirmed"
+                    session["last_entry_check"]["risk_approved"] = False
+                    continue
                 
                 # Log post-execution
+                actual_entry_price = ((session.get("current_trade") or {}).get("entry_price")) or entry_price
                 logger.info(
                     f"[ORDER SUCCESS] Trade executed | {symbol} | Qty: {qty} | "
-                    f"Entry: ₹{entry_price:.2f} | SL: ₹{stop_loss:.2f} | Target: ₹{target:.2f}"
+                    f"Entry: ₹{float(actual_entry_price):.2f} | SL: ₹{stop_loss:.2f} | Target: ₹{target:.2f}"
                 )
                 
                 # Increment hourly trade count after successful entry
@@ -3618,7 +3817,8 @@ def _engine_status_for_api() -> dict:
     # Next AI check: soonest among active sessions with AI switching enabled
     next_ai_check_secs = None
     if engine_running:
-        for s in _trade_sessions:
+        sessions_snapshot = _trade_sessions_snapshot()
+        for s in sessions_snapshot:
             if s.get("status") != "ACTIVE" or not s.get("ai_auto_switching_enabled", False):
                 continue
             interval_min = int(s.get("ai_check_interval_minutes") or 1)
@@ -3659,7 +3859,8 @@ def _engine_status_for_api() -> dict:
 def api_trade_sessions():
     """GET /api/trade-sessions: list all trade sessions (active and stopped) for UI; includes engine state and current_ltp."""
     out = []
-    for s in _trade_sessions:
+    sessions_snapshot = _trade_sessions_snapshot()
+    for s in sessions_snapshot:
         current_ltp = (s.get("entry_diagnostics") or {}).get("ltp")
         if s.get("current_trade"):
             sym = s.get("tradingsymbol") or (s.get("current_trade") or {}).get("symbol")
@@ -3685,7 +3886,8 @@ def _session_status_display(session: dict) -> str:
 @app.route("/api/trade-sessions/active")
 def api_trade_sessions_active():
     """GET /api/trade-sessions/active: only ACTIVE sessions with full live state for terminal UI."""
-    active = [s for s in _trade_sessions if s.get("status") == "ACTIVE"]
+    sessions_snapshot = _trade_sessions_snapshot()
+    active = [s for s in sessions_snapshot if s.get("status") == "ACTIVE"]
     out = []
     for s in active:
         rec = s.get("recommendation") or {}
@@ -3707,7 +3909,7 @@ def api_trade_sessions_active():
             "status": s.get("status"),
             "strategy_name": strategy_name or "—",
             "session_status": _session_status_display(s),
-            "trades_taken_today": s.get("trades_taken_today"),
+            "daily_trade_count": s.get("daily_trade_count", 0),
             "daily_pnl": s.get("daily_pnl"),
             "cutoff_time": s.get("cutoff_time"),
             "current_trade": s.get("current_trade"),
@@ -3729,16 +3931,16 @@ def api_trade_sessions_active():
 @app.route("/api/trade-sessions/<session_id>/kill", methods=["POST"])
 def api_trade_session_kill(session_id: str):
     """POST: close open trade immediately, set session STOPPED, persist. No further trading."""
-    global _trade_sessions
-    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
-    if not session:
-        return jsonify({"ok": False, "error": "Session not found"}), 404
-    if session.get("current_trade"):
-        try:
-            execute_exit(session)
-        except Exception:
-            pass
-    session["status"] = "STOPPED"
+    with _sessions_lock:
+        session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+        if not session:
+            return jsonify({"ok": False, "error": "Session not found"}), 404
+        if session.get("current_trade"):
+            try:
+                execute_exit(session)
+            except Exception:
+                pass
+        session["status"] = "STOPPED"
     _save_trade_sessions()
     return jsonify({"ok": True})
 
@@ -3746,12 +3948,12 @@ def api_trade_session_kill(session_id: str):
 @app.route("/api/trade-sessions/<session_id>/resume", methods=["POST"])
 def api_trade_session_resume(session_id: str):
     """POST: resume a STOPPED session, setting status to ACTIVE. Engine will start monitoring entry/exit again."""
-    global _trade_sessions
-    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
-    if not session:
-        return jsonify({"ok": False, "error": "Session not found"}), 404
-    if session.get("status") != "STOPPED":
-        return jsonify({"ok": False, "error": "Session is not stopped (current status: {})".format(session.get("status"))}), 400
+    with _sessions_lock:
+        session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+        if not session:
+            return jsonify({"ok": False, "error": "Session not found"}), 404
+        if session.get("status") != "STOPPED":
+            return jsonify({"ok": False, "error": "Session is not stopped (current status: {})".format(session.get("status"))}), 400
     # Check if cutoff time has passed
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     cutoff_str = session.get("cutoff_time") or "15:15"
@@ -3762,25 +3964,44 @@ def api_trade_session_resume(session_id: str):
             return jsonify({"ok": False, "error": "Cannot resume: cutoff time ({}) has passed".format(cutoff_str)}), 400
     except Exception:
         pass  # If cutoff parsing fails, allow resume
-    session["status"] = "ACTIVE"
-    session["resumed_at"] = now.isoformat()
-    # Reset session to today if it's from a previous day (otherwise engine will auto-stop it)
-    session_date = _session_date(session)
-    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
-    if session_date is not None and session_date < today:
-        session["createdAt"] = now.isoformat()
-        session["trades_taken_today"] = 0
-        session["daily_pnl"] = 0.0
-        logger.info("Session %s resumed - reset to today (was from %s)", session_id, session_date)
-    # Reset hourly tracking
-    session["current_hour_block"] = now.hour
-    session["hourly_trade_count"] = 0
-    session["frequency_mode"] = "NORMAL"
-    # Clear any stale diagnostics from previous run
-    session.pop("entry_diagnostics", None)
-    session.pop("last_entry_check", None)
+    with _sessions_lock:
+        session["status"] = "ACTIVE"
+        session["resumed_at"] = now.isoformat()
+        # Reset session to today if it's from a previous day (otherwise engine will auto-stop it)
+        session_date = _session_date(session)
+        today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+        if session_date is not None and session_date < today:
+            session["createdAt"] = now.isoformat()
+            session["daily_trade_count"] = 0
+            session["daily_pnl"] = 0.0
+            logger.info("Session %s resumed - reset to today (was from %s)", session_id, session_date)
+        # Reset hourly tracking
+        session["current_hour_block"] = now.hour
+        session["hourly_trade_count"] = 0
+        session["frequency_mode"] = "NORMAL"
+        # Clear any stale diagnostics from previous run
+        session.pop("entry_diagnostics", None)
+        session.pop("last_entry_check", None)
     _save_trade_sessions()
     logger.info("Session %s resumed by user", session_id)
+    return jsonify({"ok": True, "session_id": session_id})
+
+
+@app.route("/api/trade-sessions/<session_id>/cooldown-reset", methods=["POST"])
+def api_trade_session_cooldown_reset(session_id: str):
+    """POST: immediately clear cooldown and reset loss streak for an ACTIVE session."""
+    with _sessions_lock:
+        session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+        if not session:
+            return jsonify({"ok": False, "error": "Session not found"}), 404
+        if (session.get("status") or "").upper() != "ACTIVE":
+            return jsonify({"ok": False, "error": "Cooldown reset allowed only for ACTIVE sessions"}), 400
+
+        session["cooldown_until"] = None
+        session["consecutive_losses"] = 0
+        session["last_manual_cooldown_reset_at"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+    _save_trade_sessions()
+    logger.info("Cooldown reset by user for session %s", session_id)
     return jsonify({"ok": True, "session_id": session_id})
 
 
@@ -3788,15 +4009,16 @@ def api_trade_session_resume(session_id: str):
 def api_trade_session_delete(session_id: str):
     """POST: permanently delete a session. Can only delete STOPPED sessions."""
     global _trade_sessions
-    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
-    if not session:
-        return jsonify({"ok": False, "error": "Session not found"}), 404
-    if session.get("status") != "STOPPED":
-        return jsonify({"ok": False, "error": "Can only delete stopped sessions. Stop the session first."}), 400
-    if session.get("current_trade"):
-        return jsonify({"ok": False, "error": "Session has an open trade. Close it first."}), 400
-    # Remove session from list
-    _trade_sessions = [s for s in _trade_sessions if s.get("sessionId") != session_id]
+    with _sessions_lock:
+        session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+        if not session:
+            return jsonify({"ok": False, "error": "Session not found"}), 404
+        if session.get("status") != "STOPPED":
+            return jsonify({"ok": False, "error": "Can only delete stopped sessions. Stop the session first."}), 400
+        if session.get("current_trade"):
+            return jsonify({"ok": False, "error": "Session has an open trade. Close it first."}), 400
+        # Remove session from list
+        _trade_sessions = [s for s in _trade_sessions if s.get("sessionId") != session_id]
     _save_trade_sessions()
     logger.info("Session %s deleted by user", session_id)
     return jsonify({"ok": True, "session_id": session_id})
@@ -3805,27 +4027,27 @@ def api_trade_session_delete(session_id: str):
 @app.route("/api/trade-sessions/<session_id>/ai-mode", methods=["POST"])
 def api_trade_session_ai_mode(session_id: str):
     """POST: toggle AI strategy selection mode for a session."""
-    global _trade_sessions
     data = request.get_json() or {}
-    
-    session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
-    if not session:
-        return jsonify({"ok": False, "error": "Session not found"}), 404
+    with _sessions_lock:
+        session = next((s for s in _trade_sessions if s.get("sessionId") == session_id), None)
+        if not session:
+            return jsonify({"ok": False, "error": "Session not found"}), 404
     
     ai_enabled = data.get("enabled", True)
     ai_interval = data.get("interval_minutes", 1)  # Default 1 minute (aligned with engine)
     
-    session["ai_auto_switching_enabled"] = ai_enabled
-    session["ai_check_interval_minutes"] = ai_interval
-    
-    # Reset AI state when toggling
-    if ai_enabled:
-        session["last_ai_strategy_check"] = None
-        session["last_ai_recommendation"] = None
-        session["ai_strategy_switches"] = 0
-        logger.info(f"[AI MODE] Enabled for session {session_id}, interval: {ai_interval} min")
-    else:
-        logger.info(f"[AI MODE] Disabled for session {session_id}")
+    with _sessions_lock:
+        session["ai_auto_switching_enabled"] = ai_enabled
+        session["ai_check_interval_minutes"] = ai_interval
+        
+        # Reset AI state when toggling
+        if ai_enabled:
+            session["last_ai_strategy_check"] = None
+            session["last_ai_recommendation"] = None
+            session["ai_strategy_switches"] = 0
+            logger.info(f"[AI MODE] Enabled for session {session_id}, interval: {ai_interval} min")
+        else:
+            logger.info(f"[AI MODE] Disabled for session {session_id}")
     
     _save_trade_sessions()
     
@@ -3873,7 +4095,8 @@ def api_engine_status():
     if _last_session_engine_tick_time:
         elapsed = (now - _last_session_engine_tick_time).total_seconds()
         next_scan_sec = max(0, int(SESSION_ENGINE_INTERVAL_SEC - elapsed))
-    active_count = sum(1 for s in _trade_sessions if s.get("status") == "ACTIVE")
+    sessions_snapshot = _trade_sessions_snapshot()
+    active_count = sum(1 for s in sessions_snapshot if s.get("status") == "ACTIVE")
     last_tick = engine_state.get("last_tick") or (_last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None)
     return jsonify({
         "running": engine_state.get("running", True),
@@ -3983,7 +4206,8 @@ def api_account_balance():
     mode = (request.args.get("mode") or "LIVE").upper()
     if mode not in ("LIVE", "PAPER", "BACKTEST"):
         mode = "LIVE"
-    balance, resolved_mode = get_balance_for_mode(mode, _trade_sessions)
+    sessions_snapshot = _trade_sessions_snapshot()
+    balance, resolved_mode = get_balance_for_mode(mode, sessions_snapshot)
     return jsonify({"mode": resolved_mode, "balance": round(balance, 2)})
 
 
@@ -5291,6 +5515,20 @@ try:
     logger.info("✓ Session engine scheduler started successfully")
     logger.info("✓ Tick interval: %s seconds", SESSION_ENGINE_INTERVAL_SEC)
     logger.info("✓ Auto-close enabled (runs every 1 minute)")
+    try:
+        _reconciliation_worker = BrokerReconciliationWorker(
+            get_open_orders_fn=get_open_orders,
+            get_positions_fn=get_positions,
+            get_sessions_fn=_get_trade_sessions_ref,
+            save_sessions_fn=_save_trade_sessions,
+            sessions_lock=_sessions_lock,
+            poll_min_seconds=5.0,
+            poll_max_seconds=10.0,
+        )
+        _reconciliation_worker.start()
+        logger.info("✓ Broker reconciliation worker started (5-10s)")
+    except Exception as recon_err:
+        logger.exception("Failed to start reconciliation worker: %s", str(recon_err))
     logger.info("=" * 60)
 except Exception as e:
     logger.exception("CRITICAL: Failed to start scheduler: %s", str(e))

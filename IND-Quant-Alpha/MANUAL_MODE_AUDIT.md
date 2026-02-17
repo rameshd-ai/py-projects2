@@ -64,7 +64,7 @@
 | After exit, re-selects best strategy | ✅ Implemented & working | `strategy_id, strategy_name = _pick_best_strategy(instrument)` every tick when no open trade (2809). |
 | Waits for next valid entry | ✅ Implemented & working | Same tick loop; entry only when `can_enter and entry_price` and risk approved (2810–2855). |
 | No re-approval after first approval | ✅ Implemented & working | Single `POST /api/approve-trade` creates session; scheduler drives all subsequent entries/exits. |
-| trades_taken_today increments correctly | ✅ Implemented & working | `paper_executor.exit_paper_trade` (106), `live_executor.exit_live_trade` (114), `backtest_executor.simulate_exit` (100): all set `session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1`. |
+| daily_trade_count increments correctly | ✅ Implemented & working | Trade count updates are centralized in `engine/risk_engine.py::evaluate_post_exit/register_trade_result` for live/paper/backtest flows. |
 
 ---
 
@@ -84,7 +84,7 @@
 | Requirement | Status | File / function |
 |-------------|--------|------------------|
 | LIVE places real Zerodha orders | ✅ Implemented & working | `execution/executor.execute_entry` / `execute_exit` route to `live_executor.place_live_order` / `exit_live_trade`; `engine.zerodha_client.place_order`, `get_quote(tradingsymbol, exchange=exchange)`. |
-| PAPER simulates with virtual balance | ✅ Implemented & working | `paper_executor.place_paper_trade`, `exit_paper_trade`; NFO uses `session["tradingsymbol"]` and `exchange="NFO"` for quotes; updates `session["virtual_balance"]`, `daily_pnl`, `trades_taken_today`. |
+| PAPER simulates with virtual balance | ✅ Implemented & working | `paper_executor.place_paper_trade`, `exit_paper_trade`; NFO uses `session["tradingsymbol"]` and `exchange="NFO"` for quotes; updates `session["virtual_balance"]` and risk-engine state including `daily_trade_count`. |
 | BACKTEST simulates on historical candles | ✅ Implemented & working | BACKTEST sessions skipped in `_run_session_engine_tick` (2784–2786). Backtest via separate API/flow: `backtest/backtest_engine.run_backtest_engine()` with `BacktestDataProvider`, same strategy + RiskManager. |
 | Mode switching does not change strategy logic | ✅ Implemented & working | Same `_check_entry_real`, `_manage_trade_real`, risk flow; only `execute_entry`/`execute_exit` branch by `session["execution_mode"]` (executor.py 28–35, 46–51). |
 

@@ -52,7 +52,7 @@ class RiskManager:
         daily_pnl = session.get("daily_pnl") or 0
         if daily_pnl <= -max_daily_loss:
             return False, "Daily loss limit reached"
-        taken = session.get("trades_taken_today") or 0
+        taken = session.get("daily_trade_count") or 0
         if taken >= self.config.max_trades:
             return False, "Max trades reached"
         return True, None

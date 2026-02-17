@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from engine.data_fetcher import fetch_nse_ohlc
+from engine.risk_engine import evaluate_post_exit
 from strategies.strategy_registry import STRATEGY_MAP
 from risk.risk_manager import RiskConfig, RiskManager
 from nifty_banknifty_engine.constants import nse_symbol as _nse_symbol
@@ -105,7 +106,7 @@ def run_backtest_engine(
     risk_mgr = RiskManager(config)
     session = {
         "daily_pnl": 0.0,
-        "trades_taken_today": 0,
+        "daily_trade_count": 0,
         "virtual_balance": initial_capital,
     }
     current_trade = None
@@ -126,8 +127,8 @@ def run_backtest_engine(
                 pnl = (exit_price - entry_price) * qty
                 equity += pnl
                 session["virtual_balance"] = equity
-                session["daily_pnl"] = (session.get("daily_pnl") or 0) + pnl
-                session["trades_taken_today"] = (session.get("trades_taken_today") or 0) + 1
+                risk_decision = evaluate_post_exit(session, trade_pnl=pnl)
+                session.update(risk_decision.updated_session_state)
                 trades.append({
                     "entry_time": current_trade["entry_time"],
                     "exit_time": candle.get("date", ""),

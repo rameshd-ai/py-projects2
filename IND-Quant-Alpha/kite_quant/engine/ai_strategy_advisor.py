@@ -4,9 +4,11 @@ Dynamically switches strategies based on real-time market analysis.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 try:
@@ -16,6 +18,41 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
+_GOVERNANCE_PROMPT_PATH = Path(__file__).resolve().parents[2] / "ai_governance_prompt.txt"
+MIN_CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
+MIN_CONFIDENCE_REQUIRED = "medium"
+
+
+def _load_governance_prompt() -> str:
+    """Load governance prompt text; startup must fail if missing."""
+    if not _GOVERNANCE_PROMPT_PATH.exists():
+        raise RuntimeError(
+            f"Missing mandatory governance prompt file: {_GOVERNANCE_PROMPT_PATH}"
+        )
+    text = _GOVERNANCE_PROMPT_PATH.read_text(encoding="utf-8").strip()
+    if not text:
+        raise RuntimeError(
+            f"Governance prompt file is empty: {_GOVERNANCE_PROMPT_PATH}"
+        )
+    return text
+
+
+def _reject_recommendation(reason: str) -> dict[str, Any]:
+    """Standard fail-closed AI reject payload."""
+    return {
+        "decision": "REJECT",
+        "recommended_strategy": None,
+        "confidence": "low",
+        "reasoning": reason,
+        "switch_from_current": False,
+        "market_assessment": "AI validation rejected",
+        "market_bias": "reject",
+        "rejected": True,
+    }
+
+
+# Abort system startup if governance prompt is not available.
+_GOVERNANCE_PROMPT_BOOTSTRAP = _load_governance_prompt()
 
 # All available strategies with their characteristics
 STRATEGY_PROFILES = {
@@ -145,13 +182,19 @@ def build_gpt_prompt(context: dict[str, Any], current_strategy: str | None = Non
         f"- {name}: {info['best_for']} (Requires: {info['requires']})"
         for name, info in STRATEGY_PROFILES.items()
     ])
+    nifty = (context or {}).get("nifty") or {}
+    banknifty = (context or {}).get("banknifty") or {}
+    nifty_price = nifty.get("price")
+    nifty_change = nifty.get("change_pct")
+    bank_price = banknifty.get("price")
+    bank_change = banknifty.get("change_pct")
     
     prompt = f"""You are an expert intraday trading advisor for Indian stock markets (NSE/BSE).
 
 Current Market Context:
 - Time: {context.get('timestamp')}
-- NIFTY 50: {context['nifty']['price']} ({context['nifty']['change_pct']:+.2f}%)
-- BANK NIFTY: {context['banknifty']['price']} ({context['banknifty']['change_pct']:+.2f}%)
+- NIFTY 50: {nifty_price} ({(nifty_change if nifty_change is not None else 0.0):+.2f}%)
+- BANK NIFTY: {bank_price} ({(bank_change if bank_change is not None else 0.0):+.2f}%)
 - India VIX: {context.get('vix', 'N/A')}
 """
     
@@ -201,14 +244,16 @@ def get_ai_strategy_recommendation(
     """
     if not OPENAI_AVAILABLE:
         logger.warning("OpenAI library not installed. Install with: pip install openai")
-        return None
+        return _reject_recommendation("OpenAI library not available")
     
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         logger.warning("OPENAI_API_KEY not configured. AI strategy selection disabled.")
-        return None
+        return _reject_recommendation("OPENAI_API_KEY missing")
     
     try:
+        # Must load governance prompt before every call.
+        governance_prompt = _load_governance_prompt()
         client = openai.OpenAI(api_key=api_key)
         
         prompt = build_gpt_prompt(context, current_strategy)
@@ -218,7 +263,15 @@ def get_ai_strategy_recommendation(
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # Fast and cost-effective
             messages=[
-                {"role": "system", "content": "You are an expert intraday trading advisor specializing in Indian markets."},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert intraday trading advisor specializing in Indian markets.\n\n"
+                        "You MUST obey this governance policy exactly:\n"
+                        f"{governance_prompt}\n\n"
+                        "If any rule is violated or input is insufficient, you MUST output a reject JSON."
+                    ),
+                },
                 {"role": "user", "content": prompt}
             ],
             response_format={"type": "json_object"},
@@ -227,8 +280,21 @@ def get_ai_strategy_recommendation(
         )
         
         result = response.choices[0].message.content
-        import json
-        recommendation = json.loads(result)
+        try:
+            recommendation = json.loads(result)
+        except json.JSONDecodeError as e:
+            logger.warning("[AI ADVISOR] Invalid JSON from model: %s", str(e))
+            return _reject_recommendation(f"Invalid JSON from model: {e}")
+
+        if not isinstance(recommendation, dict):
+            return _reject_recommendation("Model output is not a JSON object")
+
+        confidence = str(recommendation.get("confidence", "low")).lower()
+        if MIN_CONFIDENCE_ORDER.get(confidence, -1) < MIN_CONFIDENCE_ORDER.get(MIN_CONFIDENCE_REQUIRED, 1):
+            return _reject_recommendation(
+                f"Confidence below threshold: {confidence} < {MIN_CONFIDENCE_REQUIRED}"
+            )
+        recommendation["rejected"] = False
         
         logger.info(
             f"[AI ADVISOR] Recommendation: {recommendation.get('recommended_strategy')} "
@@ -241,7 +307,7 @@ def get_ai_strategy_recommendation(
         
     except Exception as e:
         logger.exception(f"[AI ADVISOR] Failed to get recommendation: {e}")
-        return None
+        return _reject_recommendation(f"AI exception: {e}")
 
 
 def should_switch_strategy(
@@ -254,6 +320,9 @@ def should_switch_strategy(
     Returns (should_switch, new_strategy_name)
     """
     if not recommendation:
+        return False, None
+    if recommendation.get("rejected"):
+        logger.info("[AI ADVISOR] Recommendation rejected by governance/rules")
         return False, None
     
     recommended = recommendation.get("recommended_strategy")
