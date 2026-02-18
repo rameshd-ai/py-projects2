@@ -37,12 +37,15 @@ STOP_CANCEL_CONFIRM_TIMEOUT_SEC = 8.0
 STOP_OPEN_ORDERS_POLL_TIMEOUT_SEC = 8.0
 STOP_FAILURE_EXIT_RETRIES = 3
 STOP_PLACEMENT_RETRIES = 3
+STOP_PRICE_TICK_SIZE = 0.05
+STOP_PRICE_BUFFER_TICKS = 4
 
 
 class _ZerodhaBrokerAdapter:
     """Adapter to plug Zerodha helpers into OrderManager broker protocol."""
 
     def place_order(self, request: OrderRequest) -> dict[str, Any]:
+        product = (request.metadata or {}).get("product")
         return kite_place_order(
             symbol=request.symbol,
             side=request.side,
@@ -51,6 +54,7 @@ class _ZerodhaBrokerAdapter:
             price=request.price,
             exchange=request.exchange,
             tradingsymbol=request.symbol,
+            product=product,
         )
 
     def get_order_status(self, broker_order_id: str) -> dict[str, Any]:
@@ -160,6 +164,22 @@ def _get_open_position_qty(symbol: str) -> int:
     except Exception:
         pass
     return 0
+
+
+def _get_broker_position(symbol: str) -> dict[str, Any] | None:
+    """Return the exact broker position row for symbol (if any)."""
+    sym = str(symbol or "").upper()
+    if not sym:
+        return None
+    try:
+        for p in kite_get_positions() or []:
+            if str(p.get("symbol") or "").upper() == sym:
+                qty = int(p.get("quantity") or 0)
+                if qty != 0:
+                    return p
+    except Exception:
+        return None
+    return None
 
 
 def _trigger_emergency_lockdown(session: dict, reason: str, *, symbol: str, details: dict[str, Any] | None = None) -> None:
@@ -444,7 +464,7 @@ def _finalize_live_exit(
 
 
 def _place_protective_stop_order(session: dict, qty: int, stop_loss: float | None) -> dict[str, Any]:
-    """Place broker-native protective stop order (SL-M)."""
+    """Place broker-native protective stop order using SL (F&O-safe)."""
     trade = session.get("current_trade") or {}
     symbol = trade.get("symbol") or session.get("tradingsymbol") or session.get("instrument")
     exchange = trade.get("exchange") or session.get("exchange") or "NSE"
@@ -454,12 +474,25 @@ def _place_protective_stop_order(session: dict, qty: int, stop_loss: float | Non
     if stop_loss is None or float(stop_loss) <= 0:
         return {"success": False, "error": "Invalid stop_loss for protective stop"}
     close_side = "SELL" if side == "BUY" else "BUY"
+    raw_trigger = float(stop_loss)
+    tick = float(STOP_PRICE_TICK_SIZE)
+    buffer_amt = float(STOP_PRICE_BUFFER_TICKS) * tick
+
+    # Zerodha F&O no longer accepts SL-M for many contracts.
+    # Use SL with a small protective limit buffer around trigger.
+    trigger_price = round(round(raw_trigger / tick) * tick, 2)
+    if close_side == "SELL":
+        limit_price = round(max(tick, trigger_price - buffer_amt), 2)
+    else:
+        limit_price = round(trigger_price + buffer_amt, 2)
+
     result = kite_place_order(
         symbol=symbol,
         side=close_side,
         quantity=qty,
-        order_type="SL-M",
-        trigger_price=float(stop_loss),
+        order_type="SL",
+        price=limit_price,
+        trigger_price=trigger_price,
         exchange=exchange,
         tradingsymbol=symbol,
     )
@@ -471,10 +504,11 @@ def _place_protective_stop_order(session: dict, qty: int, stop_loss: float | Non
             session["current_trade"]["stop_order_id"] = stop_order_id
             session["current_trade"]["stop_order_status"] = "OPEN"
         logger.info(
-            "LIVE PROTECTIVE STOP | placed | symbol=%s | qty=%s | trigger=%.2f | stop_order_id=%s",
+            "LIVE PROTECTIVE STOP | placed | symbol=%s | qty=%s | trigger=%.2f | limit=%.2f | stop_order_id=%s",
             symbol,
             qty,
-            float(stop_loss),
+            trigger_price,
+            limit_price,
             stop_order_id,
         )
     else:
@@ -842,27 +876,104 @@ def exit_live_trade(
     exchange = trade.get("exchange") or session.get("exchange") or "NSE"
     side = trade.get("side", "BUY")
     qty = int(trade.get("qty", 0))
-    close_side = "SELL" if side.upper() == "BUY" else "BUY"
+    broker_pos = _get_broker_position(symbol)
+    broker_qty = int((broker_pos or {}).get("quantity") or 0)
+    if broker_qty != 0:
+        close_side = "SELL" if broker_qty > 0 else "BUY"
+        qty = abs(broker_qty)
+    else:
+        close_side = "SELL" if side.upper() == "BUY" else "BUY"
+    if qty <= 0:
+        return {"success": False, "error": "Invalid exit quantity", "state": "INVALID_QTY"}
+    preferred_product = str((broker_pos or {}).get("product") or "MIS").upper()
+    if preferred_product not in {"MIS", "NRML", "CNC"}:
+        preferred_product = "MIS"
     final_reason = exit_reason_override or trade.get("exit_reason") or "MANUAL_EXIT"
-    request = OrderRequest(
-        symbol=symbol,
-        side=close_side,
-        quantity=qty,
-        order_type="MARKET",
-        price=None,
-        exchange=exchange,
-    )
-    managed = _order_manager.send_order(request)
+
+    # Safety order: cancel protective stop first. Broker can reject manual close
+    # while a pending SL protective order is still active for the same position.
+    pre_stop_res = _cancel_and_confirm_stop_order(session, trade)
+    if not pre_stop_res.get("success"):
+        session["state"] = "EXIT_PENDING_RECOVERY"
+        session["recovery_attempts"] = int(session.get("recovery_attempts") or 0) + 1
+        session["recovery_last_error"] = "Pre-exit stop cancellation confirmation failed"
+        session["recovery_last_at"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+        return {
+            "success": False,
+            "error": "Stop cancellation confirmation failed before exit",
+            "state": "PRE_EXIT_STOP_CANCEL_UNSAFE",
+            "stop_order_id": trade.get("stop_order_id") or session.get("stop_order_id"),
+            "stop_status": pre_stop_res.get("status"),
+        }
+
+    # If protective stop already flattened the position, finalize immediately.
+    open_qty_after_stop_cancel = _get_open_position_qty(symbol)
+    if open_qty_after_stop_cancel <= 0:
+        stop_order_id = str(trade.get("stop_order_id") or session.get("stop_order_id") or "").strip()
+        status_data = kite_get_order_status(stop_order_id) if stop_order_id else {"success": False}
+        stop_status = str(status_data.get("status") or pre_stop_res.get("status") or "").upper()
+        if stop_status in {"COMPLETE", "FILLED"}:
+            stop_fill_qty = int(status_data.get("filled_quantity") or trade.get("qty") or 0)
+            stop_fill_price = float(status_data.get("avg_fill_price") or trade.get("stop_loss") or trade.get("entry_price") or 0.0)
+            if stop_fill_qty > 0 and stop_fill_price > 0:
+                return {
+                    **_finalize_live_exit(session, trade, stop_fill_price, stop_fill_qty, "STOP_LOSS"),
+                    "state": "ALREADY_FLAT_BY_STOP",
+                    "order_id": stop_order_id or None,
+                }
+
+    def _send_exit_order(product: str) -> tuple[OrderRequest, Any]:
+        req = OrderRequest(
+            symbol=symbol,
+            side=close_side,
+            quantity=qty,
+            order_type="MARKET",
+            price=None,
+            exchange=exchange,
+            metadata={"product": product},
+        )
+        return req, _order_manager.send_order(req)
+
+    request, managed = _send_exit_order(preferred_product)
     logger.info(
-        "LIVE EXIT FSM | client_order_id=%s | state=%s | broker_order_id=%s",
+        "LIVE EXIT FSM | client_order_id=%s | state=%s | broker_order_id=%s | side=%s | product=%s | broker_qty=%s",
         request.client_order_id,
         managed.state.value,
         managed.broker_order_id,
+        close_side,
+        preferred_product,
+        broker_qty,
     )
     if managed.state == OrderState.REJECTED:
         err = managed.reject_reason or "Exit order rejected"
-        logger.warning("LIVE exit failed: %s", err)
-        return {"success": False, "error": err, "state": managed.state.value}
+        # Product mismatch can cause "insufficient funds" on square-off.
+        # Retry once with alternate product before failing.
+        err_u = str(err).upper()
+        retried = False
+        if "INSUFFICIENT FUNDS" in err_u:
+            fallback_product = "NRML" if preferred_product == "MIS" else "MIS"
+            request, managed = _send_exit_order(fallback_product)
+            retried = True
+            logger.warning(
+                "LIVE EXIT retrying with fallback product | client_order_id=%s | product=%s | side=%s",
+                request.client_order_id,
+                fallback_product,
+                close_side,
+            )
+            if managed.state != OrderState.REJECTED:
+                preferred_product = fallback_product
+            else:
+                err = managed.reject_reason or err
+        if managed.state == OrderState.REJECTED:
+            logger.warning("LIVE exit failed: %s", err)
+            return {
+                "success": False,
+                "error": err,
+                "state": managed.state.value,
+                "side": close_side,
+                "product": preferred_product,
+                "retried": retried,
+            }
 
     managed = _wait_for_terminal_fill(request.client_order_id)
     logger.info(
@@ -883,27 +994,6 @@ def exit_live_trade(
     exit_fill_price = float(managed.avg_fill_price or 0.0)
     if exit_fill_price <= 0:
         return {"success": False, "error": "Invalid exit fill price", "state": managed.state.value}
-
-    # Always confirm protective stop is not open before finalization.
-    stop_res = _cancel_and_confirm_stop_order(session, trade)
-    if not stop_res.get("success"):
-        session["state"] = "EXIT_PENDING_RECOVERY"
-        session["recovery_attempts"] = int(session.get("recovery_attempts") or 0) + 1
-        session["recovery_last_error"] = "Stop cancellation confirmation failed after retries"
-        session["recovery_last_at"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
-        logger.critical(
-            "LIVE EXIT | CRITICAL stop cancellation confirmation failed; blocking finalization | stop_order_id=%s | err=%s",
-            trade.get("stop_order_id") or session.get("stop_order_id"),
-            stop_res.get("error"),
-        )
-        return {
-            "success": False,
-            "error": "Stop cancellation confirmation failed after retries; finalization blocked",
-            "state": "FILLED_STOP_CANCEL_UNSAFE",
-            "order_id": managed.broker_order_id,
-            "stop_order_id": trade.get("stop_order_id") or session.get("stop_order_id"),
-            "stop_status": stop_res.get("status"),
-        }
 
     # Finalization invariant: no open position AND no open stop order.
     open_qty = _get_open_position_qty(symbol)

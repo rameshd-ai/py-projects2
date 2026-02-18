@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import time
+from datetime import date, datetime
 from typing import Any
 
 try:
@@ -107,16 +108,28 @@ def get_nfo_option_tradingsymbol(
     Return Zerodha NFO tradingsymbol for index option (e.g. NIFTY24SEP2622500CE).
     Used for LIVE index option execution. Returns None if not found.
     """
+    contract = get_nfo_option_contract(index_name, strike, option_type)
+    if not contract:
+        return None
+    return str(contract.get("tradingsymbol") or "").strip() or None
+
+
+def get_nfo_option_contract(
+    index_name: str,
+    strike: int,
+    option_type: str,
+) -> dict[str, Any] | None:
+    """
+    Return NFO option contract metadata for the requested index/strike/type.
+    Includes tradingsymbol and broker lot_size for accurate order quantity sizing.
+    """
     index_name = (index_name or "").upper().replace(" ", "")
-    if index_name == "BANKNIFTY":
-        underlying = "BANKNIFTY"
-    else:
-        underlying = "NIFTY"
+    underlying = "BANKNIFTY" if index_name == "BANKNIFTY" else "NIFTY"
     opt = (option_type or "CE").upper()
     if opt not in ("CE", "PE"):
         opt = "CE"
+    strike_str = str(int(strike))
     instruments = _load_nfo_options_cache()
-    strike_str = str(strike)
     for inst in instruments:
         ts = (inst.get("tradingsymbol") or "").strip()
         if not ts.startswith(underlying):
@@ -125,7 +138,18 @@ def get_nfo_option_tradingsymbol(
             continue
         if strike_str not in ts:
             continue
-        return ts
+        lot_size_raw = inst.get("lot_size")
+        try:
+            lot_size = int(lot_size_raw) if lot_size_raw is not None else None
+        except (TypeError, ValueError):
+            lot_size = None
+        return {
+            "tradingsymbol": ts,
+            "lot_size": lot_size,
+            "strike": strike,
+            "option_type": opt,
+            "underlying": underlying,
+        }
     return None
 
 
@@ -238,6 +262,7 @@ def place_order(
     tp: float | None = None,
     exchange: str | None = None,
     tradingsymbol: str | None = None,
+    product: str | None = None,
 ) -> dict[str, Any]:
     """
     Place order via Zerodha Kite. side: BUY | SELL.
@@ -258,8 +283,11 @@ def place_order(
         else:
             kite_order_type = "MARKET"
         transaction_type = "BUY" if side.upper() == "BUY" else "SELL"
-        product_type = "MIS"
+        product_type = str(product or "MIS").upper()
+        if product_type not in {"MIS", "NRML", "CNC"}:
+            product_type = "MIS"
         order_params = {
+            "variety": "regular",
             "exchange": use_exchange,
             "tradingsymbol": use_tradingsymbol,
             "transaction_type": transaction_type,
@@ -371,6 +399,85 @@ def get_open_orders() -> list[dict[str, Any]]:
         return []
 
 
+def _extract_order_date_str(raw_ts: Any) -> str | None:
+    """Best-effort parse of broker timestamp to YYYY-MM-DD."""
+    if raw_ts is None:
+        return None
+    s = str(raw_ts).strip()
+    if not s:
+        return None
+    # Fast-path for common broker strings: "YYYY-MM-DD HH:MM:SS"
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        return s[:10]
+    # ISO fallback.
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.date().isoformat()
+    except Exception:
+        return None
+
+
+def get_orders_today(exchange_filter: str | None = None) -> list[dict[str, Any]]:
+    """
+    Return today's broker orders (full log, not only open orders).
+    Useful for execution audit/history views.
+    """
+    kite = _get_kite()
+    if not kite:
+        return []
+    today = date.today().isoformat()
+    ex_filter = (exchange_filter or "").upper().strip()
+    try:
+        import socket
+
+        socket.setdefaulttimeout(10)
+        orders = kite.orders() or []
+        out: list[dict[str, Any]] = []
+        for o in orders:
+            ts = (
+                o.get("exchange_update_timestamp")
+                or o.get("exchange_timestamp")
+                or o.get("order_timestamp")
+                or o.get("order_timestamp_iso")
+            )
+            d = _extract_order_date_str(ts)
+            if d != today:
+                continue
+            exchange = str(o.get("exchange") or "").upper()
+            if ex_filter and exchange != ex_filter:
+                continue
+            quantity = int(o.get("quantity") or 0)
+            filled_qty = int(o.get("filled_quantity") or 0)
+            pending_qty = int(o.get("pending_quantity") or 0)
+            avg_price_raw = o.get("average_price")
+            try:
+                avg_price = float(avg_price_raw) if avg_price_raw is not None else None
+            except Exception:
+                avg_price = None
+            out.append(
+                {
+                    "order_id": o.get("order_id"),
+                    "exchange": exchange,
+                    "symbol": o.get("tradingsymbol"),
+                    "side": o.get("transaction_type"),
+                    "status": str(o.get("status") or "").upper(),
+                    "quantity": quantity,
+                    "filled_quantity": filled_qty,
+                    "pending_quantity": pending_qty,
+                    "order_type": o.get("order_type"),
+                    "product": o.get("product"),
+                    "average_price": avg_price,
+                    "price": float(o.get("price") or 0.0),
+                    "trigger_price": float(o.get("trigger_price") or 0.0),
+                    "order_timestamp": ts,
+                    "status_message": o.get("status_message") or o.get("status_message_raw") or "",
+                }
+            )
+        return out
+    except Exception:
+        return []
+
+
 def get_positions() -> list[dict[str, Any]]:
     """Fetch open positions from Zerodha."""
     kite = _get_kite()
@@ -392,6 +499,8 @@ def get_positions() -> list[dict[str, Any]]:
                     "unrealized": float(pos.get("unrealized", 0)),
                     "average_price": float(pos.get("average_price", 0)),
                     "last_price": float(pos.get("last_price", 0)),
+                    "product": str(pos.get("product") or "").upper(),
+                    "exchange": pos.get("exchange", ""),
                 })
         return result
     except Exception:

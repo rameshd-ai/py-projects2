@@ -245,6 +245,42 @@
       </div>
     </div>
   </div>
+
+  <!-- Today full history (executed + open) -->
+  <div class="card mt-4">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="material-icons-round text-primary-custom">history</span>
+        Today full history (executed + open)
+      </div>
+      <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="today-full-history-count">0</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive overflow-x-auto" style="max-width: 100%; overflow-x: auto;">
+        <table class="table table-sm table-dark table-hover mb-0" style="min-width: 1200px; white-space: nowrap;">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Mode</th>
+              <th>Instrument</th>
+              <th>Symbol</th>
+              <th>Strategy</th>
+              <th>Status</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>Qty</th>
+              <th>Gross P&amp;L</th>
+              <th>Net P&amp;L</th>
+              <th>Exit Reason</th>
+            </tr>
+          </thead>
+          <tbody id="today-full-history-tbody">
+            <tr><td colspan="12" class="text-center text-muted py-4">No today history.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
@@ -324,6 +360,7 @@
 
   function runRefresh() {
     dataRefreshSecs = 60;
+    fetchEngineStatus();
     fetchBalance();
     fetchExecutions();
   }
@@ -341,12 +378,33 @@
       .finally(() => clearTimeout(timer));
   }
 
+  function fetchEngineStatus() {
+    return fetchJsonWithTimeout('/api/engine/status', 8000)
+      .then(function(data) {
+        if (!data || typeof data !== 'object') return;
+        if (typeof data.running === 'boolean') {
+          engineRunning = data.running;
+        }
+        if (typeof data.next_scan_in_seconds === 'number') {
+          engineNextScanSecs = data.next_scan_in_seconds;
+        } else if (typeof data.next_scan_sec === 'number') {
+          engineNextScanSecs = data.next_scan_sec;
+        }
+        lastStatusSyncMs = Date.now();
+        updateEngineStatusUI();
+      })
+      .catch(function() {
+        // Keep last known engine status; avoid blanking UI on transient timeout.
+      });
+  }
+
   function fetchExecutions() {
     Promise.all([
       fetchJsonWithTimeout('/api/trade-history?mode=PAPER&today=1', 12000),
       fetchJsonWithTimeout('/api/trade-history?mode=LIVE&today=1', 12000),
-      fetchJsonWithTimeout('/api/trade-sessions', 12000)
-    ]).then(([paperData, liveData, sessionsData]) => {
+      fetchJsonWithTimeout('/api/trade-sessions', 12000),
+      fetchJsonWithTimeout('/api/live-executions-today', 12000)
+    ]).then(([paperData, liveData, sessionsData, brokerExecData]) => {
       try {
         const paperTrades = (paperData && paperData.trades) ? paperData.trades : [];
         const liveTrades = (liveData && liveData.trades) ? liveData.trades : [];
@@ -394,23 +452,14 @@
         }
         renderModeExecutions('PAPER', paperTrades, paperOpen, paperWaiting.length, paperActive);
         renderModeExecutions('LIVE', liveTrades, liveOpen, liveWaiting.length, liveActive);
+        const brokerOrders = (brokerExecData && brokerExecData.orders) ? brokerExecData.orders : [];
+        renderTodayFullHistory(paperTrades, liveTrades, paperOpen, liveOpen, paperWaiting, liveWaiting, brokerOrders);
       } catch (e) {
         // Keep last-rendered table if parsing fails; avoid "vanishing" active sessions.
       }
     }).catch(function() {
-      engineRunning = null;
-      engineNextScanSecs = null;
-      nextAiCheckSecs = null;
-      nextAiCheckDisplaySecs = null;
-      var txt = document.getElementById('engine-status-text');
-      var dot = document.getElementById('engine-dot');
-      if (txt) txt.textContent = 'Engine: reconnecting…';
-      if (dot) { dot.style.background = 'orange'; }
-      var scanEl = document.getElementById('engine-scan-countdown');
-      if (scanEl) scanEl.textContent = 'Next engine scan: —';
-      var aiEl = document.getElementById('ai-check-countdown');
-      if (aiEl) aiEl.textContent = 'Next AI check: —';
-      // Keep last-rendered table while reconnecting.
+      // Keep last-rendered table and last-known engine status while reconnecting.
+      fetchEngineStatus();
     });
   }
 
@@ -487,6 +536,211 @@
       totalEl.textContent = fmtNum(totalNet);
       applyPnlColor(totalEl, totalNet);
     }
+  }
+
+  function renderTodayFullHistory(paperTrades, liveTrades, paperOpen, liveOpen, paperWaiting, liveWaiting, brokerOrders) {
+    const tbody = document.getElementById('today-full-history-tbody');
+    const countEl = document.getElementById('today-full-history-count');
+    if (!tbody || !countEl) return;
+
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    }
+    function tsOf(iso) {
+      const n = Number(new Date(iso || 0));
+      return isNaN(n) ? 0 : n;
+    }
+    function fmtPnl(n) {
+      if (n == null || isNaN(Number(n))) return '—';
+      const v = Number(n);
+      const txt = fmtNum(v);
+      const cls = v < 0 ? 'text-danger' : (v > 0 ? 'text-success' : '');
+      return `<span class="${cls}">${txt}</span>`;
+    }
+
+    const rows = [];
+
+    (paperTrades || []).forEach(t => {
+      const gross = t.gross_pnl != null ? Number(t.gross_pnl) : null;
+      const net = t.net_pnl != null ? Number(t.net_pnl) : (t.pnl != null ? Number(t.pnl) : null);
+      rows.push({
+        sort_priority: 1,
+        sort_ts: Math.max(tsOf(t.exit_time), tsOf(t.entry_time)),
+        time: formatTime(t.exit_time || t.entry_time),
+        mode: 'PAPER',
+        instrument: '—',
+        symbol: t.symbol || '—',
+        strategy: t.strategy || '—',
+        status: '<span class="badge bg-secondary">CLOSED</span>',
+        entry: fmtNum(t.entry_price),
+        exit: fmtNum(t.exit_price),
+        qty: t.qty != null ? t.qty : '—',
+        gross: fmtPnl(gross),
+        net: fmtPnl(net),
+        reason: t.exit_reason || '—'
+      });
+    });
+
+    (liveTrades || []).forEach(t => {
+      const gross = t.gross_pnl != null ? Number(t.gross_pnl) : null;
+      const net = t.net_pnl != null ? Number(t.net_pnl) : (t.pnl != null ? Number(t.pnl) : null);
+      rows.push({
+        sort_priority: 1,
+        sort_ts: Math.max(tsOf(t.exit_time), tsOf(t.entry_time)),
+        time: formatTime(t.exit_time || t.entry_time),
+        mode: 'LIVE',
+        instrument: '—',
+        symbol: t.symbol || '—',
+        strategy: t.strategy || '—',
+        status: '<span class="badge bg-secondary">CLOSED</span>',
+        entry: fmtNum(t.entry_price),
+        exit: fmtNum(t.exit_price),
+        qty: t.qty != null ? t.qty : '—',
+        gross: fmtPnl(gross),
+        net: fmtPnl(net),
+        reason: t.exit_reason || '—'
+      });
+    });
+
+    (paperOpen || []).forEach(s => {
+      const t = s.current_trade || {};
+      const entry = Number(t.entry_price || 0);
+      const ltp = Number(s.current_ltp || entry || 0);
+      const qty = Number(t.qty || 0);
+      const gross = (entry > 0 && qty > 0) ? ((ltp - entry) * qty) : null;
+      rows.push({
+        sort_priority: 3,
+        sort_ts: tsOf(t.entry_time || s.createdAt),
+        time: formatTime(t.entry_time || s.createdAt),
+        mode: 'PAPER',
+        instrument: s.instrument || '—',
+        symbol: t.symbol || s.tradingsymbol || '—',
+        strategy: t.strategy_name || '—',
+        status: '<span class="badge bg-warning text-dark">OPEN</span>',
+        entry: fmtNum(entry),
+        exit: '—',
+        qty: qty || '—',
+        gross: fmtPnl(gross),
+        net: fmtPnl(gross),
+        reason: t.exit_reason || '—'
+      });
+    });
+
+    (liveOpen || []).forEach(s => {
+      const t = s.current_trade || {};
+      const entry = Number(t.entry_price || 0);
+      const ltp = Number(s.current_ltp || entry || 0);
+      const qty = Number(t.qty || 0);
+      const gross = (entry > 0 && qty > 0) ? ((ltp - entry) * qty) : null;
+      rows.push({
+        sort_priority: 3,
+        sort_ts: tsOf(t.entry_time || s.createdAt),
+        time: formatTime(t.entry_time || s.createdAt),
+        mode: 'LIVE',
+        instrument: s.instrument || '—',
+        symbol: t.symbol || s.tradingsymbol || '—',
+        strategy: t.strategy_name || '—',
+        status: '<span class="badge bg-warning text-dark">OPEN</span>',
+        entry: fmtNum(entry),
+        exit: '—',
+        qty: qty || '—',
+        gross: fmtPnl(gross),
+        net: fmtPnl(gross),
+        reason: t.exit_reason || '—'
+      });
+    });
+
+    (paperWaiting || []).forEach(s => {
+      rows.push({
+        sort_priority: 4,
+        sort_ts: tsOf(s.createdAt),
+        time: formatTime(s.createdAt),
+        mode: 'PAPER',
+        instrument: s.instrument || '—',
+        symbol: s.tradingsymbol || '—',
+        strategy: ((s.recommendation || {}).strategyName) || '—',
+        status: '<span class="badge bg-info text-dark">WAITING</span>',
+        entry: '—',
+        exit: '—',
+        qty: '—',
+        gross: '—',
+        net: '—',
+        reason: '—'
+      });
+    });
+
+    (liveWaiting || []).forEach(s => {
+      rows.push({
+        sort_priority: 4,
+        sort_ts: tsOf(s.createdAt),
+        time: formatTime(s.createdAt),
+        mode: 'LIVE',
+        instrument: s.instrument || '—',
+        symbol: s.tradingsymbol || '—',
+        strategy: ((s.recommendation || {}).strategyName) || '—',
+        status: '<span class="badge bg-info text-dark">WAITING</span>',
+        entry: '—',
+        exit: '—',
+        qty: '—',
+        gross: '—',
+        net: '—',
+        reason: '—'
+      });
+    });
+
+    (brokerOrders || []).forEach(o => {
+      const side = String(o.side || '').toUpperCase();
+      const status = String(o.status || '').toUpperCase();
+      const avg = o.average_price != null ? Number(o.average_price) : null;
+      const qty = Number(o.filled_quantity || o.quantity || 0) || '—';
+      const statusBadge = (status === 'COMPLETE' || Number(o.filled_quantity || 0) > 0)
+        ? '<span class="badge bg-success">EXECUTED</span>'
+        : '<span class="badge bg-secondary">' + esc(status || 'ORDER') + '</span>';
+      rows.push({
+        sort_priority: 2,
+        sort_ts: tsOf(o.order_timestamp),
+        time: formatTime(o.order_timestamp),
+        mode: 'LIVE',
+        instrument: ((String(o.symbol || '').toUpperCase().indexOf('BANK') >= 0) ? 'BANKNIFTY' : 'NIFTY'),
+        symbol: o.symbol || '—',
+        strategy: 'Broker Order',
+        status: statusBadge,
+        entry: side === 'BUY' ? fmtNum(avg) : '—',
+        exit: side === 'SELL' ? fmtNum(avg) : '—',
+        qty: qty,
+        gross: '—',
+        net: '—',
+        reason: o.status_message || status || '—'
+      });
+    });
+
+    rows.sort((a, b) => {
+      if ((b.sort_priority || 0) !== (a.sort_priority || 0)) return (b.sort_priority || 0) - (a.sort_priority || 0);
+      return (b.sort_ts || 0) - (a.sort_ts || 0);
+    });
+
+    countEl.textContent = String(rows.length);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">No today history.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${esc(r.time)}</td>
+        <td>${esc(r.mode)}</td>
+        <td>${esc(r.instrument)}</td>
+        <td>${esc(r.symbol)}</td>
+        <td>${esc(r.strategy)}</td>
+        <td>${r.status}</td>
+        <td>${r.entry}</td>
+        <td>${r.exit}</td>
+        <td>${esc(r.qty)}</td>
+        <td>${r.gross}</td>
+        <td>${r.net}</td>
+        <td>${esc(r.reason)}</td>
+      </tr>
+    `).join('');
   }
 
   function updateEngineStatusUI() {
@@ -705,6 +959,9 @@
         if (side === 'BUY') grossPnl = (currentLtp - entryPrice) * qty;
         else grossPnl = (entryPrice - currentLtp) * qty;
       }
+      const maxLossPerTrade = Number(s.max_loss_per_trade != null ? s.max_loss_per_trade : (s.risk_amount_per_trade != null ? s.risk_amount_per_trade : 300));
+      const normalizedMaxLoss = isNaN(maxLossPerTrade) ? 300 : Math.min(300, Math.max(1, maxLossPerTrade));
+      const riskCappedOpenPnl = grossPnl != null ? Math.max(grossPnl, -normalizedMaxLoss) : null;
       
       rows.push({
         date: String(t.entry_time || '').slice(0, 10),
@@ -724,10 +981,10 @@
         gross_pnl: grossPnl != null ? (grossPnl >= 0 ? fmtNum(grossPnl) : '-' + fmtNum(Math.abs(grossPnl))) : '—',
         charges: '—',
         net_pnl: grossPnl != null ? (grossPnl >= 0 ? fmtNum(grossPnl) : '-' + fmtNum(Math.abs(grossPnl))) : '—',
-        risk_capped_pnl: '—',
+        risk_capped_pnl: riskCappedOpenPnl != null ? (riskCappedOpenPnl >= 0 ? fmtNum(riskCappedOpenPnl) : '-' + fmtNum(Math.abs(riskCappedOpenPnl))) : '—',
         gross_pnl_raw: grossPnl,
         net_pnl_raw: grossPnl,
-        risk_capped_pnl_raw: null,
+        risk_capped_pnl_raw: riskCappedOpenPnl,
         exit_reason: '—',
         status_badge: '<span class="badge bg-warning text-dark">OPEN</span>',
         sort_priority: 2,
@@ -986,7 +1243,9 @@
 
   fetchRiskConfig();
   fetchBalance();
+  fetchEngineStatus();
   fetchExecutions();
+  setInterval(fetchEngineStatus, 15000);
   startCountdown();
 })();
 </script>

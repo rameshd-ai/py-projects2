@@ -6,7 +6,7 @@
       <span class="material-icons-round text-primary">show_chart</span>
       <div>
         <strong>Live Trade History</strong>
-        <p class="mb-0 mt-1 small">Closed live (real money) trades only. Same table structure as the Trade page.</p>
+        <p class="mb-0 mt-1 small">Broker-only live order history (executed, rejected, cancelled, open order states).</p>
       </div>
     </div>
   </div>
@@ -26,7 +26,6 @@
         <input type="date" id="filter-to-date" class="form-control form-control-sm" style="width: auto;">
       </div>
       <button type="button" class="btn btn-sm btn-outline-secondary" id="filter-apply">Apply</button>
-      <span class="text-muted small" id="refresh-countdown">Next refresh in 10s</span>
       <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="live-history-count">0</span>
     </div>
   </div>
@@ -35,7 +34,7 @@
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
       <div class="d-flex align-items-center gap-2">
         <span class="material-icons-round text-primary-custom">history</span>
-        Live trades
+        Broker live orders
       </div>
     </div>
     <div class="card-body p-0">
@@ -43,28 +42,22 @@
         <table class="table table-sm table-dark table-hover mb-0">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>CE/PE</th>
-              <th>Strike</th>
+              <th>Time</th>
+              <th>Mode</th>
+              <th>Instrument</th>
+              <th>Symbol</th>
               <th>Strategy</th>
-              <th>Entry Time</th>
-              <th>Exit Time</th>
-              <th>Entry Price</th>
-              <th>Exit Price</th>
-              <th>Current price</th>
-              <th>Qty</th>
-              <th>Price/Lot</th>
-              <th>Capital Used</th>
-              <th>Balance Left</th>
-              <th>Gross P&L</th>
-              <th>Charges</th>
-              <th>Net P&L</th>
               <th>Status</th>
+              <th>Entry</th>
+              <th>Exit</th>
+              <th>Qty</th>
+              <th>Gross P&L</th>
+              <th>Net P&L</th>
               <th>Exit Reason</th>
             </tr>
           </thead>
           <tbody id="live-history-tbody">
-            <tr><td colspan="19" class="text-center text-muted py-4">Loading…</td></tr>
+            <tr><td colspan="12" class="text-center text-muted py-4">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -78,8 +71,6 @@
 {{ super() }}
 <script>
 (function() {
-  let countdownSecs = 10;
-  let countdownTimer = null;
   let todayOnly = false;
 
   function formatTime(iso) {
@@ -89,10 +80,6 @@
       return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     } catch (e) { return iso; }
   }
-  function formatDate(iso) {
-    if (!iso) return '—';
-    try { return (iso + '').slice(0, 10); } catch (e) { return iso; }
-  }
   function fmtNum(v) {
     if (v == null || v === '' || v === '—') return '—';
     const n = Number(v);
@@ -100,100 +87,87 @@
     return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  function parseSymbol(symbol) {
-    if (!symbol || typeof symbol !== 'string') return { ce_pe: '—', strike: '—' };
-    const s = symbol.trim();
-    if (s.endsWith('CE')) return { ce_pe: 'CE', strike: s.replace(/CE$/, '').replace(/^.*?(\d+)$/, '$1') || '—' };
-    if (s.endsWith('PE')) return { ce_pe: 'PE', strike: s.replace(/PE$/, '').replace(/^.*?(\d+)$/, '$1') || '—' };
-    return { ce_pe: '—', strike: '—' };
-  }
-
   function fetchHistory() {
-    let url = '/api/trade-history?mode=LIVE';
+    const fromVal = (document.getElementById('filter-from-date').value || '').trim();
+    const toVal = (document.getElementById('filter-to-date').value || '').trim();
+    const params = new URLSearchParams();
     if (todayOnly) {
-      url += '&today=1';
+      params.set('today', '1');
     } else {
-      const fromEl = document.getElementById('filter-from-date');
-      const toEl = document.getElementById('filter-to-date');
-      const fromVal = fromEl && fromEl.value ? fromEl.value.trim() : '';
-      const toVal = toEl && toEl.value ? toEl.value.trim() : '';
-      if (fromVal) url += '&from_date=' + encodeURIComponent(fromVal);
-      if (toVal) url += '&to_date=' + encodeURIComponent(toVal);
+      if (fromVal) params.set('from_date', fromVal);
+      if (toVal) params.set('to_date', toVal);
     }
-    fetch(url)
+    const url = '/api/live-executions-today?' + params.toString();
+    fetch(url, { cache: 'no-store' })
       .then(r => r.ok ? r.json() : Promise.reject(new Error('API ' + r.status)))
-      .then(data => {
-        const trades = (data && data.trades) ? data.trades : [];
-        renderTable(trades);
+      .then((brokerData) => {
+        const orders = (brokerData && brokerData.orders) ? brokerData.orders : [];
+        renderTable(orders);
       })
       .catch(() => {
         document.getElementById('live-history-tbody').innerHTML =
-          '<tr><td colspan="19" class="text-center text-muted py-4">Failed to load. Check connection.</td></tr>';
+          '<tr><td colspan="12" class="text-center text-muted py-4">Failed to load. Check connection.</td></tr>';
         document.getElementById('live-history-count').textContent = '0';
       });
   }
 
-  function renderTable(trades) {
+  function renderTable(brokerOrders) {
     const tbody = document.getElementById('live-history-tbody');
     const countEl = document.getElementById('live-history-count');
-    countEl.textContent = trades.length;
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    }
+    function tsOf(iso) {
+      const n = Number(new Date(iso || 0));
+      return isNaN(n) ? 0 : n;
+    }
+    const rows = [];
 
-    if (trades.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="19" class="text-center text-muted py-4">No live trades.</td></tr>';
+    (brokerOrders || []).forEach(o => {
+      const side = String(o.side || '').toUpperCase();
+      const status = String(o.status || '').toUpperCase();
+      const avg = o.average_price != null ? Number(o.average_price) : null;
+      rows.push({
+        ts: tsOf(o.order_timestamp),
+        time: formatTime(o.order_timestamp),
+        mode: 'LIVE',
+        instrument: String(o.exchange || '—').toUpperCase(),
+        symbol: o.symbol || '—',
+        strategy: 'Broker Order',
+        status: (status === 'COMPLETE' || Number(o.filled_quantity || 0) > 0)
+          ? '<span class="badge bg-success">EXECUTED</span>'
+          : '<span class="badge bg-secondary">' + esc(status || 'ORDER') + '</span>',
+        entry: side === 'BUY' ? fmtNum(avg) : '—',
+        exit: side === 'SELL' ? fmtNum(avg) : '—',
+        qty: Number(o.filled_quantity || o.quantity || 0) || '—',
+        gross: '—',
+        net: '—',
+        reason: o.status_message || status || '—'
+      });
+    });
+
+    rows.sort((a, b) => b.ts - a.ts);
+    countEl.textContent = String(rows.length);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">No live trades.</td></tr>';
       return;
     }
-
-    const sorted = [...trades].sort((a, b) => {
-      const ta = (a.entry_time || '') + (a.exit_time || '');
-      const tb = (b.entry_time || '') + (b.exit_time || '');
-      return tb.localeCompare(ta);
-    });
-
-    const rows = sorted.map(t => {
-      const parsed = parseSymbol(t.symbol);
-      const charges = t.charges != null ? Number(t.charges) : null;
-      const netPnl = t.net_pnl != null ? Number(t.net_pnl) : (t.pnl != null ? Number(t.pnl) : null);
-      let pnl = t.gross_pnl != null ? Number(t.gross_pnl) : null;
-      if (pnl == null && netPnl != null && charges != null) {
-        pnl = netPnl + charges;
-      } else if (
-        pnl != null && netPnl != null && charges != null &&
-        Math.abs(pnl - netPnl) < 0.01 && Math.abs(charges) > 0.01
-      ) {
-        pnl = netPnl + charges;
-      }
-      return `
-        <tr>
-          <td>${formatDate(t.entry_time)}</td>
-          <td>${parsed.ce_pe}</td>
-          <td>${parsed.strike}</td>
-          <td>${(t.strategy || '—').toString().replace(/</g, '&lt;')}</td>
-          <td>${formatTime(t.entry_time)}</td>
-          <td>${formatTime(t.exit_time)}</td>
-          <td>${fmtNum(t.entry_price)}</td>
-          <td>${fmtNum(t.exit_price)}</td>
-          <td>—</td>
-          <td>${t.qty != null ? t.qty : '—'}</td>
-          <td>—</td>
-          <td>—</td>
-          <td>—</td>
-          <td>${pnl != null ? fmtNum(pnl) : '—'}</td>
-          <td>${charges != null ? fmtNum(charges) : '—'}</td>
-          <td>${netPnl != null ? fmtNum(netPnl) : '—'}</td>
-          <td><span class="badge bg-secondary">CLOSED</span></td>
-          <td>${(t.exit_reason || '—').toString().replace(/</g, '&lt;')}</td>
-        </tr>
-      `;
-    });
-
-    tbody.innerHTML = rows.join('');
-  }
-
-  function runRefresh() {
-    countdownSecs = 10;
-    const el = document.getElementById('refresh-countdown');
-    if (el) el.textContent = 'Next refresh in 10s';
-    fetchHistory();
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${esc(r.time)}</td>
+        <td>${esc(r.mode)}</td>
+        <td>${esc(r.instrument)}</td>
+        <td>${esc(r.symbol)}</td>
+        <td>${esc(r.strategy)}</td>
+        <td>${r.status}</td>
+        <td>${r.entry}</td>
+        <td>${r.exit}</td>
+        <td>${esc(r.qty)}</td>
+        <td>${r.gross}</td>
+        <td>${r.net}</td>
+        <td>${esc(r.reason)}</td>
+      </tr>
+    `).join('');
   }
 
   document.getElementById('filter-today').addEventListener('change', function() {
@@ -204,33 +178,15 @@
       if (fromEl) fromEl.value = '';
       if (toEl) toEl.value = '';
     }
-    runRefresh();
+    fetchHistory();
   });
 
   document.getElementById('filter-apply').addEventListener('click', function() {
     todayOnly = false;
     document.getElementById('filter-today').checked = false;
-    runRefresh();
+    fetchHistory();
   });
-
-  function startCountdown() {
-    if (countdownTimer) clearInterval(countdownTimer);
-    countdownSecs = 10;
-    const el = document.getElementById('refresh-countdown');
-    function tick() {
-      if (countdownSecs > 0) {
-        if (el) el.textContent = 'Next refresh in ' + countdownSecs + 's';
-        countdownSecs--;
-      } else {
-        runRefresh();
-      }
-    }
-    tick();
-    countdownTimer = setInterval(tick, 1000);
-  }
-
-  runRefresh();
-  startCountdown();
+  fetchHistory();
 })();
 </script>
 {% endblock %}

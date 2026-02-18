@@ -1,4 +1,159 @@
 {
-  "sessions": [],
-  "updatedAt": "2026-02-17T09:59:16.457620"
+  "sessions": [
+    {
+      "sessionId": "pt_20260217064455_0",
+      "instrument": "NIFTY",
+      "mode": "INTRADAY",
+      "system_state": "NORMAL",
+      "status": "STOPPED",
+      "execution_mode": "PAPER",
+      "virtual_balance": 16063.86,
+      "daily_trade_count": 9,
+      "daily_pnl": 6229.74,
+      "daily_loss_limit": 3000.0,
+      "risk_amount_per_trade": 300.0,
+      "cutoff_time": "15:15",
+      "current_trade_id": null,
+      "current_trade": null,
+      "recommendation": {
+        "instrumentType": "index",
+        "instrument": "NIFTY",
+        "symbol": "NIFTY",
+        "marketBias": "Bullish",
+        "strategyId": "index_lead_stock_lag",
+        "strategyName": "Pullback Continuation",
+        "tradeType": "CALL",
+        "suggestedStrike": "25800 CE",
+        "strike": 25800,
+        "optionType": "CE",
+        "entryCondition": "Index holds above/below open; momentum confirmation",
+        "stopLossLogic": "Break of opening range / VWAP",
+        "riskPerTrade": 200.0,
+        "positionSizeLots": 7,
+        "rewardLogic": "Trail or 20-90 min holding time",
+        "confidence": 73,
+        "totalCost": 61250.0,
+        "product_type": "OPTION",
+        "exchange": "NFO",
+        "lot_size": 25,
+        "lotSize": 25,
+        "premium": 50,
+        "tradingsymbol": "NIFTY2621725800CE"
+      },
+      "tradingsymbol": "NIFTY2621725800CE",
+      "exchange": "NFO",
+      "lot_size": 25,
+      "createdAt": "2026-02-17T12:14:55.987965+05:30",
+      "current_hour_block": 15,
+      "hourly_trade_count": 3,
+      "frequency_mode": "NORMAL",
+      "ai_auto_switching_enabled": true,
+      "ai_check_interval_minutes": 1,
+      "last_ai_strategy_check": "2026-02-17T15:14:16.380980+05:30",
+      "last_ai_recommendation": {
+        "recommended_strategy": "Pullback Continuation",
+        "confidence": "high",
+        "reasoning": "The current market trend is bearish, and the Pullback Continuation strategy is well-suited for trending markets experiencing healthy pullbacks. Given the normal volume activity and the established bearish trend, this strategy can capitalize on potential retracements towards resistance levels.",
+        "switch_from_current": false,
+        "market_assessment": "The market is currently in a bearish trend with normal volume, indicating potential for pullbacks to be utilized effectively in trading.",
+        "rejected": false
+      },
+      "session_id": "pt_20260217064455_0",
+      "stop_reason": "CUTOFF_TIME",
+      "actual_daily_pnl": 6063.86,
+      "risk_capped_daily_pnl": 6229.74,
+      "consecutive_losses": 2,
+      "max_loss_per_trade": 300.0,
+      "max_daily_loss": 3000.0,
+      "daily_trade_cap": 20,
+      "cooldown_minutes": 15,
+      "cooldown_until": "2026-02-17T15:21:20.313140+05:30",
+      "last_trade_risk_band": "WITHIN_RISK_BAND",
+      "trade_history": [
+        {
+          "pnl": 829.57,
+          "actual_pnl": 829.57,
+          "capped_pnl": 829.57,
+          "ts": "2026-02-17T12:24:16.186548+05:30"
+        },
+        {
+          "pnl": -300.0,
+          "actual_pnl": -327.37,
+          "capped_pnl": -300.0,
+          "ts": "2026-02-17T12:28:54.257429+05:30"
+        },
+        {
+          "pnl": -24.31,
+          "actual_pnl": -24.31,
+          "capped_pnl": -24.31,
+          "ts": "2026-02-17T12:33:53.951339+05:30"
+        },
+        {
+          "pnl": -300.0,
+          "actual_pnl": -307.49,
+          "capped_pnl": -300.0,
+          "ts": "2026-02-17T14:39:57.098377+05:30"
+        },
+        {
+          "pnl": 1904.67,
+          "actual_pnl": 1904.67,
+          "capped_pnl": 1904.67,
+          "ts": "2026-02-17T14:55:25.188434+05:30"
+        },
+        {
+          "pnl": 1014.99,
+          "actual_pnl": 1014.99,
+          "capped_pnl": 1014.99,
+          "ts": "2026-02-17T14:58:21.653866+05:30"
+        },
+        {
+          "pnl": 3442.91,
+          "actual_pnl": 3442.91,
+          "capped_pnl": 3442.91,
+          "ts": "2026-02-17T15:01:37.875933+05:30"
+        },
+        {
+          "pnl": -300.0,
+          "actual_pnl": -431.02,
+          "capped_pnl": -300.0,
+          "ts": "2026-02-17T15:03:37.651140+05:30"
+        },
+        {
+          "pnl": -38.09,
+          "actual_pnl": -38.09,
+          "capped_pnl": -38.09,
+          "ts": "2026-02-17T15:06:20.313140+05:30"
+        }
+      ],
+      "ai_strategy_switches": 1,
+      "entry_diagnostics": {
+        "last_check": "2026-02-17T15:04:41.589415+05:30",
+        "strategy": "Index Momentum",
+        "ltp": 0.2,
+        "entry_price": 0.2,
+        "can_enter": true,
+        "blocked_reason": null,
+        "conditions": {
+          "unified_entry": true,
+          "same_as_backtest": true
+        }
+      },
+      "last_entry_check": {
+        "timestamp": "2026-02-17T15:04:32.209001+05:30",
+        "strategy": "Index Momentum",
+        "can_enter": true,
+        "entry_price": 0.2,
+        "block_reason": null,
+        "risk_approved": true,
+        "risk_reason": "Approved",
+        "calculated_lots": 3059,
+        "max_trades_this_hour": 30,
+        "trades_this_hour": 2,
+        "frequency_mode": "NORMAL"
+      },
+      "last_closed_trade_id": "tr_20260217150445_NIFTY2621725800CE",
+      "stoppedAt": "2026-02-17T15:15:16.383032+05:30"
+    }
+  ],
+  "updatedAt": "2026-02-18T09:55:10.376094"
 }

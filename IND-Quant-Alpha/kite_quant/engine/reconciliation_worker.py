@@ -25,6 +25,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # ALL SESSION MUTATIONS REQUIRE LOCK
+STALE_CLEAR_GRACE_SECONDS = 45
 
 
 class BrokerReconciliationWorker:
@@ -145,6 +146,27 @@ class BrokerReconciliationWorker:
                         s["last_reconciliation_at"] = now.isoformat()
                         updated = True
                         continue
+
+                    # Avoid false stale clears immediately after broker entry fill.
+                    # Some broker APIs can briefly lag in reflecting fresh positions/open stops.
+                    entry_time_raw = trade.get("entry_time")
+                    entry_dt = None
+                    if isinstance(entry_time_raw, str) and entry_time_raw.strip():
+                        try:
+                            entry_dt = datetime.fromisoformat(entry_time_raw)
+                        except ValueError:
+                            entry_dt = None
+                    if entry_dt is not None:
+                        if entry_dt.tzinfo is None:
+                            entry_dt = entry_dt.replace(tzinfo=ZoneInfo("Asia/Kolkata"))
+                        age_seconds = (now - entry_dt).total_seconds()
+                        if age_seconds < STALE_CLEAR_GRACE_SECONDS:
+                            s["last_reconciliation_note"] = (
+                                f"Deferred stale-clear during broker sync grace ({int(age_seconds)}s/{STALE_CLEAR_GRACE_SECONDS}s)"
+                            )
+                            s["last_reconciliation_at"] = now.isoformat()
+                            updated = True
+                            continue
 
                     # Broker has no open position and (if recovery mode) no open stop: clear local state.
                     logger.warning(
