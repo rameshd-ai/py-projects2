@@ -117,6 +117,12 @@ def get_expiry_type_clean(d: date, holidays: set[str]) -> str | None:
     return None
 
 
+def get_expiry_type_for_date(d: date) -> str | None:
+    """Public helper: return WEEKLY/MONTHLY expiry type for a date, else None."""
+    holidays = _load_nse_holidays()
+    return get_expiry_type_clean(d, holidays)
+
+
 def get_events_for_date(d: date) -> list[dict[str, str]]:
     """Return economic events for date. Format: [{ type, impact }, ...]."""
     ds = d.isoformat()

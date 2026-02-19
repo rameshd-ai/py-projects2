@@ -206,6 +206,7 @@
       </div>
       <div class="d-flex align-items-center gap-2">
         <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="live-executions-count">0</span>
+        <span class="badge bg-secondary bg-opacity-25 text-light" id="live-positions-total-pnl">Total P&amp;L —</span>
         <button type="button" class="btn btn-sm btn-outline-danger" id="live-stop-btn" style="display: none;">
           <span class="material-icons-round" style="font-size: 1rem;">stop_circle</span> Stop Live
         </button>
@@ -403,8 +404,9 @@
       fetchJsonWithTimeout('/api/trade-history?mode=PAPER&today=1', 12000),
       fetchJsonWithTimeout('/api/trade-history?mode=LIVE&today=1', 12000),
       fetchJsonWithTimeout('/api/trade-sessions', 12000),
-      fetchJsonWithTimeout('/api/live-executions-today', 12000)
-    ]).then(([paperData, liveData, sessionsData, brokerExecData]) => {
+      fetchJsonWithTimeout('/api/live-executions-today?today=1', 12000),
+      fetchJsonWithTimeout('/api/live-positions-today?exchange=NFO', 12000)
+    ]).then(([paperData, liveData, sessionsData, brokerExecData, livePosData]) => {
       try {
         const paperTrades = (paperData && paperData.trades) ? paperData.trades : [];
         const liveTrades = (liveData && liveData.trades) ? liveData.trades : [];
@@ -450,9 +452,10 @@
             badgeEl.style.display = 'none';
           }
         }
-        renderModeExecutions('PAPER', paperTrades, paperOpen, paperWaiting.length, paperActive);
-        renderModeExecutions('LIVE', liveTrades, liveOpen, liveWaiting.length, liveActive);
         const brokerOrders = (brokerExecData && brokerExecData.orders) ? brokerExecData.orders : [];
+        const livePositions = (livePosData && livePosData.positions) ? livePosData.positions : [];
+        renderModeExecutions('PAPER', paperTrades, paperOpen, paperWaiting.length, paperActive, null, null);
+        renderModeExecutions('LIVE', liveTrades, liveOpen, liveWaiting.length, liveActive, brokerOrders, livePositions);
         renderTodayFullHistory(paperTrades, liveTrades, paperOpen, liveOpen, paperWaiting, liveWaiting, brokerOrders);
       } catch (e) {
         // Keep last-rendered table if parsing fails; avoid "vanishing" active sessions.
@@ -781,7 +784,7 @@
       if (aiSecs != null) {
         if (aiSecs < 0) {
           aiEl.innerHTML = '<span class="text-danger">Next AI check: Overdue ' + Math.abs(aiSecs) + 's</span>';
-        } else {
+      } else {
           if (aiSecs >= 60) {
             var m = Math.floor(aiSecs / 60);
             var s = aiSecs % 60;
@@ -842,7 +845,7 @@
     `;
   }
 
-  function buildRowsForMode(mode, closedTrades, openSessions, waitingCount, allActiveSessions) {
+  function buildRowsForMode(mode, closedTrades, openSessions, waitingCount, allActiveSessions, brokerOrders, livePositions) {
     const rows = [];
 
     function formatLots(qty, lotSize) {
@@ -899,6 +902,56 @@
       });
     });
     
+    // LIVE table should mirror broker "Positions" view (symbol-wise rows + day P&L).
+    if (mode === 'LIVE') {
+      const positions = Array.isArray(livePositions) ? livePositions : [];
+      positions.forEach(p => {
+        const symbol = String(p.symbol || '');
+        const cepe = symbol.endsWith('CE') ? 'CE' : (symbol.endsWith('PE') ? 'PE' : '—');
+        const strikeMatch = symbol.match(/(\d+)(CE|PE)$/);
+        const strike = strikeMatch ? strikeMatch[1] : '—';
+        const netQty = Number(p.quantity || 0) || 0;
+        const buyQty = Number(p.buy_quantity || 0) || 0;
+        const sellQty = Number(p.sell_quantity || 0) || 0;
+        const tradedQty = Math.max(Math.abs(buyQty), Math.abs(sellQty), Math.abs(netQty));
+        const pnl = Number(p.pnl || 0) || 0;
+        const buyAvg = p.buy_avg_price != null ? Number(p.buy_avg_price) : null;
+        const sellAvg = p.sell_avg_price != null ? Number(p.sell_avg_price) : null;
+        const last = p.last_price != null ? Number(p.last_price) : null;
+        rows.push({
+          date: new Date().toISOString().slice(0, 10),
+          ce_pe: cepe,
+          strike: strike,
+          strategy: 'Broker Position',
+          entry_time: '—',
+          exit_time: '—',
+          entry_price: (buyAvg != null && buyAvg > 0) ? fmtNum(buyAvg) : '—',
+          exit_price: (sellAvg != null && sellAvg > 0) ? fmtNum(sellAvg) : '—',
+          current_price: (last != null && last > 0) ? fmtNum(last) : '—',
+          qty: netQty !== 0 ? netQty : (tradedQty || '—'),
+          qty_display: netQty !== 0 ? netQty : (tradedQty || '—'),
+          price_per_lot: '—',
+          capital_used: '—',
+          balance_left: '—',
+          gross_pnl: pnl >= 0 ? fmtNum(pnl) : '-' + fmtNum(Math.abs(pnl)),
+          charges: '—',
+          net_pnl: pnl >= 0 ? fmtNum(pnl) : '-' + fmtNum(Math.abs(pnl)),
+          risk_capped_pnl: pnl >= 0 ? fmtNum(pnl) : '-' + fmtNum(Math.abs(pnl)),
+          gross_pnl_raw: pnl,
+          net_pnl_raw: pnl,
+          risk_capped_pnl_raw: pnl,
+          exit_reason: '—',
+          status_badge: netQty !== 0
+            ? '<span class="badge bg-warning text-dark">OPEN</span>'
+            : '<span class="badge bg-secondary">CLOSED</span>',
+          sort_priority: 2,
+          sort_ts: Number(new Date())
+        });
+      });
+      rows.sort((a, b) => Number(a.net_pnl_raw || 0) - Number(b.net_pnl_raw || 0));
+      return rows;
+    }
+
     // Add sessions waiting to enter (no current_trade yet)
     allActiveSessions.forEach(s => {
       const sessionMode = (s.execution_mode || s.mode || '').toUpperCase();
@@ -1062,17 +1115,21 @@
     return rows;
   }
 
-  function renderModeExecutions(mode, closedTrades, openSessions, waitingCount, activeSessions) {
+  function renderModeExecutions(mode, closedTrades, openSessions, waitingCount, activeSessions, brokerOrders, livePositions) {
     const isPaper = mode === 'PAPER';
     const tbody = document.getElementById(isPaper ? 'paper-executions-tbody' : 'live-executions-tbody');
     const countEl = document.getElementById(isPaper ? 'paper-executions-count' : 'live-executions-count');
     const waitingEl = document.getElementById(isPaper ? 'paper-sessions-waiting-msg' : 'live-sessions-waiting-msg');
     const prefix = isPaper ? 'Paper' : 'Live';
     if (waitingEl) {
-      waitingEl.style.display = waitingCount > 0 ? 'block' : 'none';
-      waitingEl.textContent = waitingCount + ' ' + prefix.toLowerCase() + ' session(s) active — engine will place trade when conditions are met.';
+      if (isPaper) {
+        waitingEl.style.display = waitingCount > 0 ? 'block' : 'none';
+        waitingEl.textContent = waitingCount + ' ' + prefix.toLowerCase() + ' session(s) active — engine will place trade when conditions are met.';
+      } else {
+        waitingEl.style.display = 'none';
+      }
     }
-    const rows = buildRowsForMode(mode, closedTrades, openSessions, waitingCount, activeSessions);
+    const rows = buildRowsForMode(mode, closedTrades, openSessions, waitingCount, activeSessions, brokerOrders, livePositions);
     if (isPaper) {
       activePaperSessionId = (activeSessions.length > 0 && (activeSessions[0].sessionId || activeSessions[0].session_id)) || null;
       const stopBtn = document.getElementById('paper-stop-btn');
@@ -1083,6 +1140,18 @@
       if (stopBtn) stopBtn.style.display = activeLiveSessionId ? '' : 'none';
     }
     countEl.textContent = rows.length;
+    if (!isPaper) {
+      const pnlEl = document.getElementById('live-positions-total-pnl');
+      if (pnlEl) {
+        const total = (Array.isArray(livePositions) ? livePositions : []).reduce((acc, p) => {
+          const n = Number((p || {}).pnl);
+          return acc + (isNaN(n) ? 0 : n);
+        }, 0);
+        pnlEl.textContent = 'Total P&L ' + fmtNum(total);
+        pnlEl.classList.remove('text-success', 'text-danger', 'text-light');
+        pnlEl.classList.add(total < 0 ? 'text-danger' : (total > 0 ? 'text-success' : 'text-light'));
+      }
+    }
     if (rows.length === 0) {
       tbody.innerHTML = '<tr><td colspan="20" class="text-center text-muted py-4">No ' + prefix.toLowerCase() + ' trades today.</td></tr>';
       return;

@@ -507,6 +507,67 @@ def get_positions() -> list[dict[str, Any]]:
         return []
 
 
+def get_positions_day(exchange_filter: str | None = None) -> list[dict[str, Any]]:
+    """Fetch day positions (includes closed intraday positions) from Zerodha."""
+    kite = _get_kite()
+    if not kite:
+        return []
+
+    ex_filter = (exchange_filter or "").upper().strip()
+    try:
+        positions = kite.positions()
+        day_positions = positions.get("day", []) if isinstance(positions, dict) else []
+
+        def _f(v: Any) -> float:
+            try:
+                return float(v or 0.0)
+            except Exception:
+                return 0.0
+
+        def _i(v: Any) -> int:
+            try:
+                return int(v or 0)
+            except Exception:
+                return 0
+
+        result: list[dict[str, Any]] = []
+        for pos in day_positions:
+            exchange = str(pos.get("exchange") or "").upper()
+            if ex_filter and exchange != ex_filter:
+                continue
+            buy_qty = _i(pos.get("buy_quantity"))
+            sell_qty = _i(pos.get("sell_quantity"))
+            qty = _i(pos.get("quantity"))
+            # Keep only symbols that were traded today.
+            if buy_qty == 0 and sell_qty == 0 and qty == 0:
+                continue
+            result.append(
+                {
+                    "symbol": str(pos.get("tradingsymbol") or ""),
+                    "exchange": exchange,
+                    "product": str(pos.get("product") or "").upper(),
+                    "quantity": qty,
+                    "pnl": _f(pos.get("pnl")),
+                    "realised": _f(pos.get("realised")),
+                    "unrealised": _f(pos.get("unrealised")),
+                    "last_price": _f(pos.get("last_price")),
+                    "average_price": _f(pos.get("average_price")),
+                    "buy_quantity": buy_qty,
+                    "sell_quantity": sell_qty,
+                    "buy_value": _f(pos.get("buy_value")),
+                    "sell_value": _f(pos.get("sell_value")),
+                    "buy_avg_price": _f(pos.get("buy_price")),
+                    "sell_avg_price": _f(pos.get("sell_price")),
+                    "multiplier": _f(pos.get("multiplier")),
+                }
+            )
+        # Sort losers first, similar to practical triage in live trading.
+        result.sort(key=lambda x: float(x.get("pnl") or 0.0))
+        return result
+    except Exception:
+        return []
+
+
 def get_balance() -> tuple[float, bool]:
     """Fetch available trading balance from Zerodha (equity segment). Returns (balance, success). Use success to show — when disconnected."""
     kite = _get_kite()

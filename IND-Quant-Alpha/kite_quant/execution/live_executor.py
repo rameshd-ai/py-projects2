@@ -37,8 +37,12 @@ STOP_CANCEL_CONFIRM_TIMEOUT_SEC = 8.0
 STOP_OPEN_ORDERS_POLL_TIMEOUT_SEC = 8.0
 STOP_FAILURE_EXIT_RETRIES = 3
 STOP_PLACEMENT_RETRIES = 3
+TARGET_PLACEMENT_RETRIES = 3
 STOP_PRICE_TICK_SIZE = 0.05
 STOP_PRICE_BUFFER_TICKS = 4
+TARGET_PRICE_TICK_SIZE = 0.05
+ENABLE_BROKER_TARGET_ORDERS = str(os.getenv("LIVE_ENABLE_BROKER_TARGET_ORDERS", "0")).strip().lower() in {"1", "true", "yes", "on"}
+TRAILING_MIN_IMPROVEMENT_TICKS = 1
 
 
 class _ZerodhaBrokerAdapter:
@@ -119,6 +123,7 @@ def _set_active_trade(
         "pnl": None,
         "mode": "LIVE",
         "stop_loss": stop_loss,
+        "broker_stop_trigger": stop_loss,
         "target": target,
     }
 
@@ -314,20 +319,28 @@ def _is_stop_order_cleared(status: str) -> bool:
     return s in {"CANCELLED", "CANCELED", "REJECTED"}
 
 
-def _is_stop_order_open(stop_order_id: str) -> tuple[bool, str | None]:
-    """Check if stop order is still present in broker open-orders list."""
+def _is_order_open(order_id: str) -> tuple[bool, str | None]:
+    """Check if a broker order is still present in open-orders list."""
     try:
         open_orders = kite_get_open_orders() or []
     except Exception:
         open_orders = []
-    stop_id = str(stop_order_id or "").strip()
-    if not stop_id:
+    oid_lookup = str(order_id or "").strip()
+    if not oid_lookup:
         return False, None
     for o in open_orders:
         oid = str(o.get("order_id") or "").strip()
-        if oid == stop_id:
+        if oid == oid_lookup:
             return True, str(o.get("status") or "").upper()
     return False, None
+
+
+def _is_stop_order_open(stop_order_id: str) -> tuple[bool, str | None]:
+    return _is_order_open(stop_order_id)
+
+
+def _is_target_order_open(target_order_id: str) -> tuple[bool, str | None]:
+    return _is_order_open(target_order_id)
 
 
 def _cancel_and_confirm_stop_order(session: dict, trade: dict) -> dict[str, Any]:
@@ -374,6 +387,52 @@ def _cancel_and_confirm_stop_order(session: dict, trade: dict) -> dict[str, Any]
         "cancelled": False,
         "status": str(trade.get("stop_order_status") or session.get("stop_order_status") or ""),
         "error": last_error or "Stop cancellation not confirmed",
+    }
+
+
+def _cancel_and_confirm_target_order(session: dict, trade: dict) -> dict[str, Any]:
+    """
+    Cancel broker target order and confirm terminal cancel state.
+
+    Returns:
+      {"success": bool, "cancelled": bool, "status": str|None, "error": str|None}
+    """
+    target_order_id = str(trade.get("target_order_id") or session.get("target_order_id") or "").strip()
+    if not target_order_id:
+        return {"success": True, "cancelled": True, "status": None}
+
+    last_error: str | None = None
+    for attempt in range(1, STOP_CANCEL_RETRIES + 1):
+        cancel_res = kite_cancel_order(target_order_id)
+        if not cancel_res.get("success"):
+            last_error = str(cancel_res.get("error") or "Target cancel request failed")
+            logger.warning(
+                "LIVE EXIT | target cancel attempt failed | target_order_id=%s | attempt=%s/%s | err=%s",
+                target_order_id,
+                attempt,
+                STOP_CANCEL_RETRIES,
+                last_error,
+            )
+        deadline = time.time() + STOP_OPEN_ORDERS_POLL_TIMEOUT_SEC
+        while time.time() < deadline:
+            is_open, open_status = _is_target_order_open(target_order_id)
+            if not is_open:
+                status_res = kite_get_order_status(target_order_id)
+                final_status = str(status_res.get("status") or "").upper() if status_res.get("success") else "NOT_PRESENT_IN_OPEN_ORDERS"
+                trade["target_order_status"] = final_status
+                session["target_order_status"] = final_status
+                return {"success": True, "cancelled": True, "status": final_status}
+            if _is_stop_order_cleared(str(open_status or "")):
+                trade["target_order_status"] = str(open_status or "").upper()
+                session["target_order_status"] = str(open_status or "").upper()
+                return {"success": True, "cancelled": True, "status": str(open_status or "").upper()}
+            time.sleep(POST_CANCEL_POLL_INTERVAL_SEC)
+
+    return {
+        "success": False,
+        "cancelled": False,
+        "status": str(trade.get("target_order_status") or session.get("target_order_status") or ""),
+        "error": last_error or "Target cancellation not confirmed",
     }
 
 
@@ -440,6 +499,8 @@ def _finalize_live_exit(
     # Stop order is no longer relevant once trade is closed.
     session.pop("stop_order_id", None)
     session.pop("stop_order_status", None)
+    session.pop("target_order_id", None)
+    session.pop("target_order_status", None)
     if session.get("status") == "STOPPED" and not session.get("stoppedAt"):
         session["stoppedAt"] = now.isoformat()
     logger.info(
@@ -503,6 +564,7 @@ def _place_protective_stop_order(session: dict, qty: int, stop_loss: float | Non
         if session.get("current_trade"):
             session["current_trade"]["stop_order_id"] = stop_order_id
             session["current_trade"]["stop_order_status"] = "OPEN"
+            session["current_trade"]["broker_stop_trigger"] = trigger_price
         logger.info(
             "LIVE PROTECTIVE STOP | placed | symbol=%s | qty=%s | trigger=%.2f | limit=%.2f | stop_order_id=%s",
             symbol,
@@ -513,6 +575,126 @@ def _place_protective_stop_order(session: dict, qty: int, stop_loss: float | Non
         )
     else:
         logger.error("LIVE PROTECTIVE STOP | placement failed | symbol=%s | error=%s", symbol, result.get("error"))
+    return result
+
+
+def sync_broker_trailing_stop(session: dict) -> dict[str, Any]:
+    """
+    True broker trailing sync:
+    - tighten stop only in favorable direction
+    - never loosen
+    - cancel old SL and place new SL at tighter trigger
+    """
+    trade = session.get("current_trade")
+    if not trade:
+        return {"handled": False, "updated": False, "reason": "NO_TRADE"}
+    qty = int(trade.get("qty") or 0)
+    if qty <= 0:
+        return {"handled": False, "updated": False, "reason": "INVALID_QTY"}
+
+    side = str(trade.get("side") or "BUY").upper()
+    base_stop = float(trade.get("stop_loss") or 0.0)
+    trailing_stop = float(trade.get("trailing_stop") or 0.0)
+    if base_stop <= 0 and trailing_stop <= 0:
+        return {"handled": True, "updated": False, "reason": "NO_STOP_AVAILABLE"}
+
+    desired_stop_raw = max(base_stop, trailing_stop) if side == "BUY" else min(base_stop, trailing_stop)
+    if desired_stop_raw <= 0:
+        return {"handled": True, "updated": False, "reason": "INVALID_DESIRED_STOP"}
+
+    tick = float(STOP_PRICE_TICK_SIZE)
+    min_improvement = tick * float(TRAILING_MIN_IMPROVEMENT_TICKS)
+    desired_stop = round(round(desired_stop_raw / tick) * tick, 2)
+    current_broker_stop = float(
+        trade.get("broker_stop_trigger")
+        or trade.get("stop_loss")
+        or 0.0
+    )
+    current_broker_stop = round(round(current_broker_stop / tick) * tick, 2) if current_broker_stop > 0 else 0.0
+
+    improve = (desired_stop - current_broker_stop) if side == "BUY" else (current_broker_stop - desired_stop)
+    should_tighten = current_broker_stop <= 0 or improve >= min_improvement
+    if not should_tighten:
+        return {"handled": True, "updated": False, "reason": "NO_TIGHTEN_NEEDED"}
+
+    stop_order_id = str(trade.get("stop_order_id") or session.get("stop_order_id") or "").strip()
+    if stop_order_id:
+        cancel_res = _cancel_and_confirm_stop_order(session, trade)
+        if not cancel_res.get("success"):
+            return {"handled": True, "updated": False, "reason": "STOP_CANCEL_FAILED", "error": cancel_res.get("error")}
+
+    place_res = _place_stop_with_retries(session, qty, desired_stop, retries=STOP_PLACEMENT_RETRIES)
+    if not place_res.get("success"):
+        return {"handled": True, "updated": False, "reason": "STOP_PLACE_FAILED", "error": place_res.get("error")}
+
+    # Keep in-memory stop aligned with broker-protected level after successful tighten.
+    trade["stop_loss"] = desired_stop
+    trade["broker_stop_trigger"] = desired_stop
+    logger.info(
+        "LIVE TRAILING SYNC | symbol=%s | old_stop=%.2f | new_stop=%.2f | qty=%s",
+        trade.get("symbol") or session.get("tradingsymbol") or session.get("instrument"),
+        current_broker_stop,
+        desired_stop,
+        qty,
+    )
+    return {"handled": True, "updated": True, "new_stop": desired_stop}
+
+
+def _place_target_with_retries(session: dict, qty: int, target: float | None, retries: int = TARGET_PLACEMENT_RETRIES) -> dict[str, Any]:
+    """Retry broker target placement a fixed number of times."""
+    last = {"success": False, "error": "unknown"}
+    for attempt in range(1, max(1, retries) + 1):
+        last = _place_profit_target_order(session, qty, target)
+        if last.get("success"):
+            return last
+        logger.error(
+            "LIVE TARGET PLACE retry failed | attempt=%s/%s | error=%s",
+            attempt,
+            retries,
+            last.get("error"),
+        )
+        time.sleep(POST_CANCEL_POLL_INTERVAL_SEC)
+    return last
+
+
+def _place_profit_target_order(session: dict, qty: int, target: float | None) -> dict[str, Any]:
+    """Place broker-native target LIMIT order."""
+    trade = session.get("current_trade") or {}
+    symbol = trade.get("symbol") or session.get("tradingsymbol") or session.get("instrument")
+    exchange = trade.get("exchange") or session.get("exchange") or "NSE"
+    side = (trade.get("side") or "BUY").upper()
+    if not symbol or qty <= 0:
+        return {"success": False, "error": "Invalid symbol/qty for target order"}
+    if target is None or float(target) <= 0:
+        return {"success": False, "error": "Invalid target for target order"}
+    close_side = "SELL" if side == "BUY" else "BUY"
+    tick = float(TARGET_PRICE_TICK_SIZE)
+    limit_price = round(round(float(target) / tick) * tick, 2)
+    result = kite_place_order(
+        symbol=symbol,
+        side=close_side,
+        quantity=qty,
+        order_type="LIMIT",
+        price=limit_price,
+        exchange=exchange,
+        tradingsymbol=symbol,
+    )
+    if result.get("success"):
+        target_order_id = result.get("order_id")
+        session["target_order_id"] = target_order_id
+        session["target_order_status"] = "OPEN"
+        if session.get("current_trade"):
+            session["current_trade"]["target_order_id"] = target_order_id
+            session["current_trade"]["target_order_status"] = "OPEN"
+        logger.info(
+            "LIVE PROFIT TARGET | placed | symbol=%s | qty=%s | limit=%.2f | target_order_id=%s",
+            symbol,
+            qty,
+            limit_price,
+            target_order_id,
+        )
+    else:
+        logger.error("LIVE PROFIT TARGET | placement failed | symbol=%s | error=%s", symbol, result.get("error"))
     return result
 
 
@@ -540,6 +722,7 @@ def monitor_protective_stop(session: dict) -> dict[str, Any]:
         filled_qty = int(status_data.get("filled_quantity") or trade.get("qty") or 0)
         exit_fill_price = float(status_data.get("avg_fill_price") or trade.get("stop_loss") or 0.0)
         if filled_qty > 0 and exit_fill_price > 0:
+            _cancel_and_confirm_target_order(session, trade)
             _finalize_live_exit(session, trade, exit_fill_price, filled_qty, "STOP_LOSS")
             return {"handled": True, "closed": True}
     if status in ("REJECTED", "CANCELLED", "CANCELED"):
@@ -547,6 +730,34 @@ def monitor_protective_stop(session: dict) -> dict[str, Any]:
         logger.error("LIVE STOP MONITOR | stop invalidated (%s), forcing market exit", status)
         forced = exit_live_trade(session, exit_reason_override="STOP_ORDER_INVALIDATED")
         return {"handled": True, "closed": bool(forced.get("success")), "error": forced.get("error")}
+    return {"handled": True, "closed": False}
+
+
+def monitor_profit_target(session: dict) -> dict[str, Any]:
+    """Monitor broker-native target order and finalize trade when target is filled."""
+    trade = session.get("current_trade")
+    if not trade:
+        return {"handled": False, "closed": False}
+    target_order_id = trade.get("target_order_id") or session.get("target_order_id")
+    if not target_order_id:
+        return {"handled": False, "closed": False}
+    status_data = kite_get_order_status(str(target_order_id))
+    if not status_data.get("success"):
+        logger.warning("LIVE TARGET MONITOR | failed to fetch target status | target_order_id=%s", target_order_id)
+        return {"handled": False, "closed": False, "error": status_data.get("error")}
+    status = str(status_data.get("status") or "").upper()
+    session["target_order_status"] = status
+    trade["target_order_status"] = status
+    logger.info("LIVE TARGET MONITOR | target_order_id=%s | status=%s", target_order_id, status)
+    if status in ("COMPLETE", "FILLED"):
+        filled_qty = int(status_data.get("filled_quantity") or trade.get("qty") or 0)
+        exit_fill_price = float(status_data.get("avg_fill_price") or trade.get("target") or 0.0)
+        if filled_qty > 0 and exit_fill_price > 0:
+            _cancel_and_confirm_stop_order(session, trade)
+            _finalize_live_exit(session, trade, exit_fill_price, filled_qty, "TARGET_HIT")
+            return {"handled": True, "closed": True}
+    if status in ("REJECTED", "CANCELLED", "CANCELED"):
+        return {"handled": True, "closed": False, "error": f"Target order invalidated ({status})"}
     return {"handled": True, "closed": False}
 
 
@@ -626,6 +837,8 @@ def place_live_order(
         )
         stop_result = _place_stop_with_retries(session, int(managed.filled_quantity or 0), stop_loss, retries=STOP_PLACEMENT_RETRIES)
         if stop_result.get("success"):
+            if ENABLE_BROKER_TARGET_ORDERS:
+                _place_target_with_retries(session, int(managed.filled_quantity or 0), target, retries=TARGET_PLACEMENT_RETRIES)
             _set_system_normal(session)
             logger.info(
                 "LIVE ENTRY | %s | %s %s qty=%s @ %.2f | order_id=%s | state=FILLED_PROTECTED",
@@ -854,6 +1067,8 @@ def place_live_order(
             "state": "EMERGENCY_LOCKDOWN",
             "requires_emergency_remediation": True,
         }
+    if ENABLE_BROKER_TARGET_ORDERS:
+        _place_target_with_retries(session, filled_qty, target, retries=TARGET_PLACEMENT_RETRIES)
     return {
         "success": True,
         "order_id": latest.broker_order_id,
@@ -890,8 +1105,22 @@ def exit_live_trade(
         preferred_product = "MIS"
     final_reason = exit_reason_override or trade.get("exit_reason") or "MANUAL_EXIT"
 
-    # Safety order: cancel protective stop first. Broker can reject manual close
-    # while a pending SL protective order is still active for the same position.
+    # Safety order: cancel both target + protective stop first.
+    # Broker can reject manual close while linked exit orders are still active.
+    pre_target_res = _cancel_and_confirm_target_order(session, trade)
+    if not pre_target_res.get("success"):
+        session["state"] = "EXIT_PENDING_RECOVERY"
+        session["recovery_attempts"] = int(session.get("recovery_attempts") or 0) + 1
+        session["recovery_last_error"] = "Pre-exit target cancellation confirmation failed"
+        session["recovery_last_at"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
+        return {
+            "success": False,
+            "error": "Target cancellation confirmation failed before exit",
+            "state": "PRE_EXIT_TARGET_CANCEL_UNSAFE",
+            "target_order_id": trade.get("target_order_id") or session.get("target_order_id"),
+            "target_status": pre_target_res.get("status"),
+        }
+
     pre_stop_res = _cancel_and_confirm_stop_order(session, trade)
     if not pre_stop_res.get("success"):
         session["state"] = "EXIT_PENDING_RECOVERY"
@@ -906,9 +1135,21 @@ def exit_live_trade(
             "stop_status": pre_stop_res.get("status"),
         }
 
-    # If protective stop already flattened the position, finalize immediately.
+    # If any protective order already flattened the position, finalize immediately.
     open_qty_after_stop_cancel = _get_open_position_qty(symbol)
     if open_qty_after_stop_cancel <= 0:
+        target_order_id = str(trade.get("target_order_id") or session.get("target_order_id") or "").strip()
+        target_status_data = kite_get_order_status(target_order_id) if target_order_id else {"success": False}
+        target_status = str(target_status_data.get("status") or pre_target_res.get("status") or "").upper()
+        if target_status in {"COMPLETE", "FILLED"}:
+            target_fill_qty = int(target_status_data.get("filled_quantity") or trade.get("qty") or 0)
+            target_fill_price = float(target_status_data.get("avg_fill_price") or trade.get("target") or trade.get("entry_price") or 0.0)
+            if target_fill_qty > 0 and target_fill_price > 0:
+                return {
+                    **_finalize_live_exit(session, trade, target_fill_price, target_fill_qty, "TARGET_HIT"),
+                    "state": "ALREADY_FLAT_BY_TARGET",
+                    "order_id": target_order_id or None,
+                }
         stop_order_id = str(trade.get("stop_order_id") or session.get("stop_order_id") or "").strip()
         status_data = kite_get_order_status(stop_order_id) if stop_order_id else {"success": False}
         stop_status = str(status_data.get("status") or pre_stop_res.get("status") or "").upper()
@@ -995,29 +1236,35 @@ def exit_live_trade(
     if exit_fill_price <= 0:
         return {"success": False, "error": "Invalid exit fill price", "state": managed.state.value}
 
-    # Finalization invariant: no open position AND no open stop order.
+    # Finalization invariant: no open position AND no open stop/target orders.
     open_qty = _get_open_position_qty(symbol)
     stop_order_id = str(trade.get("stop_order_id") or session.get("stop_order_id") or "").strip()
     stop_open, stop_open_status = _is_stop_order_open(stop_order_id) if stop_order_id else (False, None)
-    if open_qty > 0 or stop_open:
+    target_order_id = str(trade.get("target_order_id") or session.get("target_order_id") or "").strip()
+    target_open, target_open_status = _is_target_order_open(target_order_id) if target_order_id else (False, None)
+    if open_qty > 0 or stop_open or target_open:
         session["state"] = "EXIT_PENDING_RECOVERY"
         session["recovery_attempts"] = int(session.get("recovery_attempts") or 0) + 1
-        session["recovery_last_error"] = "Post-close invariant failed (position/stop still open)"
+        session["recovery_last_error"] = "Post-close invariant failed (position/stop/target still open)"
         session["recovery_last_at"] = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
         logger.critical(
-            "LIVE EXIT | CRITICAL finalization blocked; post-close invariants failed | open_qty=%s | stop_open=%s | stop_status=%s",
+            "LIVE EXIT | CRITICAL finalization blocked; post-close invariants failed | open_qty=%s | stop_open=%s | stop_status=%s | target_open=%s | target_status=%s",
             open_qty,
             stop_open,
             stop_open_status,
+            target_open,
+            target_open_status,
         )
         return {
             "success": False,
-            "error": "Post-close safety invariant failed (position/stop still open); finalization blocked",
+            "error": "Post-close safety invariant failed (position/stop/target still open); finalization blocked",
             "state": "FILLED_POST_CLOSE_INVARIANT_FAILED",
             "order_id": managed.broker_order_id,
             "open_qty": open_qty,
             "stop_order_id": stop_order_id or None,
             "stop_status": stop_open_status,
+            "target_order_id": target_order_id or None,
+            "target_status": target_open_status,
         }
 
     return {

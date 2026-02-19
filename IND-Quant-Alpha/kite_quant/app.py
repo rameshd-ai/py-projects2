@@ -42,7 +42,7 @@ from engine.data_fetcher import (
 from engine.sentiment_engine import get_sentiment_for_symbol
 from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
-from engine.zerodha_client import get_positions, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol, get_open_orders, get_orders_today
+from engine.zerodha_client import get_positions, get_positions_day, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol, get_open_orders, get_orders_today
 from nifty_banknifty_engine import (
     get_index_market_bias as _engine_index_bias,
     get_index_option_candidates,
@@ -56,7 +56,7 @@ from execution.trade_history_store import get_trade_history as get_stored_trade_
 from strategies import data_provider as strategy_data_provider
 from strategies.strategy_registry import get_strategy_for_session
 from risk.risk_manager import RiskConfig, RiskManager
-from engine.market_calendar import get_calendar_for_month
+from engine.market_calendar import get_calendar_for_month, get_expiry_type_for_date
 from engine.algo_engine import load_algos, get_algo_by_id, get_suggested_algos, load_strategy_groups, get_algos_grouped, get_primary_group
 import json
 from pathlib import Path
@@ -2403,6 +2403,8 @@ INTRADAY_CUTOFF_TIME = time(15, 15)  # 3:15 PM IST
 # DEPRECATED: No longer used - replaced by dynamic hourly frequency
 # MAX_TRADES_PER_SESSION = 10
 SESSION_ENGINE_INTERVAL_SEC = 60
+LIVE_MAX_LOSS_BUFFER = 50.0
+LIVE_MAX_HARD_LOSS = 350.0
 _SESSIONS_DIR = Path(__file__).resolve().parent / "data"
 _SESSIONS_FILE = _SESSIONS_DIR / "trade_sessions.json"
 _SESSIONS_HISTORY_FILE = _SESSIONS_DIR / "trade_sessions_history.json"
@@ -3168,6 +3170,11 @@ def _get_ai_recommended_strategy(session: dict) -> tuple[str, str] | None:
         candles = strategy_data_provider.get_recent_candles(instrument, interval="5m", count=10, period="1d")
         
         # Build market context
+        expiry_type = None
+        try:
+            expiry_type = get_expiry_type_for_date(now.date())
+        except Exception:
+            expiry_type = None
         context = get_market_context(
             nifty_price=nifty_data.get("price"),
             nifty_change_pct=nifty_data.get("change_percent"),
@@ -3176,6 +3183,7 @@ def _get_ai_recommended_strategy(session: dict) -> tuple[str, str] | None:
             vix=vix,
             current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
             recent_candles=candles,
+            expiry_type=expiry_type,
         )
         
         # Get current strategy name
@@ -3342,19 +3350,81 @@ def _manage_trade_real(session: dict) -> bool:
         # Broker-native protective stop monitor (LIVE). If stop is triggered, trade gets finalized here.
         if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
             try:
-                from execution.live_executor import monitor_protective_stop
+                from execution.live_executor import monitor_protective_stop, monitor_profit_target
 
                 handled, stop_info = call_with_timeout(monitor_protective_stop, session, timeout_seconds=8)
                 if handled and stop_info and stop_info.get("closed"):
                     return True
+                handled, target_info = call_with_timeout(monitor_profit_target, session, timeout_seconds=8)
+                if handled and target_info and target_info.get("closed"):
+                    return True
             except Exception as stop_e:
-                logger.warning("Protective stop monitor error for %s: %s", session.get("instrument"), str(stop_e))
+                logger.warning("Protective/target monitor error for %s: %s", session.get("instrument"), str(stop_e))
+
+            # Hard intratrade risk guard: do not wait only for strategy stop logic.
+            # Allow a strict +50 buffer over configured cap (typically 300 -> 350 max),
+            # then force immediate exit.
+            try:
+                ltp = _fetch_session_ltp(session)
+                entry_price = float(trade.get("entry_price") or 0.0)
+                qty = int(trade.get("qty") or 0)
+                side = str(trade.get("side") or "BUY").upper()
+                base_max_loss = min(
+                    300.0,
+                    float(
+                        session.get("max_loss_per_trade")
+                        or session.get("risk_amount_per_trade")
+                        or 300.0
+                    ),
+                )
+                hard_exit_loss = min(LIVE_MAX_HARD_LOSS, base_max_loss + LIVE_MAX_LOSS_BUFFER)
+                if ltp is not None and ltp > 0 and entry_price > 0 and qty > 0:
+                    floating_gross = (
+                        (float(ltp) - entry_price) * qty
+                        if side == "BUY"
+                        else (entry_price - float(ltp)) * qty
+                    )
+                    if floating_gross <= -hard_exit_loss:
+                        trade["exit_reason"] = "MAX_LOSS_HARD_EXIT"
+                        logger.warning(
+                            "HARD RISK EXIT | %s | floating_gross=%.2f <= -%.2f (base=%.2f, buffer=%.2f) | entry=%.2f | ltp=%.2f | qty=%s",
+                            session.get("instrument"),
+                            floating_gross,
+                            hard_exit_loss,
+                            base_max_loss,
+                            LIVE_MAX_LOSS_BUFFER,
+                            entry_price,
+                            float(ltp),
+                            qty,
+                        )
+                        ok, result = call_with_timeout(execute_exit, session, timeout_seconds=20)
+                        if ok and result and result.get("success"):
+                            return True
+                        logger.warning(
+                            "HARD RISK EXIT failed/timed out for %s | result=%s",
+                            session.get("instrument"),
+                            result,
+                        )
+            except Exception as risk_e:
+                logger.warning(
+                    "Hard risk guard error for %s: %s",
+                    session.get("instrument"),
+                    str(risk_e),
+                )
 
         success, exit_reason = call_with_timeout(strategy.check_exit, trade, timeout_seconds=10)
+        mode = (session.get("execution_mode") or "PAPER").upper()
+        if mode == "LIVE":
+            try:
+                from execution.live_executor import sync_broker_trailing_stop
+
+                # Keep broker SL aligned with strategy trailing stop (tighten only).
+                call_with_timeout(sync_broker_trailing_stop, session, timeout_seconds=8)
+            except Exception as trail_e:
+                logger.warning("Broker trailing sync error for %s: %s", session.get("instrument"), str(trail_e))
         if not success or not exit_reason:
             return False
         trade["exit_reason"] = exit_reason
-        mode = (session.get("execution_mode") or "PAPER").upper()
         if mode == "LIVE":
             success, result = call_with_timeout(execute_exit, session, timeout_seconds=15)
             if not success or not (result and result.get("success")):
@@ -3584,6 +3654,12 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
                         except Exception:
                             pass
                     
+                        expiry_type = None
+                        try:
+                            expiry_type = get_expiry_type_for_date(now.date())
+                        except Exception:
+                            expiry_type = None
+
                         context = get_market_context(
                             nifty_price=nifty.get("last_price") if nifty else None,
                             nifty_change_pct=nifty.get("change_percent") if nifty else None,
@@ -3592,6 +3668,7 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
                             vix=vix,
                             current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
                             recent_candles=recent_candles,
+                            expiry_type=expiry_type,
                         )
                     
                         current_strategy = (session.get("recommendation") or {}).get("strategyName")
@@ -3704,6 +3781,46 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
             continue
         
         instrument = session.get("instrument", "")
+        # Re-pick best option contract before each fresh entry cycle (no open trade).
+        # Safety: this updates only option selection metadata and keeps current strategy intact.
+        try:
+            is_nfo_session = (session.get("exchange") or "").upper() == "NFO"
+            normalized_instrument = str(instrument or "").upper().replace(" ", "")
+            if is_nfo_session and normalized_instrument in {"NIFTY", "BANKNIFTY"}:
+                repick_capital = float(capital or DEFAULT_INVESTMENT_AMOUNT)
+                latest_rec = build_ai_trade_recommendation_index(normalized_instrument, repick_capital)
+                if latest_rec:
+                    prev_rec = session.get("recommendation") or {}
+                    prev_strategy_name = prev_rec.get("strategyName")
+                    merged_rec = {**prev_rec, **latest_rec}
+                    if prev_strategy_name:
+                        merged_rec["strategyName"] = prev_strategy_name
+                    session["recommendation"] = merged_rec
+
+                    new_symbol = str(latest_rec.get("tradingsymbol") or "").strip()
+                    if new_symbol:
+                        old_symbol = str(session.get("tradingsymbol") or "").strip()
+                        session["tradingsymbol"] = new_symbol
+                        if old_symbol and old_symbol != new_symbol:
+                            logger.info(
+                                "[OPTION REPICK] %s | %s -> %s | premium=%.2f",
+                                session.get("sessionId"),
+                                old_symbol,
+                                new_symbol,
+                                float(latest_rec.get("premium") or 0.0),
+                            )
+                else:
+                    logger.info(
+                        "[OPTION REPICK] %s | No fresh recommendation, keeping previous option selection",
+                        session.get("sessionId"),
+                    )
+        except Exception as repick_err:
+            logger.exception(
+                "[OPTION REPICK] Error for %s: %s",
+                session.get("sessionId"),
+                str(repick_err),
+            )
+
         strategy_id, strategy_name = _pick_best_strategy(instrument, session=session)
         can_enter, entry_price = _check_entry_real(session, strategy_name_override=strategy_name)
         # Entry diagnostics for Manual Mode: always record last check (timestamp, strategy, can_enter, risk result)
@@ -4435,6 +4552,26 @@ def api_live_executions_today():
             "exchange": exchange or "ALL",
             "persisted_locally": True,
             "history_file": str(_BROKER_ORDERS_HISTORY_FILE.name),
+        }
+    )
+
+
+@app.route("/api/live-positions-today")
+def api_live_positions_today():
+    """GET /api/live-positions-today: broker day positions (Kite-like positions view)."""
+    exchange = (request.args.get("exchange") or "NFO").strip().upper() or None
+    positions = get_positions_day(exchange_filter=exchange)
+    total_pnl = 0.0
+    for p in positions:
+        try:
+            total_pnl += float(p.get("pnl") or 0.0)
+        except Exception:
+            pass
+    return jsonify(
+        {
+            "positions": positions,
+            "total_pnl": round(total_pnl, 2),
+            "exchange": exchange or "ALL",
         }
     )
 

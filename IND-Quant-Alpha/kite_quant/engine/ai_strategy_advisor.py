@@ -139,6 +139,7 @@ def get_market_context(
     vix: float | None = None,
     current_time: str | None = None,
     recent_candles: list[dict] | None = None,
+    expiry_type: str | None = None,
 ) -> dict[str, Any]:
     """
     Gather comprehensive market context for AI analysis.
@@ -154,6 +155,10 @@ def get_market_context(
             "change_pct": banknifty_change_pct,
         },
         "vix": vix,
+        "expiry": {
+            "is_expiry_day": bool(expiry_type),
+            "type": (str(expiry_type).upper() if expiry_type else None),
+        },
     }
     
     # Analyze recent price action
@@ -184,10 +189,13 @@ def build_gpt_prompt(context: dict[str, Any], current_strategy: str | None = Non
     ])
     nifty = (context or {}).get("nifty") or {}
     banknifty = (context or {}).get("banknifty") or {}
+    expiry = (context or {}).get("expiry") or {}
     nifty_price = nifty.get("price")
     nifty_change = nifty.get("change_pct")
     bank_price = banknifty.get("price")
     bank_change = banknifty.get("change_pct")
+    expiry_type = expiry.get("type")
+    expiry_label = expiry_type if expiry_type else "NO"
     
     prompt = f"""You are an expert intraday trading advisor for Indian stock markets (NSE/BSE).
 
@@ -196,6 +204,7 @@ Current Market Context:
 - NIFTY 50: {nifty_price} ({(nifty_change if nifty_change is not None else 0.0):+.2f}%)
 - BANK NIFTY: {bank_price} ({(bank_change if bank_change is not None else 0.0):+.2f}%)
 - India VIX: {context.get('vix', 'N/A')}
+- Expiry Day: {expiry_label}
 """
     
     if "price_action" in context:
@@ -229,7 +238,8 @@ Consider:
 2. Volatility level (VIX)
 3. Time of day (opening/mid-day/closing)
 4. Recent price action and volume
-5. Whether a switch is beneficial vs. staying with current strategy"""
+5. Expiry-day behavior (weekly/monthly expiry can be more volatile)
+6. Whether a switch is beneficial vs. staying with current strategy"""
     
     return prompt
 
