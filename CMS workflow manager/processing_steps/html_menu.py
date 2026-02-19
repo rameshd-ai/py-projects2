@@ -66,9 +66,8 @@ def clean_text(text: Any) -> Any:
     # Remove HTML tags if any remain
     cleaned = re.sub(r'<[^>]+>', '', cleaned)
     
-    # Replace common special characters that should be spaces (semicolons, pipes, etc.)
-    # Replace multiple occurrences of these characters with a single space
-    cleaned = re.sub(r'[;|]+', ' ', cleaned)
+    # Replace semicolons with space, but KEEP pipes (|) as they are used as separators in item names
+    cleaned = re.sub(r';+', ' ', cleaned)
     
     # Replace multiple spaces/newlines/tabs with single space
     cleaned = re.sub(r'[\s]+', ' ', cleaned)
@@ -242,6 +241,55 @@ def payload_mapper(job_id: str) -> bool:
         return False
 
 
+def apply_cascading_status(final_payload: List[Dict]) -> List[Dict]:
+    """
+    Apply cascading status logic:
+    - If a Menu (Level 0) is inactive, all its Sections and Items become inactive
+    - If a Section (Level 1) is inactive, all its Items become inactive
+    
+    Status values: 1 = active, 0 = inactive, 2 = inactive (both map to 0)
+    """
+    logger.info("Applying cascading status logic")
+    cascaded_count = 0
+    
+    for menu in final_payload:
+        menu_status = menu.get('recordJsonString', {}).get('status', 1)
+        menu_is_inactive = (menu_status == 0 or menu_status == 2)
+        
+        if menu_is_inactive:
+            logger.info(f"Menu '{menu.get('recordJsonString', {}).get('menu-title', 'Unknown')}' is inactive - cascading to all children")
+        
+        for section in menu.get('MenuSections', []):
+            section_status = section.get('recordJsonString', {}).get('status', 1)
+            section_is_inactive = (section_status == 0 or section_status == 2)
+            
+            # If parent menu is inactive, make this section inactive too
+            if menu_is_inactive and not section_is_inactive:
+                section['recordJsonString']['status'] = 0
+                section_is_inactive = True
+                cascaded_count += 1
+                logger.debug(f"  Section '{section.get('recordJsonString', {}).get('section-name', 'Unknown')}' set to inactive (parent menu inactive)")
+            
+            # Now check items
+            for item in section.get('MenuItems', []):
+                item_status = item.get('recordJsonString', {}).get('status', 1)
+                item_is_inactive = (item_status == 0 or item_status == 2)
+                
+                # If parent menu OR parent section is inactive, make this item inactive
+                if (menu_is_inactive or section_is_inactive) and not item_is_inactive:
+                    item['recordJsonString']['status'] = 0
+                    cascaded_count += 1
+                    logger.debug(f"    Item '{item.get('recordJsonString', {}).get('item-name', 'Unknown')}' set to inactive (parent inactive)")
+    
+    if cascaded_count > 0:
+        logger.info(f"Cascaded inactive status to {cascaded_count} child record(s)")
+        print(f"[STATUS CASCADE] Set {cascaded_count} child record(s) to inactive based on parent status", flush=True)
+    else:
+        logger.info("No status cascading needed - all active records have active parents")
+    
+    return final_payload
+
+
 def payload_creator(job_id: str) -> bool:
     """
     Creates final payload structure using template
@@ -348,6 +396,9 @@ def payload_creator(job_id: str) -> bool:
             menu_output["MenuSections"].append(section_output)
         
         final_payload.append(menu_output)
+    
+    # Apply cascading status logic (inactive parents cascade to children)
+    final_payload = apply_cascading_status(final_payload)
     
     # Save final payload
     output_file_path = os.path.join(get_job_folder(job_id), "menu_api_response_final.json")

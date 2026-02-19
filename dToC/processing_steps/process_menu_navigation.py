@@ -460,49 +460,47 @@ def run_menu_navigation_step(
                 level = starting_level
             
             page_name = page_node.get("page_name", "")
-            meta_info = page_node.get("meta_info", {})
+            meta_info = page_node.get("meta_info", {}) or {}
+            has_meta = bool(meta_info and meta_info != {})
             
-            if not meta_info or meta_info == {}:
-                return None
-            
-            # Extract ShowInNavigation value and convert to boolean for status
-            # If ShowInNavigation is "Yes", status = True
-            # If ShowInNavigation is "No", status = False
-            # If ShowInNavigation is missing/empty, default to True (active)
-            show_in_navigation_raw = meta_info.get("ShowInNavigation", "")
-            # Handle both string and other types, normalize to string
-            if show_in_navigation_raw is None:
-                show_in_navigation_raw = ""
+            # Determine page_status from ShowInNavigation when meta_info exists
+            if has_meta:
+                show_in_navigation_raw = meta_info.get("ShowInNavigation", "")
+                if show_in_navigation_raw is None:
+                    show_in_navigation_raw = ""
+                else:
+                    show_in_navigation_raw = str(show_in_navigation_raw)
+                show_in_navigation_value = show_in_navigation_raw.strip().lower()
+                page_status = show_in_navigation_value == "yes"
+                logging.debug(f"Page '{page_name}': ShowInNavigation='{show_in_navigation_raw}' -> status={page_status}")
             else:
-                show_in_navigation_raw = str(show_in_navigation_raw)
-            
-            show_in_navigation_value = show_in_navigation_raw.strip().lower()
-            # Check if value is "yes" (case-insensitive, handles "yes", "Yes", "YES", etc.)
-            # Only True if explicitly "yes", otherwise False
-            if show_in_navigation_value == "yes":
+                # No meta_info: use default True for parent nodes so branches aren't dropped
                 page_status = True
-            else:
-                # If ShowInNavigation is "no", empty, or missing -> status = False (not in navigation)
-                page_status = False
-            
-            # Log for debugging
-            logging.debug(f"Page '{page_name}': ShowInNavigation='{show_in_navigation_raw}' -> normalized='{show_in_navigation_value}' -> status={page_status}")
-            
-            page_tree = {
-                "page_name": page_name,
-                "level": level,
-                "page_status": page_status  # Status based on ShowInNavigation (defaults to True/active if not specified)
-            }
             
             sub_pages = page_node.get("sub_pages", [])
             if sub_pages:
                 processed_sub_pages = [extract_page_tree(sub_page, level + 1) for sub_page in sub_pages]
                 valid_sub_pages = [sp for sp in processed_sub_pages if sp is not None]
-                
-                if valid_sub_pages:
-                    page_tree["sub_pages"] = valid_sub_pages
+                # Include this page if it has meta_info OR has any valid descendants (so menu tree is built)
+                if has_meta or valid_sub_pages:
+                    page_tree = {
+                        "page_name": page_name,
+                        "level": level,
+                        "page_status": page_status
+                    }
+                    if valid_sub_pages:
+                        page_tree["sub_pages"] = valid_sub_pages
+                    return page_tree
+                return None
+            # No sub_pages: include only if page has meta_info
+            if not has_meta:
+                return None
             
-            return page_tree
+            return {
+                "page_name": page_name,
+                "level": level,
+                "page_status": page_status
+            }
         
         pages_tree = []
         for page in simplified_data.get('pages', []):

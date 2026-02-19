@@ -377,14 +377,33 @@ def cleanup_junk_jobs():
                     
                     if is_junk:
                         try:
+                            import stat
+                            
+                            def force_remove_readonly(func, path, exc_info):
+                                """Error handler for Windows readonly file issues"""
+                                os.chmod(path, stat.S_IWRITE)
+                                func(path)
+                            
                             # Delete upload folder
                             if os.path.exists(folder_path):
-                                shutil.rmtree(folder_path)
+                                shutil.rmtree(folder_path, onerror=force_remove_readonly)
+                                # Clean up any remaining empty folder
+                                if os.path.exists(folder_path):
+                                    try:
+                                        os.rmdir(folder_path)
+                                    except:
+                                        pass
                             
                             # Also delete corresponding output folder if it exists
                             output_folder = get_job_output_folder(job_id)
                             if os.path.exists(output_folder):
-                                shutil.rmtree(output_folder)
+                                shutil.rmtree(output_folder, onerror=force_remove_readonly)
+                                # Clean up any remaining empty folder
+                                if os.path.exists(output_folder):
+                                    try:
+                                        os.rmdir(output_folder)
+                                    except:
+                                        pass
                             
                             cleaned_count += 1
                             cleaned_jobs.append(job_id)
@@ -408,9 +427,22 @@ def cleanup_junk_jobs():
                 if not os.path.exists(upload_folder):
                     # Orphaned output folder - delete it
                     try:
+                        import stat
+                        
+                        def force_remove_readonly(func, path, exc_info):
+                            """Error handler for Windows readonly file issues"""
+                            os.chmod(path, stat.S_IWRITE)
+                            func(path)
+                        
                         output_folder_path = get_job_output_folder(job_id)
                         if os.path.exists(output_folder_path):
-                            shutil.rmtree(output_folder_path)
+                            shutil.rmtree(output_folder_path, onerror=force_remove_readonly)
+                            # Clean up any remaining empty folder
+                            if os.path.exists(output_folder_path):
+                                try:
+                                    os.rmdir(output_folder_path)
+                                except:
+                                    pass
                             cleaned_count += 1
                             cleaned_jobs.append(f"{job_id} (orphaned output)")
                             logging.info(f"Cleaned up orphaned output folder: {job_id}")
@@ -544,6 +576,7 @@ def delete_job(job_id):
     try:
         from utils import get_job_folder, get_job_output_folder
         import shutil
+        import stat
         
         job_upload_folder = get_job_folder(job_id)
         job_output_folder = get_job_output_folder(job_id)
@@ -551,12 +584,25 @@ def delete_job(job_id):
         deleted_items = []
         errors = []
         
-        # Delete upload folder
+        def force_remove_readonly(func, path, exc_info):
+            """Error handler for Windows readonly file issues"""
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        
+        # Delete upload folder with force readonly removal
         if os.path.exists(job_upload_folder):
             try:
-                shutil.rmtree(job_upload_folder)
+                shutil.rmtree(job_upload_folder, onerror=force_remove_readonly)
                 deleted_items.append("upload folder")
                 logging.info(f"Deleted upload folder for job {job_id}")
+                
+                # Verify deletion - check if folder still exists
+                if os.path.exists(job_upload_folder):
+                    # Try to remove any remaining empty folders
+                    try:
+                        os.rmdir(job_upload_folder)
+                    except:
+                        pass
             except Exception as e:
                 error_msg = f"Failed to delete upload folder: {str(e)}"
                 errors.append(error_msg)
@@ -564,12 +610,20 @@ def delete_job(job_id):
         else:
             logging.warning(f"Upload folder not found for job {job_id}: {job_upload_folder}")
         
-        # Delete output folder
+        # Delete output folder with force readonly removal
         if os.path.exists(job_output_folder):
             try:
-                shutil.rmtree(job_output_folder)
+                shutil.rmtree(job_output_folder, onerror=force_remove_readonly)
                 deleted_items.append("output folder")
                 logging.info(f"Deleted output folder for job {job_id}")
+                
+                # Verify deletion - check if folder still exists
+                if os.path.exists(job_output_folder):
+                    # Try to remove any remaining empty folders
+                    try:
+                        os.rmdir(job_output_folder)
+                    except:
+                        pass
             except Exception as e:
                 error_msg = f"Failed to delete output folder: {str(e)}"
                 errors.append(error_msg)
@@ -619,6 +673,12 @@ def bulk_delete_jobs():
         
         from utils import get_job_folder, get_job_output_folder
         import shutil
+        import stat
+        
+        def force_remove_readonly(func, path, exc_info):
+            """Error handler for Windows readonly file issues"""
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
         
         deleted_count = 0
         failed_jobs = []
@@ -628,13 +688,25 @@ def bulk_delete_jobs():
                 job_upload_folder = get_job_folder(job_id)
                 job_output_folder = get_job_output_folder(job_id)
                 
-                # Delete upload folder
+                # Delete upload folder with force readonly removal
                 if os.path.exists(job_upload_folder):
-                    shutil.rmtree(job_upload_folder)
+                    shutil.rmtree(job_upload_folder, onerror=force_remove_readonly)
+                    # Clean up empty parent folder if it exists
+                    if os.path.exists(job_upload_folder):
+                        try:
+                            os.rmdir(job_upload_folder)
+                        except:
+                            pass
                 
-                # Delete output folder
+                # Delete output folder with force readonly removal
                 if os.path.exists(job_output_folder):
-                    shutil.rmtree(job_output_folder)
+                    shutil.rmtree(job_output_folder, onerror=force_remove_readonly)
+                    # Clean up empty parent folder if it exists
+                    if os.path.exists(job_output_folder):
+                        try:
+                            os.rmdir(job_output_folder)
+                        except:
+                            pass
                 
                 deleted_count += 1
             except Exception as e:
