@@ -25,7 +25,11 @@ MANIFEST
 venv/
 ENV/
 env/
+.venv/
 .venv
+# Poetry virtual environments
+.poetry/
+poetry.lock.backup
 
 # Flask
 instance/
