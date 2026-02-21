@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "qa-studio-backend"
+version = "1.0.0"
+description = "QA Studio — Website Quality Assurance Dashboard (this app only)"
+authors = ["QA Studio"]
+readme = "README.md"
+packages = [{ include = "app" }, { include = "apps" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^3.0.0"
+pydantic = "^2.5.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

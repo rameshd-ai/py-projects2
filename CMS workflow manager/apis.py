@@ -331,18 +331,13 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
                             else:
                                 return False, error_msg
                     except requests.exceptions.Timeout as e:
-                        error_msg = f"Timeout error for record {record_index + 1} (attempt {attempt + 1}/{max_retries}): {e}"
-                        print(f"[TIMEOUT] {error_msg}", flush=True)
-                        if attempt < max_retries - 1:
-                            print(f"[RETRY] Retrying record {record_index + 1} after {retry_delay} seconds...", flush=True)
-                            time.sleep(retry_delay)
-                        else:
-                            # On final attempt failure, store None and continue with next record
-                            while len(responses) <= record_index:
-                                responses.append(None)
-                            responses[record_index] = None
-                            print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts, continuing with next record...", flush=True)
-                            logger.warning(f"Record {record_index + 1} failed after {max_retries} timeout attempts")
+                        error_msg = f"Timeout error for record {record_index + 1}: {e}"
+                        print(f"[TIMEOUT] {error_msg} - NOT retrying (retries can create duplicate records if original succeeded)", flush=True)
+                        logger.warning(f"Timeout for record {record_index + 1} - skipping retries to avoid duplicates")
+                        while len(responses) <= record_index:
+                            responses.append(None)
+                        responses[record_index] = None
+                        break  # Do NOT retry - record may have been created; retrying = duplicates
                     except requests.RequestException as e:
                         error_msg = f"Request error for record {record_index + 1}: {e}"
                         print(f"[ERROR] {error_msg}", flush=True)

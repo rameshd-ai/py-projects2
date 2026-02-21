@@ -7,6 +7,7 @@ from config import PROCESSING_STEPS, UPLOAD_FOLDER, OUTPUT_FOLDER, MAX_CONTENT_L
 from utils import save_job_config, generate_workflow_stream, execute_single_step
 
 app = Flask(__name__)
+app._processing_locks = {}  # Prevents concurrent runs of same job+module (e.g. htmlMenu)
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
@@ -853,59 +854,62 @@ def process_sub_process():
             "job_id": job_id
         }
         
-        # Load previous step results (including site_setup, brand_theme, etc.)
-        # This is needed for menu processing which requires site_setup data
-        from utils import get_job_folder
-        import os
-        results_file = os.path.join(get_job_folder(job_id), "results.json")
-        if os.path.exists(results_file):
-            try:
-                with open(results_file, 'r', encoding='utf-8') as f:
-                    previous_results = json.load(f)
-                    workflow_context.update(previous_results)
-                logging.info(f"Loaded previous step results for job {job_id}")
-            except Exception as e:
-                logging.warning(f"Could not load previous results for job {job_id}: {e}")
-        
-        # Process based on module_id
-        result = None
-        if module_id == 'htmlMenu':
-            from processing_steps.html_menu import run_html_menu_step
-            step_config = {"delay": 1}
-            result = run_html_menu_step(job_id, step_config, workflow_context)
-        elif module_id == 'faqManager':
-            # Get source link from request
-            source_link = data.get('source_link')
-            if not source_link:
-                return jsonify({"success": False, "error": "source_link is required for FAQ processing"}), 400
-            
-            from processing_steps.faq_manager import process_faq_from_source_link
-            # Add source_link to workflow context
-            workflow_context["source_link"] = source_link
-            result = process_faq_from_source_link(job_id, source_link)
-        else:
-            return jsonify({"success": False, "error": f"Unknown module_id: {module_id}"}), 400
-        
-        if result and result.get("success", True):
-            # Mark module as processed in job config
-            from utils import save_job_config
-            if 'processed_modules' not in job_config:
-                job_config['processed_modules'] = {}
-            job_config['processed_modules'][module_id] = True
-            job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
-            save_job_config(job_id, job_config)
-            logging.info(f"Marked {module_id} as processed for job {job_id}")
-            
-            return jsonify({
-                "success": True,
-                "module_id": module_id,
-                "result": result
-            })
-        else:
+        # Prevent concurrent processing of same job+module (avoids duplicate records)
+        lock_key = f"{job_id}:{module_id}"
+        if lock_key in app._processing_locks:
+            logging.warning(f"Rejected concurrent request for {lock_key} - already processing")
             return jsonify({
                 "success": False,
-                "error": result.get("error", "Processing failed") if result else "Processing failed"
-            }), 500
+                "error": f"Already processing {module_id} for this job. Please wait."
+            }), 429
+        app._processing_locks[lock_key] = True
+        
+        try:
+            # Load previous step results (including site_setup, brand_theme, etc.)
+            from utils import get_job_folder
+            import os
+            results_file = os.path.join(get_job_folder(job_id), "results.json")
+            if os.path.exists(results_file):
+                try:
+                    with open(results_file, 'r', encoding='utf-8') as f:
+                        previous_results = json.load(f)
+                        workflow_context.update(previous_results)
+                    logging.info(f"Loaded previous step results for job {job_id}")
+                except Exception as e:
+                    logging.warning(f"Could not load previous results for job {job_id}: {e}")
+            
+            # Process based on module_id
+            result = None
+            if module_id == 'htmlMenu':
+                from processing_steps.html_menu import run_html_menu_step
+                step_config = {"delay": 1}
+                result = run_html_menu_step(job_id, step_config, workflow_context)
+            elif module_id == 'faqManager':
+                source_link = data.get('source_link')
+                if not source_link:
+                    return jsonify({"success": False, "error": "source_link is required for FAQ processing"}), 400
+                from processing_steps.faq_manager import process_faq_from_source_link
+                workflow_context["source_link"] = source_link
+                result = process_faq_from_source_link(job_id, source_link)
+            else:
+                return jsonify({"success": False, "error": f"Unknown module_id: {module_id}"}), 400
+            
+            if result and result.get("success", True):
+                from utils import save_job_config
+                if 'processed_modules' not in job_config:
+                    job_config['processed_modules'] = {}
+                job_config['processed_modules'][module_id] = True
+                job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                save_job_config(job_id, job_config)
+                logging.info(f"Marked {module_id} as processed for job {job_id}")
+                return jsonify({"success": True, "module_id": module_id, "result": result})
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": result.get("error", "Processing failed") if result else "Processing failed"
+                }), 500
+        finally:
+            app._processing_locks.pop(lock_key, None)
             
     except Exception as e:
         logging.error(f"Error processing sub-process: {e}")
