@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Studio — Pillar</title>
+  <meta name="application-name" content="QA Studio" />
+  <link rel="stylesheet" href="/qa-studio/static/css/style.css" />
+</head>
+<body>
+  <div class="pillar-page">
+    <div class="pillar-loading" id="pillar-loading">Loading…</div>
+    <div class="pillar-error" id="pillar-error" style="display: none;"></div>
+    <div class="pillar-content" id="pillar-content" style="display: none;">
+      <header class="pillar-page-header">
+        <div class="pillar-page-nav">
+          <a href="#" id="pillar-back-link" class="pillar-back-link">&larr; <span id="pillar-project-name"></span></a>
+          <a href="/" class="home-link">&#8962; Choose app</a>
+          <span class="pillar-title-wrap"><h1 class="pillar-page-title" id="pillar-title"></h1><button type="button" class="btn-info-icon" id="btn-custom-tests-info" title="Custom test cases" style="display: none;">&#9432;</button></span>
+        </div>
+        <div class="pillar-page-actions">
+          <button type="button" class="btn-run-scan" id="btn-run-scan" style="display: none;">Scan</button>
+          <button type="button" class="btn-scan-new" id="btn-scan-new" style="display: none;">Scan New URLs</button>
+          <div class="pillar-page-score-wrap">
+            <span class="pillar-page-score-label">SCORE</span>
+            <div class="pillar-page-score-ring" id="pillar-page-score-ring"></div>
+            <span class="pillar-page-score-value" id="pillar-page-score-value"></span>
+          </div>
+        </div>
+      </header>
+      <section class="pillar-summary-cards">
+        <div class="summary-card"><span class="summary-card-label">TOTAL URLs CHECKED</span><span class="summary-card-value" id="pillar-total"></span></div>
+        <div class="summary-card summary-card-passed"><span class="summary-card-label">PASSED</span><span class="summary-card-value" id="pillar-passed"></span></div>
+        <div class="summary-card summary-card-failed"><span class="summary-card-label">VIOLATIONS</span><span class="summary-card-value" id="pillar-failed"></span></div>
+        <div class="summary-card summary-card-warnings"><span class="summary-card-label">INCOMPLETE</span><span class="summary-card-value" id="pillar-warnings"></span></div>
+      </section>
+      <section class="pillar-pass-rate">
+        <span class="pass-rate-label">Pass Rate</span>
+        <div class="pass-rate-bar-wrap"><div class="pass-rate-bar" id="pillar-pass-rate-bar"></div></div>
+        <span class="pass-rate-pct" id="pillar-pass-rate-pct"></span>
+      </section>
+      <section class="pillar-scan-section" id="pillar-scan-section" style="display: none;">
+        <h2 class="pillar-issues-title">axe-core scan report</h2>
+        <div id="pillar-scan-summary" class="scan-summary"></div>
+        <div id="pillar-scan-controls" class="scan-controls" style="display: none;">
+          <button type="button" id="btn-scan-pause" class="btn-scan-control" title="Pause">Pause</button>
+          <button type="button" id="btn-scan-play" class="btn-scan-control btn-scan-play" style="display: none;" title="Resume">Play</button>
+          <button type="button" id="btn-scan-stop" class="btn-scan-control btn-scan-stop" title="Stop">Stop</button>
+        </div>
+        <div id="pillar-scan-url-list" class="url-accordion-list"></div>
+      </section>
+      <section class="pillar-issues-section" id="pillar-issues-section">
+        <h2 class="pillar-issues-title" id="pillar-issues-title">ISSUES (0)</h2>
+        <div class="pillar-issues-list" id="pillar-issues-list"></div>
+      </section>
+    </div>
+  </div>
+  <div id="custom-tests-modal" class="modal-backdrop scan-report-modal" style="display: none;" aria-hidden="true">
+    <div class="scan-report-popup" role="dialog" aria-modal="true" aria-labelledby="custom-tests-modal-title">
+      <div class="scan-report-popup-header">
+        <h2 id="custom-tests-modal-title" class="scan-report-popup-title">Custom test cases</h2>
+        <button type="button" class="modal-close custom-tests-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="scan-report-popup-body" id="custom-tests-modal-body"></div>
+    </div>
+  </div>
+  <div id="scan-report-modal" class="modal-backdrop scan-report-modal" style="display: none;" aria-hidden="true">
+    <div class="scan-report-popup" role="dialog" aria-modal="true" aria-labelledby="scan-report-modal-title">
+      <div class="scan-report-popup-header">
+        <h2 id="scan-report-modal-title" class="scan-report-popup-title"></h2>
+        <button type="button" class="modal-close scan-report-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="scan-report-popup-body"></div>
+    </div>
+  </div>
+  <script src="/qa-studio/static/js/pillar.js"></script>
+</body>
+</html>

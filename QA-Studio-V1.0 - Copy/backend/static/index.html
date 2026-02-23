@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Studio</title>
+  <meta name="application-name" content="QA Studio" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <header class="header">
+      <div class="brand">
+        <div class="logo" aria-hidden></div>
+        <div>
+          <h1>QA Studio</h1>
+          <p>Website Quality Assurance</p>
+        </div>
+      </div>
+      <button type="button" class="btn-new" id="btn-new-project">+ New Project</button>
+    </header>
+
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="icon-search" aria-hidden></span>
+        <input type="search" id="search" class="search-input" placeholder="Search by name or domain..." />
+      </div>
+      <div class="filter-wrap">
+        <span class="icon-filter" aria-hidden></span>
+        <select id="phase-filter" class="phase-select">
+          <option value="">All Phases</option>
+          <option value="Live">Live</option>
+          <option value="Test Link">Test Link</option>
+          <option value="Development">Development</option>
+        </select>
+      </div>
+      <span class="count" id="project-count">0 projects</span>
+    </div>
+
+    <div class="table-wrap">
+      <div class="error-banner" id="error-banner" style="display: none;"></div>
+      <div class="loading" id="loading">Loading projects…</div>
+      <table class="project-table" id="project-table" style="display: none;">
+        <thead>
+          <tr>
+            <th>PROJECT</th>
+            <th>PHASE</th>
+            <th>QA SCORE</th>
+            <th>LAST RUN</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody id="project-tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display: none;">No projects yet. Click "New Project" to add one.</div>
+    </div>
+  </div>
+
+  <div id="modal-backdrop" class="modal-backdrop" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-title">Add New Project</h2>
+        <button type="button" class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <form id="form-new-project">
+        <div class="modal-error" id="modal-error" style="display: none;"></div>
+        <div class="form-group">
+          <label for="project-name">Project Name</label>
+          <input type="text" id="project-name" placeholder="My Website" required />
+        </div>
+        <div class="form-group">
+          <label for="domain-url">Domain URL</label>
+          <input type="url" id="domain-url" placeholder="https://example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="phase">Phase</label>
+          <select id="phase">
+            <option value="Test Link">Test Link</option>
+            <option value="Live">Live</option>
+            <option value="Development">Development</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-create" id="btn-create">Create Project</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

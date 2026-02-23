@@ -2606,6 +2606,12 @@
         async function processDineMenuFromModal() {
             const processBtn = document.getElementById('processDineMenuBtn');
             
+            // Prevent double-clicks / rapid re-submits
+            if (window.dineMenuProcessing) {
+                console.warn('[Dine Menu] Ignoring duplicate click - already processing');
+                return;
+            }
+            
             // If already processed, ask for confirmation to reprocess
             if (processedSubProcesses['htmlMenu']) {
                 if (!confirm('Dine Menu has already been processed. Do you want to reprocess it?')) {
@@ -2618,7 +2624,8 @@
             // NOTE: Do NOT save mapper files here - "Save All" button handles that
             // "Process" button should ONLY process the menu, not save mapper files
             
-            // Disable button and show processing (keep disabled until process finishes)
+            // Set flag and disable button
+            window.dineMenuProcessing = true;
             const processingLabel = '<i class="fas fa-spinner fa-spin"></i> Processing…';
             if (processBtn) {
                 processBtn.disabled = true;
@@ -2649,6 +2656,8 @@
                     processBtn.style.background = '#10b981';
                     processBtn.style.cursor = '';
                 }
+            } finally {
+                window.dineMenuProcessing = false;
             }
         }
 

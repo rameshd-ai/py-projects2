@@ -7,6 +7,7 @@ from config import PROCESSING_STEPS, UPLOAD_FOLDER, OUTPUT_FOLDER, MAX_CONTENT_L
 from utils import save_job_config, generate_workflow_stream, execute_single_step
 
 app = Flask(__name__)
+app._processing_locks = {}  # Prevents concurrent runs of same job+module (e.g. htmlMenu)
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
@@ -377,14 +378,33 @@ def cleanup_junk_jobs():
                     
                     if is_junk:
                         try:
+                            import stat
+                            
+                            def force_remove_readonly(func, path, exc_info):
+                                """Error handler for Windows readonly file issues"""
+                                os.chmod(path, stat.S_IWRITE)
+                                func(path)
+                            
                             # Delete upload folder
                             if os.path.exists(folder_path):
-                                shutil.rmtree(folder_path)
+                                shutil.rmtree(folder_path, onerror=force_remove_readonly)
+                                # Clean up any remaining empty folder
+                                if os.path.exists(folder_path):
+                                    try:
+                                        os.rmdir(folder_path)
+                                    except:
+                                        pass
                             
                             # Also delete corresponding output folder if it exists
                             output_folder = get_job_output_folder(job_id)
                             if os.path.exists(output_folder):
-                                shutil.rmtree(output_folder)
+                                shutil.rmtree(output_folder, onerror=force_remove_readonly)
+                                # Clean up any remaining empty folder
+                                if os.path.exists(output_folder):
+                                    try:
+                                        os.rmdir(output_folder)
+                                    except:
+                                        pass
                             
                             cleaned_count += 1
                             cleaned_jobs.append(job_id)
@@ -408,9 +428,22 @@ def cleanup_junk_jobs():
                 if not os.path.exists(upload_folder):
                     # Orphaned output folder - delete it
                     try:
+                        import stat
+                        
+                        def force_remove_readonly(func, path, exc_info):
+                            """Error handler for Windows readonly file issues"""
+                            os.chmod(path, stat.S_IWRITE)
+                            func(path)
+                        
                         output_folder_path = get_job_output_folder(job_id)
                         if os.path.exists(output_folder_path):
-                            shutil.rmtree(output_folder_path)
+                            shutil.rmtree(output_folder_path, onerror=force_remove_readonly)
+                            # Clean up any remaining empty folder
+                            if os.path.exists(output_folder_path):
+                                try:
+                                    os.rmdir(output_folder_path)
+                                except:
+                                    pass
                             cleaned_count += 1
                             cleaned_jobs.append(f"{job_id} (orphaned output)")
                             logging.info(f"Cleaned up orphaned output folder: {job_id}")
@@ -544,6 +577,7 @@ def delete_job(job_id):
     try:
         from utils import get_job_folder, get_job_output_folder
         import shutil
+        import stat
         
         job_upload_folder = get_job_folder(job_id)
         job_output_folder = get_job_output_folder(job_id)
@@ -551,12 +585,25 @@ def delete_job(job_id):
         deleted_items = []
         errors = []
         
-        # Delete upload folder
+        def force_remove_readonly(func, path, exc_info):
+            """Error handler for Windows readonly file issues"""
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        
+        # Delete upload folder with force readonly removal
         if os.path.exists(job_upload_folder):
             try:
-                shutil.rmtree(job_upload_folder)
+                shutil.rmtree(job_upload_folder, onerror=force_remove_readonly)
                 deleted_items.append("upload folder")
                 logging.info(f"Deleted upload folder for job {job_id}")
+                
+                # Verify deletion - check if folder still exists
+                if os.path.exists(job_upload_folder):
+                    # Try to remove any remaining empty folders
+                    try:
+                        os.rmdir(job_upload_folder)
+                    except:
+                        pass
             except Exception as e:
                 error_msg = f"Failed to delete upload folder: {str(e)}"
                 errors.append(error_msg)
@@ -564,12 +611,20 @@ def delete_job(job_id):
         else:
             logging.warning(f"Upload folder not found for job {job_id}: {job_upload_folder}")
         
-        # Delete output folder
+        # Delete output folder with force readonly removal
         if os.path.exists(job_output_folder):
             try:
-                shutil.rmtree(job_output_folder)
+                shutil.rmtree(job_output_folder, onerror=force_remove_readonly)
                 deleted_items.append("output folder")
                 logging.info(f"Deleted output folder for job {job_id}")
+                
+                # Verify deletion - check if folder still exists
+                if os.path.exists(job_output_folder):
+                    # Try to remove any remaining empty folders
+                    try:
+                        os.rmdir(job_output_folder)
+                    except:
+                        pass
             except Exception as e:
                 error_msg = f"Failed to delete output folder: {str(e)}"
                 errors.append(error_msg)
@@ -619,6 +674,12 @@ def bulk_delete_jobs():
         
         from utils import get_job_folder, get_job_output_folder
         import shutil
+        import stat
+        
+        def force_remove_readonly(func, path, exc_info):
+            """Error handler for Windows readonly file issues"""
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
         
         deleted_count = 0
         failed_jobs = []
@@ -628,13 +689,25 @@ def bulk_delete_jobs():
                 job_upload_folder = get_job_folder(job_id)
                 job_output_folder = get_job_output_folder(job_id)
                 
-                # Delete upload folder
+                # Delete upload folder with force readonly removal
                 if os.path.exists(job_upload_folder):
-                    shutil.rmtree(job_upload_folder)
+                    shutil.rmtree(job_upload_folder, onerror=force_remove_readonly)
+                    # Clean up empty parent folder if it exists
+                    if os.path.exists(job_upload_folder):
+                        try:
+                            os.rmdir(job_upload_folder)
+                        except:
+                            pass
                 
-                # Delete output folder
+                # Delete output folder with force readonly removal
                 if os.path.exists(job_output_folder):
-                    shutil.rmtree(job_output_folder)
+                    shutil.rmtree(job_output_folder, onerror=force_remove_readonly)
+                    # Clean up empty parent folder if it exists
+                    if os.path.exists(job_output_folder):
+                        try:
+                            os.rmdir(job_output_folder)
+                        except:
+                            pass
                 
                 deleted_count += 1
             except Exception as e:
@@ -781,59 +854,62 @@ def process_sub_process():
             "job_id": job_id
         }
         
-        # Load previous step results (including site_setup, brand_theme, etc.)
-        # This is needed for menu processing which requires site_setup data
-        from utils import get_job_folder
-        import os
-        results_file = os.path.join(get_job_folder(job_id), "results.json")
-        if os.path.exists(results_file):
-            try:
-                with open(results_file, 'r', encoding='utf-8') as f:
-                    previous_results = json.load(f)
-                    workflow_context.update(previous_results)
-                logging.info(f"Loaded previous step results for job {job_id}")
-            except Exception as e:
-                logging.warning(f"Could not load previous results for job {job_id}: {e}")
-        
-        # Process based on module_id
-        result = None
-        if module_id == 'htmlMenu':
-            from processing_steps.html_menu import run_html_menu_step
-            step_config = {"delay": 1}
-            result = run_html_menu_step(job_id, step_config, workflow_context)
-        elif module_id == 'faqManager':
-            # Get source link from request
-            source_link = data.get('source_link')
-            if not source_link:
-                return jsonify({"success": False, "error": "source_link is required for FAQ processing"}), 400
-            
-            from processing_steps.faq_manager import process_faq_from_source_link
-            # Add source_link to workflow context
-            workflow_context["source_link"] = source_link
-            result = process_faq_from_source_link(job_id, source_link)
-        else:
-            return jsonify({"success": False, "error": f"Unknown module_id: {module_id}"}), 400
-        
-        if result and result.get("success", True):
-            # Mark module as processed in job config
-            from utils import save_job_config
-            if 'processed_modules' not in job_config:
-                job_config['processed_modules'] = {}
-            job_config['processed_modules'][module_id] = True
-            job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
-            save_job_config(job_id, job_config)
-            logging.info(f"Marked {module_id} as processed for job {job_id}")
-            
-            return jsonify({
-                "success": True,
-                "module_id": module_id,
-                "result": result
-            })
-        else:
+        # Prevent concurrent processing of same job+module (avoids duplicate records)
+        lock_key = f"{job_id}:{module_id}"
+        if lock_key in app._processing_locks:
+            logging.warning(f"Rejected concurrent request for {lock_key} - already processing")
             return jsonify({
                 "success": False,
-                "error": result.get("error", "Processing failed") if result else "Processing failed"
-            }), 500
+                "error": f"Already processing {module_id} for this job. Please wait."
+            }), 429
+        app._processing_locks[lock_key] = True
+        
+        try:
+            # Load previous step results (including site_setup, brand_theme, etc.)
+            from utils import get_job_folder
+            import os
+            results_file = os.path.join(get_job_folder(job_id), "results.json")
+            if os.path.exists(results_file):
+                try:
+                    with open(results_file, 'r', encoding='utf-8') as f:
+                        previous_results = json.load(f)
+                        workflow_context.update(previous_results)
+                    logging.info(f"Loaded previous step results for job {job_id}")
+                except Exception as e:
+                    logging.warning(f"Could not load previous results for job {job_id}: {e}")
+            
+            # Process based on module_id
+            result = None
+            if module_id == 'htmlMenu':
+                from processing_steps.html_menu import run_html_menu_step
+                step_config = {"delay": 1}
+                result = run_html_menu_step(job_id, step_config, workflow_context)
+            elif module_id == 'faqManager':
+                source_link = data.get('source_link')
+                if not source_link:
+                    return jsonify({"success": False, "error": "source_link is required for FAQ processing"}), 400
+                from processing_steps.faq_manager import process_faq_from_source_link
+                workflow_context["source_link"] = source_link
+                result = process_faq_from_source_link(job_id, source_link)
+            else:
+                return jsonify({"success": False, "error": f"Unknown module_id: {module_id}"}), 400
+            
+            if result and result.get("success", True):
+                from utils import save_job_config
+                if 'processed_modules' not in job_config:
+                    job_config['processed_modules'] = {}
+                job_config['processed_modules'][module_id] = True
+                job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                save_job_config(job_id, job_config)
+                logging.info(f"Marked {module_id} as processed for job {job_id}")
+                return jsonify({"success": True, "module_id": module_id, "result": result})
+            else:
+                return jsonify({
+                    "success": False,
+                    "error": result.get("error", "Processing failed") if result else "Processing failed"
+                }), 500
+        finally:
+            app._processing_locks.pop(lock_key, None)
             
     except Exception as e:
         logging.error(f"Error processing sub-process: {e}")

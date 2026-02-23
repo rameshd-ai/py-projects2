@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Studio — Project</title>
+  <meta name="application-name" content="QA Studio" />
+  <link rel="stylesheet" href="/qa-studio/static/css/style.css" />
+</head>
+<body>
+  <div class="project-detail">
+    <nav class="page-nav-links">
+      <a href="/qa-studio/" class="back-link">&larr; Back to Dashboard</a>
+      <a href="/" class="home-link">&#8962; Choose app</a>
+    </nav>
+    <div class="detail-loading" id="detail-loading">Loading…</div>
+    <div class="detail-error" id="detail-error" style="display: none;"></div>
+    <div class="detail-content" id="detail-content" style="display: none;">
+      <header class="detail-header">
+        <div class="detail-title-row">
+          <h1 class="detail-project-name" id="detail-name"></h1>
+          <span class="badge badge-live" id="detail-phase"></span>
+        </div>
+        <p class="detail-url" id="detail-url"></p>
+        <div class="detail-overall">
+          <span class="detail-overall-label">OVERALL SCORE</span>
+          <div class="detail-score-ring" id="detail-score-ring"></div>
+          <span class="detail-score-value" id="detail-score-value"></span>
+        </div>
+      </header>
+      <section class="pillars-section">
+        <h2 class="pillars-title">QA PILLARS</h2>
+        <div class="pillars-grid" id="pillars-grid"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/qa-studio/static/js/project.js"></script>
+</body>
+</html>

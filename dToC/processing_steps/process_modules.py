@@ -494,8 +494,9 @@ def run_module_processing_step(
                 "normalized_page_name": normalized_page_name
             })
             
-            # Call the creation function if no match is found
-            created_category_id = createCategory(page_name, site_id, target_url, headers)
+            # DISABLED: Category creation API is not active (SaveCategory 404)
+            # created_category_id = createCategory(page_name, site_id, target_url, headers)
+            created_category_id = None  # Skip category creation when API is inactive
             
             # If category was successfully created, update the page with the new category info
             if created_category_id:

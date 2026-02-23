@@ -5,6 +5,19 @@ import json
 import uuid
 import sys
 import shutil
+import logging
+
+# Ensure console logging - add StreamHandler so logs appear in terminal
+def _setup_console_logging():
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    # Add our handler if none exists, or if no handler writes to stdout
+    has_stdout = any(getattr(h, 'stream', None) is sys.stdout for h in root.handlers)
+    if not has_stdout:
+        h = logging.StreamHandler(sys.stdout)
+        h.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+        root.addHandler(h)
+_setup_console_logging()
 
 # Import config and utils files
 # Note: You must ensure 'config.py' defines UPLOAD_FOLDER, MAX_CONTENT_LENGTH, and allowed_file
@@ -98,6 +111,12 @@ def save_config():
         
         with open(config_filepath, 'w', encoding='utf-8') as f:
             json.dump(config_to_save, f, indent=4)
+        
+        # Also save a copy to uploads root so process_menu_navigation and other steps find it
+        root_config_path = os.path.join(app.config['UPLOAD_FOLDER'], config_filename)
+        if root_config_path != config_filepath:
+            with open(root_config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_to_save, f, indent=4)
             
         return jsonify({
             "success": True, 

@@ -80,8 +80,8 @@ def export_mi_block_component(base_url,componentId,siteId, headers):
     try:
         api_url = f"{base_url}/ccadmin/cms/api/ComponentApi/ExportMiBlockComponent"
         payload = {
-        "ComponentId": componentId,
-        "SiteId": siteId,
+        "ComponentId": int(componentId) if componentId is not None else 0,
+        "SiteId": int(siteId) if siteId is not None else 0,
         "IsExportComponentConfiguration": True,
         "IsExportComponentRecords": True,
         "IsExportComponentResources": True,
@@ -936,7 +936,7 @@ def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1
         "sortOrder": "desc"
     }
     
-    api_url = f"{base_url}/api/VisualComponentsApi/GetSiteVComponents"
+    api_url = f"{base_url}/ccadmin/cms/api/VisualComponentsApi/GetSiteVComponents"
     all_components: List[Dict[str, Any]] = []
     current_page = 1
     total_records = float('inf')  # Start high to ensure the loop runs

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Studio — Pillar</title>
+  <meta name="application-name" content="QA Studio" />
+  <link rel="stylesheet" href="/qa-studio/static/css/style.css" />
+</head>
+<body>
+  <div class="pillar-page">
+    <div class="pillar-loading" id="pillar-loading">Loading…</div>
+    <div class="pillar-error" id="pillar-error" style="display: none;"></div>
+    <div class="pillar-content" id="pillar-content" style="display: none;">
+      <header class="pillar-page-header">
+        <div class="pillar-page-nav">
+          <a href="#" id="pillar-back-link" class="pillar-back-link">&larr; <span id="pillar-project-name"></span></a>
+          <a href="/" class="home-link">&#8962; Choose app</a>
+          <h1 class="pillar-page-title" id="pillar-title"></h1>
+        </div>
+        <div class="pillar-page-score-wrap">
+          <span class="pillar-page-score-label">SCORE</span>
+          <div class="pillar-page-score-ring" id="pillar-page-score-ring"></div>
+          <span class="pillar-page-score-value" id="pillar-page-score-value"></span>
+        </div>
+      </header>
+      <section class="pillar-summary-cards">
+        <div class="summary-card"><span class="summary-card-label">TOTAL CHECKS</span><span class="summary-card-value" id="pillar-total"></span></div>
+        <div class="summary-card summary-card-passed"><span class="summary-card-label">PASSED</span><span class="summary-card-value" id="pillar-passed"></span></div>
+        <div class="summary-card summary-card-failed"><span class="summary-card-label">FAILED</span><span class="summary-card-value" id="pillar-failed"></span></div>
+        <div class="summary-card summary-card-warnings"><span class="summary-card-label">WARNINGS</span><span class="summary-card-value" id="pillar-warnings"></span></div>
+      </section>
+      <section class="pillar-pass-rate">
+        <span class="pass-rate-label">Pass Rate</span>
+        <div class="pass-rate-bar-wrap"><div class="pass-rate-bar" id="pillar-pass-rate-bar"></div></div>
+        <span class="pass-rate-pct" id="pillar-pass-rate-pct"></span>
+      </section>
+      <section class="pillar-issues-section">
+        <h2 class="pillar-issues-title" id="pillar-issues-title">ISSUES (0)</h2>
+        <div class="pillar-issues-list" id="pillar-issues-list"></div>
+      </section>
+    </div>
+  </div>
+  <script src="/qa-studio/static/js/pillar.js"></script>
+</body>
+</html>

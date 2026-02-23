@@ -29,19 +29,14 @@ def run_modules_features_step(job_id: str, step_config: Dict, workflow_context: 
     selected_modules = []
     module_results = {}
     
-    # Process Dine Menu if selected
+    # Dine Menu: Do NOT auto-run here - it runs only when user clicks "Process menu" in the Dine Menu popup.
+    # Auto-running here caused duplicate records (menu migration ran twice: once in Step 4, once from popup).
     if job_config.get("htmlMenu", False):
-        try:
-            from processing_steps.html_menu import run_html_menu_step
-            menu_result = run_html_menu_step(job_id, step_config, workflow_context)
-            module_results["htmlMenu"] = menu_result
-            selected_modules.append("Dine Menu: Inner Pages")
-        except Exception as e:
-            module_results["htmlMenu"] = {
-                "success": False,
-                "error": str(e)
-            }
-            raise Exception(f"Dine Menu migration failed: {e}")
+        selected_modules.append("Dine Menu: Inner Pages")
+        module_results["htmlMenu"] = {
+            "success": True,
+            "message": "Dine Menu configured - process via popup when ready"
+        }
     
     # Process FAQ Manager if selected
     if job_config.get("faqManager", False):

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DX Automation Agent</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4f8; color: #334155; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .launcher { max-width: 480px; width: 100%; }
+    .launcher-brand { margin: 0 0 4px; font-size: 1.75rem; font-weight: 700; color: #0f172a; letter-spacing: -0.02em; }
+    .launcher-sub { margin: 0 0 16px; font-size: 0.9375rem; color: #64748b; }
+    p { margin: 0 0 24px; color: #64748b; font-size: 0.9375rem; }
+    .apps { display: flex; flex-direction: column; gap: 12px; }
+    .app-card {
+      display: block; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0; text-decoration: none; color: inherit; transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .app-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-color: #0d9488; }
+    .app-card h2 { margin: 0 0 4px; font-size: 1.125rem; color: #0f172a; }
+    .app-card span { font-size: 0.875rem; color: #64748b; display: block; }
+    .app-card-placeholder { cursor: default; }
+    .app-card-placeholder:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="launcher">
+    <h1 class="launcher-brand">DX Automation Agent</h1>
+    <p class="launcher-sub">Select an app to open.</p>
+    <div class="apps">
+      <a href="/new-site-review/" class="app-card">
+        <h2>New Site Review</h2>
+        <span>GA & GCP → Excel for client</span>
+      </a>
+      <div class="app-card app-card-placeholder">
+        <h2>Site Builder Automation</h2>
+      </div>
+      <a href="/qa-studio/" class="app-card">
+        <h2>QA Studio</h2>
+        <span>Website Quality Assurance — projects, pillars, scores</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
