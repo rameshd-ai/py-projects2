@@ -43,6 +43,10 @@ STOP_PRICE_BUFFER_TICKS = 4
 TARGET_PRICE_TICK_SIZE = 0.05
 ENABLE_BROKER_TARGET_ORDERS = str(os.getenv("LIVE_ENABLE_BROKER_TARGET_ORDERS", "0")).strip().lower() in {"1", "true", "yes", "on"}
 TRAILING_MIN_IMPROVEMENT_TICKS = 1
+TRAILING_PROFIT_LOCK_RATIO = 0.5
+# Activate profit-trailing only after this minimum gross profit is reached.
+# Prevents premature tight SL updates on small/noisy moves.
+TRAILING_ACTIVATE_MIN_PNL_RS = 300.0
 
 
 class _ZerodhaBrokerAdapter:
@@ -106,6 +110,9 @@ def _set_active_trade(
     target: float | None,
 ) -> None:
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    setup_features = session.get("last_entry_features")
+    if not isinstance(setup_features, dict):
+        setup_features = {}
     session["current_trade_id"] = trade_id
     session["current_trade"] = {
         "trade_id": trade_id,
@@ -125,6 +132,7 @@ def _set_active_trade(
         "stop_loss": stop_loss,
         "broker_stop_trigger": stop_loss,
         "target": target,
+        "setup_features": dict(setup_features),
     }
 
 
@@ -490,6 +498,7 @@ def _finalize_live_exit(
         "actual_pnl": actual_pnl,
         "risk_adjusted_pnl": risk_adjusted_pnl,
         "exit_reason": exit_reason,
+        "setup_features": trade.get("setup_features") if isinstance(trade.get("setup_features"), dict) else {},
     }
     append_trade(record)
     session["current_trade_id"] = None
@@ -617,6 +626,38 @@ def sync_broker_trailing_stop(session: dict) -> dict[str, Any]:
     if not should_tighten:
         return {"handled": True, "updated": False, "reason": "NO_TIGHTEN_NEEDED"}
 
+    # Validate stop trigger against live LTP BEFORE canceling current protective SL.
+    # Zerodha rejects SELL-SL if trigger >= LTP (and BUY-SL if trigger <= LTP).
+    # If not placeable now, keep existing broker stop to avoid unprotected exposure.
+    symbol = trade.get("symbol") or session.get("tradingsymbol") or session.get("instrument")
+    exchange = trade.get("exchange") or session.get("exchange") or "NSE"
+    try:
+        quote = kite_get_quote(symbol, exchange=exchange)
+        ltp = float(quote.get("last", 0) or quote.get("last_price", 0) or 0.0)
+    except Exception:
+        ltp = 0.0
+    if ltp > 0:
+        if side == "BUY":
+            max_placeable = round(max(tick, ltp - tick), 2)
+            if desired_stop >= max_placeable:
+                return {
+                    "handled": True,
+                    "updated": False,
+                    "reason": "TRAIL_NOT_PLACEABLE_ABOVE_LTP",
+                    "desired_stop": desired_stop,
+                    "ltp": ltp,
+                }
+        else:
+            min_placeable = round(ltp + tick, 2)
+            if desired_stop <= min_placeable:
+                return {
+                    "handled": True,
+                    "updated": False,
+                    "reason": "TRAIL_NOT_PLACEABLE_BELOW_LTP",
+                    "desired_stop": desired_stop,
+                    "ltp": ltp,
+                }
+
     stop_order_id = str(trade.get("stop_order_id") or session.get("stop_order_id") or "").strip()
     if stop_order_id:
         cancel_res = _cancel_and_confirm_stop_order(session, trade)
@@ -638,6 +679,84 @@ def sync_broker_trailing_stop(session: dict) -> dict[str, Any]:
         qty,
     )
     return {"handled": True, "updated": True, "new_stop": desired_stop}
+
+
+def refresh_profit_trailing_stop(session: dict) -> dict[str, Any]:
+    """
+    Refresh trailing stop from live price (profit-only), then sync broker SL.
+    Runs safely even if called frequently (e.g. every 20 seconds).
+    """
+    trade = session.get("current_trade")
+    if not trade:
+        return {"handled": False, "updated": False, "reason": "NO_TRADE"}
+
+    side = str(trade.get("side") or "BUY").upper()
+    entry_price = float(trade.get("entry_price") or 0.0)
+    if entry_price <= 0:
+        return {"handled": True, "updated": False, "reason": "INVALID_ENTRY_PRICE"}
+
+    symbol = trade.get("symbol") or session.get("tradingsymbol") or session.get("instrument")
+    exchange = trade.get("exchange") or session.get("exchange") or "NSE"
+    try:
+        quote = kite_get_quote(symbol, exchange=exchange)
+        ltp = float(quote.get("last", 0) or quote.get("last_price", 0) or 0.0)
+    except Exception:
+        ltp = 0.0
+    if ltp <= 0:
+        return {"handled": True, "updated": False, "reason": "INVALID_LTP"}
+
+    qty = int(trade.get("qty") or 0)
+    if qty <= 0:
+        return {"handled": True, "updated": False, "reason": "INVALID_QTY"}
+
+    updated = False
+    gross_profit_rs = 0.0
+    if side == "BUY":
+        highest = float(trade.get("highest_price") or entry_price)
+        if ltp > highest:
+            highest = ltp
+            trade["highest_price"] = highest
+        profit_so_far = max(0.0, highest - entry_price)
+        gross_profit_rs = profit_so_far * qty
+        if gross_profit_rs < TRAILING_ACTIVATE_MIN_PNL_RS:
+            return {
+                "handled": True,
+                "updated": False,
+                "reason": "TRAILING_NOT_ACTIVATED",
+                "gross_profit_rs": round(gross_profit_rs, 2),
+            }
+        desired_trailing = entry_price + (profit_so_far * TRAILING_PROFIT_LOCK_RATIO)
+        current_trailing = float(trade.get("trailing_stop") or trade.get("stop_loss") or 0.0)
+        if desired_trailing > current_trailing:
+            trade["trailing_stop"] = round(desired_trailing, 2)
+            updated = True
+    else:
+        lowest = float(trade.get("lowest_price") or entry_price)
+        if ltp < lowest:
+            lowest = ltp
+            trade["lowest_price"] = lowest
+        profit_so_far = max(0.0, entry_price - lowest)
+        gross_profit_rs = profit_so_far * qty
+        if gross_profit_rs < TRAILING_ACTIVATE_MIN_PNL_RS:
+            return {
+                "handled": True,
+                "updated": False,
+                "reason": "TRAILING_NOT_ACTIVATED",
+                "gross_profit_rs": round(gross_profit_rs, 2),
+            }
+        desired_trailing = entry_price - (profit_so_far * TRAILING_PROFIT_LOCK_RATIO)
+        current_trailing = float(trade.get("trailing_stop") or trade.get("stop_loss") or entry_price)
+        if desired_trailing < current_trailing:
+            trade["trailing_stop"] = round(desired_trailing, 2)
+            updated = True
+
+    sync_res = sync_broker_trailing_stop(session)
+    return {
+        "handled": True,
+        "updated": bool(updated or sync_res.get("updated")),
+        "trailing_stop": trade.get("trailing_stop"),
+        "sync_reason": sync_res.get("reason"),
+    }
 
 
 def _place_target_with_retries(session: dict, qty: int, target: float | None, retries: int = TARGET_PLACEMENT_RETRIES) -> dict[str, Any]:

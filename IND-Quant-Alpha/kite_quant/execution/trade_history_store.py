@@ -79,6 +79,17 @@ def _normalize_trade_record(trade: dict[str, Any]) -> dict[str, Any]:
     if capital_used is None and entry_price is not None and qty:
         capital_used = round(entry_price * qty, 2)
 
+    learning_label = "FLAT"
+    if net_pnl is not None:
+        if net_pnl > 0:
+            learning_label = "WIN"
+        elif net_pnl < 0:
+            learning_label = "LOSS"
+
+    setup_features = trade.get("setup_features")
+    if not isinstance(setup_features, dict):
+        setup_features = {}
+
     return {
         "session_id": trade.get("session_id"),
         "mode": trade.get("mode"),
@@ -100,6 +111,11 @@ def _normalize_trade_record(trade: dict[str, Any]) -> dict[str, Any]:
         "net_pnl": net_pnl,
         "pnl": net_pnl,
         "exit_reason": trade.get("exit_reason"),
+        "setup_features": setup_features,
+        "learning": {
+            "label": learning_label,
+            "net_after_charges": net_pnl,
+        },
     }
 
 

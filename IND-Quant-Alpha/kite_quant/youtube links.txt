@@ -1,0 +1,5 @@
+youtube links 
+https://www.youtube.com/watch?v=9pGOCtXvHII
+
+
+$procs = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*IND-Quant-Alpha*kite_quant*app.py*' }; foreach ($p in $procs) { try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop } catch {} }; python "D:/GItHIbProjects/py-projects2/IND-Quant-Alpha/kite_quant/app.py"

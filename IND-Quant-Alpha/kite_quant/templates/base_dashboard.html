@@ -86,25 +86,15 @@
         </a>
       </li>
       <li class="nav-item mb-2" style="display: block !important; visibility: visible !important;">
-        <a class="nav-link nav-toggle {{ 'active' if active_page in ['backtest', 'paper_trade', 'paper_history', 'live_history'] else '' }}" href="#" role="button" data-bs-toggle="collapse" data-bs-target="#nav-nifty-banknifty" aria-expanded="{{ 'true' if active_page in ['backtest', 'paper_trade', 'paper_history', 'live_history'] else 'false' }}" aria-controls="nav-nifty-banknifty">
+        <a class="nav-link nav-toggle {{ 'active' if active_page in ['paper_trade', 'live_history'] else '' }}" href="#" role="button" data-bs-toggle="collapse" data-bs-target="#nav-nifty-banknifty" aria-expanded="{{ 'true' if active_page in ['paper_trade', 'live_history'] else 'false' }}" aria-controls="nav-nifty-banknifty">
           <span class="material-icons-round">candlestick_chart</span>
           <span>NIFTY / BANKNIFTY</span>
           <span class="material-icons-round toggle-chevron">expand_more</span>
         </a>
-        <ul class="nav flex-column collapse {{ 'show' if active_page in ['backtest', 'paper_trade', 'paper_history', 'live_history'] else '' }}" id="nav-nifty-banknifty">
-          <li class="nav-sub">
-            <a href="{{ url_for('dashboard_backtest') }}" class="nav-link {{ 'active' if active_page == 'backtest' else '' }}">
-              <span class="material-icons-round">history</span> Backtesting
-            </a>
-          </li>
+        <ul class="nav flex-column collapse {{ 'show' if active_page in ['paper_trade', 'live_history'] else '' }}" id="nav-nifty-banknifty">
           <li class="nav-sub">
             <a href="{{ url_for('dashboard_paper_trade') }}" class="nav-link {{ 'active' if active_page == 'paper_trade' else '' }}">
               <span class="material-icons-round">edit_note</span> Trade
-            </a>
-          </li>
-          <li class="nav-sub">
-            <a href="{{ url_for('dashboard_paper_history') }}" class="nav-link {{ 'active' if active_page == 'paper_history' else '' }}">
-              <span class="material-icons-round">article</span> Paper History
             </a>
           </li>
           <li class="nav-sub">

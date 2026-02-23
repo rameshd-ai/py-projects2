@@ -5,12 +5,12 @@
     <div class="d-flex align-items-start gap-2">
       <span class="material-icons-round text-primary">edit_note</span>
       <div>
-        <strong>Paper &amp; Live Trading (NIFTY / BANKNIFTY):</strong>
+        <strong>Live Trading (NIFTY / BANKNIFTY):</strong>
         <ul class="mb-0 mt-2 small">
-          <li>One page for both: switch between <strong>Paper money</strong> (no real orders) and <strong>Real money</strong> (live Zerodha orders). Same engine as Backtest.</li>
+          <li>Live-only page: orders are placed in your connected Zerodha account.</li>
           <li>Engine, table and AI refresh every 1 minute (no conflict).</li>
-          <li>Select money mode, index, capital, and click Trade to place an order.</li>
-          <li><strong>P&L:</strong> Unrealized P&L updates with price. When stop is hit, loss is capped at ₹300 per trade (same as backtest).</li>
+          <li>Select index and capital, then click Trade to start a live session.</li>
+          <li><strong>P&amp;L:</strong> Unrealized P&amp;L updates with price. When stop is hit, loss is capped by configured live risk limits.</li>
           <li><strong>Refresh:</strong> Active sessions are saved on the server; refreshing the page does not stop them.</li>
         </ul>
       </div>
@@ -100,13 +100,6 @@
         </div>
         <div class="card-body">
           <div class="mb-2">
-            <label class="form-label small mb-1">Money mode</label>
-            <select class="form-select form-select-sm" id="money-mode">
-              <option value="PAPER">Paper money (no real orders)</option>
-              <option value="LIVE">Real money (live Zerodha orders)</option>
-            </select>
-          </div>
-          <div class="mb-2">
             <label class="form-label small mb-1">Index</label>
             <select class="form-select" id="paper-instrument">
               <option value="NIFTY">NIFTY 50</option>
@@ -130,8 +123,44 @@
       </span>
       <span class="text-muted small" id="engine-scan-countdown">Next engine scan: —</span>
       <span class="text-muted small" id="ai-check-countdown">Next AI check: —</span>
+      <span class="badge bg-secondary text-light" id="live-entry-window-badge">LIVE entry window: —</span>
+      <span class="badge bg-info text-dark" id="market-threshold-badge">Market score/threshold: —</span>
+      <span class="badge bg-secondary text-light" id="expiry-awareness-badge" style="display: none;"></span>
       <span class="badge bg-warning text-dark" id="cooldown-active-badge" style="display: none;"></span>
       <span class="text-muted small" id="session-active-badge" style="display: none;"></span>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header d-flex align-items-center gap-2">
+      <span class="material-icons-round text-primary-custom">tune</span>
+      Entry Score Threshold Control
+    </div>
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-3">
+          <label class="form-label small mb-1">Current Threshold</label>
+          <div class="badge bg-info text-dark w-100 py-2" id="entry-threshold-current-badge">—</div>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label small mb-1">Set Threshold</label>
+          <input type="number" class="form-control form-control-sm" id="entry-threshold-input" min="35" max="90" step="1" value="55">
+        </div>
+        <div class="col-12 col-md-2">
+          <button type="button" class="btn btn-sm btn-primary w-100" id="entry-threshold-save-btn">Apply</button>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="small text-muted" id="entry-threshold-save-status"></div>
+        </div>
+      </div>
+      <hr class="my-3">
+      <div class="small">
+        <strong>Best Threshold Suggestion:</strong>
+        <span id="entry-threshold-suggestion" class="text-info">Balanced: 55</span>
+      </div>
+      <div class="small text-muted mt-1" id="entry-threshold-guidance">
+        Aggressive: 45 (more entries, more charges) | Balanced: 55 | Defensive: 65 (fewer, higher-conviction entries)
+      </div>
     </div>
   </div>
 
@@ -142,58 +171,7 @@
     </div>
     <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center gap-3 gap-md-4">
       <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="overall-trades-count">0 trades</span>
-      <span class="text-muted small">Paper Net: <span id="overall-paper-net">₹0.00</span></span>
       <span class="text-muted small">Live Net: <span id="overall-live-net">₹0.00</span></span>
-      <span class="text-muted small">Total Net: <strong id="overall-total-net">₹0.00</strong></span>
-    </div>
-  </div>
-
-  <!-- Paper trades (today) -->
-  <div class="card mb-4">
-    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <div class="d-flex align-items-center gap-2">
-        <span class="material-icons-round text-primary-custom">edit_note</span>
-        Paper trades (today)
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="paper-executions-count">0</span>
-        <button type="button" class="btn btn-sm btn-outline-danger" id="paper-stop-btn" style="display: none;">
-          <span class="material-icons-round" style="font-size: 1rem;">stop_circle</span> Stop Paper
-        </button>
-      </div>
-    </div>
-    <div id="paper-sessions-waiting-msg" class="alert alert-secondary border-0 mb-0 rounded-0 small py-2 px-3" style="display: none;"></div>
-    <div class="card-body p-0">
-      <div class="table-responsive overflow-x-auto" style="max-width: 100%; overflow-x: auto;">
-        <table class="table table-sm table-dark table-hover mb-0" style="min-width: 1500px; white-space: nowrap;">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>CE/PE</th>
-              <th>Strike</th>
-              <th>Strategy</th>
-              <th>Entry Time</th>
-              <th>Exit Time</th>
-              <th>Entry Price</th>
-              <th>Exit Price</th>
-              <th>Current price</th>
-              <th>Qty</th>
-              <th>Price/Lot</th>
-              <th>Capital Used</th>
-              <th>Balance Left</th>
-              <th>Gross P&L</th>
-              <th>Charges</th>
-              <th>Net P&L</th>
-              <th>Risk-Capped P&L</th>
-              <th>Status</th>
-              <th>Exit Reason</th>
-            </tr>
-          </thead>
-          <tbody id="paper-executions-tbody">
-            <tr><td colspan="20" class="text-center text-muted py-4">No paper trades today.</td></tr>
-          </tbody>
-        </table>
-      </div>
     </div>
   </div>
 
@@ -254,7 +232,11 @@
         <span class="material-icons-round text-primary-custom">history</span>
         Today full history (executed + open)
       </div>
-      <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="today-full-history-count">0</span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-success bg-opacity-25 text-success" id="today-full-history-executed-count">Executed: 0</span>
+        <span class="badge bg-info bg-opacity-25 text-info" id="today-full-history-charges-total">Charges (Est.): ₹0.00</span>
+        <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="today-full-history-count">0</span>
+      </div>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive overflow-x-auto" style="max-width: 100%; overflow-x: auto;">
@@ -272,11 +254,12 @@
               <th>Qty</th>
               <th>Gross P&amp;L</th>
               <th>Net P&amp;L</th>
+              <th>Charges (Est.)</th>
               <th>Exit Reason</th>
             </tr>
           </thead>
           <tbody id="today-full-history-tbody">
-            <tr><td colspan="12" class="text-center text-muted py-4">No today history.</td></tr>
+            <tr><td colspan="13" class="text-center text-muted py-4">No today history.</td></tr>
           </tbody>
         </table>
       </div>
@@ -299,10 +282,16 @@
   let nextAiCheckSecs = null;
   let nextAiCheckDisplaySecs = null;
   let engineRunning = true;
+  let aiExpiryAwareness = null;
+  let isExpiryDay = null;
+  let expiryType = null;
+  let entryScoreThreshold = null;
+  let entryThresholdMin = 35;
+  let entryThresholdMax = 90;
   let lastStatusSyncMs = 0;
 
   function getTradeMode() {
-    return (document.getElementById('money-mode') && document.getElementById('money-mode').value) || 'PAPER';
+    return 'LIVE';
   }
 
   function formatTime(iso) {
@@ -325,18 +314,166 @@
     return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  function fetchRiskConfig() {
-    const amt = parseFloat(document.getElementById('investment-amount').value) || 10000;
-    const riskAmount = parseFloat(document.getElementById('paper-risk-amount').value) || 300;
-    fetch('/api/paper-trade/risk-config?investment_amount=' + encodeURIComponent(amt) + '&risk_amount=' + encodeURIComponent(riskAmount))
+  function getIstTimeParts() {
+    try {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Kolkata',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      }).formatToParts(new Date());
+      const hour = Number((parts.find(p => p.type === 'hour') || {}).value || 0);
+      const minute = Number((parts.find(p => p.type === 'minute') || {}).value || 0);
+      return { hour, minute };
+    } catch (e) {
+      const d = new Date();
+      return { hour: d.getHours(), minute: d.getMinutes() };
+    }
+  }
+
+  function isInMinuteRange(mins, startH, startM, endH, endM) {
+    const start = startH * 60 + startM;
+    const end = endH * 60 + endM;
+    return mins >= start && mins <= end;
+  }
+
+  function updateLiveEntryWindowBadge() {
+    const badge = document.getElementById('live-entry-window-badge');
+    if (!badge) return;
+    const tp = getIstTimeParts();
+    const mins = (Number(tp.hour) * 60) + Number(tp.minute);
+    const inMorning = isInMinuteRange(mins, 9, 25, 10, 45);
+    const inAfternoon = isInMinuteRange(mins, 13, 15, 15, 10);
+    const isOpen = inMorning || inAfternoon;
+    badge.classList.remove('bg-secondary', 'bg-success', 'bg-danger', 'text-light', 'text-dark');
+    if (isOpen) {
+      badge.classList.add('bg-success', 'text-light');
+      badge.textContent = 'LIVE entry window: OPEN';
+    } else {
+      badge.classList.add('bg-danger', 'text-light');
+      badge.textContent = 'LIVE entry window: CLOSED';
+    }
+    badge.title = 'Allowed: 09:25-10:45 and 13:15-15:10 IST. Active trade is managed normally; only new entries are blocked when closed.';
+  }
+
+  function clampThreshold(v) {
+    const n = Number(v);
+    if (!isFinite(n)) return entryScoreThreshold != null ? Number(entryScoreThreshold) : 55;
+    return Math.max(entryThresholdMin, Math.min(entryThresholdMax, Math.round(n)));
+  }
+
+  function updateEntryThresholdUI() {
+    const value = (entryScoreThreshold != null) ? Number(entryScoreThreshold) : null;
+    const text = (value != null) ? String(value) : '—';
+    const currentBadge = document.getElementById('entry-threshold-current-badge');
+    if (currentBadge) currentBadge.textContent = text;
+    const input = document.getElementById('entry-threshold-input');
+    if (input && value != null) input.value = String(value);
+  }
+
+  function updateCurrentMarketThresholdBadge(sessions) {
+    const badge = document.getElementById('market-threshold-badge');
+    if (!badge) return;
+    const list = Array.isArray(sessions) ? sessions : [];
+    const activeLive = list.find(s => String(s.status || '').toUpperCase() === 'ACTIVE' && String((s.execution_mode || s.mode || '')).toUpperCase() === 'LIVE');
+    const diag = activeLive && activeLive.entry_diagnostics ? activeLive.entry_diagnostics : null;
+    const score = diag && Number.isFinite(Number(diag.total_score)) ? Number(diag.total_score) : null;
+    const thresholdFromDiag = diag && diag.conditions && Number.isFinite(Number(diag.conditions.entry_score_threshold))
+      ? Number(diag.conditions.entry_score_threshold)
+      : null;
+    const threshold = thresholdFromDiag != null
+      ? thresholdFromDiag
+      : (entryScoreThreshold != null ? Number(entryScoreThreshold) : null);
+
+    badge.classList.remove('bg-info', 'bg-success', 'bg-warning', 'bg-danger', 'text-dark', 'text-light');
+    if (score != null && threshold != null) {
+      const ok = score >= threshold;
+      badge.classList.add(ok ? 'bg-success' : 'bg-warning', 'text-dark');
+      badge.textContent = `Market score/threshold: ${score}/${threshold}`;
+      badge.title = ok
+        ? 'Current setup is above threshold (entry can pass quality gate).'
+        : 'Current setup is below threshold (quality gate blocks entry).';
+      return;
+    }
+    if (threshold != null) {
+      badge.classList.add('bg-info', 'text-dark');
+      badge.textContent = `Market score/threshold: —/${threshold}`;
+      badge.title = 'Waiting for latest live score from active session.';
+      return;
+    }
+    badge.classList.add('bg-secondary', 'text-light');
+    badge.textContent = 'Market score/threshold: —';
+    badge.title = '';
+  }
+
+  function updateThresholdSuggestionFromSession(sessions) {
+    const el = document.getElementById('entry-threshold-suggestion');
+    if (!el) return;
+    const list = Array.isArray(sessions) ? sessions : [];
+    const active = list.find(s => (String(s.status || '').toUpperCase() === 'ACTIVE'));
+    const diag = active && active.entry_diagnostics ? active.entry_diagnostics : null;
+    const b = (diag && diag.score_breakdown) ? diag.score_breakdown : null;
+    if (!b) {
+      el.textContent = 'Balanced: 55';
+      return;
+    }
+    const momentum = Number(b.momentum || 0);
+    const ai = Number(b.ai || 0);
+    if (momentum <= 0 && ai <= 8) {
+      el.textContent = 'Current market suggests 45-50 (slow/choppy)';
+    } else if (momentum >= 12 && ai >= 22) {
+      el.textContent = 'Current market suggests 60-65 (strong conviction)';
+    } else {
+      el.textContent = 'Current market suggests 55 (balanced)';
+    }
+  }
+
+  function fetchEntryThreshold() {
+    return fetch('/api/settings/entry-threshold')
       .then(r => r.json())
       .then(data => {
-        const dailyInput = document.getElementById('paper-daily-loss-limit');
-        if (dailyInput && (!dailyInput.value || Number(dailyInput.value) <= 0)) {
-          dailyInput.value = data.daily_loss_limit != null ? Number(data.daily_loss_limit) : 3000;
-        }
+        if (!data || data.ok === false) return;
+        if (typeof data.min === 'number') entryThresholdMin = Number(data.min);
+        if (typeof data.max === 'number') entryThresholdMax = Number(data.max);
+        if (typeof data.threshold === 'number') entryScoreThreshold = Number(data.threshold);
+        updateEntryThresholdUI();
       })
       .catch(() => {});
+  }
+
+  function saveEntryThreshold() {
+    const input = document.getElementById('entry-threshold-input');
+    const status = document.getElementById('entry-threshold-save-status');
+    if (!input) return;
+    const nextVal = clampThreshold(input.value);
+    if (status) status.innerHTML = '<span class="text-primary">Updating threshold…</span>';
+    fetch('/api/settings/entry-threshold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ threshold: nextVal })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.ok) {
+          entryScoreThreshold = Number(data.threshold);
+          updateEntryThresholdUI();
+          if (status) status.innerHTML = '<span class="text-success">Threshold updated.</span>';
+          fetchExecutions();
+        } else {
+          if (status) status.innerHTML = '<span class="text-danger">' + ((data && data.error) || 'Failed to update threshold') + '</span>';
+        }
+      })
+      .catch(() => {
+        if (status) status.innerHTML = '<span class="text-danger">Request failed</span>';
+      });
+  }
+
+  function fetchRiskConfig() {
+    const amt = parseFloat(document.getElementById('investment-amount').value) || 10000;
+    const dailyInput = document.getElementById('paper-daily-loss-limit');
+    if (dailyInput && (!dailyInput.value || Number(dailyInput.value) <= 0)) {
+      dailyInput.value = Math.max(3000, Math.round(amt * 0.3));
+    }
   }
 
   function fetchBalance() {
@@ -391,7 +528,15 @@
         } else if (typeof data.next_scan_sec === 'number') {
           engineNextScanSecs = data.next_scan_sec;
         }
+        if (typeof data.entry_score_threshold === 'number') {
+          entryScoreThreshold = Number(data.entry_score_threshold);
+          updateEntryThresholdUI();
+        }
+        if (typeof data.ai_expiry_awareness === 'boolean') aiExpiryAwareness = data.ai_expiry_awareness;
+        if (typeof data.is_expiry_day === 'boolean') isExpiryDay = data.is_expiry_day;
+        expiryType = data.expiry_type || null;
         lastStatusSyncMs = Date.now();
+        updateExpiryAwarenessBadge();
         updateEngineStatusUI();
       })
       .catch(function() {
@@ -401,51 +546,52 @@
 
   function fetchExecutions() {
     Promise.all([
-      fetchJsonWithTimeout('/api/trade-history?mode=PAPER&today=1', 12000),
       fetchJsonWithTimeout('/api/trade-history?mode=LIVE&today=1', 12000),
       fetchJsonWithTimeout('/api/trade-sessions', 12000),
       fetchJsonWithTimeout('/api/live-executions-today?today=1', 12000),
       fetchJsonWithTimeout('/api/live-positions-today?exchange=NFO', 12000)
-    ]).then(([paperData, liveData, sessionsData, brokerExecData, livePosData]) => {
+    ]).then(([liveData, sessionsData, brokerExecData, livePosData]) => {
       try {
-        const paperTrades = (paperData && paperData.trades) ? paperData.trades : [];
+        const paperTrades = [];
         const liveTrades = (liveData && liveData.trades) ? liveData.trades : [];
         updateOverallStatus(paperTrades, liveTrades);
         const sessions = (sessionsData && sessionsData.sessions) ? sessionsData.sessions : [];
         var modeKey = function(s) { return (s.execution_mode || s.mode || '').toUpperCase(); };
-        const paperOpen = sessions.filter(s => modeKey(s) === 'PAPER' && s.status === 'ACTIVE' && s.current_trade);
-        const paperWaiting = sessions.filter(s => modeKey(s) === 'PAPER' && s.status === 'ACTIVE' && !s.current_trade);
-        const paperActive = sessions.filter(s => modeKey(s) === 'PAPER' && s.status === 'ACTIVE');
+        const paperOpen = [];
+        const paperWaiting = [];
+        const paperActive = [];
         const liveOpen = sessions.filter(s => modeKey(s) === 'LIVE' && s.status === 'ACTIVE' && s.current_trade);
         const liveWaiting = sessions.filter(s => modeKey(s) === 'LIVE' && s.status === 'ACTIVE' && !s.current_trade);
         const liveActive = sessions.filter(s => modeKey(s) === 'LIVE' && s.status === 'ACTIVE');
         updateCooldownBadge(sessions);
         
-        if (paperOpen.length > 0) optimisticRows = optimisticRows.filter(o => (o.mode || 'PAPER') !== 'PAPER');
-        if (liveOpen.length > 0) optimisticRows = optimisticRows.filter(o => (o.mode || 'PAPER') !== 'LIVE');
+        if (liveOpen.length > 0) optimisticRows = optimisticRows.filter(o => (o.mode || 'LIVE') !== 'LIVE');
         if (sessionsData != null) {
           engineRunning = sessionsData.engine_running !== false;
           engineNextScanSecs = typeof sessionsData.next_scan === 'number' ? sessionsData.next_scan : null;
+          if (typeof sessionsData.entry_score_threshold === 'number') {
+            entryScoreThreshold = Number(sessionsData.entry_score_threshold);
+          }
           var raw = sessionsData.next_ai_check_secs;
           nextAiCheckSecs = (typeof raw === 'number' && !isNaN(raw)) ? raw : null;
+          if (typeof sessionsData.ai_expiry_awareness === 'boolean') aiExpiryAwareness = sessionsData.ai_expiry_awareness;
+          if (typeof sessionsData.is_expiry_day === 'boolean') isExpiryDay = sessionsData.is_expiry_day;
+          expiryType = sessionsData.expiry_type || expiryType;
           if (nextAiCheckSecs == null && (paperActive.length > 0 || liveActive.length > 0)) {
             nextAiCheckSecs = 60;
           }
           if (nextAiCheckSecs != null && nextAiCheckSecs >= 0) nextAiCheckDisplaySecs = nextAiCheckSecs;
           lastStatusSyncMs = Date.now();
         }
+        updateEntryThresholdUI();
+        updateCurrentMarketThresholdBadge(sessions);
+        updateThresholdSuggestionFromSession(sessions);
+        updateExpiryAwarenessBadge();
         updateEngineStatusUI();
-        var paperActiveCount = paperActive.length;
         var liveActiveCount = liveActive.length;
         var badgeEl = document.getElementById('session-active-badge');
         if (badgeEl) {
-          if (paperActiveCount > 0 && liveActiveCount > 0) {
-            badgeEl.style.display = '';
-            badgeEl.textContent = paperActiveCount + ' Paper, ' + liveActiveCount + ' Live session(s) active';
-          } else if (paperActiveCount > 0) {
-            badgeEl.style.display = '';
-            badgeEl.textContent = paperActiveCount + ' Paper session(s) active';
-          } else if (liveActiveCount > 0) {
+          if (liveActiveCount > 0) {
             badgeEl.style.display = '';
             badgeEl.textContent = liveActiveCount + ' Live session(s) active';
           } else {
@@ -454,7 +600,6 @@
         }
         const brokerOrders = (brokerExecData && brokerExecData.orders) ? brokerExecData.orders : [];
         const livePositions = (livePosData && livePosData.positions) ? livePosData.positions : [];
-        renderModeExecutions('PAPER', paperTrades, paperOpen, paperWaiting.length, paperActive, null, null);
         renderModeExecutions('LIVE', liveTrades, liveOpen, liveWaiting.length, liveActive, brokerOrders, livePositions);
         renderTodayFullHistory(paperTrades, liveTrades, paperOpen, liveOpen, paperWaiting, liveWaiting, brokerOrders);
       } catch (e) {
@@ -464,6 +609,36 @@
       // Keep last-rendered table and last-known engine status while reconnecting.
       fetchEngineStatus();
     });
+  }
+
+  function updateExpiryAwarenessBadge() {
+    var badge = document.getElementById('expiry-awareness-badge');
+    if (!badge) return;
+    badge.classList.remove('bg-secondary', 'bg-warning', 'bg-info', 'bg-primary', 'text-light', 'text-dark');
+
+    if (aiExpiryAwareness === false) {
+      badge.style.display = '';
+      badge.classList.add('bg-primary', 'text-light');
+      badge.textContent = 'AI expiry context unavailable';
+      return;
+    }
+
+    if (isExpiryDay) {
+      var t = String(expiryType || 'EXPIRY').toUpperCase();
+      badge.style.display = '';
+      badge.classList.add('bg-primary', 'text-light');
+      badge.textContent = 'AI expiry aware: ' + t + ' EXPIRY';
+      return;
+    }
+
+    if (aiExpiryAwareness === true) {
+      badge.style.display = '';
+      badge.classList.add('bg-primary', 'text-light');
+      badge.textContent = 'AI expiry aware: NON-EXPIRY';
+      return;
+    }
+
+    badge.style.display = 'none';
   }
 
   function updateCooldownBadge(sessions) {
@@ -516,34 +691,24 @@
   }
 
   function updateOverallStatus(paperTrades, liveTrades) {
-    const paperNet = sumNetPnl(paperTrades);
     const liveNet = sumNetPnl(liveTrades);
-    const totalNet = paperNet + liveNet;
-    const tradesCount = (Array.isArray(paperTrades) ? paperTrades.length : 0) + (Array.isArray(liveTrades) ? liveTrades.length : 0);
+    const tradesCount = (Array.isArray(liveTrades) ? liveTrades.length : 0);
 
     const countEl = document.getElementById('overall-trades-count');
-    const paperEl = document.getElementById('overall-paper-net');
     const liveEl = document.getElementById('overall-live-net');
-    const totalEl = document.getElementById('overall-total-net');
 
     if (countEl) countEl.textContent = `${tradesCount} trade${tradesCount === 1 ? '' : 's'}`;
-    if (paperEl) {
-      paperEl.textContent = fmtNum(paperNet);
-      applyPnlColor(paperEl, paperNet);
-    }
     if (liveEl) {
       liveEl.textContent = fmtNum(liveNet);
       applyPnlColor(liveEl, liveNet);
-    }
-    if (totalEl) {
-      totalEl.textContent = fmtNum(totalNet);
-      applyPnlColor(totalEl, totalNet);
     }
   }
 
   function renderTodayFullHistory(paperTrades, liveTrades, paperOpen, liveOpen, paperWaiting, liveWaiting, brokerOrders) {
     const tbody = document.getElementById('today-full-history-tbody');
     const countEl = document.getElementById('today-full-history-count');
+    const executedCountEl = document.getElementById('today-full-history-executed-count');
+    const chargesTotalEl = document.getElementById('today-full-history-charges-total');
     if (!tbody || !countEl) return;
 
     function esc(v) {
@@ -560,151 +725,72 @@
       const cls = v < 0 ? 'text-danger' : (v > 0 ? 'text-success' : '');
       return `<span class="${cls}">${txt}</span>`;
     }
+    // Broker orderbook does not return final settled charges; compute detailed estimate.
+    function estimateOrderCharges(side, avgPrice, qty, symbol) {
+      const p = Number(avgPrice);
+      const q = Number(qty);
+      if (!isFinite(p) || !isFinite(q) || p <= 0 || q <= 0) return null;
+      const turnover = p * q;
+      const isBuy = String(side || '').toUpperCase() === 'BUY';
+      const sym = String(symbol || '').toUpperCase();
+      const isOptions = /(?:CE|PE)$/.test(sym);
+      const brokerage = isOptions ? 20.0 : Math.min(20.0, turnover * 0.0003);
+      const txn = turnover * 0.0003503;
+      const sebi = turnover * 0.000001;
+      const stamp = isBuy ? (turnover * 0.00003) : 0.0;
+      const stt = isBuy ? 0.0 : (turnover * 0.001);
+      const gst = 0.18 * (brokerage + txn + sebi);
+      const total = brokerage + txn + sebi + stamp + stt + gst;
+      const r2 = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
+      return {
+        brokerage: r2(brokerage),
+        gst: r2(gst),
+        stt: r2(stt),
+        txn: r2(txn),
+        sebi: r2(sebi),
+        stamp: r2(stamp),
+        total: r2(total),
+      };
+    }
 
     const rows = [];
-
-    (paperTrades || []).forEach(t => {
-      const gross = t.gross_pnl != null ? Number(t.gross_pnl) : null;
-      const net = t.net_pnl != null ? Number(t.net_pnl) : (t.pnl != null ? Number(t.pnl) : null);
-      rows.push({
-        sort_priority: 1,
-        sort_ts: Math.max(tsOf(t.exit_time), tsOf(t.entry_time)),
-        time: formatTime(t.exit_time || t.entry_time),
-        mode: 'PAPER',
-        instrument: '—',
-        symbol: t.symbol || '—',
-        strategy: t.strategy || '—',
-        status: '<span class="badge bg-secondary">CLOSED</span>',
-        entry: fmtNum(t.entry_price),
-        exit: fmtNum(t.exit_price),
-        qty: t.qty != null ? t.qty : '—',
-        gross: fmtPnl(gross),
-        net: fmtPnl(net),
-        reason: t.exit_reason || '—'
-      });
-    });
-
-    (liveTrades || []).forEach(t => {
-      const gross = t.gross_pnl != null ? Number(t.gross_pnl) : null;
-      const net = t.net_pnl != null ? Number(t.net_pnl) : (t.pnl != null ? Number(t.pnl) : null);
-      rows.push({
-        sort_priority: 1,
-        sort_ts: Math.max(tsOf(t.exit_time), tsOf(t.entry_time)),
-        time: formatTime(t.exit_time || t.entry_time),
-        mode: 'LIVE',
-        instrument: '—',
-        symbol: t.symbol || '—',
-        strategy: t.strategy || '—',
-        status: '<span class="badge bg-secondary">CLOSED</span>',
-        entry: fmtNum(t.entry_price),
-        exit: fmtNum(t.exit_price),
-        qty: t.qty != null ? t.qty : '—',
-        gross: fmtPnl(gross),
-        net: fmtPnl(net),
-        reason: t.exit_reason || '—'
-      });
-    });
-
-    (paperOpen || []).forEach(s => {
-      const t = s.current_trade || {};
-      const entry = Number(t.entry_price || 0);
-      const ltp = Number(s.current_ltp || entry || 0);
-      const qty = Number(t.qty || 0);
-      const gross = (entry > 0 && qty > 0) ? ((ltp - entry) * qty) : null;
-      rows.push({
-        sort_priority: 3,
-        sort_ts: tsOf(t.entry_time || s.createdAt),
-        time: formatTime(t.entry_time || s.createdAt),
-        mode: 'PAPER',
-        instrument: s.instrument || '—',
-        symbol: t.symbol || s.tradingsymbol || '—',
-        strategy: t.strategy_name || '—',
-        status: '<span class="badge bg-warning text-dark">OPEN</span>',
-        entry: fmtNum(entry),
-        exit: '—',
-        qty: qty || '—',
-        gross: fmtPnl(gross),
-        net: fmtPnl(gross),
-        reason: t.exit_reason || '—'
-      });
-    });
-
-    (liveOpen || []).forEach(s => {
-      const t = s.current_trade || {};
-      const entry = Number(t.entry_price || 0);
-      const ltp = Number(s.current_ltp || entry || 0);
-      const qty = Number(t.qty || 0);
-      const gross = (entry > 0 && qty > 0) ? ((ltp - entry) * qty) : null;
-      rows.push({
-        sort_priority: 3,
-        sort_ts: tsOf(t.entry_time || s.createdAt),
-        time: formatTime(t.entry_time || s.createdAt),
-        mode: 'LIVE',
-        instrument: s.instrument || '—',
-        symbol: t.symbol || s.tradingsymbol || '—',
-        strategy: t.strategy_name || '—',
-        status: '<span class="badge bg-warning text-dark">OPEN</span>',
-        entry: fmtNum(entry),
-        exit: '—',
-        qty: qty || '—',
-        gross: fmtPnl(gross),
-        net: fmtPnl(gross),
-        reason: t.exit_reason || '—'
-      });
-    });
-
-    (paperWaiting || []).forEach(s => {
-      rows.push({
-        sort_priority: 4,
-        sort_ts: tsOf(s.createdAt),
-        time: formatTime(s.createdAt),
-        mode: 'PAPER',
-        instrument: s.instrument || '—',
-        symbol: s.tradingsymbol || '—',
-        strategy: ((s.recommendation || {}).strategyName) || '—',
-        status: '<span class="badge bg-info text-dark">WAITING</span>',
-        entry: '—',
-        exit: '—',
-        qty: '—',
-        gross: '—',
-        net: '—',
-        reason: '—'
-      });
-    });
-
-    (liveWaiting || []).forEach(s => {
-      rows.push({
-        sort_priority: 4,
-        sort_ts: tsOf(s.createdAt),
-        time: formatTime(s.createdAt),
-        mode: 'LIVE',
-        instrument: s.instrument || '—',
-        symbol: s.tradingsymbol || '—',
-        strategy: ((s.recommendation || {}).strategyName) || '—',
-        status: '<span class="badge bg-info text-dark">WAITING</span>',
-        entry: '—',
-        exit: '—',
-        qty: '—',
-        gross: '—',
-        net: '—',
-        reason: '—'
-      });
-    });
+    let executedCount = 0;
+    let executedChargesTotal = 0;
+    let executedBreakup = { brokerage: 0, gst: 0, stt: 0, txn: 0, sebi: 0, stamp: 0 };
 
     (brokerOrders || []).forEach(o => {
       const side = String(o.side || '').toUpperCase();
       const status = String(o.status || '').toUpperCase();
       const avg = o.average_price != null ? Number(o.average_price) : null;
-      const qty = Number(o.filled_quantity || o.quantity || 0) || '—';
-      const statusBadge = (status === 'COMPLETE' || Number(o.filled_quantity || 0) > 0)
-        ? '<span class="badge bg-success">EXECUTED</span>'
-        : '<span class="badge bg-secondary">' + esc(status || 'ORDER') + '</span>';
+      const qtyNum = Number(o.filled_quantity || o.quantity || 0) || 0;
+      const qty = qtyNum || '—';
+      const isExecuted = (status === 'COMPLETE' || Number(o.filled_quantity || 0) > 0);
+      if (isExecuted) executedCount += 1;
+      const estCharges = estimateOrderCharges(side, avg, qtyNum, o.symbol);
+      if (isExecuted && estCharges != null) {
+        executedChargesTotal += Number(estCharges.total || 0);
+        executedBreakup.brokerage += Number(estCharges.brokerage || 0);
+        executedBreakup.gst += Number(estCharges.gst || 0);
+        executedBreakup.stt += Number(estCharges.stt || 0);
+        executedBreakup.txn += Number(estCharges.txn || 0);
+        executedBreakup.sebi += Number(estCharges.sebi || 0);
+        executedBreakup.stamp += Number(estCharges.stamp || 0);
+      }
+      const sideBadge = side === 'BUY'
+        ? '<span class="badge bg-success">BUY</span>'
+        : (side === 'SELL' ? '<span class="badge bg-danger">SELL</span>' : '');
+      const statusBadge = (
+        (isExecuted
+          ? '<span class="badge bg-success">EXECUTED</span>'
+          : '<span class="badge bg-secondary">' + esc(status || 'ORDER') + '</span>')
+        + (sideBadge ? (' ' + sideBadge) : '')
+      );
       rows.push({
         sort_priority: 2,
         sort_ts: tsOf(o.order_timestamp),
         time: formatTime(o.order_timestamp),
         mode: 'LIVE',
-        instrument: ((String(o.symbol || '').toUpperCase().indexOf('BANK') >= 0) ? 'BANKNIFTY' : 'NIFTY'),
+        instrument: String(o.exchange || '—').toUpperCase(),
         symbol: o.symbol || '—',
         strategy: 'Broker Order',
         status: statusBadge,
@@ -713,18 +799,33 @@
         qty: qty,
         gross: '—',
         net: '—',
+        charges: estCharges != null
+          ? (
+              `<div>${fmtNum(estCharges.total)}</div>` +
+              `<div class="small text-muted">Br ${fmtNum(estCharges.brokerage)} | GST ${fmtNum(estCharges.gst)} | STT ${fmtNum(estCharges.stt)} | Txn ${fmtNum(estCharges.txn)} | SEBI ${fmtNum(estCharges.sebi)} | Stamp ${fmtNum(estCharges.stamp)}</div>`
+            )
+          : '—',
         reason: o.status_message || status || '—'
       });
     });
 
-    rows.sort((a, b) => {
-      if ((b.sort_priority || 0) !== (a.sort_priority || 0)) return (b.sort_priority || 0) - (a.sort_priority || 0);
-      return (b.sort_ts || 0) - (a.sort_ts || 0);
-    });
+    rows.sort((a, b) => (b.sort_ts || 0) - (a.sort_ts || 0));
 
     countEl.textContent = String(rows.length);
+    if (executedCountEl) executedCountEl.textContent = 'Executed: ' + String(executedCount);
+    if (chargesTotalEl) {
+      const b = executedBreakup;
+      chargesTotalEl.textContent = 'Charges (Est.): ' + fmtNum(executedChargesTotal);
+      chargesTotalEl.title =
+        'Br ' + fmtNum(b.brokerage) +
+        ' | GST ' + fmtNum(b.gst) +
+        ' | STT ' + fmtNum(b.stt) +
+        ' | Txn ' + fmtNum(b.txn) +
+        ' | SEBI ' + fmtNum(b.sebi) +
+        ' | Stamp ' + fmtNum(b.stamp);
+    }
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">No today history.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">No today history.</td></tr>';
       return;
     }
 
@@ -741,6 +842,7 @@
         <td>${esc(r.qty)}</td>
         <td>${r.gross}</td>
         <td>${r.net}</td>
+        <td>${r.charges}</td>
         <td>${esc(r.reason)}</td>
       </tr>
     `).join('');
@@ -797,6 +899,7 @@
         aiEl.textContent = 'Next AI check: —';
       }
     }
+    updateLiveEntryWindowBadge();
   }
 
   function statusBadge(status) {
@@ -951,7 +1054,7 @@
       rows.sort((a, b) => Number(a.net_pnl_raw || 0) - Number(b.net_pnl_raw || 0));
       return rows;
     }
-
+    
     // Add sessions waiting to enter (no current_trade yet)
     allActiveSessions.forEach(s => {
       const sessionMode = (s.execution_mode || s.mode || '').toUpperCase();
@@ -1123,11 +1226,11 @@
     const prefix = isPaper ? 'Paper' : 'Live';
     if (waitingEl) {
       if (isPaper) {
-        waitingEl.style.display = waitingCount > 0 ? 'block' : 'none';
-        waitingEl.textContent = waitingCount + ' ' + prefix.toLowerCase() + ' session(s) active — engine will place trade when conditions are met.';
+      waitingEl.style.display = waitingCount > 0 ? 'block' : 'none';
+      waitingEl.textContent = waitingCount + ' ' + prefix.toLowerCase() + ' session(s) active — engine will place trade when conditions are met.';
       } else {
         waitingEl.style.display = 'none';
-      }
+    }
     }
     const rows = buildRowsForMode(mode, closedTrades, openSessions, waitingCount, activeSessions, brokerOrders, livePositions);
     if (isPaper) {
@@ -1233,15 +1336,24 @@
       .finally(() => { btn.style.pointerEvents = ''; });
   }
 
-  document.getElementById('paper-stop-btn').addEventListener('click', function() {
-    stopSession(activePaperSessionId, 'paper-trade-status', 'Paper', this);
-  });
-  document.getElementById('live-stop-btn').addEventListener('click', function() {
-    stopSession(activeLiveSessionId, 'paper-trade-status', 'Live', this);
-  });
-  document.getElementById('cooldown-active-badge').addEventListener('click', function() {
-    resetCooldownFromBadge(this);
-  });
+  const liveStopBtn = document.getElementById('live-stop-btn');
+  if (liveStopBtn) {
+    liveStopBtn.addEventListener('click', function() {
+      stopSession(activeLiveSessionId, 'paper-trade-status', 'Live', this);
+    });
+  }
+  const cooldownBadge = document.getElementById('cooldown-active-badge');
+  if (cooldownBadge) {
+    cooldownBadge.addEventListener('click', function() {
+      resetCooldownFromBadge(this);
+    });
+  }
+  const thresholdSaveBtn = document.getElementById('entry-threshold-save-btn');
+  if (thresholdSaveBtn) {
+    thresholdSaveBtn.addEventListener('click', function() {
+      saveEntryThreshold();
+    });
+  }
 
   document.getElementById('paper-trade-btn').addEventListener('click', function() {
     const btn = this;
@@ -1250,13 +1362,12 @@
     const investmentAmount = parseFloat(document.getElementById('investment-amount').value) || 10000;
     const riskAmount = parseFloat(document.getElementById('paper-risk-amount').value) || 300;
     const dailyLossLimit = parseFloat(document.getElementById('paper-daily-loss-limit').value) || 3000;
-    const mode = getTradeMode();
-    const isLive = mode === 'LIVE';
+    const mode = 'LIVE';
     const today = new Date().toISOString().slice(0, 10);
     btn.disabled = true;
     status.innerHTML = '<span class="text-primary">Starting session...</span>';
     const aiEnabled = document.getElementById('paper-enable-ai-switching') && document.getElementById('paper-enable-ai-switching').checked;
-    const apiUrl = isLive ? '/api/live-trade/execute' : '/api/paper-trade/execute';
+    const apiUrl = '/api/live-trade/execute';
     fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1306,11 +1417,8 @@
       .finally(() => { btn.disabled = false; });
   });
 
-  document.getElementById('money-mode').addEventListener('change', function() {
-    fetchExecutions();
-  });
-
   fetchRiskConfig();
+  fetchEntryThreshold();
   fetchBalance();
   fetchEngineStatus();
   fetchExecutions();

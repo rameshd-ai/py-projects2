@@ -14,7 +14,7 @@
   <div class="card mb-3">
     <div class="card-body py-2 px-3 d-flex flex-wrap align-items-center gap-3 gap-md-4">
       <label class="d-flex align-items-center gap-2 mb-0 small">
-        <input type="checkbox" id="filter-today" class="form-check-input">
+        <input type="checkbox" id="filter-today" class="form-check-input" checked>
         <span>Today only</span>
       </label>
       <div class="d-flex align-items-center gap-2 small">
@@ -27,6 +27,12 @@
       </div>
       <button type="button" class="btn btn-sm btn-outline-secondary" id="filter-apply">Apply</button>
       <span class="badge bg-primary bg-opacity-10 text-primary-custom" id="live-history-count">0</span>
+      <label class="d-flex align-items-center gap-2 mb-0 small">
+        <input type="checkbox" id="filter-executed-only" class="form-check-input">
+        <span>Executed only</span>
+      </label>
+      <span class="badge bg-success bg-opacity-25 text-success" id="live-history-executed-count">Executed: 0</span>
+      <span class="badge bg-info bg-opacity-25 text-info" id="live-history-charges-total">Charges (Est.): ₹0.00</span>
     </div>
   </div>
 
@@ -53,11 +59,12 @@
               <th>Qty</th>
               <th>Gross P&L</th>
               <th>Net P&L</th>
+              <th>Charges (Est.)</th>
               <th>Exit Reason</th>
             </tr>
           </thead>
           <tbody id="live-history-tbody">
-            <tr><td colspan="12" class="text-center text-muted py-4">Loading…</td></tr>
+            <tr><td colspan="13" class="text-center text-muted py-4">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -71,7 +78,8 @@
 {{ super() }}
 <script>
 (function() {
-  let todayOnly = false;
+  let todayOnly = true;
+  let executedOnly = false;
 
   function formatTime(iso) {
     if (!iso) return '—';
@@ -87,11 +95,39 @@
     return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  // Broker orderbook does not return final settled charges; compute detailed estimate.
+  function estimateOrderCharges(side, avgPrice, qty, symbol) {
+    const p = Number(avgPrice);
+    const q = Number(qty);
+    if (!isFinite(p) || !isFinite(q) || p <= 0 || q <= 0) return null;
+    const turnover = p * q;
+    const isBuy = String(side || '').toUpperCase() === 'BUY';
+    const sym = String(symbol || '').toUpperCase();
+    const isOptions = /(?:CE|PE)$/.test(sym);
+    const brokerage = isOptions ? 20.0 : Math.min(20.0, turnover * 0.0003); // Zerodha style
+    const txn = turnover * 0.0003503;     // NSE F&O txn charge (approx)
+    const sebi = turnover * 0.000001;     // SEBI turnover charge
+    const stamp = isBuy ? (turnover * 0.00003) : 0.0; // buy side only
+    const stt = isBuy ? 0.0 : (turnover * 0.001);     // sell side options premium
+    const gst = 0.18 * (brokerage + txn + sebi);
+    const total = brokerage + txn + sebi + stamp + stt + gst;
+    const r2 = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
+    return {
+      brokerage: r2(brokerage),
+      gst: r2(gst),
+      stt: r2(stt),
+      txn: r2(txn),
+      sebi: r2(sebi),
+      stamp: r2(stamp),
+      total: r2(total),
+    };
+  }
+
   function fetchHistory() {
     const fromVal = (document.getElementById('filter-from-date').value || '').trim();
     const toVal = (document.getElementById('filter-to-date').value || '').trim();
     const params = new URLSearchParams();
-    if (todayOnly) {
+    if (todayOnly || (!fromVal && !toVal)) {
       params.set('today', '1');
     } else {
       if (fromVal) params.set('from_date', fromVal);
@@ -106,8 +142,10 @@
       })
       .catch(() => {
         document.getElementById('live-history-tbody').innerHTML =
-          '<tr><td colspan="12" class="text-center text-muted py-4">Failed to load. Check connection.</td></tr>';
+          '<tr><td colspan="13" class="text-center text-muted py-4">Failed to load. Check connection.</td></tr>';
         document.getElementById('live-history-count').textContent = '0';
+        const chargesTotalEl = document.getElementById('live-history-charges-total');
+        if (chargesTotalEl) chargesTotalEl.textContent = 'Charges (Est.): ₹0.00';
       });
   }
 
@@ -122,11 +160,33 @@
       return isNaN(n) ? 0 : n;
     }
     const rows = [];
+    let executedCount = 0;
+    let executedChargesTotal = 0;
+    let executedBreakup = { brokerage: 0, gst: 0, stt: 0, txn: 0, sebi: 0, stamp: 0 };
 
     (brokerOrders || []).forEach(o => {
       const side = String(o.side || '').toUpperCase();
       const status = String(o.status || '').toUpperCase();
       const avg = o.average_price != null ? Number(o.average_price) : null;
+      const isExecuted = (status === 'COMPLETE' || Number(o.filled_quantity || 0) > 0);
+      if (executedOnly && !isExecuted) return;
+      const rowQty = Number(o.filled_quantity || o.quantity || 0) || 0;
+      const estCharges = estimateOrderCharges(side, avg, rowQty, o.symbol);
+      if (isExecuted) {
+        executedCount += 1;
+        if (estCharges != null) {
+          executedChargesTotal += Number(estCharges.total || 0);
+          executedBreakup.brokerage += Number(estCharges.brokerage || 0);
+          executedBreakup.gst += Number(estCharges.gst || 0);
+          executedBreakup.stt += Number(estCharges.stt || 0);
+          executedBreakup.txn += Number(estCharges.txn || 0);
+          executedBreakup.sebi += Number(estCharges.sebi || 0);
+          executedBreakup.stamp += Number(estCharges.stamp || 0);
+        }
+      }
+      const sideBadge = side === 'BUY'
+        ? '<span class="badge bg-success">BUY</span>'
+        : (side === 'SELL' ? '<span class="badge bg-danger">SELL</span>' : '');
       rows.push({
         ts: tsOf(o.order_timestamp),
         time: formatTime(o.order_timestamp),
@@ -134,22 +194,47 @@
         instrument: String(o.exchange || '—').toUpperCase(),
         symbol: o.symbol || '—',
         strategy: 'Broker Order',
-        status: (status === 'COMPLETE' || Number(o.filled_quantity || 0) > 0)
-          ? '<span class="badge bg-success">EXECUTED</span>'
-          : '<span class="badge bg-secondary">' + esc(status || 'ORDER') + '</span>',
+        status: (
+          (isExecuted
+            ? '<span class="badge bg-success">EXECUTED</span>'
+            : '<span class="badge bg-secondary">' + esc(status || 'ORDER') + '</span>')
+          + (sideBadge ? (' ' + sideBadge) : '')
+        ),
         entry: side === 'BUY' ? fmtNum(avg) : '—',
         exit: side === 'SELL' ? fmtNum(avg) : '—',
-        qty: Number(o.filled_quantity || o.quantity || 0) || '—',
+        qty: rowQty || '—',
         gross: '—',
         net: '—',
+        charges: estCharges != null
+          ? (
+              `<div>${fmtNum(estCharges.total)}</div>` +
+              `<div class="small text-muted">Br ${fmtNum(estCharges.brokerage)} | GST ${fmtNum(estCharges.gst)} | STT ${fmtNum(estCharges.stt)} | Txn ${fmtNum(estCharges.txn)} | SEBI ${fmtNum(estCharges.sebi)} | Stamp ${fmtNum(estCharges.stamp)}</div>`
+            )
+          : '—',
         reason: o.status_message || status || '—'
       });
     });
 
     rows.sort((a, b) => b.ts - a.ts);
     countEl.textContent = String(rows.length);
+    const executedCountEl = document.getElementById('live-history-executed-count');
+    if (executedCountEl) {
+      executedCountEl.textContent = 'Executed: ' + String(executedCount);
+    }
+    const chargesTotalEl = document.getElementById('live-history-charges-total');
+    if (chargesTotalEl) {
+      const b = executedBreakup;
+      chargesTotalEl.textContent = 'Charges (Est.): ' + fmtNum(executedChargesTotal);
+      chargesTotalEl.title =
+        'Br ' + fmtNum(b.brokerage) +
+        ' | GST ' + fmtNum(b.gst) +
+        ' | STT ' + fmtNum(b.stt) +
+        ' | Txn ' + fmtNum(b.txn) +
+        ' | SEBI ' + fmtNum(b.sebi) +
+        ' | Stamp ' + fmtNum(b.stamp);
+    }
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">No live trades.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">No live trades.</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(r => `
@@ -165,6 +250,7 @@
         <td>${esc(r.qty)}</td>
         <td>${r.gross}</td>
         <td>${r.net}</td>
+        <td>${r.charges}</td>
         <td>${esc(r.reason)}</td>
       </tr>
     `).join('');
@@ -182,8 +268,16 @@
   });
 
   document.getElementById('filter-apply').addEventListener('click', function() {
-    todayOnly = false;
-    document.getElementById('filter-today').checked = false;
+    const fromVal = (document.getElementById('filter-from-date').value || '').trim();
+    const toVal = (document.getElementById('filter-to-date').value || '').trim();
+    // If no custom range is provided, keep default "today only" behavior.
+    todayOnly = !(fromVal || toVal);
+    document.getElementById('filter-today').checked = todayOnly;
+    fetchHistory();
+  });
+
+  document.getElementById('filter-executed-only').addEventListener('change', function() {
+    executedOnly = this.checked;
     fetchHistory();
   });
   fetchHistory();

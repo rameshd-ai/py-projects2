@@ -40,9 +40,10 @@ def build_ai_trade_recommendation_index(
         label = "NIFTY"
 
     # Neutral bias is common around flat/choppy candles and can block one index while the other is tradable.
-    # Resolve safely with a light fallback before giving up:
+    # Resolve safely with fallback before giving up:
     # 1) use selected index micro-score direction if meaningful,
-    # 2) else use cross-index proxy only if it has clear direction.
+    # 2) else use cross-index proxy only if it has clear direction,
+    # 3) else force a conservative default (small-confidence directional pick) so session start is not blocked.
     if bias == "NEUTRAL":
         if score >= 0.05:
             bias = "BULLISH"
@@ -57,7 +58,9 @@ def build_ai_trade_recommendation_index(
             fallback_bias_used = True
             fallback_bias_reason = f"{label} neutral overridden by cross-index proxy ({other_bias})"
         else:
-            return None
+            bias = "BULLISH"
+            fallback_bias_used = True
+            fallback_bias_reason = f"{label} neutral fallback to default direction (BULLISH)"
 
     from engine.position_sizing import calculate_fo_position_size
     from engine.zerodha_client import get_nfo_option_contract

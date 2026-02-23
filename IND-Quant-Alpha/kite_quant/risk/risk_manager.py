@@ -48,10 +48,29 @@ class RiskManager:
 
     def can_trade_today(self, session: dict[str, Any]) -> tuple[bool, str | None]:
         """False if daily loss limit or max trades reached."""
-        max_daily_loss = self.config.capital * (self.config.max_daily_loss_percent / 100)
-        daily_pnl = session.get("daily_pnl") or 0
+        # Prefer explicit per-session absolute daily loss limit when present.
+        # Fallback to percent-of-capital only if session limit is unavailable.
+        explicit_limit = session.get("max_daily_loss")
+        if explicit_limit is None:
+            explicit_limit = session.get("daily_loss_limit")
+        try:
+            max_daily_loss = float(explicit_limit)
+        except Exception:
+            max_daily_loss = 0.0
+        if max_daily_loss <= 0:
+            max_daily_loss = self.config.capital * (self.config.max_daily_loss_percent / 100)
+
+        # Prefer actual daily pnl stream when available.
+        daily_pnl = session.get("actual_daily_pnl")
+        if daily_pnl is None:
+            daily_pnl = session.get("daily_pnl")
+        try:
+            daily_pnl = float(daily_pnl or 0.0)
+        except Exception:
+            daily_pnl = 0.0
+
         if daily_pnl <= -max_daily_loss:
-            return False, "Daily loss limit reached"
+            return False, f"Daily loss limit reached ({daily_pnl:.2f} <= -{max_daily_loss:.2f})"
         taken = session.get("daily_trade_count") or 0
         if taken >= self.config.max_trades:
             return False, "Max trades reached"

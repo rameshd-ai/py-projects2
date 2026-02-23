@@ -365,18 +365,8 @@
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="{{ url_for('dashboard_backtest') }}" class="nav-link">
-          <span class="material-icons-round">history</span> Backtesting
-        </a>
-      </li>
-      <li class="nav-item mb-2">
         <a href="{{ url_for('dashboard_paper_trade') }}" class="nav-link">
-          <span class="material-icons-round">edit_note</span> Trade
-        </a>
-      </li>
-      <li class="nav-item mb-2">
-        <a href="{{ url_for('dashboard_paper_history') }}" class="nav-link">
-          <span class="material-icons-round">article</span> Paper History
+          <span class="material-icons-round">show_chart</span> Live Trade
         </a>
       </li>
       <li class="nav-item mb-2">
@@ -1664,20 +1654,7 @@
     }
 
     function runBacktest() {
-        const s = document.getElementById('backtestSymbol').value;
-        const d = document.getElementById('backtestDays').value;
-        document.getElementById('backtestResultsPane').style.display='block';
-        document.getElementById('backtestResults').innerHTML = 'Running...';
-        api('/api/backtest', {method:'POST', body:JSON.stringify({symbol:s, days:d})}).then(r=>r.json()).then(res=>{
-            if(res.ok && res.results.length) {
-                document.getElementById('backtestResults').innerHTML = res.results.map(r=>
-                    `<div class="border-bottom border-secondary border-opacity-10 p-2 fs-7">
-                        <strong class="text-light">${r.symbol}</strong> ${r.action} @ ${r.price} 
-                        <span class="${parseFloat(r.pnl)>=0?'text-success-custom':'text-danger-custom'}">(P&L: ${r.pnl})</span>
-                    </div>`
-                ).join('');
-            } else document.getElementById('backtestResults').textContent = 'No trades found.';
-        });
+        alert('Backtesting has been removed from this app.');
     }
 
     // Prediction History & Pagination

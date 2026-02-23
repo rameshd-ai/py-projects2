@@ -160,7 +160,13 @@ def get_market_context(
             "type": (str(expiry_type).upper() if expiry_type else None),
         },
     }
-    
+
+    def _f(v: Any, default: float = 0.0) -> float:
+        try:
+            return float(v)
+        except Exception:
+            return float(default)
+
     # Analyze recent price action
     if recent_candles and len(recent_candles) >= 5:
         recent_5 = recent_candles[-5:]
@@ -175,6 +181,55 @@ def get_market_context(
             "range_high": max(c["high"] for c in recent_5),
             "range_low": min(c["low"] for c in recent_5),
         }
+
+    # Compact intraday session features (better than raw 12h candle dump for intraday).
+    if recent_candles and len(recent_candles) >= 10:
+        candles = recent_candles[-75:]  # full current session window (~6h15m @ 5m)
+        opens = [_f(c.get("open")) for c in candles]
+        highs = [_f(c.get("high")) for c in candles]
+        lows = [_f(c.get("low")) for c in candles]
+        closes = [_f(c.get("close")) for c in candles]
+        vols = [_f(c.get("volume")) for c in candles]
+        if closes and highs and lows and opens:
+            session_open = opens[0]
+            session_close = closes[-1]
+            session_high = max(highs)
+            session_low = min(lows)
+            session_range = max(session_high - session_low, 1e-9)
+            session_change_pct = ((session_close - session_open) / max(session_open, 1e-9)) * 100.0
+            dist_to_high_pct = ((session_high - session_close) / max(session_close, 1e-9)) * 100.0
+            dist_to_low_pct = ((session_close - session_low) / max(session_close, 1e-9)) * 100.0
+            typical = [((h + l + c) / 3.0) for h, l, c in zip(highs, lows, closes)]
+            vol_sum = sum(vols)
+            vwap = (sum(tp * v for tp, v in zip(typical, vols)) / vol_sum) if vol_sum > 0 else session_close
+            vwap_side = "above" if session_close > vwap else ("below" if session_close < vwap else "at")
+            first_n = min(len(candles), 12)  # first hour for 5m candles
+            first_hour_high = max(highs[:first_n])
+            first_hour_low = min(lows[:first_n])
+            first_hour_breakout = (
+                "up"
+                if session_close > first_hour_high
+                else ("down" if session_close < first_hour_low else "inside")
+            )
+            avg_vol_session = (vol_sum / len(vols)) if vols else 0.0
+            recent_n = min(len(vols), 6)
+            avg_vol_recent = (sum(vols[-recent_n:]) / recent_n) if recent_n > 0 else 0.0
+            vol_regime = (
+                "high"
+                if avg_vol_recent > (avg_vol_session * 1.25)
+                else ("low" if avg_vol_recent < (avg_vol_session * 0.8) else "normal")
+            )
+            context["session_features"] = {
+                "candles_used": len(candles),
+                "session_change_pct": round(session_change_pct, 2),
+                "session_range_pct": round((session_range / max(session_open, 1e-9)) * 100.0, 2),
+                "distance_to_day_high_pct": round(dist_to_high_pct, 2),
+                "distance_to_day_low_pct": round(dist_to_low_pct, 2),
+                "vwap": round(vwap, 2),
+                "vwap_side": vwap_side,
+                "first_hour_breakout": first_hour_breakout,
+                "vol_regime": vol_regime,
+            }
     
     return context
 
@@ -190,6 +245,7 @@ def build_gpt_prompt(context: dict[str, Any], current_strategy: str | None = Non
     nifty = (context or {}).get("nifty") or {}
     banknifty = (context or {}).get("banknifty") or {}
     expiry = (context or {}).get("expiry") or {}
+    perf = (context or {}).get("performance_context") or {}
     nifty_price = nifty.get("price")
     nifty_change = nifty.get("change_pct")
     bank_price = banknifty.get("price")
@@ -215,6 +271,41 @@ Recent Price Action (last 5 candles):
 - Volume activity: {"High" if pa['volume_spike'] else "Normal"}
 - Range: {pa['range_low']:.2f} - {pa['range_high']:.2f}
 """
+
+    sf = (context or {}).get("session_features") or {}
+    if sf:
+        prompt += f"""
+Intraday Session Features (compact):
+- Session candles used: {sf.get('candles_used')}
+- Session change: {sf.get('session_change_pct')}%
+- Session range: {sf.get('session_range_pct')}%
+- Distance to day high: {sf.get('distance_to_day_high_pct')}%
+- Distance to day low: {sf.get('distance_to_day_low_pct')}%
+- VWAP side: {sf.get('vwap_side')} (VWAP {sf.get('vwap')})
+- First-hour breakout state: {sf.get('first_hour_breakout')}
+- Volume regime: {sf.get('vol_regime')}
+"""
+
+    if perf:
+        prompt += f"""
+Live Performance Context (charge-aware, rolling):
+- Trades in rolling window: {perf.get('window_trades_count')}
+- Win rate: {perf.get('win_rate_pct')}%
+- Net P&L (window): {perf.get('net_pnl_total')}
+- Gross P&L (window): {perf.get('gross_pnl_total')}
+- Avg net/trade: {perf.get('avg_net_pnl_per_trade')}
+- Executed orders today: {perf.get('executed_orders_today')}
+- Estimated charges today: {perf.get('estimated_charges_today')}
+- Charges to gross (%): {perf.get('charges_to_gross_pct')}
+- Churn score (0-100): {perf.get('churn_score')}
+- Charges dominating: {perf.get('charges_dominate')}
+- Low-edge block mode: {perf.get('low_edge_block')}
+- Learned setup matches: {perf.get('learned_setup_matches')}
+- Learned setup win rate: {perf.get('learned_setup_win_rate_pct')}%
+- Learned setup avg net: {perf.get('learned_setup_avg_net_pnl')}
+- Learned quality score: {perf.get('learned_quality_score')}
+- Learned block mode: {perf.get('learned_block')}
+"""
     
     prompt += f"""
 Currently using strategy: {current_strategy or "None"}
@@ -239,7 +330,8 @@ Consider:
 3. Time of day (opening/mid-day/closing)
 4. Recent price action and volume
 5. Expiry-day behavior (weekly/monthly expiry can be more volatile)
-6. Whether a switch is beneficial vs. staying with current strategy"""
+6. Whether a switch is beneficial vs. staying with current strategy
+7. If charges/churn are dominating, prefer defensive/no-switch stance and avoid low-edge setups"""
     
     return prompt
 
@@ -271,7 +363,7 @@ def get_ai_strategy_recommendation(
         logger.info(f"[AI ADVISOR] Requesting strategy recommendation...")
         
         response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Fast and cost-effective
+            model="gpt-5",
             messages=[
                 {
                     "role": "system",
@@ -286,7 +378,7 @@ def get_ai_strategy_recommendation(
             ],
             response_format={"type": "json_object"},
             temperature=0.3,  # Lower temperature for more consistent recommendations
-            max_tokens=500,
+            max_completion_tokens=500,
         )
         
         result = response.choices[0].message.content

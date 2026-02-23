@@ -4,22 +4,58 @@ One function to rule them all!
 NOW WITH AI VALIDATION - AI decides if each trade is good or bad.
 """
 from __future__ import annotations
+import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
+from zoneinfo import ZoneInfo
 from typing import Any
+from engine.performance_context import build_live_performance_context
 
 logger = logging.getLogger(__name__)
-MIN_AI_CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
+MIN_AI_CONFIDENCE_ORDER = {"reject": -1, "low": 0, "medium": 1, "high": 2}
 MIN_AI_CONFIDENCE_REQUIRED = "medium"
+LIVE_MIN_MOVE_PCT = float(os.getenv("LIVE_MIN_MOVE_PCT", "0.25") or 0.25)
+LIVE_MIN_AI_CONFIDENCE_REQUIRED = str(os.getenv("LIVE_MIN_AI_CONFIDENCE_REQUIRED", "medium") or "medium").strip().lower()
+LIVE_REQUIRE_TWO_CANDLE_CONFIRMATION = str(os.getenv("LIVE_REQUIRE_TWO_CANDLE_CONFIRMATION", "1")).strip().lower() in {"1", "true", "yes", "on"}
+LIVE_MIN_PREV_CANDLE_MOVE_PCT = float(os.getenv("LIVE_MIN_PREV_CANDLE_MOVE_PCT", "0.10") or 0.10)
+LIVE_ENTRY_WINDOW_1_START = time(9, 25)
+LIVE_ENTRY_WINDOW_1_END = time(10, 45)
+LIVE_ENTRY_WINDOW_2_START = time(13, 15)
+LIVE_ENTRY_WINDOW_2_END = time(15, 10)
+
+
+def _is_live_entry_time_allowed(now_ist: datetime | None = None) -> bool:
+    now_ist = now_ist or datetime.now(ZoneInfo("Asia/Kolkata"))
+    t = now_ist.time()
+    in_window_1 = LIVE_ENTRY_WINDOW_1_START <= t <= LIVE_ENTRY_WINDOW_1_END
+    in_window_2 = LIVE_ENTRY_WINDOW_2_START <= t <= LIVE_ENTRY_WINDOW_2_END
+    return in_window_1 or in_window_2
 
 # Cache for AI market analysis (avoid calling GPT every candle)
 _ai_entry_cache = {
     "bias": "neutral",
     "conviction": "medium",
     "reasoning": "No AI analysis yet",
+    "performance_context": {},
     "timestamp": None,
     "ttl_seconds": 900  # 15 minutes cache
 }
+
+
+def get_latest_ai_entry_conviction() -> str:
+    """Return latest cached AI conviction for current market analysis."""
+    c = str(_ai_entry_cache.get("conviction") or "low").strip().lower()
+    return c if c in MIN_AI_CONFIDENCE_ORDER else "low"
+
+
+def get_latest_ai_entry_snapshot() -> dict[str, Any]:
+    """Return latest cached AI bias/conviction for score engine."""
+    return {
+        "bias": str(_ai_entry_cache.get("bias") or "neutral").strip().lower(),
+        "conviction": get_latest_ai_entry_conviction(),
+        "reasoning": str(_ai_entry_cache.get("reasoning") or ""),
+        "performance_context": _ai_entry_cache.get("performance_context") or {},
+    }
 
 
 def get_ai_market_analysis(
@@ -47,53 +83,61 @@ def get_ai_market_analysis(
                     "bias": _ai_entry_cache["bias"],
                     "conviction": _ai_entry_cache["conviction"],
                     "reasoning": _ai_entry_cache["reasoning"],
+                    "performance_context": _ai_entry_cache.get("performance_context") or {},
                 }
 
         # Cache expired or force refresh - call AI
         logger.info(f"[AI ENTRY] Calling GPT for market analysis (instrument: {instrument})")
 
         # Import here to avoid circular dependencies
-        from engine.ai_strategy_advisor import get_ai_strategy_recommendation
+        from engine.ai_strategy_advisor import get_ai_strategy_recommendation, get_market_context
 
-        # Build context for AI
-        context = {
-            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "nifty": {"price": current_price, "change_pct": 0.0},
-            "banknifty": {"price": current_price, "change_pct": 0.0},
-            "vix": None,
-            "instrument": instrument,
-            "current_price": current_price,
-            "recent_candles": recent_candles[-10:] if recent_candles and len(recent_candles) >= 10 else recent_candles,
-            "time": now.strftime("%H:%M"),
-        }
+        candles_for_ai = recent_candles[-75:] if recent_candles else recent_candles
+        context = get_market_context(
+            nifty_price=current_price,
+            nifty_change_pct=0.0,
+            banknifty_price=current_price,
+            banknifty_change_pct=0.0,
+            vix=None,
+            current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
+            recent_candles=candles_for_ai,
+            expiry_type=None,
+        )
+        perf_ctx = build_live_performance_context(
+            max_trades=20,
+            current_session_features=context.get("session_features") if isinstance(context.get("session_features"), dict) else None,
+        )
+        context["instrument"] = instrument
+        context["current_price"] = current_price
+        context["time"] = now.strftime("%H:%M")
+        context["performance_context"] = perf_ctx
 
         # Get AI recommendation
         ai_rec = get_ai_strategy_recommendation(context, current_strategy=None)
         if not ai_rec or ai_rec.get("rejected"):
             reason = (ai_rec or {}).get("reasoning") if isinstance(ai_rec, dict) else "AI unavailable"
+            _ai_entry_cache["bias"] = "reject"
+            _ai_entry_cache["conviction"] = "reject"
+            _ai_entry_cache["reasoning"] = str(reason or "AI recommendation rejected")[:200]
+            _ai_entry_cache["performance_context"] = perf_ctx
+            _ai_entry_cache["timestamp"] = now
             return {
-                "approved": False,
+                "approved": True,
                 "bias": "reject",
-                "conviction": "low",
+                "conviction": "reject",
                 "reasoning": reason or "AI recommendation rejected",
+                "performance_context": perf_ctx,
             }
 
         bias = str(ai_rec.get("market_bias", "neutral"))
         confidence = str(ai_rec.get("confidence", "low")).lower()
         reasoning = str(ai_rec.get("reasoning", "AI analysis complete"))
 
-        if MIN_AI_CONFIDENCE_ORDER.get(confidence, -1) < MIN_AI_CONFIDENCE_ORDER.get(MIN_AI_CONFIDENCE_REQUIRED, 1):
-            return {
-                "approved": False,
-                "bias": "reject",
-                "conviction": confidence,
-                "reasoning": f"AI confidence below threshold: {confidence}",
-            }
-
         # Update cache
         _ai_entry_cache["bias"] = bias
         _ai_entry_cache["conviction"] = confidence
         _ai_entry_cache["reasoning"] = reasoning[:200]  # Truncate
+        _ai_entry_cache["performance_context"] = perf_ctx
         _ai_entry_cache["timestamp"] = now
 
         logger.info(f"[AI ENTRY] ✅ Bias: {bias} | Conviction: {confidence} | Reasoning: {reasoning[:100]}...")
@@ -103,15 +147,17 @@ def get_ai_market_analysis(
             "bias": bias,
             "conviction": confidence,
             "reasoning": reasoning,
+            "performance_context": perf_ctx,
         }
 
     except Exception as e:
-        logger.warning(f"[AI ENTRY] ❌ GPT call failed: {e}. Rejecting trade.")
+        logger.warning(f"[AI ENTRY] ❌ GPT call failed: {e}. Using reject score bucket.")
         return {
-            "approved": False,
+            "approved": True,
             "bias": "reject",
-            "conviction": "low",
+            "conviction": "reject",
             "reasoning": f"AI exception: {str(e)[:120]}",
+            "performance_context": {},
         }
 
 
@@ -142,8 +188,24 @@ def ai_validate_entry(
 
         bias = str(ai_analysis["bias"]).lower()
         conviction = str(ai_analysis["conviction"]).lower()
+        perf = ai_analysis.get("performance_context") or {}
         if MIN_AI_CONFIDENCE_ORDER.get(conviction, -1) < MIN_AI_CONFIDENCE_ORDER.get(MIN_AI_CONFIDENCE_REQUIRED, 1):
             return False, f"❌ AI confidence below threshold ({conviction})"
+
+        # Force stricter gating when charges/churn dominate the day.
+        if perf.get("low_edge_block"):
+            if conviction != "high":
+                return False, "❌ Charge-aware block: day is low-edge and charge-heavy (requires HIGH AI conviction)"
+            min_edge_move = max(0.45, LIVE_MIN_MOVE_PCT * 1.8)
+            if abs(price_change_pct) < min_edge_move:
+                return False, f"❌ Charge-aware block: move too weak ({abs(price_change_pct):.2f}% < {min_edge_move:.2f}%)"
+
+        # Learning-aware gate from historical setup outcomes.
+        if perf.get("learned_block"):
+            return False, "❌ Learning block: this setup profile has weak historical edge"
+        learned_score = float(perf.get("learned_quality_score") or 50.0)
+        if learned_score < 45.0 and conviction != "high":
+            return False, f"❌ Learning filter: low setup quality score ({learned_score:.1f})"
         
         # === SIMPLE SAFETY FILTER - REJECT ONLY OBVIOUS CONFLICTS ===
         
@@ -306,16 +368,66 @@ def should_enter_trade(
     # Check frequency first
     if not frequency_check_passed:
         return False, "Hourly frequency limit reached"
+
+    # LIVE-only hard time windows: reduce midday churn and late-day overtrading.
+    if str(mode or "").upper() == "LIVE":
+        if not _is_live_entry_time_allowed():
+            return (
+                False,
+                "Outside LIVE entry windows (09:25-10:45, 13:15-15:10 IST)",
+            )
     
-    # Use unified entry logic WITH AI VALIDATION
-    should_enter, reason = check_unified_entry(
-        current_price=current_price,
-        recent_candles=recent_candles,
-        strategy_name=strategy_name,
-        instrument=instrument,
-        use_ai_validation=use_ai,
-    )
-    
-    logger.info(f"[{mode}] Entry Decision: {should_enter} | Reason: {reason}")
-    
-    return should_enter, reason
+    mode_u = str(mode or "").upper()
+    if mode_u != "LIVE":
+        should_enter, reason = check_unified_entry(
+            current_price=current_price,
+            recent_candles=recent_candles,
+            strategy_name=strategy_name,
+            instrument=instrument,
+            use_ai_validation=use_ai,
+        )
+        logger.info(f"[{mode}] Entry Decision: {should_enter} | Reason: {reason}")
+        return should_enter, reason
+
+    reason = f"LIVE candidate @ Rs.{current_price:.2f}"
+    if recent_candles and len(recent_candles) >= 2:
+        try:
+            prev_close = float((recent_candles[-2] or {}).get("close") or 0.0)
+            if prev_close > 0:
+                move_pct = ((float(current_price) - prev_close) / prev_close) * 100.0
+                reason = f"{reason} | move {move_pct:+.2f}%"
+        except Exception:
+            pass
+
+    if use_ai:
+        try:
+            ai_state = get_ai_market_analysis(
+                instrument=instrument,
+                current_price=current_price,
+                recent_candles=recent_candles,
+                force_refresh=False,
+            )
+            ai_bias = str(ai_state.get("bias") or "neutral").lower()
+            ai_conf = str(ai_state.get("conviction") or "reject").lower()
+            reason = f"{reason} | AI={ai_bias}/{ai_conf}"
+        except Exception as e:
+            reason = f"{reason} | AI=unavailable ({str(e)[:60]})"
+
+    # Keep as informative signal only.
+    if LIVE_REQUIRE_TWO_CANDLE_CONFIRMATION and recent_candles and len(recent_candles) >= 3:
+        try:
+            c1 = recent_candles[-2] or {}
+            c2 = recent_candles[-3] or {}
+            c1_close = float(c1.get("close") or 0.0)
+            c2_close = float(c2.get("close") or 0.0)
+            if c1_close > 0 and c2_close > 0:
+                prev_move = ((c1_close - c2_close) / c2_close) * 100.0
+                if abs(prev_move) >= LIVE_MIN_PREV_CANDLE_MOVE_PCT:
+                    reason = f"{reason} | 2-candle strong"
+                else:
+                    reason = f"{reason} | 2-candle weak"
+        except Exception:
+            pass
+
+    logger.info(f"[{mode}] Entry Decision: True | Reason: {reason}")
+    return True, reason

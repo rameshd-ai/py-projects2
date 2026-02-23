@@ -42,7 +42,7 @@ from engine.data_fetcher import (
 from engine.sentiment_engine import get_sentiment_for_symbol
 from engine.session_manager import get_session_manager, SessionStatus
 from engine.backtest import run_backtest
-from engine.zerodha_client import get_positions, get_positions_day, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol, get_open_orders, get_orders_today
+from engine.zerodha_client import get_positions, get_positions_day, get_balance, get_zerodha_profile_info, kill_switch, search_instruments, get_quotes_bulk, get_nfo_option_tradingsymbol, get_nfo_option_contract, get_open_orders, get_orders_today
 from nifty_banknifty_engine import (
     get_index_market_bias as _engine_index_bias,
     get_index_option_candidates,
@@ -58,12 +58,14 @@ from strategies.strategy_registry import get_strategy_for_session
 from risk.risk_manager import RiskConfig, RiskManager
 from engine.market_calendar import get_calendar_for_month, get_expiry_type_for_date
 from engine.algo_engine import load_algos, get_algo_by_id, get_suggested_algos, load_strategy_groups, get_algos_grouped, get_primary_group
+from engine.performance_context import build_live_performance_context
 import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timedelta, time
 from functools import lru_cache
 from threading import Lock, RLock, Thread
+from typing import Any
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -157,7 +159,7 @@ def dashboard_ai_agent():
 
 @app.route("/dashboard/backtest")
 def dashboard_backtest():
-    return render_template("dashboard/backtest.html", active_page="backtest", page_title="Backtesting")
+    return redirect(url_for("dashboard_paper_trade"))
 
 
 @app.route("/dashboard/paper-trade")
@@ -183,12 +185,7 @@ def dashboard_live_history():
 
 @app.route("/dashboard/paper-history")
 def dashboard_paper_history():
-    """Paper trade history: closed PAPER trades only, same table structure as Trade page."""
-    return render_template(
-        "dashboard/paper_trade_history.html",
-        active_page="paper_history",
-        page_title="Paper Trade History",
-    )
+    return redirect(url_for("dashboard_live_history"))
 
 
 # Algo ids that have executable strategy logic (check_entry, check_exit, SL/target). Others fall back to MomentumBreakout.
@@ -594,11 +591,7 @@ def api_live():
 
 @app.route("/api/backtest", methods=["POST"])
 def api_backtest():
-    data = request.get_json() or {}
-    symbol = data.get("symbol", "RELIANCE")
-    days = int(data.get("days", 60))
-    results = run_backtest(symbol=symbol, days=days)
-    return {"ok": True, "count": len(results), "results": results[:50]}
+    return jsonify({"ok": False, "error": "Backtesting has been removed from this app."}), 410
 
 
 def _get_log_dir() -> Path:
@@ -2112,7 +2105,7 @@ def _get_ai_trade_suggestion(picks: list[dict]) -> dict[str, Any]:
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
-                    "model": "gpt-4o-mini",
+                    "model": "gpt-5",
                     "messages": [
                         {
                             "role": "system",
@@ -2123,7 +2116,7 @@ def _get_ai_trade_suggestion(picks: list[dict]) -> dict[str, Any]:
                             "content": f"Based on these intraday picks (Today's Market Prediction + Zerodha data), which 1-3 stocks are the BEST to trade today for intraday/F&O? Reply with: (1) comma-separated symbols e.g. RELIANCE, TCS (2) one short reason.\n\n{summary}",
                         },
                     ],
-                    "max_tokens": 200,
+                    "max_completion_tokens": 200,
                     "temperature": 0.3,
                 },
                 timeout=15,
@@ -2162,9 +2155,9 @@ def api_gpt_status():
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={
-                "model": "gpt-4o-mini",
+                "model": "gpt-5",
                 "messages": [{"role": "user", "content": "Say OK"}],
-                "max_tokens": 5,
+                "max_completion_tokens": 5,
             },
             timeout=10,
         )
@@ -2403,8 +2396,24 @@ INTRADAY_CUTOFF_TIME = time(15, 15)  # 3:15 PM IST
 # DEPRECATED: No longer used - replaced by dynamic hourly frequency
 # MAX_TRADES_PER_SESSION = 10
 SESSION_ENGINE_INTERVAL_SEC = 60
+LIVE_TRAILING_SYNC_INTERVAL_SEC = 20
 LIVE_MAX_LOSS_BUFFER = 50.0
 LIVE_MAX_HARD_LOSS = 350.0
+LIVE_MIN_SECONDS_BETWEEN_ENTRIES = 180
+LIVE_HARD_MAX_TRADES_PER_HOUR = 6
+LIVE_AI_SESSION_CANDLE_COUNT = int(os.getenv("LIVE_AI_SESSION_CANDLE_COUNT", "75") or 75)
+LIVE_ENABLE_OI_PCR_FILTER = str(os.getenv("LIVE_ENABLE_OI_PCR_FILTER", "1")).strip().lower() in {"1", "true", "yes", "on"}
+LIVE_PCR_BULLISH_MAX = float(os.getenv("LIVE_PCR_BULLISH_MAX", "0.5") or 0.5)
+LIVE_PCR_BEARISH_MIN = float(os.getenv("LIVE_PCR_BEARISH_MIN", "1.5") or 1.5)
+LIVE_MIN_PREV_CANDLE_MOVE_PCT = float(os.getenv("LIVE_MIN_PREV_CANDLE_MOVE_PCT", "0.10") or 0.10)
+ENTRY_SCORE_THRESHOLD = int(os.getenv("ENTRY_SCORE_THRESHOLD", "55") or 55)
+ENTRY_SCORE_THRESHOLD_MIN = 35
+ENTRY_SCORE_THRESHOLD_MAX = 90
+ENTRY_SCORE_THRESHOLD_SUGGESTED_DEFAULT = 55
+LIVE_ENFORCE_FIXED_RR = str(os.getenv("LIVE_ENFORCE_FIXED_RR", "1")).strip().lower() in {"1", "true", "yes", "on"}
+LIVE_TARGET_R_MULTIPLIER = float(os.getenv("LIVE_TARGET_R_MULTIPLIER", "2.0") or 2.0)
+MAX_HOLD_MINUTES = int(os.getenv("MAX_HOLD_MINUTES", "40") or 40)
+TIME_DECAY_MIN_PROFIT_RS = float(os.getenv("TIME_DECAY_MIN_PROFIT_RS", "120") or 120)
 _SESSIONS_DIR = Path(__file__).resolve().parent / "data"
 _SESSIONS_FILE = _SESSIONS_DIR / "trade_sessions.json"
 _SESSIONS_HISTORY_FILE = _SESSIONS_DIR / "trade_sessions_history.json"
@@ -2747,6 +2756,75 @@ def _build_ai_trade_recommendation_stock(
     }
 
 
+def _index_recommendation_failure_message(instrument: str, investment_amount: float) -> str:
+    """
+    Build a clearer user-facing reason when index recommendation is unavailable.
+    """
+    label = str(instrument or "").upper().replace(" ", "")
+    if label not in {"NIFTY", "BANKNIFTY"}:
+        return "No recommendation available right now. Try again later."
+    try:
+        bias_data = _engine_index_bias() or {}
+        nifty_bias = str(bias_data.get("niftyBias") or "NEUTRAL").upper()
+        bank_bias = str(bias_data.get("bankNiftyBias") or "NEUTRAL").upper()
+        nifty_score = float(bias_data.get("niftyScore") or 0.0)
+        bank_score = float(bias_data.get("bankNiftyScore") or 0.0)
+        if label == "BANKNIFTY":
+            bias = bank_bias
+            score = bank_score
+            other_bias = nifty_bias
+        else:
+            bias = nifty_bias
+            score = nifty_score
+            other_bias = bank_bias
+
+        # Keep fallback direction consistent with build_ai_trade_recommendation_index().
+        if bias == "NEUTRAL":
+            if score >= 0.05:
+                bias = "BULLISH"
+            elif score <= -0.05:
+                bias = "BEARISH"
+            elif other_bias in ("BULLISH", "BEARISH"):
+                bias = other_bias
+            else:
+                bias = "BULLISH"
+
+        options, _, _ = get_affordable_index_options(
+            label,
+            bias,
+            float(investment_amount or DEFAULT_INVESTMENT_AMOUNT),
+            confidence=bias_data.get("confidence"),
+        )
+        # Keep affordability reason aligned with live recommendation path:
+        # use broker lot_size when available (NIFTY lot changes can otherwise mislead).
+        effective_costs: list[float] = []
+        for o in (options or []):
+            premium = float(o.get("premium") or 0.0)
+            strike = int(o.get("strike") or 0)
+            opt_type = str(o.get("type") or "").upper()
+            lot_size = int(o.get("lotSize") or 0)
+            try:
+                contract = get_nfo_option_contract(label, strike, opt_type) if strike > 0 and opt_type in {"CE", "PE"} else None
+                broker_lot = int((contract or {}).get("lot_size") or 0)
+                if broker_lot > 0:
+                    lot_size = broker_lot
+            except Exception:
+                pass
+            if premium > 0 and lot_size > 0:
+                effective_costs.append(float(premium * lot_size))
+        min_lot_cost = min(effective_costs, default=0.0)
+        usable_capital = round(float(investment_amount or DEFAULT_INVESTMENT_AMOUNT) * 0.95, 2)
+        if min_lot_cost > 0 and min_lot_cost > usable_capital:
+            return (
+                f"Not enough capital for 1 lot {label} right now. "
+                f"Need about Rs.{min_lot_cost:,.2f}, usable capital is about Rs.{usable_capital:,.2f}. "
+                "Increase investment/balance or wait for lower premium."
+            )
+    except Exception:
+        pass
+    return "No recommendation available right now (market bias/candidates not suitable). Try again later."
+
+
 @app.route("/api/ai-trade-recommendation")
 def api_ai_trade_recommendation():
     """GET /api/ai-trade-recommendation?instrument=RELIANCE|NIFTY|BANKNIFTY. Returns one AI recommendation card (no strike selection)."""
@@ -2761,7 +2839,8 @@ def api_ai_trade_recommendation():
         else:
             rec = _build_ai_trade_recommendation_stock(instrument, capital, risk_pct)
         if rec is None:
-            return jsonify({"error": "No recommendation (e.g. neutral bias)", "recommendation": None})
+            msg = _index_recommendation_failure_message(instrument, capital) if instrument in ("NIFTY", "BANKNIFTY") else "No recommendation available right now."
+            return jsonify({"error": msg, "recommendation": None})
         return jsonify({"recommendation": rec})
     except Exception as e:
         return jsonify({"error": str(e), "recommendation": None}), 500
@@ -2782,15 +2861,15 @@ def api_ai_trade_recommendations_index():
 
 @app.route("/api/approve-trade", methods=["POST"])
 def api_approve_trade():
-    """POST /api/approve-trade: create ACTIVE trade session. execution_mode: LIVE | PAPER | BACKTEST."""
+    """POST /api/approve-trade: create ACTIVE LIVE trade session."""
     data = request.get_json() or {}
     rec = data.get("recommendation") or data
     if not rec or not rec.get("instrument"):
         return jsonify({"ok": False, "error": "Missing recommendation"}), 400
     instrument = (rec.get("instrument") or "").strip().upper()
-    execution_mode = (data.get("execution_mode") or rec.get("execution_mode") or "PAPER").upper()
-    if execution_mode not in ("LIVE", "PAPER", "BACKTEST"):
-        execution_mode = "PAPER"
+    execution_mode = (data.get("execution_mode") or rec.get("execution_mode") or "LIVE").upper()
+    if execution_mode != "LIVE":
+        return jsonify({"ok": False, "error": "Paper and Backtest modes have been removed. Use LIVE mode only."}), 400
     virtual_balance = data.get("virtual_balance")
     if execution_mode in ("PAPER", "BACKTEST"):
         try:
@@ -2867,132 +2946,12 @@ def api_approve_trade():
 
 @app.route("/api/paper-trade/risk-config")
 def api_paper_trade_risk_config():
-    """GET /api/paper-trade/risk-config?investment_amount=10000&risk_amount=300.
-    Returns risk_amount, max_risk_per_trade, daily_loss_limit.
-    risk_amount is editable and defaults to 300.
-    """
-    try:
-        investment_amount = float(request.args.get("investment_amount") or DEFAULT_INVESTMENT_AMOUNT)
-    except (TypeError, ValueError):
-        investment_amount = DEFAULT_INVESTMENT_AMOUNT
-    try:
-        risk_amount = float(request.args.get("risk_amount") or 300.0)
-    except (TypeError, ValueError):
-        risk_amount = 300.0
-    # Backward compatibility with older UI that still sends percent.
-    if request.args.get("risk_amount") is None and request.args.get("risk_percent") is not None:
-        try:
-            risk_percent = float(request.args.get("risk_percent"))
-            risk_amount = investment_amount * (risk_percent / 100.0)
-        except (TypeError, ValueError):
-            risk_amount = 300.0
-    risk_amount = max(1.0, round(risk_amount, 2))
-    from engine.trade_frequency import get_trade_frequency_config, calculate_max_daily_loss_limit
-    config = get_trade_frequency_config()
-    max_risk_per_trade = risk_amount
-    daily_loss_limit = calculate_max_daily_loss_limit(investment_amount, config)
-    max_daily_loss_percent = config.get("max_daily_loss_percent", 0.10)
-    return jsonify({
-        "risk_amount": risk_amount,
-        "max_risk_per_trade": max_risk_per_trade,
-        "daily_loss_limit": round(daily_loss_limit, 2),
-        "max_daily_loss_percent": round(max_daily_loss_percent * 100, 1),
-    })
+    return jsonify({"ok": False, "error": "Paper trading has been removed from this app."}), 410
 
 
 @app.route("/api/paper-trade/execute", methods=["POST"])
 def api_paper_trade_execute():
-    """
-    POST /api/paper-trade/execute: Start a PAPER trading session (same flow as backtest).
-    Body: { instrument, investment_amount, ai_auto_switching_enabled (optional) }.
-    Creates session with AI recommendation; engine ticks every 60s, gets candles, runs same
-    entry/exit logic as backtest, and places paper order when conditions are met.
-    """
-    data = request.get_json() or {}
-    instrument = (data.get("instrument") or "").strip().upper()
-    if instrument not in ("NIFTY", "BANKNIFTY"):
-        return jsonify({"ok": False, "error": "instrument must be NIFTY or BANKNIFTY"}), 400
-    try:
-        investment_amount = float(data.get("investment_amount") or DEFAULT_INVESTMENT_AMOUNT)
-    except (TypeError, ValueError):
-        investment_amount = DEFAULT_INVESTMENT_AMOUNT
-    if investment_amount <= 0:
-        return jsonify({"ok": False, "error": "investment_amount must be positive"}), 400
-
-    rec = build_ai_trade_recommendation_index(instrument, investment_amount)
-    if not rec:
-        return jsonify({"ok": False, "error": "No recommendation (e.g. neutral bias). Try again later."}), 400
-
-    with _sessions_lock:
-        session_seq = len(_trade_sessions)
-    session_id = f"pt_{datetime.now().strftime('%Y%m%d%H%M%S')}_{session_seq}"
-    now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    from engine.trade_frequency import calculate_max_daily_loss_limit
-    daily_loss_limit = calculate_max_daily_loss_limit(investment_amount)
-    try:
-        daily_loss_limit_override = float(data.get("daily_loss_limit")) if data.get("daily_loss_limit") is not None else None
-    except (TypeError, ValueError):
-        daily_loss_limit_override = None
-    if daily_loss_limit_override is not None and daily_loss_limit_override > 0:
-        daily_loss_limit = daily_loss_limit_override
-    try:
-        risk_amount_per_trade = float(data.get("risk_amount_per_trade") or 300.0)
-    except (TypeError, ValueError):
-        risk_amount_per_trade = 300.0
-    risk_amount_per_trade = max(1.0, risk_amount_per_trade)
-    tradingsymbol = rec.get("tradingsymbol") or instrument
-    exchange = rec.get("exchange") or "NFO"
-    lot_size = int(rec.get("lot_size") or rec.get("lotSize") or 25)
-    ai_enabled = data.get("ai_auto_switching_enabled", True)
-
-    session = {
-        "sessionId": session_id,
-        "instrument": instrument,
-        "mode": "INTRADAY",
-        "system_state": "NORMAL",
-        "status": "ACTIVE",
-        "execution_mode": "PAPER",
-        "virtual_balance": investment_amount,
-        "daily_trade_count": 0,
-        "daily_pnl": 0.0,
-        "daily_loss_limit": daily_loss_limit,
-        "risk_amount_per_trade": risk_amount_per_trade,
-        "cutoff_time": "15:15",
-        "current_trade_id": None,
-        "current_trade": None,
-        "recommendation": rec,
-        "tradingsymbol": tradingsymbol,
-        "exchange": exchange,
-        "lot_size": lot_size,
-        "createdAt": now.isoformat(),
-        "current_hour_block": now.hour,
-        "hourly_trade_count": 0,
-        "frequency_mode": "NORMAL",
-        "ai_auto_switching_enabled": ai_enabled,
-        "ai_check_interval_minutes": 1,
-        "last_ai_strategy_check": None,
-        "last_ai_recommendation": None,
-    }
-    with _sessions_lock:
-        _trade_sessions.append(session)
-        _save_trade_sessions()
-
-    rec_display = {
-        "strike": rec.get("strike"),
-        "optionType": rec.get("optionType") or ("CE" if rec.get("tradeType") == "CALL" else "PE"),
-        "strategyName": rec.get("strategyName") or rec.get("strategyId") or "",
-        "premium": rec.get("premium"),
-        "tradingsymbol": rec.get("tradingsymbol"),
-        "lot_size": int(rec.get("lot_size") or rec.get("lotSize") or 25),
-    }
-    return jsonify({
-        "ok": True,
-        "session_id": session_id,
-        "instrument": instrument,
-        "message": "Paper session started. Engine will get candles every 60s and place trade when conditions are met (same logic as backtest).",
-        "recommendation": rec_display,
-        "virtual_balance": investment_amount,
-    })
+    return jsonify({"ok": False, "error": "Paper trading has been removed from this app."}), 410
 
 
 @app.route("/api/live-trade/execute", methods=["POST"])
@@ -3031,7 +2990,7 @@ def api_live_trade_execute():
 
     rec = build_ai_trade_recommendation_index(instrument, investment_amount)
     if not rec:
-        return jsonify({"ok": False, "error": "No recommendation (e.g. neutral bias). Try again later."}), 400
+        return jsonify({"ok": False, "error": _index_recommendation_failure_message(instrument, investment_amount)}), 400
 
     with _sessions_lock:
         session_seq = len(_trade_sessions)
@@ -3167,7 +3126,12 @@ def _get_ai_recommended_strategy(session: dict) -> tuple[str, str] | None:
         # Get recent candles for the session's instrument
         instrument = session.get("instrument", "NIFTY")
         from strategies import data_provider as strategy_data_provider
-        candles = strategy_data_provider.get_recent_candles(instrument, interval="5m", count=10, period="1d")
+        candles = strategy_data_provider.get_recent_candles(
+            instrument,
+            interval="5m",
+            count=LIVE_AI_SESSION_CANDLE_COUNT,
+            period="1d",
+        )
         
         # Build market context
         expiry_type = None
@@ -3184,6 +3148,10 @@ def _get_ai_recommended_strategy(session: dict) -> tuple[str, str] | None:
             current_time=now.strftime("%Y-%m-%d %H:%M:%S"),
             recent_candles=candles,
             expiry_type=expiry_type,
+        )
+        context["performance_context"] = build_live_performance_context(
+            max_trades=20,
+            current_session_features=context.get("session_features") if isinstance(context.get("session_features"), dict) else None,
         )
         
         # Get current strategy name
@@ -3251,16 +3219,344 @@ def _fetch_session_ltp(session: dict) -> float | None:
     return ltp
 
 
+def _classify_time_bucket_ist(dt_ist: datetime) -> str:
+    t = dt_ist.time()
+    if t < time(10, 30):
+        return "OPENING"
+    if t < time(13, 0):
+        return "MIDDAY"
+    return "AFTERNOON"
+
+
+def _build_entry_features_snapshot(
+    *,
+    now_ist: datetime,
+    instrument: str,
+    strategy_name: str,
+    decision_price: float,
+    recent_candles: list[dict] | None,
+    can_enter: bool,
+    block_reason: str | None,
+) -> dict[str, Any]:
+    expiry_type = None
+    try:
+        expiry_type = get_expiry_type_for_date(now_ist.date())
+    except Exception:
+        expiry_type = None
+    context = get_market_context(
+        nifty_price=decision_price,
+        nifty_change_pct=0.0,
+        banknifty_price=decision_price,
+        banknifty_change_pct=0.0,
+        vix=None,
+        current_time=now_ist.strftime("%Y-%m-%d %H:%M:%S"),
+        recent_candles=(recent_candles or [])[-LIVE_AI_SESSION_CANDLE_COUNT:],
+        expiry_type=expiry_type,
+    )
+    session_features = context.get("session_features") if isinstance(context.get("session_features"), dict) else {}
+    price_action = context.get("price_action") if isinstance(context.get("price_action"), dict) else {}
+    return {
+        "timestamp": now_ist.isoformat(),
+        "instrument": instrument,
+        "strategy": strategy_name,
+        "decision_price": float(decision_price or 0.0),
+        "time_bucket": _classify_time_bucket_ist(now_ist),
+        "session_features": session_features,
+        "price_action": price_action,
+        "can_enter": bool(can_enter),
+        "block_reason": block_reason or None,
+    }
+
+
+def _index_strike_step(index_name: str) -> int:
+    s = str(index_name or "").upper().replace(" ", "")
+    return 100 if "BANK" in s else 50
+
+
+def _safe_float(v: Any, default: float = 0.0) -> float:
+    try:
+        return float(v)
+    except Exception:
+        return default
+
+
+def _build_oi_pcr_snapshot(
+    instrument: str,
+    spot_price: float,
+    recent_candles: list[dict] | None,
+) -> dict[str, Any]:
+    if spot_price <= 0:
+        return {"ok": False, "reason": "Invalid spot price"}
+    label = str(instrument or "").upper().replace(" ", "")
+    if label not in {"NIFTY", "BANKNIFTY"}:
+        return {"ok": False, "reason": "OI/PCR supported only for NIFTY/BANKNIFTY"}
+    step = _index_strike_step(label)
+    base = int(round(spot_price / step) * step)
+    offsets = [-2, -1, 0, 1, 2]
+    ce_ois: dict[int, float] = {}
+    pe_ois: dict[int, float] = {}
+    ce_oi_change_pct: dict[int, float] = {}
+    pe_oi_change_pct: dict[int, float] = {}
+    for off in offsets:
+        strike = int(base + (off * step))
+        ce_ts = get_nfo_option_tradingsymbol(label, strike, "CE")
+        pe_ts = get_nfo_option_tradingsymbol(label, strike, "PE")
+        if ce_ts:
+            try:
+                q = strategy_data_provider.get_quote(ce_ts, exchange="NFO") or {}
+                oi = _safe_float(q.get("oi"), 0.0)
+                ce_ois[strike] = oi
+                oi_low = _safe_float(q.get("oi_day_low"), 0.0)
+                if oi > 0 and oi_low > 0 and oi >= oi_low:
+                    ce_oi_change_pct[strike] = ((oi - oi_low) / oi_low) * 100.0
+            except Exception:
+                ce_ois[strike] = 0.0
+        if pe_ts:
+            try:
+                q = strategy_data_provider.get_quote(pe_ts, exchange="NFO") or {}
+                oi = _safe_float(q.get("oi"), 0.0)
+                pe_ois[strike] = oi
+                oi_low = _safe_float(q.get("oi_day_low"), 0.0)
+                if oi > 0 and oi_low > 0 and oi >= oi_low:
+                    pe_oi_change_pct[strike] = ((oi - oi_low) / oi_low) * 100.0
+            except Exception:
+                pe_ois[strike] = 0.0
+
+    ce_total = sum(v for v in ce_ois.values() if v > 0)
+    pe_total = sum(v for v in pe_ois.values() if v > 0)
+    if ce_total <= 0 or pe_total <= 0:
+        return {
+            "ok": False,
+            "reason": "Insufficient OI quote data",
+            "base_strike": base,
+            "ce_total_oi": ce_total,
+            "pe_total_oi": pe_total,
+        }
+
+    pcr = pe_total / max(ce_total, 1e-9)
+    support_strike = int(base - step)
+    resistance_strike = int(base + step)
+    pe_support_oi = _safe_float(pe_ois.get(support_strike), 0.0)
+    ce_resistance_oi = _safe_float(ce_ois.get(resistance_strike), 0.0)
+    pe_support_oi_change_pct = _safe_float(pe_oi_change_pct.get(support_strike), 0.0)
+    ce_resistance_oi_change_pct = _safe_float(ce_oi_change_pct.get(resistance_strike), 0.0)
+
+    breakout_up = False
+    breakout_down = False
+    near_breakout_up = False
+    near_breakout_down = False
+    if recent_candles and len(recent_candles) >= 4:
+        last_close = _safe_float((recent_candles[-1] or {}).get("close"), 0.0)
+        prev = recent_candles[-4:-1]
+        prev_high = max((_safe_float(c.get("high"), 0.0) for c in prev), default=0.0)
+        prev_low = min((_safe_float(c.get("low"), 0.0) for c in prev), default=0.0)
+        breakout_up = last_close > prev_high if prev_high > 0 else False
+        breakout_down = last_close < prev_low if prev_low > 0 else False
+        near_breakout_up = (not breakout_up) and prev_high > 0 and abs(prev_high - last_close) / prev_high <= 0.0012
+        near_breakout_down = (not breakout_down) and prev_low > 0 and abs(last_close - prev_low) / prev_low <= 0.0012
+
+    # User-requested strict conditions:
+    # Bullish: PCR < 0.5 + call OI buildup at resistance + 5m breakout up.
+    # Bearish: PCR > 1.5 + put OI support break proxy + 5m breakdown.
+    bullish_ok = (pcr < LIVE_PCR_BULLISH_MAX) and (ce_resistance_oi > 0) and breakout_up
+    bearish_ok = (pcr > LIVE_PCR_BEARISH_MIN) and (pe_support_oi > 0) and breakout_down
+
+    return {
+        "ok": True,
+        "instrument": label,
+        "base_strike": base,
+        "support_strike": support_strike,
+        "resistance_strike": resistance_strike,
+        "ce_total_oi": round(ce_total, 2),
+        "pe_total_oi": round(pe_total, 2),
+        "pcr": round(pcr, 3),
+        "pe_support_oi": round(pe_support_oi, 2),
+        "ce_resistance_oi": round(ce_resistance_oi, 2),
+        "pe_support_oi_change_pct": round(pe_support_oi_change_pct, 2),
+        "ce_resistance_oi_change_pct": round(ce_resistance_oi_change_pct, 2),
+        "breakout_up": bool(breakout_up),
+        "breakout_down": bool(breakout_down),
+        "near_breakout_up": bool(near_breakout_up),
+        "near_breakout_down": bool(near_breakout_down),
+        "bullish_ok": bool(bullish_ok),
+        "bearish_ok": bool(bearish_ok),
+    }
+
+
+def calculate_entry_score(context: dict[str, Any]) -> dict[str, Any]:
+    """
+    Weighted high-conviction score (0-100).
+    breakdown keys: ai, momentum, pcr, oi, time, structure
+    """
+    breakdown = {"ai": 0, "momentum": 0, "pcr": 0, "oi": 0, "time": 0, "structure": 0}
+    conviction = str(context.get("ai_conviction") or "reject").lower()
+    ai_bias = str(context.get("ai_bias") or "neutral").lower()
+    direction = str(context.get("direction") or "BULLISH").upper()
+    candle_dir = str(context.get("candle_direction") or "flat").lower()
+
+    ai_map = {"high": 30, "medium": 22, "low": 8, "reject": 8}
+    ai_score = ai_map.get(conviction, 0)
+    bias_aligned = (direction == "BULLISH" and candle_dir == "up") or (direction == "BEARISH" and candle_dir == "down")
+    if ai_score > 0 and bias_aligned and ai_bias in {"bullish", "bearish"}:
+        ai_score = min(30, ai_score + 3)
+    breakdown["ai"] = int(ai_score)
+
+    strong_count = int(context.get("strong_directional_candle_count") or 0)
+    mild_move = bool(context.get("mild_move"))
+    if strong_count >= 2:
+        breakdown["momentum"] = 20
+    elif strong_count == 1:
+        breakdown["momentum"] = 12
+    elif mild_move:
+        breakdown["momentum"] = 6
+    else:
+        breakdown["momentum"] = 0
+
+    pcr = _safe_float(context.get("pcr"), 0.0)
+    if pcr <= 0:
+        breakdown["pcr"] = 3
+    elif direction == "BULLISH":
+        if pcr < 0.7:
+            breakdown["pcr"] = 15
+        elif pcr <= 0.9:
+            breakdown["pcr"] = 10
+        elif pcr <= 1.1:
+            breakdown["pcr"] = 5
+        else:
+            breakdown["pcr"] = 0
+    else:
+        if pcr > 1.3:
+            breakdown["pcr"] = 15
+        elif pcr >= 1.1:
+            breakdown["pcr"] = 10
+        elif pcr >= 0.9:
+            breakdown["pcr"] = 5
+        else:
+            breakdown["pcr"] = 0
+
+    oi_change_pct = _safe_float(context.get("oi_change_pct"), 0.0)
+    oi_static = bool(context.get("oi_static"))
+    oi_missing = bool(context.get("oi_missing"))
+    if oi_missing:
+        breakdown["oi"] = 3
+    elif oi_change_pct >= 20.0:
+        breakdown["oi"] = 15
+    elif oi_change_pct >= 10.0:
+        breakdown["oi"] = 10
+    elif oi_static:
+        breakdown["oi"] = 5
+    else:
+        breakdown["oi"] = 3
+
+    now_ist = context.get("now_ist")
+    t = now_ist.time() if isinstance(now_ist, datetime) else datetime.now(ZoneInfo("Asia/Kolkata")).time()
+    if time(9, 25) <= t <= time(10, 15):
+        breakdown["time"] = 10
+    elif time(10, 15) < t <= time(10, 45):
+        breakdown["time"] = 7
+    elif time(13, 15) <= t <= time(14, 30):
+        breakdown["time"] = 10
+    elif time(14, 30) < t <= time(15, 10):
+        breakdown["time"] = 7
+    else:
+        breakdown["time"] = 0
+
+    breakout_in_direction = bool(context.get("breakout_in_direction"))
+    near_breakout_in_direction = bool(context.get("near_breakout_in_direction"))
+    if breakout_in_direction and breakdown["momentum"] >= 12:
+        breakdown["structure"] = 10
+    elif near_breakout_in_direction:
+        breakdown["structure"] = 6
+    else:
+        breakdown["structure"] = 2
+
+    total = int(max(0, min(100, sum(int(v) for v in breakdown.values()))))
+    return {"total_score": total, "breakdown": breakdown}
+
+
+def _target_stop_profile_for_score(score: int) -> dict[str, Any]:
+    score_i = int(score or 0)
+    if score_i >= 85:
+        return {"name": "HIGH_85", "target_mult": 1.25, "stop_mult": 0.92}
+    if score_i >= ENTRY_SCORE_THRESHOLD:
+        return {"name": "QUALIFIED_75", "target_mult": 1.18, "stop_mult": 0.90}
+    return {"name": "DEFAULT", "target_mult": 1.15, "stop_mult": 0.90}
+
+
+def _normalize_entry_threshold(value: Any) -> int:
+    try:
+        t = int(float(value))
+    except Exception:
+        t = ENTRY_SCORE_THRESHOLD_SUGGESTED_DEFAULT
+    return max(ENTRY_SCORE_THRESHOLD_MIN, min(ENTRY_SCORE_THRESHOLD_MAX, t))
+
+
+def _apply_fixed_rr_target(entry_price: float, stop_loss: float, side: str = "BUY") -> float:
+    """
+    Keep target at fixed R multiple from realized stop distance.
+    For long entries: target = entry + R * (entry - stop).
+    """
+    rr = max(1.0, float(LIVE_TARGET_R_MULTIPLIER or 2.0))
+    ep = float(entry_price or 0.0)
+    sl = float(stop_loss or 0.0)
+    if ep <= 0 or sl <= 0:
+        return ep
+    risk_dist = abs(ep - sl)
+    if risk_dist <= 0:
+        return ep
+    if str(side or "BUY").upper() == "BUY":
+        return round(ep + (rr * risk_dist), 2)
+    return round(ep - (rr * risk_dist), 2)
+
+
+def _apply_oi_pcr_entry_filter(
+    session: dict,
+    decision_price: float,
+    recent_candles: list[dict] | None,
+) -> tuple[bool, str | None]:
+    if not LIVE_ENABLE_OI_PCR_FILTER:
+        return True, None
+    mode = str(session.get("execution_mode") or "PAPER").upper()
+    exchange = str(session.get("exchange") or "NSE").upper()
+    instrument = str(session.get("instrument") or "").upper()
+    if mode != "LIVE" or exchange != "NFO" or instrument not in {"NIFTY", "BANKNIFTY"}:
+        return True, None
+
+    snapshot = _build_oi_pcr_snapshot(instrument, float(decision_price or 0.0), recent_candles)
+    session["last_oi_pcr_snapshot"] = snapshot
+    if not snapshot.get("ok"):
+        # Data unavailable: don't hard-block; keep deterministic fallback path.
+        return True, "OI/PCR data unavailable"
+
+    opt_type = str((session.get("recommendation") or {}).get("optionType") or "").upper()
+    if opt_type == "CE" and not snapshot.get("bullish_ok"):
+        return False, (
+            f"OI/PCR bullish filter failed (PCR={snapshot.get('pcr')}, "
+            f"breakout_up={snapshot.get('breakout_up')}, ce_res_oi={snapshot.get('ce_resistance_oi')})"
+        )
+    if opt_type == "PE" and not snapshot.get("bearish_ok"):
+        return False, (
+            f"OI/PCR bearish filter failed (PCR={snapshot.get('pcr')}, "
+            f"breakout_down={snapshot.get('breakout_down')}, pe_sup_oi={snapshot.get('pe_support_oi')})"
+        )
+    return True, None
+
+
 def _check_entry_real(session: dict, strategy_name_override: str | None = None) -> tuple[bool, float | None]:
     """
     UNIFIED ENTRY CHECK - Uses shared logic with backtest.
     """
-    from engine.unified_entry import should_enter_trade
+    from engine.unified_entry import (
+        should_enter_trade,
+        get_latest_ai_entry_conviction,
+        get_latest_ai_entry_snapshot,
+    )
     
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     strategy_name = strategy_name_override or (session.get("recommendation") or {}).get("strategyName") or "Momentum Breakout"
     instrument = session.get("instrument") or "—"
     ltp = _fetch_session_ltp(session)
+    exchange = (session.get("exchange") or "NSE").strip().upper()
     execution_mode = session.get("execution_mode", "PAPER")
     
     if ltp is None or ltp <= 0:
@@ -3275,22 +3571,49 @@ def _check_entry_real(session: dict, strategy_name_override: str | None = None) 
             "conditions": {},
         }
         return False, None
+    if bool(
+        session.get("emergency_lockdown")
+        or session.get("engine_lockdown_requested")
+        or str(session.get("system_state") or "").upper() == "EMERGENCY"
+    ):
+        reason = "Emergency state active"
+        session["entry_diagnostics"] = {
+            "last_check": now.isoformat(),
+            "strategy": strategy_name,
+            "ltp": ltp,
+            "entry_price": None,
+            "can_enter": False,
+            "blocked_reason": reason,
+            "conditions": {"hard_block": "floating-loss emergency state"},
+        }
+        return False, None
     
     # Get recent candles for analysis
     recent_candles = None
+    decision_price = float(ltp)
     try:
+        # For NFO options, run entry-quality checks on underlying index movement,
+        # not option premium vs index candles (which produces invalid -99% moves).
+        if exchange == "NFO" and instrument:
+            success, underlying_ltp = call_with_timeout(
+                strategy_data_provider.get_ltp,
+                instrument,
+                timeout_seconds=5,
+            )
+            if success and underlying_ltp and float(underlying_ltp) > 0:
+                decision_price = float(underlying_ltp)
         success, candles = call_with_timeout(
             strategy_data_provider.get_recent_candles,
             instrument,
             interval="5m",
-            count=10,
+            count=LIVE_AI_SESSION_CANDLE_COUNT,
             period="1d",
             timeout_seconds=8,
         )
         if success and candles:
             recent_candles = candles
-            if len(recent_candles) > 10:
-                recent_candles = recent_candles[-10:]  # Last 10 candles
+            if len(recent_candles) > LIVE_AI_SESSION_CANDLE_COUNT:
+                recent_candles = recent_candles[-LIVE_AI_SESSION_CANDLE_COUNT:]
     except Exception as e:
         logger.debug(f"Could not get recent candles for {instrument}: {e}")
     
@@ -3299,12 +3622,114 @@ def _check_entry_real(session: dict, strategy_name_override: str | None = None) 
     
     should_enter, reason = should_enter_trade(
         mode=execution_mode,
-        current_price=ltp,
+        current_price=decision_price,
         recent_candles=recent_candles,
         strategy_name=strategy_name,
         frequency_check_passed=True,  # Frequency checked separately
         instrument=instrument,  # Pass instrument for AI context
         use_ai=ai_enabled,  # Enable AI validation if session has AI enabled
+    )
+    try:
+        session["last_ai_entry_conviction"] = get_latest_ai_entry_conviction()
+    except Exception:
+        session["last_ai_entry_conviction"] = "reject"
+    try:
+        ai_snapshot = get_latest_ai_entry_snapshot()
+    except Exception:
+        ai_snapshot = {"bias": "neutral", "conviction": session.get("last_ai_entry_conviction") or "reject"}
+
+    oi_snapshot = _build_oi_pcr_snapshot(str(instrument), float(decision_price or 0.0), recent_candles)
+    session["last_oi_pcr_snapshot"] = oi_snapshot
+
+    rec = session.get("recommendation") or {}
+    option_type = str(rec.get("optionType") or "").upper()
+    direction = "BULLISH" if option_type == "CE" else ("BEARISH" if option_type == "PE" else "BULLISH")
+
+    latest_move = 0.0
+    prev_move = 0.0
+    candle_direction = "flat"
+    strong_count = 0
+    mild_move = False
+    if recent_candles and len(recent_candles) >= 3:
+        try:
+            c1 = recent_candles[-2] or {}
+            c2 = recent_candles[-3] or {}
+            c0 = recent_candles[-1] or {}
+            c0_close = _safe_float(c0.get("close"), float(decision_price or 0.0))
+            c1_close = _safe_float(c1.get("close"), 0.0)
+            c2_close = _safe_float(c2.get("close"), 0.0)
+            if c1_close > 0:
+                latest_move = ((float(decision_price) - c1_close) / c1_close) * 100.0
+            if c2_close > 0 and c1_close > 0:
+                prev_move = ((c1_close - c2_close) / c2_close) * 100.0
+            if latest_move > 0:
+                candle_direction = "up"
+            elif latest_move < 0:
+                candle_direction = "down"
+            strong_thr = max(0.1, float(LIVE_MIN_PREV_CANDLE_MOVE_PCT))
+            mild_thr = max(0.04, strong_thr * 0.5)
+            if direction == "BULLISH":
+                strong_count = int(latest_move >= strong_thr) + int(prev_move >= strong_thr)
+                mild_move = latest_move >= mild_thr or prev_move >= mild_thr
+            else:
+                strong_count = int(latest_move <= -strong_thr) + int(prev_move <= -strong_thr)
+                mild_move = latest_move <= -mild_thr or prev_move <= -mild_thr
+        except Exception:
+            pass
+
+    pcr_val = _safe_float((oi_snapshot or {}).get("pcr"), 0.0)
+    if direction == "BULLISH":
+        oi_change_pct = _safe_float((oi_snapshot or {}).get("ce_resistance_oi_change_pct"), 0.0)
+        oi_static = _safe_float((oi_snapshot or {}).get("ce_resistance_oi"), 0.0) > 0
+        breakout_in_dir = bool((oi_snapshot or {}).get("breakout_up"))
+        near_breakout_in_dir = bool((oi_snapshot or {}).get("near_breakout_up"))
+    else:
+        oi_change_pct = _safe_float((oi_snapshot or {}).get("pe_support_oi_change_pct"), 0.0)
+        oi_static = _safe_float((oi_snapshot or {}).get("pe_support_oi"), 0.0) > 0
+        breakout_in_dir = bool((oi_snapshot or {}).get("breakout_down"))
+        near_breakout_in_dir = bool((oi_snapshot or {}).get("near_breakout_down"))
+
+    score_ctx = {
+        "ai_conviction": str(ai_snapshot.get("conviction") or session.get("last_ai_entry_conviction") or "reject"),
+        "ai_bias": str(ai_snapshot.get("bias") or "neutral"),
+        "direction": direction,
+        "candle_direction": candle_direction,
+        "strong_directional_candle_count": strong_count,
+        "mild_move": mild_move,
+        "pcr": pcr_val,
+        "oi_change_pct": oi_change_pct,
+        "oi_static": oi_static,
+        "oi_missing": not bool((oi_snapshot or {}).get("ok")),
+        "now_ist": now,
+        "breakout_in_direction": breakout_in_dir,
+        "near_breakout_in_direction": near_breakout_in_dir,
+    }
+    score_payload = calculate_entry_score(score_ctx)
+    total_score = int(score_payload.get("total_score") or 0)
+    score_breakdown = score_payload.get("breakdown") or {}
+    sizing_multiplier = round(max(0.01, min(1.0, total_score / 100.0)), 2)
+    profile = _target_stop_profile_for_score(total_score)
+    session["last_entry_score"] = total_score
+    session["last_entry_score_breakdown"] = score_breakdown
+    session["last_entry_sizing_multiplier"] = sizing_multiplier
+    session["last_entry_target_stop_profile"] = profile.get("name")
+
+    if (
+        should_enter
+        and str(execution_mode or "").upper() == "LIVE"
+        and str(exchange or "").upper() == "NFO"
+        and total_score < ENTRY_SCORE_THRESHOLD
+    ):
+        should_enter = False
+        reason = f"Entry score {total_score} below threshold {ENTRY_SCORE_THRESHOLD}"
+    session["last_entry_features"] = _build_entry_features_snapshot(
+        now_ist=now,
+        instrument=str(instrument),
+        strategy_name=str(strategy_name),
+        decision_price=float(decision_price or 0.0),
+        recent_candles=recent_candles,
+        can_enter=bool(should_enter),
+        block_reason=(None if should_enter else reason),
     )
     
     # Store diagnostics
@@ -3312,16 +3737,24 @@ def _check_entry_real(session: dict, strategy_name_override: str | None = None) 
         "last_check": now.isoformat(),
         "strategy": strategy_name,
         "ltp": ltp,
+        "decision_price": decision_price,
         "entry_price": ltp if should_enter else None,
         "can_enter": should_enter,
         "blocked_reason": None if should_enter else reason,
         "conditions": {"unified_entry": True, "same_as_backtest": True},
+        "total_score": total_score,
+        "score_breakdown": score_breakdown,
+        "sizing_multiplier": sizing_multiplier,
+        "target_stop_profile": profile.get("name"),
     }
+    diag["conditions"]["entry_score_threshold"] = ENTRY_SCORE_THRESHOLD
+    diag["conditions"]["oi_pcr_snapshot_ok"] = bool((oi_snapshot or {}).get("ok"))
+    diag["conditions"]["ai_entry_conviction"] = session.get("last_ai_entry_conviction")
     session["entry_diagnostics"] = diag
     
     logger.info(
-        "ENTRY CHECK | %s | Strategy=%s | LTP=%s | can_enter=%s | reason=%s",
-        instrument, strategy_name, ltp, should_enter, reason
+        "ENTRY CHECK | %s | Strategy=%s | option_ltp=%s | decision_price=%s | score=%s/%s | can_enter=%s | reason=%s",
+        instrument, strategy_name, ltp, decision_price, total_score, ENTRY_SCORE_THRESHOLD, should_enter, reason
     )
     
     return should_enter, ltp if should_enter else None
@@ -3412,6 +3845,40 @@ def _manage_trade_real(session: dict) -> bool:
                     str(risk_e),
                 )
 
+            # Time-decay soft exit: avoid theta bleed on low-progress trades.
+            try:
+                entry_time_raw = trade.get("entry_time")
+                entry_dt = datetime.fromisoformat(str(entry_time_raw)) if entry_time_raw else None
+                if isinstance(entry_dt, datetime):
+                    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+                    hold_minutes = (now_ist - entry_dt).total_seconds() / 60.0
+                    if hold_minutes >= float(MAX_HOLD_MINUTES):
+                        ltp_td = _fetch_session_ltp(session)
+                        entry_price_td = float(trade.get("entry_price") or 0.0)
+                        qty_td = int(trade.get("qty") or 0)
+                        side_td = str(trade.get("side") or "BUY").upper()
+                        if ltp_td is not None and ltp_td > 0 and entry_price_td > 0 and qty_td > 0:
+                            unrealized = (
+                                (float(ltp_td) - entry_price_td) * qty_td
+                                if side_td == "BUY"
+                                else (entry_price_td - float(ltp_td)) * qty_td
+                            )
+                            if unrealized < float(TIME_DECAY_MIN_PROFIT_RS):
+                                trade["exit_reason"] = "TIME_DECAY_EXIT"
+                                logger.info(
+                                    "TIME DECAY EXIT | %s | hold=%.1fmin >= %s | unrealized=%.2f < %.2f",
+                                    session.get("instrument"),
+                                    hold_minutes,
+                                    MAX_HOLD_MINUTES,
+                                    unrealized,
+                                    float(TIME_DECAY_MIN_PROFIT_RS),
+                                )
+                                ok, result = call_with_timeout(execute_exit, session, timeout_seconds=20)
+                                if ok and result and result.get("success"):
+                                    return True
+            except Exception as td_e:
+                logger.warning("Time-decay exit check error for %s: %s", session.get("instrument"), str(td_e))
+
         success, exit_reason = call_with_timeout(strategy.check_exit, trade, timeout_seconds=10)
         mode = (session.get("execution_mode") or "PAPER").upper()
         if mode == "LIVE":
@@ -3445,6 +3912,40 @@ def _run_session_engine_tick() -> None:
     _last_session_engine_tick_time = now
     engine_state["last_tick"] = now.isoformat()
     _do_session_engine_tick(now)
+
+
+def _run_live_trailing_sync_tick() -> None:
+    """Scheduler callback: tighten LIVE broker trailing stops for open trades."""
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    _do_live_trailing_sync_tick(now)
+
+
+def _do_live_trailing_sync_tick(now: datetime) -> None:
+    with _sessions_lock:
+        if not engine_state.get("running", True):
+            return
+        if not is_market_open(now):
+            return
+        for session in _trade_sessions:
+            try:
+                if session.get("status") != "ACTIVE":
+                    continue
+                if (session.get("execution_mode") or "").upper() != "LIVE":
+                    continue
+                if not session.get("current_trade"):
+                    continue
+                from execution.live_executor import refresh_profit_trailing_stop
+
+                ok, res = call_with_timeout(refresh_profit_trailing_stop, session, timeout_seconds=8)
+                if ok and res and res.get("updated"):
+                    logger.info(
+                        "[TRAILING-20S] Updated | session=%s | stop=%s",
+                        session.get("sessionId"),
+                        (session.get("current_trade") or {}).get("trailing_stop"),
+                    )
+            except Exception as e:
+                logger.warning("Trailing sync tick error | session=%s | err=%s", session.get("sessionId"), str(e))
+        _save_trade_sessions()
 
 
 def _do_session_engine_tick(now: datetime) -> None:
@@ -3637,17 +4138,19 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
                                 strategy_data_provider.get_recent_candles, 
                                 instrument, 
                                 interval="5m", 
-                                count=10, 
+                                count=LIVE_AI_SESSION_CANDLE_COUNT, 
                                 period="1d",
                                 timeout_seconds=8
                             )
                             if success and candles_df:
                                 recent_candles = [
                                     {
+                                        "open": c.get("open", 0),
                                         "high": c.get("high", 0),
                                         "low": c.get("low", 0),
                                         "close": c.get("close", 0),
                                         "volume": c.get("volume", 0),
+                                        "date": c.get("date"),
                                     }
                                     for c in candles_df
                                 ]
@@ -3760,6 +4263,7 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
         # Check dynamic hourly trade frequency
         capital = session.get("virtual_balance") or DEFAULT_INVESTMENT_AMOUNT
         if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
+            live_capital = None
             success, bal = call_with_timeout(get_balance, timeout_seconds=5)
             if success and bal:
                 live_capital = bal[0]
@@ -3768,6 +4272,8 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
         
         daily_pnl = session.get("daily_pnl", 0)
         max_trades_this_hour, freq_mode = calculate_max_trades_per_hour(capital, daily_pnl)
+        if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
+            max_trades_this_hour = min(int(max_trades_this_hour), int(LIVE_HARD_MAX_TRADES_PER_HOUR))
         session["frequency_mode"] = freq_mode
         
         trades_this_hour = session.get("hourly_trade_count", 0)
@@ -3822,11 +4328,43 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
             )
 
         strategy_id, strategy_name = _pick_best_strategy(instrument, session=session)
+
+        # Anti-churn gate: keep minimum spacing between successful entries in LIVE mode.
+        if (session.get("execution_mode") or "PAPER").upper() == "LIVE":
+            try:
+                last_entry_at_raw = session.get("last_successful_entry_at")
+                if last_entry_at_raw:
+                    last_entry_at = datetime.fromisoformat(str(last_entry_at_raw))
+                    since_last = (now - last_entry_at).total_seconds()
+                    if since_last < LIVE_MIN_SECONDS_BETWEEN_ENTRIES:
+                        wait_left = int(LIVE_MIN_SECONDS_BETWEEN_ENTRIES - since_last)
+                        session["last_entry_check"] = {
+                            "timestamp": now.isoformat(),
+                            "strategy": strategy_name,
+                            "can_enter": False,
+                            "entry_price": None,
+                            "block_reason": f"Entry cooldown active ({wait_left}s left)",
+                            "risk_approved": False,
+                            "risk_reason": "Entry cooldown",
+                            "calculated_lots": None,
+                            "max_trades_this_hour": max_trades_this_hour,
+                            "trades_this_hour": trades_this_hour,
+                            "frequency_mode": freq_mode,
+                        }
+                        logger.info(
+                            "[ENTRY COOLDOWN] %s | waiting %ss before next entry",
+                            session.get("sessionId"),
+                            wait_left,
+                        )
+                        continue
+            except Exception:
+                pass
+
         can_enter, entry_price = _check_entry_real(session, strategy_name_override=strategy_name)
         # Entry diagnostics for Manual Mode: always record last check (timestamp, strategy, can_enter, risk result)
         block_reason: str | None = None
         if not can_enter:
-            block_reason = "Condition not met"
+            block_reason = ((session.get("entry_diagnostics") or {}).get("blocked_reason")) or "Condition not met"
             logger.info("Entry not met | %s | %s", session.get("instrument", "—"), block_reason)
         elif entry_price is None:
             block_reason = "Entry price None"
@@ -3842,6 +4380,10 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
             "max_trades_this_hour": max_trades_this_hour,
             "trades_this_hour": trades_this_hour,
             "frequency_mode": freq_mode,
+            "total_score": (session.get("entry_diagnostics") or {}).get("total_score"),
+            "score_breakdown": (session.get("entry_diagnostics") or {}).get("score_breakdown"),
+            "sizing_multiplier": (session.get("entry_diagnostics") or {}).get("sizing_multiplier"),
+            "target_stop_profile": (session.get("entry_diagnostics") or {}).get("target_stop_profile"),
         }
         if can_enter and entry_price is not None:
             try:
@@ -3881,8 +4423,13 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
                         session["last_entry_check"]["risk_approved"] = False
                         session["last_entry_check"]["risk_reason"] = "Option price unavailable"
                         continue
-                    stop_loss = round(entry_price * 0.90, 2)
-                    target = round(entry_price * 1.15, 2)
+                    mode_now = (session.get("execution_mode") or "PAPER").upper()
+                    score_for_profile = int(session.get("last_entry_score") or 0)
+                    profile_cfg = _target_stop_profile_for_score(score_for_profile) if mode_now == "LIVE" else _target_stop_profile_for_score(0)
+                    stop_loss = round(entry_price * float(profile_cfg.get("stop_mult") or 0.90), 2)
+                    target = round(entry_price * float(profile_cfg.get("target_mult") or 1.15), 2)
+                    session["last_entry_target_stop_profile"] = profile_cfg.get("name")
+                    session["last_entry_check"]["target_stop_profile"] = profile_cfg.get("name")
                     logger.info(f"║ Option Type: F&O ({session.get('tradingsymbol')}) | Premium: ₹{entry_price:.2f}{' '*(60-len(session.get('tradingsymbol', ''))-20)} ║")
                 else:
                     # Use F&O-aware stop/target for options (wider stops, realistic targets)
@@ -3940,16 +4487,30 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
                 approved, reason, lots = risk_mgr.validate_trade(
                     session, entry_price, stop_for_risk, lot_size, premium=premium
                 )
+                sizing_multiplier = float(session.get("last_entry_sizing_multiplier") or 1.0)
+                sizing_note = ""
+                if approved and lots >= 1 and execution_mode == "LIVE":
+                    try:
+                        base_lots = int(lots)
+                        scaled_lots = int(base_lots * max(0.01, min(1.0, sizing_multiplier)))
+                        lots = max(1, scaled_lots)
+                        if lots != base_lots:
+                            sizing_note = f" | score sizing ({base_lots} -> {lots} lots, x{sizing_multiplier:.2f})"
+                    except Exception:
+                        pass
                 # Update diagnostics with risk result
                 session["last_entry_check"]["risk_approved"] = approved
                 session["last_entry_check"]["risk_reason"] = reason
                 session["last_entry_check"]["calculated_lots"] = lots
+                session["last_entry_check"]["sizing_multiplier"] = sizing_multiplier
                 
                 logger.info("╠══════════════════════════════════════════════════════════════╣")
                 logger.info(f"║ Risk Check Result: {('APPROVED' if approved else 'REJECTED'):<43} ║")
                 if approved:
                     logger.info(f"║ Lot Size: {lot_size:<50} ║")
                     logger.info(f"║ Lots Calculated: {lots:<45} ║")
+                    if sizing_note:
+                        logger.info(f"║ Sizing Note: {sizing_note:<46} ║")
                     qty = lots * lot_size
                     logger.info(f"║ Total Quantity: {qty:<46} ║")
                     risk_amount = abs(entry_price - stop_for_risk) * qty
@@ -4006,6 +4567,31 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
                                 stop_loss = capped_stop
                     except Exception:
                         pass
+
+                # Enforce fixed 1:R target after final stop is set (prevents too-early exits from near targets).
+                if (
+                    execution_mode == "LIVE"
+                    and LIVE_ENFORCE_FIXED_RR
+                    and stop_loss is not None
+                    and target is not None
+                ):
+                    try:
+                        rr_target = _apply_fixed_rr_target(float(entry_price), float(stop_loss), side=side)
+                        if rr_target > 0:
+                            target = rr_target
+                            session["last_entry_check"]["target_stop_profile"] = (
+                                f"{session.get('last_entry_check', {}).get('target_stop_profile') or 'PROFILE'} + RR_1:{LIVE_TARGET_R_MULTIPLIER:.2f}"
+                            )
+                            logger.info(
+                                "[RR ENFORCE] session=%s | entry=%.2f | stop=%.2f | target=%.2f | rr=1:%.2f",
+                                session.get("sessionId"),
+                                float(entry_price),
+                                float(stop_loss),
+                                float(target),
+                                float(LIVE_TARGET_R_MULTIPLIER),
+                            )
+                    except Exception:
+                        pass
                 
                 # Log pre-execution state
                 logger.info(f"[ORDER EXECUTION] Calling execute_entry for {symbol} | Mode: {execution_mode}")
@@ -4056,6 +4642,7 @@ def _do_session_engine_tick_locked(now: datetime) -> None:
                 )
                 
                 # Increment hourly trade count after successful entry
+                session["last_successful_entry_at"] = now.isoformat()
                 session["hourly_trade_count"] = session.get("hourly_trade_count", 0) + 1
                 logger.info(
                     f"[FREQ] Trade executed for {session.get('instrument')} | "
@@ -4121,11 +4708,25 @@ def _engine_status_for_api() -> dict:
                 secs = 0
                 if next_ai_check_secs is None or secs < next_ai_check_secs:
                     next_ai_check_secs = secs
+    expiry_type = None
+    ai_expiry_awareness = True
+    try:
+        expiry_type = get_expiry_type_for_date(now.date())
+    except Exception:
+        ai_expiry_awareness = False
+        expiry_type = None
+    expiry_type = str(expiry_type).upper() if expiry_type else None
+    is_expiry_day = bool(expiry_type)
+
     return {
         "engine_running": engine_running,
         "last_tick": last_tick,
         "next_scan": next_scan,
         "next_ai_check_secs": next_ai_check_secs,
+        "entry_score_threshold": int(ENTRY_SCORE_THRESHOLD),
+        "ai_expiry_awareness": ai_expiry_awareness,
+        "is_expiry_day": is_expiry_day,
+        "expiry_type": expiry_type,
     }
 
 
@@ -4372,15 +4973,29 @@ def api_engine_status():
     sessions_snapshot = _trade_sessions_snapshot()
     active_count = sum(1 for s in sessions_snapshot if s.get("status") == "ACTIVE")
     last_tick = engine_state.get("last_tick") or (_last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None)
+    expiry_type = None
+    ai_expiry_awareness = True
+    try:
+        expiry_type = get_expiry_type_for_date(now.date())
+    except Exception:
+        ai_expiry_awareness = False
+        expiry_type = None
+    expiry_type = str(expiry_type).upper() if expiry_type else None
+    is_expiry_day = bool(expiry_type)
+
     return jsonify({
         "running": engine_state.get("running", True),
         "engine_enabled": engine_state.get("running", True),
         "last_tick": last_tick,
         "next_scan_sec": next_scan_sec,
         "next_scan_in_seconds": next_scan_sec,
+        "entry_score_threshold": int(ENTRY_SCORE_THRESHOLD),
         "market_open": is_market_open(now),
         "active_session_count": active_count,
         "last_scan": _last_session_engine_tick_time.isoformat() if _last_session_engine_tick_time else None,
+        "ai_expiry_awareness": ai_expiry_awareness,
+        "is_expiry_day": is_expiry_day,
+        "expiry_type": expiry_type,
     })
 
 
@@ -4580,6 +5195,9 @@ def api_live_positions_today():
 @app.route("/api/backtest/run", methods=["POST"])
 def api_backtest_run():
     """POST /api/backtest/run: run backtest on historical data. Body: instrument, strategy, from_date, to_date, timeframe, initial_capital, risk_percent_per_trade."""
+    return jsonify({"ok": False, "error": "Backtesting has been removed from this app."}), 410
+
+    # Legacy body kept below for historical reference.
     from backtest.backtest_engine import run_backtest_engine, save_backtest_result
     data = request.get_json() or {}
     instrument = (data.get("instrument") or "").strip().upper() or "RELIANCE"
@@ -4614,6 +5232,9 @@ def api_backtest_run():
 @app.route("/api/backtest/results")
 def api_backtest_results():
     """GET /api/backtest/results: list all backtest runs (summary + trades)."""
+    return jsonify({"ok": False, "error": "Backtesting has been removed from this app."}), 410
+
+    # Legacy body kept below for historical reference.
     from backtest.backtest_engine import load_backtest_results
     runs = load_backtest_results()
     return jsonify({"runs": runs})
@@ -4626,6 +5247,9 @@ def api_backtest_run_ai():
     Simulates intraday trading day by day with AI evaluating and switching strategies every N minutes.
     Returns streaming progress updates.
     """
+    return jsonify({"ok": False, "error": "Backtesting has been removed from this app."}), 410
+
+    # Legacy body kept below for historical reference.
     data = request.get_json() or {}
     
     # Extract parameters
@@ -4730,6 +5354,9 @@ def api_backtest_run_ai_sync():
     POST /api/backtest/run-ai-sync: Non-streaming version (returns all at once).
     Use this for simple requests without progress updates.
     """
+    return jsonify({"ok": False, "error": "Backtesting has been removed from this app."}), 410
+
+    # Legacy body kept below for historical reference.
     data = request.get_json() or {}
     
     # Extract parameters
@@ -5671,6 +6298,49 @@ def api_save_trade_frequency():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/settings/entry-threshold")
+def api_get_entry_threshold():
+    """GET /api/settings/entry-threshold: runtime entry score threshold and guidance."""
+    return jsonify({
+        "ok": True,
+        "threshold": int(ENTRY_SCORE_THRESHOLD),
+        "min": ENTRY_SCORE_THRESHOLD_MIN,
+        "max": ENTRY_SCORE_THRESHOLD_MAX,
+        "suggested": {
+            "balanced": 55,
+            "aggressive": 45,
+            "defensive": 65,
+        },
+        "notes": [
+            "Lower threshold increases trade frequency and brokerage burn.",
+            "Higher threshold reduces frequency and prefers high-conviction setups.",
+            "Use 55 for balanced behavior in mixed intraday conditions.",
+        ],
+    })
+
+
+@app.route("/api/settings/entry-threshold", methods=["POST"])
+def api_set_entry_threshold():
+    """POST /api/settings/entry-threshold: update runtime entry score threshold."""
+    global ENTRY_SCORE_THRESHOLD
+    try:
+        data = request.get_json() or {}
+        if "threshold" not in data:
+            return jsonify({"ok": False, "error": "threshold is required"}), 400
+        ENTRY_SCORE_THRESHOLD = _normalize_entry_threshold(data.get("threshold"))
+        logger.info("[ENTRY SCORE] Threshold updated at runtime: %s", ENTRY_SCORE_THRESHOLD)
+        return jsonify({
+            "ok": True,
+            "threshold": int(ENTRY_SCORE_THRESHOLD),
+            "min": ENTRY_SCORE_THRESHOLD_MIN,
+            "max": ENTRY_SCORE_THRESHOLD_MAX,
+            "message": "Entry score threshold updated",
+        })
+    except Exception as e:
+        logger.exception("Failed to update entry score threshold")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/index-bias")
 def api_index_bias():
     """GET /api/index-bias: NIFTY and BANKNIFTY bias, confidence, reasons."""
@@ -5851,12 +6521,22 @@ try:
         max_instances=1,
         coalesce=True,  # Skip missed runs if one is already running
     )
+    scheduler.add_job(
+        _run_live_trailing_sync_tick,
+        "interval",
+        seconds=LIVE_TRAILING_SYNC_INTERVAL_SEC,
+        id="live_trailing_sync",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
     scheduler.start()
     # Set initial engine status so UI shows "Running" and countdown immediately (before first tick)
     _last_session_engine_tick_time = datetime.now(ZoneInfo("Asia/Kolkata"))
     engine_state["last_tick"] = _last_session_engine_tick_time.isoformat()
     logger.info("✓ Session engine scheduler started successfully")
     logger.info("✓ Tick interval: %s seconds", SESSION_ENGINE_INTERVAL_SEC)
+    logger.info("✓ Live trailing sync interval: %s seconds", LIVE_TRAILING_SYNC_INTERVAL_SEC)
     logger.info("✓ Auto-close enabled (runs every 1 minute)")
     try:
         _reconciliation_worker = BrokerReconciliationWorker(

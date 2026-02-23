@@ -704,6 +704,19 @@ def get_quote(symbol: str, exchange: str = "NSE") -> dict[str, Any]:
             "low": float(ltp_data.get("ohlc", {}).get("low", 0)),
             "buy_quantity": buy_qty,
             "sell_quantity": sell_qty,
+            "oi": float(ltp_data.get("oi") or ltp_data.get("open_interest") or 0),
+            "oi_day_high": float(
+                ltp_data.get("oi_day_high")
+                or ltp_data.get("high_oi")
+                or ltp_data.get("day_high_oi")
+                or 0
+            ),
+            "oi_day_low": float(
+                ltp_data.get("oi_day_low")
+                or ltp_data.get("low_oi")
+                or ltp_data.get("day_low_oi")
+                or 0
+            ),
         }
     except Exception:
         return {"symbol": symbol, "last": 0.0, "open": 0.0, "high": 0.0, "low": 0.0}
