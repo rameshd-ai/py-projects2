@@ -26,6 +26,7 @@ class Site:
     last_scan_at: datetime | None = None
     scan_status: str = ScanStatus.PENDING.value
     ga4_results: dict | None = None
+    export_download_url: str | None = None
 
     def __init__(
         self,
@@ -36,6 +37,7 @@ class Site:
         last_scan_at: datetime | None = None,
         scan_status: str | None = None,
         ga4_results: dict | None = None,
+        export_download_url: str | None = None,
     ):
         self.id = id or uuid4()
         self.name = name
@@ -44,3 +46,4 @@ class Site:
         self.last_scan_at = last_scan_at
         self.scan_status = scan_status or ScanStatus.PENDING.value
         self.ga4_results = ga4_results
+        self.export_download_url = export_download_url

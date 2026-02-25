@@ -23,6 +23,8 @@ def _site_to_dict(s):
         out["scan_status"] = s.scan_status
     if getattr(s, "ga4_results", None):
         out["ga4_results"] = s.ga4_results
+    if getattr(s, "export_download_url", None):
+        out["export_download_url"] = s.export_download_url
     return out
 
 
@@ -41,6 +43,7 @@ def _dict_to_site(d):
         last_scan_at=last_scan_at,
         scan_status=d.get("scan_status"),
         ga4_results=d.get("ga4_results"),
+        export_download_url=d.get("export_download_url"),
     )
 
 

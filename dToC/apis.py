@@ -637,6 +637,10 @@ def CreateComponentRecord(base_url, headers, payload):
     # 1. Construct the final API endpoint URL
     api_url = f"{base_url}/api/MiblockApi/CreateComponentRecord"
 
+    # Ensure processAssets: false in payload (avoid asset processing on create)
+    payload = dict(payload) if isinstance(payload, dict) else {}
+    payload["processAssets"] = False
+
     print(f"[API] Attempting POST to: {api_url}")
     
     try:

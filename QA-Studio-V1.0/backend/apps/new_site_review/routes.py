@@ -1,14 +1,17 @@
 """New Site Review blueprint: dashboard and API."""
 import os
+from pathlib import Path
 
-from flask import Blueprint, send_file
+from flask import Blueprint, send_file, abort
 
 from apps.new_site_review.routers.sites import sites_bp
 from apps.new_site_review.routers.settings import settings_bp
+from apps.new_site_review.routers.auth import auth_bp
 
 _THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 STATIC_DIR = os.path.join(_THIS_DIR, "static")
-INDEX_HTML = os.path.join(STATIC_DIR, "index.html")
+INDEX_HTML = os.path.join(_THIS_DIR, "static", "index.html")
+_EXPORTS_DIR = Path(_THIS_DIR).resolve().parent.parent.parent / "data" / "exports"
 
 new_site_review_bp = Blueprint(
     "new_site_review",
@@ -28,6 +31,18 @@ def index():
 
 new_site_review_bp.register_blueprint(sites_bp, url_prefix="/api/sites")
 new_site_review_bp.register_blueprint(settings_bp, url_prefix="/api/settings")
+new_site_review_bp.register_blueprint(auth_bp, url_prefix="/api/auth")
+
+
+@new_site_review_bp.route("/downloads/<path:filename>", methods=["GET"])
+def download_export(filename):
+    """Serve exported Excel file. Filename must be safe (no path traversal)."""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        abort(404)
+    path = _EXPORTS_DIR / filename
+    if not path.is_file():
+        abort(404)
+    return send_file(path, as_attachment=True, download_name=filename)
 
 
 @new_site_review_bp.route("/api/health")

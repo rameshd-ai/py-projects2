@@ -84,19 +84,7 @@
           <label for="ga4-property-id">GA4 Property ID <span class="required">*</span></label>
           <input type="text" id="ga4-property-id" placeholder="123456789" autocomplete="off" />
           <span class="field-error" id="ga4-property-id-error"></span>
-        </div>
-        <div class="form-group">
-          <label for="credentials-type">Credentials type</label>
-          <select id="credentials-type">
-            <option value="OAuth">OAuth</option>
-            <option value="Service Account">Service Account</option>
-          </select>
-        </div>
-        <div class="form-group" id="service-account-group" style="display: none;">
-          <label for="service-account-json">Service Account JSON</label>
-          <textarea id="service-account-json" rows="6" placeholder='Paste JSON content or upload file below'></textarea>
-          <input type="file" id="service-account-file" accept=".json" class="file-upload" />
-          <span class="field-error" id="service-account-json-error"></span>
+          <p class="field-hint">Data is fetched via Google sign-in (OAuth). Click Play on a site to sign in and export Excel.</p>
         </div>
         <div class="settings-actions">
           <button type="button" class="btn-secondary" id="btn-test-connection">Test Connection</button>
