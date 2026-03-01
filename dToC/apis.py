@@ -1535,7 +1535,11 @@ def save_module_category(base_url: str, headers: dict, payload: dict) -> Union[D
         }
         response = save_module_category(base_url, headers, payload)
     """
-    api_url = f"{base_url}/ccadmin/cms/api/ModuleApi/SaveCategory"
+    # Try ccadmin path first; if 404, try /api/ path (some envs expose ModuleApi only under /api/)
+    api_urls = [
+        f"{base_url}/ccadmin/cms/api/ModuleApi/SaveCategory",
+        f"{base_url}/api/ModuleApi/SaveCategory",
+    ]
     
     try:
         # Ensure Content-Type is set
@@ -1551,14 +1555,26 @@ def save_module_category(base_url: str, headers: dict, payload: dict) -> Union[D
         category_name = payload.get('ModuleCategory', {}).get('CategoryName', 'N/A')
         logging.info(f"Calling SaveCategory API for SiteId: {site_id}, CategoryName: {category_name}")
         
-        response = requests.post(
-            api_url,
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
+        response = None
+        last_exception = None
+        for api_url in api_urls:
+            try:
+                response = requests.post(
+                    api_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                logging.info(f"SaveCategory API response status: {response.status_code} (URL: {api_url})")
+                if response.status_code != 404:
+                    break
+                logging.warning(f"SaveCategory 404 with {api_url}, trying alternate path...")
+            except requests.exceptions.RequestException as e:
+                last_exception = e
+                continue
         
-        logging.info(f"SaveCategory API response status: {response.status_code}")
+        if response is None:
+            raise last_exception or RuntimeError("No response from SaveCategory")
         
         # Raise exception for bad status codes
         response.raise_for_status()

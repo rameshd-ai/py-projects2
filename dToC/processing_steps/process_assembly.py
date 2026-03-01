@@ -376,14 +376,19 @@ def check_component_availability(component_name: str, component_cache: List[Dict
         # If no hyphen (e.g., 'Gallery'), use the whole name.
         search_key = clean_component_name.strip()
         
+    # Fallback: CMS may use space after code (e.g. "L11 Reviews") while XML has hyphen ("L11-Reviews")
+    search_key_with_space = (search_key.rstrip('-') + ' ') if search_key.endswith('-') else None
     logging.info(f"    Searching cache for prefix: **{search_key}** (Original: {component_name}, Clean: {clean_component_name}, Block: {block_count}, Main: {main_count}, Sub: {sub_count})")
     
     for component in component_cache:
         cms_component_name = component.get("name", "")
         
         # 2. Perform the prefix match against the CMS component name.
-        # This will match 'L10-2 Column Snippet' (cache) against 'L10-' (search_key).
-        if cms_component_name.startswith(search_key):
+        # Match hyphen form (e.g. 'L10-2 Column Snippet') or space form (e.g. 'L11 Reviews') for L11-Reviews.
+        prefix_matches = cms_component_name.startswith(search_key)
+        if not prefix_matches and search_key_with_space and cms_component_name.startswith(search_key_with_space):
+            prefix_matches = True
+        if prefix_matches:
             
             # Additional check: If the search key is only the prefix (ends in '-'), 
             # we must ensure the cache name isn't identical to the search key 

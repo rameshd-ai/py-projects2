@@ -689,9 +689,15 @@ def create_simplified_page_name_json(home_data, foot_unknown_data, nav_data):
     def simplify_page(page_dict):
         # Extract components using the dedicated function
         components = extract_component_names(page_dict.get("content_blocks", ""))
+        page_name = page_dict.get("text", "").strip()
+        # Ensure Social Events page includes L11-Reviews if CMS has it (component may be missing from source XML)
+        if page_name and "social" in page_name.lower() and "event" in page_name.lower():
+            if "L11-Reviews" not in components:
+                components = list(components) + ["L11-Reviews"]
+                print(f"[XML Processor] Added L11-Reviews to page '{page_name}' (missing from source content_blocks)")
 
         simplified_page = {
-            "page_name": page_dict["text"],
+            "page_name": page_name or page_dict["text"],
             "components": components,
             "meta_info": page_dict.get("meta_info", {}),
             "sub_pages": []
@@ -702,10 +708,15 @@ def create_simplified_page_name_json(home_data, foot_unknown_data, nav_data):
 
         return simplified_page
 
-    all_pages_combined = nav_data["pages"]
-
-    for page in all_pages_combined:
+    # Nav pages (main menu / level 1 tree)
+    for page in nav_data["pages"]:
         simplified_data["pages"].append(simplify_page(page))
+
+    # Footer/unknown pages (e.g. Contact Us, Careers, Gift Cards) so assembly can create them
+    if foot_unknown_data and foot_unknown_data.get("pages"):
+        for page in foot_unknown_data["pages"]:
+            simplified_data["pages"].append(simplify_page(page))
+        print(f"[XML Processor] Added {len(foot_unknown_data['pages'])} footer/unknown pages to simplified.json (e.g. Contact Us)")
 
     return simplified_data
 

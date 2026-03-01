@@ -1,0 +1,14 @@
+{
+  "componentName": "SIGNATURE",
+  "Scopeid": 5,
+  "ParentId": "0",
+  "processAssets": false,
+  "recordList": [
+    {
+      "recordJsonString": {},
+      "ParentRecordId": 0,
+      "ParentComponentId": 0,
+      "MainParentComponentid": 0
+    }
+  ]
+}

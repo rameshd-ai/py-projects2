@@ -872,6 +872,7 @@
                                     </div>
                                 </div>
 
+                                <!-- Create Site Copy form (commented out)
                                 <div style="margin: 32px 0; padding: 24px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
                                     <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #111827;">Create Site Copy</h3>
                                     
@@ -1002,11 +1003,14 @@
                                         </select>
                                     </div>
                                 </div>
+                                -->
 
+                                <!-- Tracking Code (commented out)
                                 <div class="form-group">
                                     <label class="form-label">Tracking Code</label>
                                     <textarea class="form-textarea" id="trackingCode" placeholder="Enter tracking code details..."></textarea>
                                 </div>
+                                -->
                             </div>
                         </div>
 
@@ -1109,11 +1113,22 @@
                                         <div class="sub-process-content">
                                             <div class="sub-process-header">
                                                 <span class="sub-process-icon"><i class="fas fa-utensils"></i></span>
-                                                <h3 class="sub-process-title">Dine Menu: Inner Pages</h3>
+                                                <h3 class="sub-process-title">Dine Menu: Primary Language</h3>
                                             </div>
                                             <p class="sub-process-description">Configure and migrate menu data with field mapping</p>
                                         </div>
-                                        <button class="sub-process-btn" onclick="processSubProcess('htmlMenu')">Process</button>
+                                        <button class="sub-process-btn" onclick="processSubProcess('htmlMenu')">Start Process</button>
+                                    </div>
+
+                                    <div class="sub-process-item" data-module="htmlMenuSecondary">
+                                        <div class="sub-process-content">
+                                            <div class="sub-process-header">
+                                                <span class="sub-process-icon"><i class="fas fa-language"></i></span>
+                                                <h3 class="sub-process-title">Dine Menu: Secondary Language</h3>
+                                            </div>
+                                            <p class="sub-process-description">Configure source settings for secondary language sites</p>
+                                        </div>
+                                        <button class="sub-process-btn" onclick="handleSecondaryLanguageClick()">Start Process</button>
                                     </div>
 
                                     <div class="sub-process-item" data-module="faqManager">
@@ -2107,7 +2122,7 @@
                     const processedModules = configData.config.processed_modules || {};
                     
                     // Check each module and mark as processed if found
-                    ['htmlMenu', 'faqManager', 'socialFeed', 'ltoMigration', 'rfpForm', 'damMigration'].forEach(moduleId => {
+                    ['htmlMenu', 'htmlMenuSecondary', 'faqManager', 'socialFeed', 'ltoMigration', 'rfpForm', 'damMigration'].forEach(moduleId => {
                         const moduleItem = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
                         if (!moduleItem) return;
                         
@@ -2126,6 +2141,8 @@
                                 btn.disabled = false; // Allow reprocessing
                                 if (moduleId === 'htmlMenu') {
                                     btn.onclick = () => showMenuConfigModal();
+                                } else if (moduleId === 'htmlMenuSecondary') {
+                                    btn.onclick = () => handleSecondaryLanguageClick();
                                 } else if (moduleId === 'faqManager') {
                                     btn.onclick = () => handleFaqManagerClick();
                                 } else {
@@ -2169,10 +2186,12 @@
                             const btn = moduleItem.querySelector('.sub-process-btn');
                             if (btn) {
                                 btn.disabled = false;
-                                btn.innerHTML = 'Process';
+                                btn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
                                 btn.style.background = '';
                                 if (moduleId === 'htmlMenu') {
                                     btn.onclick = () => processSubProcess('htmlMenu');
+                                } else if (moduleId === 'htmlMenuSecondary') {
+                                    btn.onclick = () => handleSecondaryLanguageClick();
                                 } else if (moduleId === 'faqManager') {
                                     btn.onclick = () => handleFaqManagerClick();
                                 } else {
@@ -2266,10 +2285,12 @@
                     downloadBtn.remove();
                 }
                 if (btn) {
-                    btn.innerHTML = 'Process';
+                    btn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
                     btn.style.background = '#10b981';
                     if (moduleId === 'htmlMenu') {
                         btn.onclick = () => showMenuConfigModal();
+                    } else if (moduleId === 'htmlMenuSecondary') {
+                        btn.onclick = () => handleSecondaryLanguageClick();
                     } else if (moduleId === 'faqManager') {
                         btn.onclick = () => handleFaqManagerClick();
                     } else {
@@ -2281,6 +2302,8 @@
             // Process the module
             if (moduleId === 'htmlMenu') {
                 await processSubProcessDirectly('htmlMenu');
+            } else if (moduleId === 'htmlMenuSecondary') {
+                handleSecondaryLanguageClick();
             } else if (moduleId === 'faqManager') {
                 showFaqManagerModal();
             } else {
@@ -2385,7 +2408,7 @@
                 subProcess.classList.remove('processing');
                 if (processBtn) {
                     processBtn.disabled = false;
-                    processBtn.innerHTML = 'Process';
+                    processBtn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
                     processBtn.style.cursor = '';
                 }
             }
@@ -2412,7 +2435,7 @@
                 const reprocessBtn = subProcess.querySelector('.reprocess-btn');
                 if (reprocessBtn) reprocessBtn.remove();
                 if (processBtn) {
-                    processBtn.innerHTML = 'Process';
+                    processBtn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
                     processBtn.style.background = '#10b981';
                 }
             }
@@ -2515,7 +2538,7 @@
                 subProcess.classList.remove('processing');
                 if (processBtn) {
                     processBtn.disabled = false;
-                    processBtn.innerHTML = 'Process';
+                    processBtn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
                     processBtn.style.background = '#10b981';
                     processBtn.style.cursor = '';
                 }
@@ -2864,6 +2887,284 @@
             const modal = document.getElementById('menuConfigModal');
             if (modal) {
                 modal.remove();
+            }
+        }
+
+        // Secondary Language Modal Functions
+        function handleSecondaryLanguageClick() {
+            const subProcess = document.querySelector('.sub-process-item[data-module="htmlMenuSecondary"]');
+            if (subProcess && !subProcess.classList.contains('disabled')) {
+                showSecondaryLanguageModal();
+            }
+        }
+
+        async function showSecondaryLanguageModal() {
+            const existingModal = document.getElementById('secondaryLanguageModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
+            const modal = document.createElement('div');
+            modal.id = 'secondaryLanguageModal';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 2000;';
+
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 16px; padding: 0; max-width: 90%; width: 640px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);">
+                    <div style="padding: 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0; font-size: 24px; font-weight: 600; color: #111827;">Dine Menu: Secondary Language</h2>
+                        <button onclick="closeSecondaryLanguageModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">×</button>
+                    </div>
+                    <div id="secondaryLangSaveMessage" style="display: none; padding: 12px 24px; background: #d1fae5; color: #065f46; font-size: 14px; font-weight: 500; border-bottom: 1px solid #a7f3d0;">
+                        <i class="fas fa-check-circle"></i> Configuration saved.
+                    </div>
+
+                    <div style="flex: 1; overflow-y: auto; padding: 24px;">
+                        <div style="margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #111827;">Secondary Language 1</h4>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Source URL <span style="color: #ef4444;">*</span></label>
+                                <input type="url" id="secondaryLang1SourceUrl" placeholder="https://source-site.com" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Site ID <span style="color: #ef4444;">*</span></label>
+                                <input type="text" id="secondaryLang1SiteId" placeholder="Enter Site ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Profile Alias ID <span style="color: #ef4444;">*</span></label>
+                                <input type="text" id="secondaryLang1ProfileAliasId" placeholder="Enter Profile Alias ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #111827;">Secondary Language 2</h4>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Source URL <span style="color: #ef4444;">*</span></label>
+                                <input type="url" id="secondaryLang2SourceUrl" placeholder="https://source-site.com" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Site ID <span style="color: #ef4444;">*</span></label>
+                                <input type="text" id="secondaryLang2SiteId" placeholder="Enter Site ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Profile Alias ID <span style="color: #ef4444;">*</span></label>
+                                <input type="text" id="secondaryLang2ProfileAliasId" placeholder="Enter Profile Alias ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 0; padding: 16px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                            <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #111827;">Secondary Language 3</h4>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Source URL <span style="color: #ef4444;">*</span></label>
+                                <input type="url" id="secondaryLang3SourceUrl" placeholder="https://source-site.com" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Site ID <span style="color: #ef4444;">*</span></label>
+                                <input type="text" id="secondaryLang3SiteId" placeholder="Enter Site ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Profile Alias ID <span style="color: #ef4444;">*</span></label>
+                                <input type="text" id="secondaryLang3ProfileAliasId" placeholder="Enter Profile Alias ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                        </div>
+                        <div id="secondaryLangStepsLog" style="display: none; margin-top: 16px; padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 13px; max-height: 160px; overflow-y: auto;"></div>
+                    </div>
+
+                    <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; gap: 12px;">
+                            <button type="button" onclick="processSecondaryLanguageFromModal()" id="processSecondaryLangBtn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">Process</button>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button onclick="closeSecondaryLanguageModal()" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;">Close</button>
+                            <button onclick="saveSecondaryLanguageConfig()" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">Save</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            // Pre-fill from config if saved previously
+            if (jobId) {
+                try {
+                    const res = await fetch(`/api/job-config/${jobId}`);
+                    const data = await res.json();
+                    const config = data.config || {};
+                    const sec = config.secondaryLanguage || {};
+                    if (sec.lang1) {
+                        const el = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
+                        el('secondaryLang1SourceUrl', sec.lang1.sourceUrl);
+                        el('secondaryLang1SiteId', sec.lang1.siteId);
+                        el('secondaryLang1ProfileAliasId', sec.lang1.profileAliasId);
+                    }
+                    if (sec.lang2) {
+                        const el = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
+                        el('secondaryLang2SourceUrl', sec.lang2.sourceUrl);
+                        el('secondaryLang2SiteId', sec.lang2.siteId);
+                        el('secondaryLang2ProfileAliasId', sec.lang2.profileAliasId);
+                    }
+                    if (sec.lang3) {
+                        const el = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
+                        el('secondaryLang3SourceUrl', sec.lang3.sourceUrl);
+                        el('secondaryLang3SiteId', sec.lang3.siteId);
+                        el('secondaryLang3ProfileAliasId', sec.lang3.profileAliasId);
+                    }
+                } catch (e) {
+                    console.warn('Could not pre-fill secondary language from config:', e);
+                }
+            }
+        }
+
+        function closeSecondaryLanguageModal() {
+            const modal = document.getElementById('secondaryLanguageModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function saveSecondaryLanguageConfig() {
+            const lang1 = { sourceUrl: document.getElementById('secondaryLang1SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang1SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang1ProfileAliasId')?.value?.trim() || '' };
+            const lang2 = { sourceUrl: document.getElementById('secondaryLang2SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang2SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang2ProfileAliasId')?.value?.trim() || '' };
+            const lang3 = { sourceUrl: document.getElementById('secondaryLang3SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang3SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang3ProfileAliasId')?.value?.trim() || '' };
+            const secondaryLanguage = { lang1, lang2, lang3 };
+
+            if (!jobId) {
+                alert('No job ID. Start or resume a workflow first.');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/job-config/${jobId}`);
+                const data = await res.json();
+                const config = data.config || {};
+                config.job_id = jobId;
+                config.secondaryLanguage = secondaryLanguage;
+                // Save only config; do not trigger step processing (avoids "Missing required fields" from step validation)
+                config.step_number = 0;
+
+                const saveRes = await fetch('/api/save-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const saveData = await saveRes.json();
+                if (!saveData.success) {
+                    alert('Failed to save: ' + (saveData.error || 'Unknown error'));
+                    return;
+                }
+                const msgEl = document.getElementById('secondaryLangSaveMessage');
+                if (msgEl) {
+                    msgEl.style.display = 'block';
+                    setTimeout(function() {
+                        closeSecondaryLanguageModal();
+                    }, 1500);
+                } else {
+                    closeSecondaryLanguageModal();
+                }
+            } catch (err) {
+                console.error('Error saving secondary language config:', err);
+                alert('Failed to save configuration: ' + (err.message || err));
+            }
+        }
+
+        async function processSecondaryLanguageFromModal() {
+            const processBtn = document.getElementById('processSecondaryLangBtn');
+            const stepsLogEl = document.getElementById('secondaryLangStepsLog');
+            const lang1 = { sourceUrl: document.getElementById('secondaryLang1SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang1SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang1ProfileAliasId')?.value?.trim() || '' };
+            const lang2 = { sourceUrl: document.getElementById('secondaryLang2SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang2SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang2ProfileAliasId')?.value?.trim() || '' };
+            const lang3 = { sourceUrl: document.getElementById('secondaryLang3SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang3SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang3ProfileAliasId')?.value?.trim() || '' };
+            const filled = [lang1, lang2, lang3].filter(c => c.sourceUrl && c.profileAliasId);
+            if (filled.length === 0) {
+                alert('Please fill at least one secondary language (Source URL and Profile Alias ID are required).');
+                return;
+            }
+            if (!jobId) {
+                alert('No job ID. Start or resume a workflow first.');
+                return;
+            }
+            if (processBtn) {
+                processBtn.disabled = true;
+                processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                processBtn.style.cursor = 'not-allowed';
+            }
+            if (stepsLogEl) {
+                stepsLogEl.style.display = 'block';
+                stepsLogEl.innerHTML = '<div style="color: #2563eb;"><i class="fas fa-spinner fa-spin"></i> Saving config and starting steps...</div>';
+            }
+            try {
+                // Save current form to config so backend has latest secondary language URLs
+                const configRes = await fetch(`/api/job-config/${jobId}`);
+                let configData = {};
+                try {
+                    if ((configRes.headers.get('content-type') || '').includes('application/json')) {
+                        configData = await configRes.json();
+                    }
+                } catch (_) {}
+                const config = (configData.config || configData) || {};
+                config.job_id = jobId;
+                config.secondaryLanguage = { lang1, lang2, lang3 };
+                config.step_number = 0;
+                await fetch('/api/save-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+                if (stepsLogEl) stepsLogEl.innerHTML = '<div style="color: #2563eb;"><i class="fas fa-spinner fa-spin"></i> Step 1: Generating tokens...</div>';
+                const res = await fetch('/api/process-sub-process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, module_id: 'htmlMenuSecondary' })
+                });
+                let result;
+                const contentType = res.headers.get('content-type') || '';
+                try {
+                    if (contentType.includes('application/json')) {
+                        result = await res.json();
+                    } else {
+                        const text = await res.text();
+                        if (processBtn) { processBtn.disabled = false; processBtn.innerHTML = 'Process'; processBtn.style.cursor = ''; }
+                        if (stepsLogEl) stepsLogEl.innerHTML = '<div style="color: #dc2626;">Server returned non-JSON (status ' + res.status + '). Check server logs.</div>';
+                        alert('Processing failed: Server returned an error (status ' + res.status + '). Check the browser console or server logs.');
+                        return;
+                    }
+                } catch (parseErr) {
+                    if (processBtn) { processBtn.disabled = false; processBtn.innerHTML = 'Process'; processBtn.style.cursor = ''; }
+                    if (stepsLogEl) stepsLogEl.innerHTML = '<div style="color: #dc2626;">Invalid response from server (not JSON). Status: ' + res.status + '</div>';
+                    alert('Processing failed: Could not read server response (status ' + res.status + '). The server may have crashed or returned an error page.');
+                    return;
+                }
+                if (stepsLogEl && result.result && result.result.steps && result.result.steps.length) {
+                    stepsLogEl.innerHTML = result.result.steps.map(s => `<div style="margin-bottom: 4px;">${s.message || ''}</div>`).join('');
+                }
+                if (!result.success) {
+                    if (processBtn) { processBtn.disabled = false; processBtn.innerHTML = 'Process'; processBtn.style.cursor = ''; }
+                    alert('Processing failed: ' + (result.error || 'Unknown error'));
+                    return;
+                }
+                if (stepsLogEl) stepsLogEl.innerHTML += '<div style="margin-top: 8px; color: #059669; font-weight: 600;"><i class="fas fa-check"></i> All steps completed.</div>';
+                processedSubProcesses['htmlMenuSecondary'] = true;
+                const card = document.querySelector('.sub-process-item[data-module="htmlMenuSecondary"]');
+                if (card) {
+                    card.classList.add('processed');
+                    card.classList.remove('processing');
+                    const btn = card.querySelector('.sub-process-btn');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                        btn.style.background = '#10b981';
+                        btn.onclick = () => reprocessModule('htmlMenuSecondary');
+                        btn.title = 'Click to reprocess';
+                    }
+                    if (!card.querySelector('.reprocess-btn')) {
+                        const rp = document.createElement('button');
+                        rp.className = 'reprocess-btn';
+                        rp.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
+                        rp.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                        rp.onclick = () => reprocessModule('htmlMenuSecondary');
+                        if (btn) btn.parentNode.appendChild(rp);
+                    }
+                }
+                setTimeout(function() {
+                    closeSecondaryLanguageModal();
+                }, 1500);
+            } catch (err) {
+                console.error('Secondary language process error:', err);
+                if (processBtn) { processBtn.disabled = false; processBtn.innerHTML = 'Process'; processBtn.style.cursor = ''; }
+                if (stepsLogEl) stepsLogEl.innerHTML += '<div style="color: #dc2626;">Error: ' + (err.message || err) + '</div>';
+                alert('Processing failed: ' + (err.message || err));
             }
         }
 

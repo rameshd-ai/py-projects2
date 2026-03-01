@@ -19,7 +19,7 @@ def run_modules_features_step(job_id: str, step_config: Dict, workflow_context: 
     # Process modules
     module_mapping = {
         "socialFeed": "Social Feed (Zuicer)",
-        "htmlMenu": "Dine Menu: Inner Pages",
+        "htmlMenu": "Dine Menu: Primary Language",
         "faqManager": "FAQ Manager Migration",
         "ltoMigration": "LTO Migration: CMS to MiBlock",
         "rfpForm": "RFP Form Migration (Db)",
@@ -35,7 +35,7 @@ def run_modules_features_step(job_id: str, step_config: Dict, workflow_context: 
             from processing_steps.html_menu import run_html_menu_step
             menu_result = run_html_menu_step(job_id, step_config, workflow_context)
             module_results["htmlMenu"] = menu_result
-            selected_modules.append("Dine Menu: Inner Pages")
+            selected_modules.append("Dine Menu: Primary Language")
         except Exception as e:
             module_results["htmlMenu"] = {
                 "success": False,
