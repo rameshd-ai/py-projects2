@@ -241,9 +241,25 @@ def run_secondary_language_menu_step(job_id: str) -> Dict[str, Any]:
             logger.exception(f"[{job_id}] Menu download error for {key}")
 
     steps_log.append({"step": 2, "message": f"Step 2 done. Menu files saved: {len(menu_files)}"})
+
+    # ---------- Step 3: Update secondary language records with menu data ----------
+    steps_log.append({"step": 3, "message": "Updating secondary language records with menu data (align by sequence)..."})
+    logger.info(f"[{job_id}] Secondary language Step 3: Update records")
+    updated_count = 0
+    try:
+        from .secondary_language_update import run_secondary_language_update_step
+        update_result = run_secondary_language_update_step(job_id, steps_log)
+        updated_count = update_result.get("updated_count", 0)
+        if not update_result.get("success"):
+            steps_log.append({"step": 3, "message": f"Update step reported: {update_result.get('error', 'unknown')}"})
+    except Exception as e:
+        logger.exception("Step 3 failed")
+        steps_log.append({"step": 3, "message": f"Update step failed: {str(e)}"})
+
     return {
         "success": True,
         "steps": steps_log,
         "tokens_generated": list(tokens_stored.keys()),
         "menu_files": [os.path.basename(p) for p in menu_files],
+        "updated_count": updated_count,
     }

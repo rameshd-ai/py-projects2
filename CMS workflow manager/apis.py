@@ -350,10 +350,11 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
                         response = requests.post(api_url, headers=headers, json=record, timeout=timeout_value)
                         response.raise_for_status()
                         result = response.json()
-                        
-                        if result.get("result"):
-                            # Extract the created record ID from response
-                            created_id = result.get('result')
+                        # For update (recordId > 0), some APIs return success: true instead of result: id
+                        is_update = isinstance(record.get("recordId"), (int, float)) and int(record.get("recordId") or 0) > 0
+                        if result.get("result") or (is_update and result.get("success")):
+                            # Extract the created/updated record ID from response
+                            created_id = result.get('result') or (result.get('recordId') if is_update else None) or (record.get("recordId") if is_update else None)
                             # Handle different response formats
                             if isinstance(created_id, int):
                                 record_id = created_id
@@ -373,6 +374,7 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
                             break  # Success, exit retry loop
                         else:
                             error_msg = f"API response indicates failure for record: {record}"
+                            logging.warning("SaveMiblockRecord response (not success): %s", result)
                             print(f"[ERROR] {error_msg}", flush=True)
                             if attempt < max_retries - 1:
                                 print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
