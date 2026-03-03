@@ -2929,9 +2929,13 @@
                                 <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Site ID <span style="color: #ef4444;">*</span></label>
                                 <input type="text" id="secondaryLang1SiteId" placeholder="Enter Site ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
                             </div>
-                            <div>
+                            <div style="margin-bottom: 12px;">
                                 <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Profile Alias ID <span style="color: #ef4444;">*</span></label>
                                 <input type="text" id="secondaryLang1ProfileAliasId" placeholder="Enter Profile Alias ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" onclick="processSecondaryLanguageOne('lang1', false)" id="processLang1Btn" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">Process</button>
+                                <button type="button" onclick="processSecondaryLanguageOne('lang1', true)" id="reprocessLang1Btn" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">Re-process</button>
                             </div>
                         </div>
 
@@ -2945,9 +2949,13 @@
                                 <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Site ID <span style="color: #ef4444;">*</span></label>
                                 <input type="text" id="secondaryLang2SiteId" placeholder="Enter Site ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
                             </div>
-                            <div>
+                            <div style="margin-bottom: 12px;">
                                 <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Profile Alias ID <span style="color: #ef4444;">*</span></label>
                                 <input type="text" id="secondaryLang2ProfileAliasId" placeholder="Enter Profile Alias ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" onclick="processSecondaryLanguageOne('lang2', false)" id="processLang2Btn" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">Process</button>
+                                <button type="button" onclick="processSecondaryLanguageOne('lang2', true)" id="reprocessLang2Btn" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">Re-process</button>
                             </div>
                         </div>
 
@@ -2961,9 +2969,13 @@
                                 <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Site ID <span style="color: #ef4444;">*</span></label>
                                 <input type="text" id="secondaryLang3SiteId" placeholder="Enter Site ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
                             </div>
-                            <div>
+                            <div style="margin-bottom: 12px;">
                                 <label style="display: block; font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 6px;">Profile Alias ID <span style="color: #ef4444;">*</span></label>
                                 <input type="text" id="secondaryLang3ProfileAliasId" placeholder="Enter Profile Alias ID" style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px;">
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" onclick="processSecondaryLanguageOne('lang3', false)" id="processLang3Btn" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">Process</button>
+                                <button type="button" onclick="processSecondaryLanguageOne('lang3', true)" id="reprocessLang3Btn" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px;">Re-process</button>
                             </div>
                         </div>
                         <div id="secondaryLangStepsLog" style="display: none; margin-top: 16px; padding: 12px; background: #f3f4f6; border-radius: 8px; font-size: 13px; max-height: 160px; overflow-y: auto;"></div>
@@ -2971,7 +2983,7 @@
 
                     <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; gap: 12px;">
-                            <button type="button" onclick="processSecondaryLanguageFromModal()" id="processSecondaryLangBtn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">Process</button>
+                            <button type="button" onclick="processSecondaryLanguageFromModal()" id="processSecondaryLangBtn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" title="Process all configured secondary languages">Process all</button>
                         </div>
                         <div style="display: flex; gap: 12px;">
                             <button onclick="closeSecondaryLanguageModal()" style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;">Close</button>
@@ -2982,31 +2994,40 @@
             `;
 
             document.body.appendChild(modal);
-            // Pre-fill from config if saved previously
+            // Pre-fill from config and set Process/Processed button state per language
             if (jobId) {
                 try {
                     const res = await fetch(`/api/job-config/${jobId}`);
                     const data = await res.json();
                     const config = data.config || {};
                     const sec = config.secondaryLanguage || {};
+                    const processed = config.processed_secondary_languages || {};
+                    const setEl = (id, val) => { const e = document.getElementById(id); if (e && val != null) e.value = val || ''; };
                     if (sec.lang1) {
-                        const el = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
-                        el('secondaryLang1SourceUrl', sec.lang1.sourceUrl);
-                        el('secondaryLang1SiteId', sec.lang1.siteId);
-                        el('secondaryLang1ProfileAliasId', sec.lang1.profileAliasId);
+                        setEl('secondaryLang1SourceUrl', sec.lang1.sourceUrl);
+                        setEl('secondaryLang1SiteId', sec.lang1.siteId);
+                        setEl('secondaryLang1ProfileAliasId', sec.lang1.profileAliasId);
                     }
                     if (sec.lang2) {
-                        const el = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
-                        el('secondaryLang2SourceUrl', sec.lang2.sourceUrl);
-                        el('secondaryLang2SiteId', sec.lang2.siteId);
-                        el('secondaryLang2ProfileAliasId', sec.lang2.profileAliasId);
+                        setEl('secondaryLang2SourceUrl', sec.lang2.sourceUrl);
+                        setEl('secondaryLang2SiteId', sec.lang2.siteId);
+                        setEl('secondaryLang2ProfileAliasId', sec.lang2.profileAliasId);
                     }
                     if (sec.lang3) {
-                        const el = (id, val) => { const e = document.getElementById(id); if (e && val) e.value = val; };
-                        el('secondaryLang3SourceUrl', sec.lang3.sourceUrl);
-                        el('secondaryLang3SiteId', sec.lang3.siteId);
-                        el('secondaryLang3ProfileAliasId', sec.lang3.profileAliasId);
+                        setEl('secondaryLang3SourceUrl', sec.lang3.sourceUrl);
+                        setEl('secondaryLang3SiteId', sec.lang3.siteId);
+                        setEl('secondaryLang3ProfileAliasId', sec.lang3.profileAliasId);
                     }
+                    ['lang1', 'lang2', 'lang3'].forEach(function(langKey) {
+                        const label = 'Lang' + langKey.replace('lang', '');
+                        const processBtn = document.getElementById('process' + label + 'Btn');
+                        if (processBtn && processed[langKey]) {
+                            processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                            processBtn.style.background = '#10b981';
+                            processBtn.disabled = true;
+                            processBtn.style.cursor = 'default';
+                        }
+                    });
                 } catch (e) {
                     console.warn('Could not pre-fill secondary language from config:', e);
                 }
@@ -3165,6 +3186,72 @@
                 if (processBtn) { processBtn.disabled = false; processBtn.innerHTML = 'Process'; processBtn.style.cursor = ''; }
                 if (stepsLogEl) stepsLogEl.innerHTML += '<div style="color: #dc2626;">Error: ' + (err.message || err) + '</div>';
                 alert('Processing failed: ' + (err.message || err));
+            }
+        }
+
+        async function processSecondaryLanguageOne(langKey, reprocessOnly) {
+            const stepsLogEl = document.getElementById('secondaryLangStepsLog');
+            const langLabel = 'Lang' + langKey.replace('lang', '');
+            const processBtn = document.getElementById('process' + langLabel + 'Btn');
+            const reprocessBtn = document.getElementById('reprocess' + langLabel + 'Btn');
+            const urlId = langKey === 'lang1' ? '1' : langKey === 'lang2' ? '2' : '3';
+            const sourceUrl = document.getElementById('secondaryLang' + urlId + 'SourceUrl')?.value?.trim() || '';
+            const profileAliasId = document.getElementById('secondaryLang' + urlId + 'ProfileAliasId')?.value?.trim() || '';
+            if (!sourceUrl || !profileAliasId) {
+                alert('Please fill Source URL and Profile Alias ID for ' + langKey + ' first.');
+                return;
+            }
+            if (!jobId) {
+                alert('No job ID. Start or resume a workflow first.');
+                return;
+            }
+            const btn = reprocessOnly ? reprocessBtn : processBtn;
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (reprocessOnly ? 'Re-processing...' : 'Processing...'); btn.style.cursor = 'not-allowed'; }
+            if (stepsLogEl) {
+                stepsLogEl.style.display = 'block';
+                stepsLogEl.innerHTML = '<div style="color: #2563eb;"><i class="fas fa-spinner fa-spin"></i> ' + (reprocessOnly ? 'Re-processing ' + langKey + ' (update only)...' : 'Processing ' + langKey + '...') + '</div>';
+            }
+            try {
+                const lang1 = { sourceUrl: document.getElementById('secondaryLang1SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang1SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang1ProfileAliasId')?.value?.trim() || '' };
+                const lang2 = { sourceUrl: document.getElementById('secondaryLang2SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang2SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang2ProfileAliasId')?.value?.trim() || '' };
+                const lang3 = { sourceUrl: document.getElementById('secondaryLang3SourceUrl')?.value?.trim() || '', siteId: document.getElementById('secondaryLang3SiteId')?.value?.trim() || '', profileAliasId: document.getElementById('secondaryLang3ProfileAliasId')?.value?.trim() || '' };
+                const configRes = await fetch(`/api/job-config/${jobId}`);
+                let configData = {};
+                try { if ((configRes.headers.get('content-type') || '').includes('application/json')) configData = await configRes.json(); } catch (_) {}
+                const config = (configData.config || configData) || {};
+                config.job_id = jobId;
+                config.secondaryLanguage = { lang1, lang2, lang3 };
+                config.step_number = 0;
+                await fetch('/api/save-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config) });
+                const res = await fetch('/api/process-sub-process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, module_id: 'htmlMenuSecondary', lang_key: langKey, reprocess_only: reprocessOnly })
+                });
+                const contentType = res.headers.get('content-type') || '';
+                let result;
+                if (contentType.includes('application/json')) result = await res.json(); else result = { success: false, error: 'Server returned non-JSON (status ' + res.status + ')' };
+                if (stepsLogEl && result.result && result.result.steps && result.result.steps.length)
+                    stepsLogEl.innerHTML = result.result.steps.map(s => '<div style="margin-bottom: 4px;">' + (s.message || '') + '</div>').join('');
+                if (!result.success) {
+                    if (stepsLogEl) stepsLogEl.innerHTML += '<div style="margin-top: 8px; color: #dc2626;">' + (result.error || 'Failed') + '</div>';
+                    alert('Failed: ' + (result.error || 'Unknown error'));
+                    if (btn) { btn.disabled = false; btn.innerHTML = reprocessOnly ? 'Re-process' : 'Process'; btn.style.cursor = ''; }
+                    return;
+                }
+                if (stepsLogEl) stepsLogEl.innerHTML += '<div style="margin-top: 8px; color: #059669; font-weight: 600;"><i class="fas fa-check"></i> ' + langKey + ' ' + (reprocessOnly ? 're-process' : 'process') + ' completed.</div>';
+                if (!reprocessOnly && processBtn) {
+                    processBtn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                    processBtn.style.background = '#10b981';
+                    processBtn.disabled = true;
+                    processBtn.style.cursor = 'default';
+                }
+                if (btn) { btn.disabled = false; btn.innerHTML = reprocessOnly ? 'Re-process' : 'Process'; btn.style.cursor = ''; }
+            } catch (err) {
+                console.error('Secondary language one error:', err);
+                if (stepsLogEl) stepsLogEl.innerHTML += '<div style="color: #dc2626;">Error: ' + (err.message || err) + '</div>';
+                alert('Error: ' + (err.message || err));
+                if (btn) { btn.disabled = false; btn.innerHTML = reprocessOnly ? 'Re-process' : 'Process'; btn.style.cursor = ''; }
             }
         }
 

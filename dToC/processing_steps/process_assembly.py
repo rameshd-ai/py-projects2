@@ -165,6 +165,10 @@ ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = []
 
 # --- 2. GLOBAL TIMING TRACKER ---
 TIMING_TRACKER: Dict[str, List[float]] = {}  # Function name -> list of execution times
+# Maps full_page_name (e.g. "Accommodations/Guestrooms") -> PageId after CreatePage; used to pass parent when creating child pages
+CREATED_PAGE_IDS: Dict[str, int] = {}
+# Maps full_page_name -> category_id we passed when creating that page; used so child pages get "previous level's" category ID
+CREATED_CATEGORY_IDS: Dict[str, int] = {}
 
 # --- 3. GLOBAL GUID TRACKER (for verification) ---
 COMPONENT_GUID_TRACKER: Dict[str, str] = {}  # component_id -> pageSectionGuid (for verification)
@@ -1377,19 +1381,26 @@ def publish_page_immediately(page_name: str):
 
 
 
-def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id,header_footer_details, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None):
+def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id,header_footer_details, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None, parent_page_id: Optional[int] = None):
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
     
-    # Extract just the page name (last part after "/") for both pageName and pageAlias
-    # The category_id will handle the parent relationship, so alias should only be the page name
+    # pageName: display name (leaf only). pageAlias: leaf slug when parent_page_id set, else path without first segment
     page_name_only = page_name.split("/")[-1] if "/" in page_name else page_name
+    page_alias_full_path = generate_page_alias(page_name)  # e.g. accommodations/guestrooms/hotel-king-guestroom
+    if parent_page_id:
+        # CMS will build URL from parent; pass only current page slug for alias
+        page_alias_for_api = generate_page_alias(page_name_only)
+    else:
+        alias_parts = page_alias_full_path.split("/")
+        page_alias_for_api = "/".join(alias_parts[1:]) if len(alias_parts) >= 2 else page_alias_full_path
     
+    # pageCategoryId = category from GetPageCategoryList (e.g. Accommodations for Guestrooms page, Guestrooms for Hotel King Guestroom page).
     payload = {
         "pageId": 0,
-        "pageName": page_name_only,  # Just the page name without parent path
-        "pageAlias": generate_page_alias(page_name_only),  # Only the page name, category_id handles parent
+        "pageName": page_name_only,
+        "pageAlias": page_alias_for_api,
         "pageContent": base64_encoded_content,
         "isPageStudioPage": True,
         "pageUpdatedBy": 0,
@@ -1401,9 +1412,20 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         "pageProfileId": 0,
         "tags": ""
         }
+    if parent_page_id:
+        payload["parentPageId"] = parent_page_id
+        logging.info(f"[DEBUG] Level 2+: parentPageId={parent_page_id}, pageCategoryId={category_id}")
     print(f"New page payload ready for '{page_name}'.")
     print(f"New page payload ready for '{payload}'.")
-    logging.info(f"[DEBUG] Page name: '{page_name}', Page alias: '{payload['pageAlias']}'")
+    logging.info(f"[DEBUG] Page name: '{page_name}', Page alias (for API): '{payload['pageAlias']}'")
+    # Log CreatePage payload to assembly_debug.log so we can see category/parent IDs per page
+    append_debug_log("create_page_payload", {
+        "page_name": page_name,
+        "pageCategoryId": payload["pageCategoryId"],
+        "parentPageId": parent_page_id if parent_page_id else None,
+        "pageAlias": payload["pageAlias"],
+        "pageName": payload["pageName"],
+    }, site_id)
     print("before")
     print(page_template_id)
 
@@ -1424,6 +1446,14 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         status_code = data.get("status_code", "N/A")
         logging.error(f"[ERROR] Page creation failed for '{page_name}': {error_msg} (Status: {status_code})")
         logging.error(f"[ERROR] Skipping page '{page_name}' - cannot proceed without PageId")
+        append_debug_log("create_page_error", {
+            "page_name": page_name,
+            "error": error_msg,
+            "status_code": status_code,
+            "payload_pageCategoryId": payload.get("pageCategoryId"),
+            "payload_parentPageId": payload.get("parentPageId"),
+            "response_preview": str(data)[:500],
+        }, site_id)
         return data  # Return early, don't proceed with mapping/publishing
 
     # Access the 'pageId' key and print its value
@@ -1435,6 +1465,13 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     else:
         logging.error(f"[ERROR] 'PageId' key not found in the returned data for page '{page_name}'")
         logging.error(f"[ERROR] Response data: {data}")
+        append_debug_log("create_page_error", {
+            "page_name": page_name,
+            "error": "PageId missing in response",
+            "response_preview": str(data)[:500],
+            "payload_pageCategoryId": payload.get("pageCategoryId"),
+            "payload_parentPageId": payload.get("parentPageId"),
+        }, site_id)
         print("Error: 'pageId' key not found in the returned data.")
         return data  # Return early, don't proceed with mapping/publishing
 
@@ -3904,8 +3941,20 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             full_page_name = "/".join(hierarchy + [page_name])
             logging.info(f"[DEBUG] Level {page_level} page: Using full page name '{full_page_name}' for alias generation (hierarchy: {hierarchy})")
         
+        # Pass parent page ID so CMS can build URL from parent (e.g. Guestrooms) and avoid duplicated path segments
+        parent_full_name = "/".join(hierarchy) if hierarchy else ""
+        parent_page_id = CREATED_PAGE_IDS.get(parent_full_name, 0) or 0
+        if parent_page_id:
+            logging.info(f"[DEBUG] Creating child page under parent '{parent_full_name}' (PageId={parent_page_id})")
+        
         try:
-            result = pageAction(api_base_url, api_headers, final_html, full_page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details, page_component_ids, page_component_names, component_cache_for_mapping or component_cache)
+            result = pageAction(api_base_url, api_headers, final_html, full_page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id, header_footer_details, page_component_ids, page_component_names, component_cache_for_mapping or component_cache, parent_page_id=parent_page_id)
+            
+            # Store created PageId and category_id so child pages can use them (parentPageId and pageCategoryId of previous level)
+            if isinstance(result, dict) and result.get("PageId") and not result.get("error"):
+                CREATED_PAGE_IDS[full_page_name] = result["PageId"]
+                CREATED_CATEGORY_IDS[full_page_name] = category_id
+                logging.info(f"[DEBUG] Stored PageId {result['PageId']} and category_id {category_id} for '{full_page_name}' (for future child)")
             
             # Check if pageAction returned an error
             if isinstance(result, dict) and "error" in result:
@@ -3947,30 +3996,36 @@ def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, h
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
-    
-    # Fetch categories list
+    parent_page_name = hierarchy[-1] if len(hierarchy) >= 1 else (hierarchy[0] if hierarchy else "")
+    # Prefer category from GetPageCategoryList by parent name (same as level 3), then stored, then top-level
     categories = GetPageCategoryList(api_base_url, api_headers)
     logging.info(f"API categories loaded: {categories}")
-    
-    # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
         logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
-    
-    # Category Matching Logic - For level 4+ pages, use the TOP-LEVEL section from hierarchy
-    # (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink" should use "Eat and Drink" category)
-    category_base_name = hierarchy[0] if hierarchy else current_page_name
-    normalized_page_name = normalize_page_name(category_base_name)
-    
-    # Search category ID by normalized name for robust matching
+    normalized_parent = normalize_page_name(parent_page_name)
     for cat in categories:
         cat_name = cat.get("CategoryName")
-        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+        if cat_name and normalize_page_name(cat_name) == normalized_parent:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"[SUCCESS] MATCHED Category base '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
+            logging.info(f"[SUCCESS] MATCHED Category (parent) '{parent_page_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
             break
     else:
-        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
+        parent_full_name = "/".join(hierarchy) if hierarchy else ""
+        matched_category_id = CREATED_CATEGORY_IDS.get(parent_full_name, 0) or 0
+        if matched_category_id:
+            logging.info(f"[SUCCESS] Using stored category ID for parent '{parent_full_name}' → CategoryId = {matched_category_id}")
+        else:
+            category_base_name = hierarchy[0] if hierarchy else current_page_name
+            normalized_page_name = normalize_page_name(category_base_name)
+            for cat in categories:
+                cat_name = cat.get("CategoryName")
+                if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+                    matched_category_id = cat.get("CategoryId", 0)
+                    logging.info(f"[SUCCESS] MATCHED Category (fallback top-level) '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
+                    break
+            else:
+                logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
     
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, category_id=matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
 
@@ -3986,37 +4041,46 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
 
     logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
     
-    # Fetch categories list (already implemented in the provided GetPageCategoryList)
+    # Resolve category by parent name first: Guestrooms page → Accommodations ID; Hotel King Guestroom → Guestrooms ID (from GetPageCategoryList).
     categories = GetPageCategoryList(api_base_url, api_headers)
     logging.info(f"API categories loaded: {categories}")
-    
-    # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
         logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
-
-    # Category Matching Logic
-    # For level 3+ pages (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink"),
-    # we always want to use the TOP-LEVEL section (e.g. "Eat and Drink") to determine
-    # the category, so that all grandchildren share the same category as their parent section.
-    # The top-level page name is stored in hierarchy[0] when present.
-    category_base_name = hierarchy[0] if hierarchy else parent_page_name
-    normalized_page_name = normalize_page_name(category_base_name)
-    
-    # Search category ID by normalized name for robust matching
+    # First try: category whose name matches parent (e.g. "Guestrooms" for Hotel King Guestroom)
+    category_base_name = parent_page_name
+    normalized_parent = normalize_page_name(category_base_name)
     for cat in categories:
         cat_name = cat.get("CategoryName")
-        
-        # NOTE: normalize_page_name must be available/imported
-        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+        if cat_name and normalize_page_name(cat_name) == normalized_parent:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"[SUCCESS] MATCHED Category base '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
-            # Exit loop immediately after finding a match
-            break 
+            logging.info(f"[SUCCESS] MATCHED Category (parent) '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
+            break
     else:
-        # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
-        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
-        # matched_category_id remains 0, as initialized above.
+        # Fallback: use category we stored when we created parent, or top-level
+        parent_full_name = "/".join(hierarchy) if hierarchy else ""
+        matched_category_id = CREATED_CATEGORY_IDS.get(parent_full_name, 0) or 0
+        if matched_category_id:
+            logging.info(f"[SUCCESS] Using stored category ID for parent '{parent_full_name}' → CategoryId = {matched_category_id}")
+        else:
+            category_base_name = hierarchy[0] if hierarchy else parent_page_name
+            normalized_page_name = normalize_page_name(category_base_name)
+            for cat in categories:
+                cat_name = cat.get("CategoryName")
+                if cat_name and normalize_page_name(cat_name) == normalized_page_name:
+                    matched_category_id = cat.get("CategoryId", 0)
+                    logging.info(f"[SUCCESS] MATCHED Category (fallback top-level) '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
+                    break
+            else:
+                logging.warning(f"[WARNING] No matching category found for page '{current_page_name}' (parent '{parent_page_name}' or top-level), using CategoryId = 0")
+    
+    # Log category ID passed for this page (so we can see what was sent for e.g. Hotel King Guestroom)
+    append_debug_log("level3_category_id", {
+        "page_name": current_page_name,
+        "parent_page_name": parent_page_name,
+        "category_id_passed": matched_category_id,
+        "hierarchy": " > ".join(hierarchy + [current_page_name]),
+    }, site_id)
     
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
     
@@ -4201,6 +4265,9 @@ def normalize_page_name(name: str) -> str:
 
 
 def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
+    global CREATED_PAGE_IDS, CREATED_CATEGORY_IDS
+    CREATED_PAGE_IDS = {}  # Reset so parent PageIds are looked up correctly for this run
+    CREATED_CATEGORY_IDS = {}  # Reset so child pages get correct "previous level" category ID
     logging.info("\n========================================================")
     logging.info("START: Component-Based Template Assembly (Level 1 Traversal)")
     logging.info("========================================================")
@@ -4946,9 +5013,10 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
             return slug
         
         # 5. Helper function to update link in RecordJsonString and extract name/link values
-        def update_record_link(record_json_string: str, page_name: str, parent_page_name: Optional[str] = None) -> Tuple[str, Optional[str], Optional[str]]:
+        def update_record_link(record_json_string: str, page_name: str, parent_page_name: Optional[str] = None, hierarchy_names: Optional[List[str]] = None) -> Tuple[str, Optional[str], Optional[str]]:
             """
             Updates the link field (ending with -link) in RecordJsonString with page name.
+            Uses full hierarchy path when provided (e.g. Accommodations/Guestrooms/Hotel King Guestroom).
             Also extracts the -name and -link values for easy access.
             
             Returns:
@@ -4973,17 +5041,25 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                         link_value = record_json.get(key)
                 
                 if link_key:
-                    # Generate URL slug from page name
-                    page_slug = generate_url_slug(page_name)
-                    
-                    # Build the link path
-                    if parent_page_name:
-                        # For sub-pages, include parent in path
+                    # Build the link path: full hierarchy + page (e.g. accommodations/guestrooms/hotel-king-guestroom)
+                    # Use "/" between segments so URL is segment1/segment2/segment3, not segment1/segment2-segment3
+                    if hierarchy_names is not None and len(hierarchy_names) > 0:
+                        path_parts = [generate_url_slug(n) for n in hierarchy_names]
+                        # Include direct parent if not already last in hierarchy (avoids missing middle segments)
+                        if parent_page_name:
+                            parent_slug = generate_url_slug(parent_page_name)
+                            if not path_parts or path_parts[-1] != parent_slug:
+                                path_parts.append(parent_slug)
+                        path_parts.append(generate_url_slug(page_name))
+                        link_path = "/".join(path_parts)
+                    elif parent_page_name:
+                        # Fallback: direct parent + page only
                         parent_slug = generate_url_slug(parent_page_name)
+                        page_slug = generate_url_slug(page_name)
                         link_path = f"{parent_slug}/{page_slug}"
                     else:
-                        # For top-level pages, just use the page slug
-                        link_path = page_slug
+                        # Top-level: just page slug
+                        link_path = generate_url_slug(page_name)
                     
                     # Update the link with %%strpath%% prefix
                     new_link = f"%%strpath%%{link_path}"
@@ -5006,9 +5082,11 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         # 6. Collect all matched records in a list
         all_matched_records = []
         
-        # Helper function to recursively process pages
-        def process_page(page_node: Dict[str, Any], page_level: int, records_level: int, parent_page_name: Optional[str] = None) -> bool:
+        # Helper function to recursively process pages (hierarchy_so_far = list of ancestor page names from root to parent, for full URL path)
+        def process_page(page_node: Dict[str, Any], page_level: int, records_level: int, parent_page_name: Optional[str] = None, hierarchy_so_far: Optional[List[str]] = None) -> bool:
             """Process a single page and its sub_pages recursively."""
+            if hierarchy_so_far is None:
+                hierarchy_so_far = []
             page_name = page_node.get("page_name", "").strip()
             if not page_name:
                 return False
@@ -5041,10 +5119,10 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
             logging.info(f"Checked {records_checked} records at level {records_level} for page '{page_name}'")
             
             if matched_record:
-                # Update the link in RecordJsonString before saving and extract name/link values
+                # Update the link in RecordJsonString before saving and extract name/link values (full path: hierarchy + page)
                 original_record_json_string = matched_record.get("RecordJsonString", "")
                 updated_record_json_string, name_key, name_value, link_key, link_value = update_record_link(
-                    original_record_json_string, page_name, parent_page_name
+                    original_record_json_string, page_name, parent_page_name, hierarchy_names=hierarchy_so_far
                 )
                 
                 # Create a copy of the matched record with updated link
@@ -5082,8 +5160,9 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                 logging.warning(f"[ERROR] No match found for '{page_name}' (level {page_level})")
                 page_node["matchFound"] = False
             
-            # Process sub_pages recursively (pass current page_name as parent)
+            # Process sub_pages recursively (pass current page_name as parent and full hierarchy for URL path)
             sub_pages = page_node.get("sub_pages", [])
+            new_hierarchy = hierarchy_so_far + [page_name] if page_name else hierarchy_so_far
             if sub_pages:
                 # Determine the records level for sub_pages based on menuLevel
                 if menu_level == 0:
@@ -5091,7 +5170,7 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                     for sub_page in sub_pages:
                         sub_page_level = sub_page.get("level", page_level + 1)
                         sub_records_level = sub_page_level
-                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name, new_hierarchy)
                 elif menu_level == 1:
                     # Sub-pages of level 1 pages search in records level 2
                     # But if parent is level 0, sub-pages (level 1) search in level 1
@@ -5103,13 +5182,13 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                             sub_records_level = 2  # Level 2 sub-pages of level 1 parent search in level 2
                         else:
                             sub_records_level = sub_page_level
-                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name, new_hierarchy)
                 else:
                     # Default: increment records level
                     for sub_page in sub_pages:
                         sub_page_level = sub_page.get("level", page_level + 1)
                         sub_records_level = records_level + 1
-                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name, new_hierarchy)
             
             return matched_record is not None
         
@@ -5142,7 +5221,7 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                 logging.warning(f"Unknown menuLevel {menu_level}, using default mapping")
             
             logging.info(f"Page '{page.get('page_name')}' (level {page_level}) → searching in records level {records_level}")
-            process_page(page, page_level, records_level, None)  # Top-level pages have no parent
+            process_page(page, page_level, records_level, None, [])  # Top-level pages: no parent, empty hierarchy
         
         # 6. Save all matched records (uploads/ root - process_menu_navigation reads from there)
         if all_matched_records:
@@ -5890,7 +5969,9 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         
         new_records = []
         
-        def collect_unmatched(page_node, parent_page_name=None, display_order=0, parent_record_id_override=None):
+        def collect_unmatched(page_node, parent_page_name=None, display_order=0, parent_record_id_override=None, hierarchy_so_far=None):
+            if hierarchy_so_far is None:
+                hierarchy_so_far = []
             page_name = page_node.get("page_name", "")
             level = page_node.get("level", 0)
             is_matched = page_node.get("matchFound", False)
@@ -5959,14 +6040,24 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 # Format the name value - just the page name for all levels
                 name_value = page_name
                 
-                # Generate link value
-                page_slug = page_name.lower().replace(' ', '-').replace('&', 'and')
+                # Generate link value: full path with "/" segments (e.g. accommodations/guestrooms/hotel-king-guestroom)
+                def slug(s):
+                    return s.lower().replace(' ', '-').replace('&', 'and')
+                page_slug = slug(page_name)
                 if level == 1:
                     link_value = f"%%strpath%%{page_slug}"
                 else:
-                    # Level 2+: include parent in path
-                    if parent_page_name:
-                        parent_slug = parent_page_name.lower().replace(' ', '-').replace('&', 'and')
+                    # Level 2+: full hierarchy path, ensure each segment separated by "/"
+                    if hierarchy_so_far:
+                        path_parts = [slug(n) for n in hierarchy_so_far]
+                        if parent_page_name:
+                            parent_slug = slug(parent_page_name)
+                            if not path_parts or path_parts[-1] != parent_slug:
+                                path_parts.append(parent_slug)
+                        path_parts.append(page_slug)
+                        link_value = f"%%strpath%%{'/'.join(path_parts)}"
+                    elif parent_page_name:
+                        parent_slug = slug(parent_page_name)
                         link_value = f"%%strpath%%{parent_slug}/{page_slug}"
                     else:
                         link_value = f"%%strpath%%{page_slug}"
@@ -6009,8 +6100,9 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 }
                 new_records.append(new_record)
             
-            # Process sub_pages - pass parent info even if parent is matched
+            # Process sub_pages - pass parent info and full hierarchy for URL path
             current_page_name = page_node.get("page_name", "")
+            new_hierarchy = hierarchy_so_far + [current_page_name] if current_page_name else hierarchy_so_far
             
             # If current page is matched, get its record ID for sub-pages
             parent_override = None
@@ -6019,10 +6111,10 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 logging.debug(f"Parent '{current_page_name}' is matched (Id={parent_override}), will use for sub-pages")
             
             for idx, sub_page in enumerate(page_node.get("sub_pages", [])):
-                collect_unmatched(sub_page, current_page_name, idx, parent_override)
+                collect_unmatched(sub_page, current_page_name, idx, parent_override, new_hierarchy)
         
         for idx, page in enumerate(menu_nav_data.get("pages", [])):
-            collect_unmatched(page, None, idx)
+            collect_unmatched(page, None, idx, None, [])
         
         if new_records:
             output_filename = f"{os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix}_new_records_payload.json"

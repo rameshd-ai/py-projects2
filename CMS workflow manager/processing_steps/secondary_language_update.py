@@ -361,9 +361,14 @@ def _ensure_orphan_primaries_and_reexport(
     return records
 
 
-def run_secondary_language_update_step(job_id: str, steps_log: Optional[List[Dict]] = None) -> Dict[str, Any]:
+def run_secondary_language_update_step(
+    job_id: str,
+    steps_log: Optional[List[Dict]] = None,
+    lang_key: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Updates existing secondary language records with menu data from each secondary site.
+    - lang_key: if set ('lang1', 'lang2', 'lang3'), only update that language; otherwise all configured.
     - Optionally creates inactive primary records for orphan secondaries, then re-exports.
     - Loads export records, site_languages, component map, and secondary menu JSON per lang.
     - Aligns secondary menu data to primary sequence by position.
@@ -465,6 +470,9 @@ def run_secondary_language_update_step(job_id: str, steps_log: Optional[List[Dic
         for lk in ["lang1", "lang2", "lang3"]
         if (secondary_config.get(lk) or {}).get("sourceUrl")
     ]
+    if lang_key and not any(lk == lang_key for lk, _ in configured_langs):
+        _step(f"Update skipped: {lang_key} not configured (sourceUrl).")
+        return {"success": False, "error": f"{lang_key} not configured", "steps": log}
     if not configured_langs:
         _step("Update skipped: no secondary language configured (sourceUrl).")
         return {"success": False, "error": "No secondary language configured", "steps": log}
@@ -478,23 +486,25 @@ def run_secondary_language_update_step(job_id: str, steps_log: Optional[List[Dic
     _step(f"Destination (all updates go here): {destination_url}")
 
     # Process one secondary language at a time; updates follow primary sequence (1st primary's secondary = 1st secondary data)
-    for idx, (lang_key, lang_cfg) in enumerate(configured_langs):
+    for idx, (lang_key_iter, lang_cfg) in enumerate(configured_langs):
+        if lang_key is not None and lang_key_iter != lang_key:
+            continue
         sl_entry = secondary_lang_entries[idx] if idx < len(secondary_lang_entries) else secondary_lang_entries[0]
         lang_id = sl_entry.get("destinationLanguageId")
         lang_name = sl_entry.get("languageName") or sl_entry.get("languageCode") or str(lang_id)
         source_url = (lang_cfg.get("sourceUrl") or "").strip()
-        _step(f"Processing secondary language: {lang_name} (id {lang_id}) from {lang_key} | source: {source_url or '(none)'}")
+        _step(f"Processing secondary language: {lang_name} (id {lang_id}) from {lang_key_iter} | source: {source_url or '(none)'}")
 
-        menu_path = os.path.join(job_folder, f"menu_api_response_input_secondary_{lang_key}.json")
+        menu_path = os.path.join(job_folder, f"menu_api_response_input_secondary_{lang_key_iter}.json")
         menu_list = _load_json(menu_path)
         if not isinstance(menu_list, list) or not menu_list:
-            _step(f"No menu data for {lang_key}: {menu_path}, skipping.")
+            _step(f"No menu data for {lang_key_iter}: {menu_path}, skipping.")
             continue
         _normalize_display_order_secondary_api(menu_list)
         try:
             with open(menu_path, "w", encoding="utf-8") as f:
                 json.dump(menu_list, f, indent=4)
-            _step(f"{lang_key}: normalized order to 1,2,3,4 and saved to {os.path.basename(menu_path)}.")
+            _step(f"{lang_key_iter}: normalized order to 1,2,3,4 and saved to {os.path.basename(menu_path)}.")
         except Exception as e:
             logger.warning("Could not save normalized secondary JSON %s: %s", menu_path, e)
 
@@ -545,8 +555,8 @@ def run_secondary_language_update_step(job_id: str, steps_log: Optional[List[Dic
                 api_failures += 1
                 logger.warning("[Step 3] API update failed for record id %s: %s", secondary_rec["Id"], api_response)
         if api_failures:
-            logger.info("[Step 3] %s: api_failures=%s", lang_key, api_failures)
-        _step(f"Destination {destination_url} <- {lang_key} ({lang_name}, source {source_url}): updated {per_lang_count} records.")
+            logger.info("[Step 3] %s: api_failures=%s", lang_key_iter, api_failures)
+        _step(f"Destination {destination_url} <- {lang_key_iter} ({lang_name}, source {source_url}): updated {per_lang_count} records.")
 
     _step(f"Step 3 done. Total secondary records updated: {updated_count}.")
     return {"success": True, "steps": log, "updated_count": updated_count}

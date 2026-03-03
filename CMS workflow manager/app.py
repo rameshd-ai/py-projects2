@@ -886,7 +886,9 @@ def process_sub_process():
                 result = run_html_menu_step(job_id, step_config, workflow_context)
             elif module_id == 'htmlMenuSecondary':
                 from processing_steps.secondary_language_menu import run_secondary_language_menu_step
-                result = run_secondary_language_menu_step(job_id)
+                lang_key = data.get('lang_key')  # optional: 'lang1', 'lang2', 'lang3'
+                reprocess_only = data.get('reprocess_only', False)
+                result = run_secondary_language_menu_step(job_id, lang_key=lang_key, reprocess_only=reprocess_only)
                 job_config = load_job_config(job_id)
             elif module_id == 'faqManager':
                 source_link = data.get('source_link')
@@ -904,6 +906,17 @@ def process_sub_process():
                     job_config['processed_modules'] = {}
                 job_config['processed_modules'][module_id] = True
                 job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                if module_id == 'htmlMenuSecondary':
+                    if 'processed_secondary_languages' not in job_config:
+                        job_config['processed_secondary_languages'] = {}
+                    lang_key = data.get('lang_key')
+                    if lang_key:
+                        job_config['processed_secondary_languages'][lang_key] = True
+                    else:
+                        sec = job_config.get('secondaryLanguage') or {}
+                        for k in ('lang1', 'lang2', 'lang3'):
+                            if (sec.get(k) or {}).get('sourceUrl'):
+                                job_config['processed_secondary_languages'][k] = True
                 save_job_config(job_id, job_config)
                 logging.info(f"Marked {module_id} as processed for job {job_id}")
                 return jsonify({"success": True, "module_id": module_id, "result": result})

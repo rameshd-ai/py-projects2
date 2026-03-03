@@ -147,13 +147,19 @@ def _export_primary_site_miblock(job_id: str, job_config: Dict[str, Any], steps_
     return True
 
 
-def run_secondary_language_menu_step(job_id: str) -> Dict[str, Any]:
+def run_secondary_language_menu_step(
+    job_id: str,
+    lang_key: str = None,
+    reprocess_only: bool = False,
+) -> Dict[str, Any]:
     """
-    Runs secondary language processing for the given job:
-    - Step 0: Export MiBlock for primary (destination) site, unzip, create component map.
-    - Step 1: Generate login token for each saved secondary language URL.
-    - Step 2: For each site, get menu data (same as primary language) and save to job folder.
-    Returns dict with success, steps (list of {step, message}), and any errors.
+    Runs secondary language processing for the given job.
+    - lang_key: optional 'lang1', 'lang2', 'lang3' to process only that language.
+    - reprocess_only: if True (and lang_key set), only run Step 3 (update records); skip Step 0, 1, 2.
+    Step 0: Export MiBlock for primary (destination) site, unzip, create component map.
+    Step 1: Generate login token for each (or selected) secondary language URL.
+    Step 2: For each (or selected) site, get menu data and save to job folder.
+    Step 3: Update secondary language records with menu data.
     """
     steps_log: List[Dict[str, str]] = []
     job_config = load_job_config(job_id)
@@ -168,7 +174,15 @@ def run_secondary_language_menu_step(job_id: str) -> Dict[str, Any]:
         for key, cfg in lang_configs
         if (cfg.get("sourceUrl") or "").strip()
     ]
-    if not filled:
+    if lang_key:
+        filled = [(k, c) for k, c in filled if k == lang_key]
+        if not filled:
+            return {
+                "success": False,
+                "error": f"Language '{lang_key}' is not configured (Source URL and Profile Alias ID required).",
+                "steps": steps_log,
+            }
+    elif not filled:
         return {
             "success": False,
             "error": "No secondary language configured. Save at least one language (Source URL, Site ID, Profile Alias ID) in the popup.",
@@ -178,13 +192,34 @@ def run_secondary_language_menu_step(job_id: str) -> Dict[str, Any]:
     job_folder = get_job_folder(job_id)
     tokens_stored = {}
 
+    if reprocess_only and lang_key:
+        # Only Step 3: update records for this language
+        steps_log.append({"step": 3, "message": f"Re-processing: updating records for {lang_key} only..."})
+        logger.info(f"[{job_id}] Secondary language reprocess only: {lang_key}")
+        try:
+            from .secondary_language_update import run_secondary_language_update_step
+            update_result = run_secondary_language_update_step(job_id, steps_log, lang_key=lang_key)
+            updated_count = update_result.get("updated_count", 0)
+            if not update_result.get("success"):
+                steps_log.append({"step": 3, "message": update_result.get("error", "Update failed")})
+                return {"success": False, "error": update_result.get("error"), "steps": steps_log}
+            return {
+                "success": True,
+                "steps": steps_log,
+                "updated_count": updated_count,
+            }
+        except Exception as e:
+            logger.exception("Step 3 (reprocess) failed")
+            steps_log.append({"step": 3, "message": str(e)})
+            return {"success": False, "error": str(e), "steps": steps_log}
+
     # ---------- Step 0: Export primary site MiBlock, unzip, component map ----------
     steps_log.append({"step": 0, "message": "Exporting MiBlock for primary language site..."})
     logger.info(f"[{job_id}] Secondary language Step 0: Export primary site MiBlock")
     _export_primary_site_miblock(job_id, job_config, steps_log)
 
-    # ---------- Step 1: Generate tokens for each language ----------
-    steps_log.append({"step": 1, "message": "Generating CMS tokens for secondary languages..."})
+    # ---------- Step 1: Generate tokens for (selected) language(s) ----------
+    steps_log.append({"step": 1, "message": "Generating CMS tokens for secondary language(s)..."})
     logger.info(f"[{job_id}] Secondary language Step 1: Generating tokens for {len(filled)} language(s)")
     for key, cfg in filled:
         source_url = (cfg.get("sourceUrl") or "").strip()
@@ -244,11 +279,11 @@ def run_secondary_language_menu_step(job_id: str) -> Dict[str, Any]:
 
     # ---------- Step 3: Update secondary language records with menu data ----------
     steps_log.append({"step": 3, "message": "Updating secondary language records with menu data (align by sequence)..."})
-    logger.info(f"[{job_id}] Secondary language Step 3: Update records")
+    logger.info(f"[{job_id}] Secondary language Step 3: Update records (lang_key={lang_key})")
     updated_count = 0
     try:
         from .secondary_language_update import run_secondary_language_update_step
-        update_result = run_secondary_language_update_step(job_id, steps_log)
+        update_result = run_secondary_language_update_step(job_id, steps_log, lang_key=lang_key)
         updated_count = update_result.get("updated_count", 0)
         if not update_result.get("success"):
             steps_log.append({"step": 3, "message": f"Update step reported: {update_result.get('error', 'unknown')}"})
