@@ -4224,9 +4224,10 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     
-    # Check page filter - if set and current page doesn't match, skip
-    if page_filter and current_page_name != page_filter:
-        logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter '{page_filter}')")
+    # Check page filter - if set and current page doesn't match any filter, skip
+    page_filters = _parse_page_filter(page_filter)
+    if page_filters and current_page_name not in page_filters:
+        logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter(s) {sorted(page_filters)})")
         return
 
     logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
@@ -4287,6 +4288,8 @@ def assemble_page_templates_level2(
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
     
+    page_filters = _parse_page_filter(page_filter)
+
     # Debug log for level 2 page start
     append_debug_log(
         "level2_page_start",
@@ -4296,35 +4299,35 @@ def assemble_page_templates_level2(
             "parent_page": parent_page_name,
             "hierarchy": " > ".join(hierarchy + [current_page_name]),
             "page_filter": page_filter,
-            "matches_filter": current_page_name == page_filter if page_filter else None,
+            "matches_filter": current_page_name in page_filters if page_filters else None,
         },
     )
     
-    # Check page filter - if set and current page doesn't match, skip unless it contains matching sub-page
-    if page_filter:
-        if current_page_name != page_filter:
-            # Check if this page has a sub-page that matches the filter
-            def page_contains_subpage_recursive(page, target_name):
-                """Recursively check if page or any sub-page matches target."""
-                if page.get('page_name') == target_name:
+    # Check page filter - if set and current page doesn't match any filter, skip unless it contains a matching sub-page
+    if page_filters:
+        if current_page_name not in page_filters:
+            # Check if this page has a sub-page that matches any of the filters
+            def page_contains_subpage_recursive(page, target_names):
+                """Recursively check if page or any sub-page matches any target name."""
+                if page.get('page_name') in target_names:
                     return True
                 for sub_page in page.get('sub_pages', []):
-                    if page_contains_subpage_recursive(sub_page, target_name):
+                    if page_contains_subpage_recursive(sub_page, target_names):
                         return True
                 return False
             
             has_matching_subpage = False
             for sub_page in page_data.get('sub_pages', []):
-                if page_contains_subpage_recursive(sub_page, page_filter):
+                if page_contains_subpage_recursive(sub_page, page_filters):
                     has_matching_subpage = True
                     break
             if not has_matching_subpage:
-                logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter '{page_filter}')")
+                logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter(s) {sorted(page_filters)})")
                 append_debug_log("level2_page_skipped", {"page_name": current_page_name, "reason": "doesn't match filter and has no matching sub-page", "page_filter": page_filter})
                 return
         else:
-            # Page matches filter - log this
-            logging.info(f"[DEBUG] Page '{current_page_name}' matches filter '{page_filter}' - processing")
+            # Page matches one of the filters - log this
+            logging.info(f"[DEBUG] Page '{current_page_name}' matches filter(s) {sorted(page_filters)} - processing")
             append_debug_log("level2_page_filter_match", {"page_name": current_page_name, "page_filter": page_filter})
     
     # Debug: Log if page name contains "/"
@@ -4390,6 +4393,13 @@ def assemble_page_templates_level2(
             component_cache_for_mapping=component_cache_for_mapping or component_cache,
             page_filter=page_filter
         )
+
+def _parse_page_filter(page_filter: Optional[str]) -> set:
+    """Parses a comma-separated page filter string into a set of page names (& normalised to 'and')."""
+    if not page_filter:
+        return set()
+    return {name.strip().replace("&", "and") for name in page_filter.split(",") if name.strip()}
+
 
 def normalize_page_name(name: str) -> str:
     """
@@ -4457,21 +4467,15 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
 
     # Load page filter from global config file
     page_filter = None
+    page_filters: set = set()
     global_config = load_global_config(site_id)
     if global_config:
-        page_filter = global_config.get("debug_page_filter")  # Can be None, empty string, or a page name
-        if page_filter and page_filter.strip():
-            page_filter = page_filter.strip()
-            # Normalize the filter: convert "&" to "and" to match how page names are stored in JSON
-            # (XML processing converts & to "and" in page names)
-            original_filter = page_filter
-            page_filter = page_filter.replace("&", "and")
-            if original_filter != page_filter:
-                logging.info(f"[FILTER] Page filter normalized: '{original_filter}' -> '{page_filter}' (converted & to 'and')")
-            else:
-                logging.info(f"[FILTER] Page filter loaded from global_config: '{page_filter}'")
+        raw_filter = global_config.get("debug_page_filter", "")
+        if raw_filter and raw_filter.strip():
+            page_filter = raw_filter.strip()  # keep raw string for passing to sub-levels
+            page_filters = _parse_page_filter(page_filter)
+            logging.info(f"[FILTER] Page filter(s) loaded ({len(page_filters)}): {sorted(page_filters)}")
         else:
-            page_filter = None
             logging.info(f"[FILTER] Page filter is empty or None. Processing all pages.")
     else:
         logging.info(f"[FILTER] No global_config found. Processing all pages.")
@@ -4498,19 +4502,21 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         return names
     
     # Filter pages if page_filter is set
-    if page_filter:
-        # First try to find it in level 1 pages
-        filtered_pages = [p for p in pages if p.get('page_name') == page_filter]
+    if page_filters:
+        # First try to find matching pages at level 1
+        filtered_pages = [p for p in pages if p.get('page_name') in page_filters]
         
-        # If not found in level 1, search for parent pages that contain this sub-page
+        # Also include parent pages that contain a matching sub-page
+        for p in pages:
+            if p not in filtered_pages and any(page_contains_subpage(p, name) for name in page_filters):
+                filtered_pages.append(p)
+
         if not filtered_pages:
-            filtered_pages = [p for p in pages if page_contains_subpage(p, page_filter)]
-            if not filtered_pages:
-                all_page_names = get_all_page_names(pages)
-                logging.warning(f"[DEBUG] No page found with name '{page_filter}'. Available pages: {all_page_names}")
-                return
+            all_page_names = get_all_page_names(pages)
+            logging.warning(f"[DEBUG] No pages found matching filter(s) {sorted(page_filters)}. Available pages: {all_page_names}")
+            return
         pages = filtered_pages
-        logging.info(f"[DEBUG] Processing ONLY page: '{page_filter}' (filtered from {len(processed_json.get('pages', []))} total pages)")
+        logging.info(f"[DEBUG] Processing ONLY page(s): {sorted(page_filters)} (filtered from {len(processed_json.get('pages', []))} total pages)")
 
     initial_level = 1
     initial_hierarchy: List[str] = []
@@ -4518,28 +4524,25 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
         
-        # If page_filter is set and current page doesn't match, skip processing its components
+        # If page_filters is set and current page doesn't match any filter, skip processing its components
         # but still allow traversal to sub-pages (which might match the filter)
         should_process_components = True
-        logging.info(f"[DEBUG] Processing page '{current_page_name}' with filter '{page_filter}'")
+        logging.info(f"[DEBUG] Processing page '{current_page_name}' with filter(s) {sorted(page_filters) if page_filters else 'none'}")
         
-        if page_filter and current_page_name != page_filter:
-            logging.info(f"[DEBUG] Page '{current_page_name}' doesn't match filter '{page_filter}'. Checking if it contains matching sub-page...")
-            # Check if this page contains the filtered sub-page
-            has_subpage = page_contains_subpage(top_level_page, page_filter)
-            logging.info(f"[DEBUG] page_contains_subpage('{current_page_name}', '{page_filter}') = {has_subpage}")
+        if page_filters and current_page_name not in page_filters:
+            logging.info(f"[DEBUG] Page '{current_page_name}' doesn't match filter(s) {sorted(page_filters)}. Checking if it contains matching sub-page...")
+            has_subpage = any(page_contains_subpage(top_level_page, name) for name in page_filters)
+            logging.info(f"[DEBUG] has matching sub-page = {has_subpage}")
             
             if not has_subpage:
-                logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter '{page_filter}' and has no matching sub-page)")
+                logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match any filter and has no matching sub-page)")
                 continue  # Skip this page entirely
             else:
-                # This page contains the filtered sub-page, so skip processing its components
-                # but still traverse to sub-pages
-                logging.info(f"[DEBUG] Page '{current_page_name}' contains filtered sub-page '{page_filter}'. Skipping component processing for parent page.")
-                should_process_components = False  # Don't process components, but continue to traverse sub-pages
-        elif page_filter and current_page_name == page_filter:
-            logging.info(f"[DEBUG] Page '{current_page_name}' matches filter '{page_filter}'. Will process components.")
-        elif not page_filter:
+                logging.info(f"[DEBUG] Page '{current_page_name}' contains a filtered sub-page. Skipping component processing for parent page.")
+                should_process_components = False
+        elif page_filters and current_page_name in page_filters:
+            logging.info(f"[DEBUG] Page '{current_page_name}' matches filter(s). Will process components.")
+        elif not page_filters:
             logging.info(f"[DEBUG] No filter set. Will process components for '{current_page_name}'.")
         
         # Debug: Log if page name contains "/"
@@ -4580,8 +4583,8 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
                 component_cache_for_mapping=component_cache  # Pass component cache for mapping
             )
         else:
-            logging.warning(f"[SKIP] Skipping component processing for '{current_page_name}' (filter is '{page_filter}', should_process_components=False)")
-            logging.info(f"[SKIP] Will still traverse to sub-pages to find '{page_filter}'")
+            logging.warning(f"[SKIP] Skipping component processing for '{current_page_name}' (filter(s): {sorted(page_filters)}, should_process_components=False)")
+            logging.info(f"[SKIP] Will still traverse to sub-pages to find filter(s): {sorted(page_filters)}")
 
         next_level = initial_level + 1
         new_hierarchy = initial_hierarchy + [current_page_name]
