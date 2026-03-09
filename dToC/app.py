@@ -7,6 +7,13 @@ import sys
 import shutil
 import logging
 
+# Force stdout/stderr to UTF-8 so unicode characters (arrows, emojis, etc.)
+# don't crash the Windows cp1252 console handler
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 # Ensure console logging - add StreamHandler so logs appear in terminal
 def _setup_console_logging():
     root = logging.getLogger()
@@ -334,17 +341,12 @@ def get_global_config():
         global_config_path = os.path.join(app.config['UPLOAD_FOLDER'], 'global_config.json')
         
         if not os.path.exists(global_config_path):
-            # Return default structure if file doesn't exist
-            return jsonify({
-                "success": True,
-                "config": {
-                    "debug_page_filter": ""
-                }
-            }), 200
-        
+            config_data = {"debug_page_filter": ""}
+            return jsonify({"success": True, "config": config_data}), 200
+
         with open(global_config_path, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
-        
+
         return jsonify({
             "success": True,
             "config": config_data
@@ -366,18 +368,21 @@ def update_global_config():
     """
     try:
         data = request.get_json()
-        debug_page_filter = data.get('debug_page_filter', '')
-        
+        debug_page_filter = (data.get('debug_page_filter') or '').strip()
+
         global_config_path = os.path.join(app.config['UPLOAD_FOLDER'], 'global_config.json')
-        
-        # Ensure uploads folder exists
         os.makedirs(os.path.dirname(global_config_path), exist_ok=True)
-        
-        # Update config
-        config_data = {
-            "debug_page_filter": debug_page_filter.strip() if debug_page_filter else ""
-        }
-        
+
+        config_data = {}
+        if os.path.exists(global_config_path):
+            try:
+                with open(global_config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+            except Exception:
+                pass
+
+        config_data["debug_page_filter"] = debug_page_filter
+
         with open(global_config_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, indent=2)
         

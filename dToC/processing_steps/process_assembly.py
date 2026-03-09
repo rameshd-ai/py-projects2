@@ -13,6 +13,7 @@ import zipfile # <-- Required for handling exported component files
 import html # <-- Required for HTML entity decoding
 import shutil # <-- Required for cloning component folders
 import traceback # <-- Required for detailed error logging
+from datetime import datetime
 from typing import Dict, Any, List, Union, Tuple, Optional
 from urllib.parse import urlparse
 # Assuming apis.py now contains: GetAllVComponents, export_mi_block_component
@@ -21,32 +22,6 @@ from apis import GetAllVComponents, export_mi_block_component,addUpdateRecordsTo
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, '..', 'uploads')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-def append_menu_debug_log(section: str, data: Dict[str, Any], site_id: Optional[int] = None) -> None:
-    """Writes structured debug info to menu_debug.log for tracing menu record flow."""
-    try:
-        from datetime import datetime
-        site_folder = os.path.join(UPLOAD_FOLDER, str(site_id)) if site_id is not None else UPLOAD_FOLDER
-        os.makedirs(site_folder, exist_ok=True)
-        log_file = os.path.join(site_folder, "menu_debug.log")
-        log_entry = {"timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "section": section, "data": data}
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-
-def get_menu_navigation_filepath(file_prefix: str, site_id: Optional[int] = None) -> Optional[str]:
-    """Resolves menu_navigation.json: uploads/ first (during processing), then uploads/{site_id}/ (after cleanup)."""
-    base_prefix = os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix
-    filename = f"{base_prefix}_menu_navigation.json"
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    if os.path.exists(path):
-        return path
-    if site_id is not None:
-        path = os.path.join(UPLOAD_FOLDER, str(site_id), filename)
-        if os.path.exists(path):
-            return path
-    return None
 
 def get_site_upload_folder(site_id: Optional[int] = None) -> str:
     """
@@ -165,10 +140,6 @@ ASSEMBLY_STATUS_LOG: List[Dict[str, Any]] = []
 
 # --- 2. GLOBAL TIMING TRACKER ---
 TIMING_TRACKER: Dict[str, List[float]] = {}  # Function name -> list of execution times
-# Maps full_page_name (e.g. "Accommodations/Guestrooms") -> PageId after CreatePage; used to pass parent when creating child pages
-CREATED_PAGE_IDS: Dict[str, int] = {}
-# Maps full_page_name -> category_id we passed when creating that page; used so child pages get "previous level's" category ID
-CREATED_CATEGORY_IDS: Dict[str, int] = {}
 
 # --- 3. GLOBAL GUID TRACKER (for verification) ---
 COMPONENT_GUID_TRACKER: Dict[str, str] = {}  # component_id -> pageSectionGuid (for verification)
@@ -380,19 +351,14 @@ def check_component_availability(component_name: str, component_cache: List[Dict
         # If no hyphen (e.g., 'Gallery'), use the whole name.
         search_key = clean_component_name.strip()
         
-    # Fallback: CMS may use space after code (e.g. "L11 Reviews") while XML has hyphen ("L11-Reviews")
-    search_key_with_space = (search_key.rstrip('-') + ' ') if search_key.endswith('-') else None
     logging.info(f"    Searching cache for prefix: **{search_key}** (Original: {component_name}, Clean: {clean_component_name}, Block: {block_count}, Main: {main_count}, Sub: {sub_count})")
     
     for component in component_cache:
         cms_component_name = component.get("name", "")
         
         # 2. Perform the prefix match against the CMS component name.
-        # Match hyphen form (e.g. 'L10-2 Column Snippet') or space form (e.g. 'L11 Reviews') for L11-Reviews.
-        prefix_matches = cms_component_name.startswith(search_key)
-        if not prefix_matches and search_key_with_space and cms_component_name.startswith(search_key_with_space):
-            prefix_matches = True
-        if prefix_matches:
+        # This will match 'L10-2 Column Snippet' (cache) against 'L10-' (search_key).
+        if cms_component_name.startswith(search_key):
             
             # Additional check: If the search key is only the prefix (ends in '-'), 
             # we must ensure the cache name isn't identical to the search key 
@@ -616,6 +582,40 @@ def add_has_image_to_records(records_file_path: str) -> bool:
         return False
 
 
+def _record_json_has_image_data(record: Dict[str, Any]) -> bool:
+    """
+    Returns True if the record's RecordJsonString/recordDataJson contains image data
+    (e.g. ResourceID or non-empty OriginalImagePath). Use when has_image flag is missing or False
+    (e.g. add_has_image_to_records not run on the file).
+    """
+    if not record:
+        return False
+    rj = record.get("RecordJsonString") or record.get("recordDataJson")
+    if not rj:
+        return False
+    s = rj if isinstance(rj, str) else json.dumps(rj)
+    if '"ResourceID"' in s or "'ResourceID'" in s:
+        return True
+    try:
+        data = rj if isinstance(rj, dict) else json.loads(rj)
+        if data is None:
+            return False
+        # Check for non-empty OriginalImagePath anywhere in the structure
+        def _has_img(obj: Any) -> bool:
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    if k == "OriginalImagePath" and isinstance(v, str) and v.strip():
+                        return True
+                    if _has_img(v):
+                        return True
+            elif isinstance(obj, list):
+                return any(_has_img(x) for x in obj)
+            return False
+        return _has_img(data)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return False
+
+
 def update_record_asset_if_needed(
     record: Dict[str, Any],
     new_record_id: int,
@@ -636,16 +636,32 @@ def update_record_asset_if_needed(
     Returns:
         bool: True if update was successful or not needed, False if failed
     """
-    # Check if record has images
-    if not record.get("has_image", False):
+    # Check if record has images (flag or fallback: detect from JSON when has_image not set)
+    has_image_flag = record.get("has_image", False)
+    if not has_image_flag and not _record_json_has_image_data(record):
         return True  # No image, nothing to update
-    
+    if not has_image_flag and _record_json_has_image_data(record):
+        logging.info(
+            f"[ASSET UPDATE] Record has image data in JSON but has_image=false/missing (e.g. Venue-Accordion); proceeding with update."
+        )
+
+    # Skip asset update for records that use resourcefiles/ (not in DAM)
+    record_json_string = record.get("RecordJsonString") or record.get("recordDataJson")
+    if record_json_string:
+        record_str_check = (
+            record_json_string if isinstance(record_json_string, str) else json.dumps(record_json_string)
+        )
+        if "resourcefiles/" in record_str_check or "resourcefiles\\" in record_str_check:
+            logging.info(
+                "[ASSET UPDATE] Skipping record (image path contains resourcefiles/ - not in DAM)"
+            )
+            return True  # Skip API call
+
     try:
         # Static base URL for assets (used when NOT resourcefiles)
         ASSETS_BASE_URL = "https://assets.milestoneinternet.com"
         
         # Check if record data contains "resourcefiles" path - if so, use base_url directly
-        record_json_string = record.get("RecordJsonString") or record.get("recordDataJson")
         has_resourcefiles = False
         if record_json_string:
             try:
@@ -872,6 +888,100 @@ def update_record_asset_if_needed(
         return False
 
 
+def update_subrecords_data_from_payload(
+    sub_records: List[Dict[str, Any]],
+    component_records_map: Dict,
+    parent_record_id: int,
+    page_section_guid: str,
+    base_url: str,
+    headers: Dict[str, str],
+) -> None:
+    """
+    Updates each CMS sub-record's record data with our sample payload data (RecordJsonString
+    from component_records_map). Call once after sub-records are fetched and before any
+    asset/image updates. Single function so the one call site can be commented out if not needed.
+
+    Args:
+        sub_records: List of sub-records returned by get_miblock_records (each has RecordId, MiBlockId).
+        component_records_map: Map of ComponentId -> record data (our payload/sample data).
+        parent_record_id: Parent record ID (for Id/ParentId in recordDataJson).
+        page_section_guid: Page section GUID for the save API.
+        base_url: API base URL.
+        headers: API headers.
+    """
+    for sub_record in sub_records:
+        sub_record_id = sub_record.get("RecordId")
+        sub_miblock_id = sub_record.get("MiBlockId")
+        if not sub_record_id or not sub_miblock_id:
+            continue
+        source_record = (
+            component_records_map.get(sub_miblock_id)
+            or component_records_map.get(int(sub_miblock_id))
+            or component_records_map.get(str(sub_miblock_id))
+        )
+        if not source_record:
+            for rec in component_records_map.values():
+                if not isinstance(rec, dict):
+                    continue
+                rec_comp_id = rec.get("ComponentId")
+                if rec_comp_id == sub_miblock_id or (
+                    isinstance(rec_comp_id, int)
+                    and isinstance(sub_miblock_id, (int, str))
+                    and rec_comp_id == int(sub_miblock_id)
+                ) or (
+                    isinstance(rec_comp_id, str)
+                    and isinstance(sub_miblock_id, (int, str))
+                    and int(rec_comp_id) == int(sub_miblock_id)
+                ):
+                    source_record = rec
+                    break
+        if not source_record:
+            logging.warning(
+                f"[SUBRECORD DATA UPDATE] No source record for MiBlock {sub_miblock_id}, skipping data update for record {sub_record_id}"
+            )
+            continue
+        record_json_string = source_record.get("RecordJsonString")
+        if not record_json_string:
+            logging.warning(
+                f"[SUBRECORD DATA UPDATE] No RecordJsonString in source for MiBlock {sub_miblock_id}, skipping record {sub_record_id}"
+            )
+            continue
+        record_data_json = (
+            record_json_string
+            if isinstance(record_json_string, str)
+            else json.dumps(record_json_string)
+        )
+        try:
+            record_data = json.loads(record_data_json)
+            record_data["Id"] = str(sub_record_id)
+            record_data["ParentId"] = str(parent_record_id)
+            record_data_json = json.dumps(record_data)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            pass
+        single_record = {
+            "componentId": sub_miblock_id,
+            "recordId": sub_record_id,
+            "parentRecordId": parent_record_id,
+            "recordDataJson": record_data_json,
+            "status": source_record.get("Status", True),
+            "tags": source_record.get("tags", []) or [],
+            "displayOrder": sub_record.get("DisplayOrder", 0),
+            "updatedBy": source_record.get("UpdatedBy", 0),
+            "pageSectionGuid": page_section_guid,
+        }
+        api_payload = {"main_record_set": [single_record]}
+        success, resp = addUpdateRecordsToCMS(base_url, headers, api_payload)
+        if success:
+            logging.info(
+                f"[SUBRECORD DATA UPDATE] Updated record {sub_record_id} (MiBlock: {sub_miblock_id}) with payload data"
+            )
+        else:
+            logging.warning(
+                f"[SUBRECORD DATA UPDATE] Failed to update record {sub_record_id}: {resp}"
+            )
+        time.sleep(0.5)
+
+
 def fetch_and_update_cms_generated_subrecords(
     parent_record_id: int,
     component_id: int,
@@ -990,7 +1100,11 @@ def fetch_and_update_cms_generated_subrecords(
         
         logging.info(f"[SUBRECORD UPDATE] Found {len(sub_records)} CMS-generated sub-record(s) for parent {parent_record_id}")
         
-        # Process each sub-record
+        # Update all sub-records with our sample payload data (so CMS auto-added data is corrected); then asset updates run below.
+        # Comment out the next line if this step is not needed.
+        update_subrecords_data_from_payload(sub_records, component_records_map, parent_record_id, page_section_guid, base_url, headers)
+        
+        # Process each sub-record (e.g. asset/image update)
         for idx, sub_record in enumerate(sub_records, 1):
             try:
                 sub_record_id = sub_record.get("RecordId")
@@ -1292,7 +1406,7 @@ def add_records_for_page(page_name: str, vComponentId: int, componentId: int, ba
                 time.sleep(POLL_INTERVAL)
 
             if not file_ready:
-                raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
+                raise FileNotFoundError(f"[TIMEOUT] Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
             # --- END POLLING LOGIC ---
         
         except FileNotFoundError as e:
@@ -1381,26 +1495,19 @@ def publish_page_immediately(page_name: str):
 
 
 
-def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id,header_footer_details, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None, parent_page_id: Optional[int] = None):
+def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTitle,DefaultDescription,site_id,category_id,header_footer_details, page_component_ids: Optional[set] = None, page_component_names: Optional[List[str]] = None, component_cache: Optional[List[Dict[str, Any]]] = None):
     # Prepare payload for page creation
     page_content_bytes = final_html.encode("utf-8")
     base64_encoded_content = base64.b64encode(page_content_bytes).decode("utf-8")
     
-    # pageName: display name (leaf only). pageAlias: leaf slug when parent_page_id set, else path without first segment
+    # Extract just the page name (last part after "/") for both pageName and pageAlias
+    # The category_id will handle the parent relationship, so alias should only be the page name
     page_name_only = page_name.split("/")[-1] if "/" in page_name else page_name
-    page_alias_full_path = generate_page_alias(page_name)  # e.g. accommodations/guestrooms/hotel-king-guestroom
-    if parent_page_id:
-        # CMS will build URL from parent; pass only current page slug for alias
-        page_alias_for_api = generate_page_alias(page_name_only)
-    else:
-        alias_parts = page_alias_full_path.split("/")
-        page_alias_for_api = "/".join(alias_parts[1:]) if len(alias_parts) >= 2 else page_alias_full_path
     
-    # pageCategoryId = category from GetPageCategoryList (e.g. Accommodations for Guestrooms page, Guestrooms for Hotel King Guestroom page).
     payload = {
         "pageId": 0,
-        "pageName": page_name_only,
-        "pageAlias": page_alias_for_api,
+        "pageName": page_name_only,  # Just the page name without parent path
+        "pageAlias": generate_page_alias(page_name_only),  # Only the page name, category_id handles parent
         "pageContent": base64_encoded_content,
         "isPageStudioPage": True,
         "pageUpdatedBy": 0,
@@ -1412,20 +1519,9 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         "pageProfileId": 0,
         "tags": ""
         }
-    if parent_page_id:
-        payload["parentPageId"] = parent_page_id
-        logging.info(f"[DEBUG] Level 2+: parentPageId={parent_page_id}, pageCategoryId={category_id}")
     print(f"New page payload ready for '{page_name}'.")
     print(f"New page payload ready for '{payload}'.")
-    logging.info(f"[DEBUG] Page name: '{page_name}', Page alias (for API): '{payload['pageAlias']}'")
-    # Log CreatePage payload to assembly_debug.log so we can see category/parent IDs per page
-    append_debug_log("create_page_payload", {
-        "page_name": page_name,
-        "pageCategoryId": payload["pageCategoryId"],
-        "parentPageId": parent_page_id if parent_page_id else None,
-        "pageAlias": payload["pageAlias"],
-        "pageName": payload["pageName"],
-    }, site_id)
+    logging.info(f"[DEBUG] Page name: '{page_name}', Page alias: '{payload['pageAlias']}'")
     print("before")
     print(page_template_id)
 
@@ -1446,14 +1542,6 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         status_code = data.get("status_code", "N/A")
         logging.error(f"[ERROR] Page creation failed for '{page_name}': {error_msg} (Status: {status_code})")
         logging.error(f"[ERROR] Skipping page '{page_name}' - cannot proceed without PageId")
-        append_debug_log("create_page_error", {
-            "page_name": page_name,
-            "error": error_msg,
-            "status_code": status_code,
-            "payload_pageCategoryId": payload.get("pageCategoryId"),
-            "payload_parentPageId": payload.get("parentPageId"),
-            "response_preview": str(data)[:500],
-        }, site_id)
         return data  # Return early, don't proceed with mapping/publishing
 
     # Access the 'pageId' key and print its value
@@ -1465,13 +1553,6 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     else:
         logging.error(f"[ERROR] 'PageId' key not found in the returned data for page '{page_name}'")
         logging.error(f"[ERROR] Response data: {data}")
-        append_debug_log("create_page_error", {
-            "page_name": page_name,
-            "error": "PageId missing in response",
-            "response_preview": str(data)[:500],
-            "payload_pageCategoryId": payload.get("pageCategoryId"),
-            "payload_parentPageId": payload.get("parentPageId"),
-        }, site_id)
         print("Error: 'pageId' key not found in the returned data.")
         return data  # Return early, don't proceed with mapping/publishing
 
@@ -1692,7 +1773,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
     new_api_payload = all_mappings
     
     # Log the complete mapping payload for debugging (console + debug log)
-    logging.info(f"\n--- 📑 MAPPING API PAYLOAD (Page ID: {page_id}) ---")
+    logging.info(f"\n--- MAPPING API PAYLOAD (Page ID: {page_id}) ---")
     payload_str = json.dumps(new_api_payload, indent=2)
     logging.info(payload_str)
     logging.info("---------------------------------------------")
@@ -1740,7 +1821,7 @@ def updatePageMapping(base_url: str, headers: Dict[str, str], page_id: int, site
             
         else:
             # Handle non-success responses that didn't raise an exception
-            print(f"\n🛑 **FAILURE:** Failed to update page mapping for Page ID {page_id}.")
+            print(f"\n[FAILURE] Failed to update page mapping for Page ID {page_id}.")
             print(f"API Response: {api_response_data}")
 
     except Exception as e:
@@ -2111,7 +2192,7 @@ def publishPage(base_url: str, headers: Dict[str, str], page_id: int, site_id: i
     }
     
     # Log the complete publish payload for debugging (console + debug log)
-    logging.info(f"\n--- 📑 PUBLISH API PAYLOAD (Page ID: {page_id}) ---")
+    logging.info(f"\n--- PUBLISH API PAYLOAD (Page ID: {page_id}) ---")
     payload_str = json.dumps(final_api_payload, indent=2)
     logging.info(payload_str)
     logging.info("---------------------------------------------")
@@ -2472,8 +2553,20 @@ def migrate_next_level_components(save_folder, pageSectionGuid, base_url, header
     # PHASE 3: BULK PROCESS ALL RECORDS AT THIS LEVEL
     if records_payload_list:
         logging.info(f"[BULK] Processing {len(records_payload_list)} {level_name} records in bulk...")
+        append_debug_log("parent_record_bulk_create_request", {
+            "level": level,
+            "level_name": level_name,
+            "record_count": len(records_payload_list),
+            "payloads": records_payload_list
+        })
         resp_success, resp_data = addUpdateRecordsToCMS_bulk(base_url, headers, records_payload_list)
-        
+        append_debug_log("parent_record_bulk_create_response", {
+            "level": level,
+            "level_name": level_name,
+            "success": resp_success,
+            "response": resp_data
+        })
+
         if resp_success and isinstance(resp_data, dict):
             # PHASE 4: UPDATE RECORDS WITH NEW IDs AND TAG CHILDREN
             for index, record_info in record_index_map.items():
@@ -2621,15 +2714,30 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
 
                 api_payload = {"main_record_set": [single_record]}
 
+                append_debug_log("parent_record_create_request", {
+                    "component_id": component_id,
+                    "page_section_guid": pageSectionGuid,
+                    "payload": single_record
+                })
+
                 # Call the API to create the record (using bulk API for potential future batching)
                 # NOTE: The implementation above will return True, {0: 2981622}
                 resp_success, resp_data = addUpdateRecordsToCMS(base_url, headers, api_payload)
-                
+
                 # --- Extract New Record ID ---
                 main_component_new_id = None
                 if resp_success and isinstance(resp_data, dict):
                     if 0 in resp_data: main_component_new_id = resp_data[0] # Checks for integer key 0
                     elif "0" in resp_data: main_component_new_id = resp_data["0"] # Checks for string key "0"
+
+                append_debug_log("parent_record_create_response", {
+                    "component_id": component_id,
+                    "page_section_guid": pageSectionGuid,
+                    "payload": single_record,
+                    "success": resp_success,
+                    "new_record_id": main_component_new_id,
+                    "raw_response": resp_data
+                })
 
                 if main_component_new_id:
                     print(f"  [SUCCESS] CMS Record Created. Old ComponentId: {main_component_old_id} -> New RecordId: {main_component_new_id}")
@@ -2644,8 +2752,13 @@ def mainComp(save_folder, component_id, pageSectionGuid, base_url, headers,compo
                     record["component_alias"] = component_alias
                     record["vComponentId"] = vComponentId
                     
-                    # Update asset if record has images (after storing new_record_id)
-                    if record.get("has_image", False):
+                    # Update asset if record has images (flag or image data in JSON, e.g. Venue-Accordion)
+                    try:
+                        has_img = record.get("has_image", False) or (record and _record_json_has_image_data(record))
+                    except Exception as e:
+                        logging.warning(f"[MAINCOMP] Could not check image data for component {component_id}: {e}")
+                        has_img = record.get("has_image", False)
+                    if has_img:
                         update_record_asset_if_needed(record, main_component_new_id, component_id, base_url, headers)
                     
                     # Add delay before fetching sub-records to ensure parent record is fully processed by CMS
@@ -3154,21 +3267,116 @@ def createRecordsPayload(site_id, component_id, page_name: Optional[str] = None)
         enriched_record = record.copy() 
         enriched_record["recordType"] = record_type
         return enriched_record
-    
-    # 3. Find the single Root Record
-    root_record = next(
-        (
-            record for record in all_records
-            if record.get("ComponentId") == component_id_int and record.get("ParentId") == 0
-        ),
-        None
-    )
 
-    if root_record is None:
+    # Helper: record has image value if OriginalImagePath has a non-empty value anywhere in RecordJsonString
+    def _has_original_image_path_value(obj: Any) -> bool:
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k == "OriginalImagePath" and isinstance(v, str) and v.strip():
+                    return True
+                if _has_original_image_path_value(v):
+                    return True
+            return False
+        if isinstance(obj, list):
+            return any(_has_original_image_path_value(item) for item in obj)
+        return False
+
+    def _root_has_image_value(r: Dict[str, Any]) -> bool:
+        if r.get("has_image") is True:
+            return True
+        rj = r.get("RecordJsonString")
+        if not rj:
+            return False
+        try:
+            data = rj if isinstance(rj, dict) else json.loads(rj) if isinstance(rj, str) else None
+            return data is not None and _has_original_image_path_value(data)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return False
+
+    def _root_or_children_has_image(r: Dict[str, Any], records: List[Dict[str, Any]]) -> bool:
+        """True if root has image or any direct child (next level) has image."""
+        if _root_has_image_value(r):
+            return True
+        parent_id = r.get("Id")
+        if parent_id is None:
+            return False
+        for rec in records:
+            if rec.get("ParentId") == parent_id and _root_has_image_value(rec):
+                return True
+        return False
+
+    def _created_date_sort_key(r: Dict[str, Any]) -> datetime:
+        """Return a comparable value for CreatedDate; use min for missing/invalid so max() picks latest."""
+        v = r.get("CreatedDate")
+        if v is None:
+            return datetime.min
+        try:
+            if isinstance(v, str):
+                return datetime.fromisoformat(v.replace("Z", "+00:00"))
+            return datetime.min
+        except (TypeError, ValueError):
+            return datetime.min
+
+    # 3. Find the single Root Record (prefer IsPageStudioRecord=false; then prefer image value; then latest CreatedDate)
+    root_candidates = [
+        record for record in all_records
+        if record.get("ComponentId") == component_id_int and record.get("ParentId") == 0
+    ]
+    if not root_candidates:
         error_msg = f"Error: Could not find a root record (ComponentId={component_id_int}, ParentId=0) in {records_input_path}. Total records: {len(all_records)}"
         logging.error(error_msg)
         print(error_msg)
         return False
+
+    page_studio_roots = [r for r in root_candidates if r.get("IsPageStudioRecord") is False]
+    pool = page_studio_roots if page_studio_roots else root_candidates
+    with_image = [r for r in pool if _root_has_image_value(r)]
+    # If no root has image, prefer roots that have image in next level (direct children)
+    with_image_in_next_level = [r for r in pool if _root_or_children_has_image(r, all_records)] if not with_image else []
+    if with_image:
+        final_candidates = with_image
+    elif with_image_in_next_level:
+        final_candidates = with_image_in_next_level
+    else:
+        final_candidates = pool
+    root_record = max(final_candidates, key=_created_date_sort_key)
+
+    # Log why this root was selected (for debugging "why record with no image" in tree)
+    chosen_has_image = _root_has_image_value(root_record)
+    chosen_has_image_in_children = _root_or_children_has_image(root_record, all_records)
+    logging.info(
+        f"[createRecordsPayload] Root selection for component {component_id} page '{page_name}': "
+        f"root_candidates={len(root_candidates)}, non_page_studio_roots={len(page_studio_roots)}, "
+        f"pool={len(pool)}, with_image={len(with_image)}, with_image_in_next_level={len(with_image_in_next_level)}, "
+        f"chosen Id={root_record.get('Id')}, has_image={chosen_has_image}, has_image_in_children={chosen_has_image_in_children}"
+    )
+    if not chosen_has_image and len(with_image) == 0 and len(with_image_in_next_level) == 0:
+        logging.warning(
+            f"[createRecordsPayload] No root with image and no root with image in next level for component {component_id}; "
+            f"selected latest by CreatedDate (Id={root_record.get('Id')}) - tree root has no image."
+        )
+    reason = "preferred_image_then_latest_date"
+    if len(with_image) == 0 and len(with_image_in_next_level) > 0:
+        reason = "preferred_image_in_children_then_latest_date"
+    elif len(with_image) == 0 and len(with_image_in_next_level) == 0:
+        reason = "no_roots_with_image"
+    append_debug_log(
+        "root_selection",
+        {
+            "component_id": component_id,
+            "page_name": page_name,
+            "root_candidates_count": len(root_candidates),
+            "page_studio_roots_count": len(page_studio_roots),
+            "pool_size": len(pool),
+            "with_image_count": len(with_image),
+            "with_image_in_next_level_count": len(with_image_in_next_level),
+            "chosen_root_id": root_record.get("Id"),
+            "chosen_has_image": chosen_has_image,
+            "chosen_has_image_in_children": chosen_has_image_in_children,
+            "reason": reason,
+        },
+        site_id=site_id,
+    )
 
     # 4. Prepare data structure for quick lookup (Record ID -> List of Children)
     children_map: Dict[int, List[Dict[str, Any]]] = {}
@@ -3941,20 +4149,8 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             full_page_name = "/".join(hierarchy + [page_name])
             logging.info(f"[DEBUG] Level {page_level} page: Using full page name '{full_page_name}' for alias generation (hierarchy: {hierarchy})")
         
-        # Pass parent page ID so CMS can build URL from parent (e.g. Guestrooms) and avoid duplicated path segments
-        parent_full_name = "/".join(hierarchy) if hierarchy else ""
-        parent_page_id = CREATED_PAGE_IDS.get(parent_full_name, 0) or 0
-        if parent_page_id:
-            logging.info(f"[DEBUG] Creating child page under parent '{parent_full_name}' (PageId={parent_page_id})")
-        
         try:
-            result = pageAction(api_base_url, api_headers, final_html, full_page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id, header_footer_details, page_component_ids, page_component_names, component_cache_for_mapping or component_cache, parent_page_id=parent_page_id)
-            
-            # Store created PageId and category_id so child pages can use them (parentPageId and pageCategoryId of previous level)
-            if isinstance(result, dict) and result.get("PageId") and not result.get("error"):
-                CREATED_PAGE_IDS[full_page_name] = result["PageId"]
-                CREATED_CATEGORY_IDS[full_page_name] = category_id
-                logging.info(f"[DEBUG] Stored PageId {result['PageId']} and category_id {category_id} for '{full_page_name}' (for future child)")
+            result = pageAction(api_base_url, api_headers, final_html, full_page_name, page_template_id, DefaultTitle, DefaultDescription, site_id, category_id,header_footer_details, page_component_ids, page_component_names, component_cache_for_mapping or component_cache)
             
             # Check if pageAction returned an error
             if isinstance(result, dict) and "error" in result:
@@ -3996,36 +4192,30 @@ def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, h
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
-    parent_page_name = hierarchy[-1] if len(hierarchy) >= 1 else (hierarchy[0] if hierarchy else "")
-    # Prefer category from GetPageCategoryList by parent name (same as level 3), then stored, then top-level
+    
+    # Fetch categories list
     categories = GetPageCategoryList(api_base_url, api_headers)
     logging.info(f"API categories loaded: {categories}")
+    
+    # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
         logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
-    normalized_parent = normalize_page_name(parent_page_name)
+    
+    # Category Matching Logic - For level 4+ pages, use the TOP-LEVEL section from hierarchy
+    # (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink" should use "Eat and Drink" category)
+    category_base_name = hierarchy[0] if hierarchy else current_page_name
+    normalized_page_name = normalize_page_name(category_base_name)
+    
+    # Search category ID by normalized name for robust matching
     for cat in categories:
         cat_name = cat.get("CategoryName")
-        if cat_name and normalize_page_name(cat_name) == normalized_parent:
+        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"[SUCCESS] MATCHED Category (parent) '{parent_page_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
+            logging.info(f"[SUCCESS] MATCHED Category base '{category_base_name}' for page '{current_page_name}' -> CategoryId = {matched_category_id}")
             break
     else:
-        parent_full_name = "/".join(hierarchy) if hierarchy else ""
-        matched_category_id = CREATED_CATEGORY_IDS.get(parent_full_name, 0) or 0
-        if matched_category_id:
-            logging.info(f"[SUCCESS] Using stored category ID for parent '{parent_full_name}' → CategoryId = {matched_category_id}")
-        else:
-            category_base_name = hierarchy[0] if hierarchy else current_page_name
-            normalized_page_name = normalize_page_name(category_base_name)
-            for cat in categories:
-                cat_name = cat.get("CategoryName")
-                if cat_name and normalize_page_name(cat_name) == normalized_page_name:
-                    matched_category_id = cat.get("CategoryId", 0)
-                    logging.info(f"[SUCCESS] MATCHED Category (fallback top-level) '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
-                    break
-            else:
-                logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
+        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
     
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, category_id=matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
 
@@ -4041,46 +4231,37 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
 
     logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
     
-    # Resolve category by parent name first: Guestrooms page → Accommodations ID; Hotel King Guestroom → Guestrooms ID (from GetPageCategoryList).
+    # Fetch categories list (already implemented in the provided GetPageCategoryList)
     categories = GetPageCategoryList(api_base_url, api_headers)
     logging.info(f"API categories loaded: {categories}")
+    
+    # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
         logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
-    # First try: category whose name matches parent (e.g. "Guestrooms" for Hotel King Guestroom)
-    category_base_name = parent_page_name
-    normalized_parent = normalize_page_name(category_base_name)
+
+    # Category Matching Logic
+    # For level 3+ pages (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink"),
+    # we always want to use the TOP-LEVEL section (e.g. "Eat and Drink") to determine
+    # the category, so that all grandchildren share the same category as their parent section.
+    # The top-level page name is stored in hierarchy[0] when present.
+    category_base_name = hierarchy[0] if hierarchy else parent_page_name
+    normalized_page_name = normalize_page_name(category_base_name)
+    
+    # Search category ID by normalized name for robust matching
     for cat in categories:
         cat_name = cat.get("CategoryName")
-        if cat_name and normalize_page_name(cat_name) == normalized_parent:
+        
+        # NOTE: normalize_page_name must be available/imported
+        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"[SUCCESS] MATCHED Category (parent) '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
-            break
+            logging.info(f"[SUCCESS] MATCHED Category base '{category_base_name}' for page '{current_page_name}' -> CategoryId = {matched_category_id}")
+            # Exit loop immediately after finding a match
+            break 
     else:
-        # Fallback: use category we stored when we created parent, or top-level
-        parent_full_name = "/".join(hierarchy) if hierarchy else ""
-        matched_category_id = CREATED_CATEGORY_IDS.get(parent_full_name, 0) or 0
-        if matched_category_id:
-            logging.info(f"[SUCCESS] Using stored category ID for parent '{parent_full_name}' → CategoryId = {matched_category_id}")
-        else:
-            category_base_name = hierarchy[0] if hierarchy else parent_page_name
-            normalized_page_name = normalize_page_name(category_base_name)
-            for cat in categories:
-                cat_name = cat.get("CategoryName")
-                if cat_name and normalize_page_name(cat_name) == normalized_page_name:
-                    matched_category_id = cat.get("CategoryId", 0)
-                    logging.info(f"[SUCCESS] MATCHED Category (fallback top-level) '{category_base_name}' for page '{current_page_name}' → CategoryId = {matched_category_id}")
-                    break
-            else:
-                logging.warning(f"[WARNING] No matching category found for page '{current_page_name}' (parent '{parent_page_name}' or top-level), using CategoryId = 0")
-    
-    # Log category ID passed for this page (so we can see what was sent for e.g. Hotel King Guestroom)
-    append_debug_log("level3_category_id", {
-        "page_name": current_page_name,
-        "parent_page_name": parent_page_name,
-        "category_id_passed": matched_category_id,
-        "hierarchy": " > ".join(hierarchy + [current_page_name]),
-    }, site_id)
+        # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
+        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
+        # matched_category_id remains 0, as initialized above.
     
     _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
     
@@ -4171,7 +4352,7 @@ def assemble_page_templates_level2(
         # NOTE: normalize_page_name must be available/imported
         if cat_name and normalize_page_name(cat_name) == normalized_page_name:
             matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"[SUCCESS] MATCHED Category '{current_page_name}' → CategoryId = {matched_category_id}")
+            logging.info(f"[SUCCESS] MATCHED Category '{current_page_name}' -> CategoryId = {matched_category_id}")
             # Exit loop immediately after finding a match
             break 
     else:
@@ -4265,9 +4446,6 @@ def normalize_page_name(name: str) -> str:
 
 
 def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
-    global CREATED_PAGE_IDS, CREATED_CATEGORY_IDS
-    CREATED_PAGE_IDS = {}  # Reset so parent PageIds are looked up correctly for this run
-    CREATED_CATEGORY_IDS = {}  # Reset so child pages get correct "previous level" category ID
     logging.info("\n========================================================")
     logging.info("START: Component-Based Template Assembly (Level 1 Traversal)")
     logging.info("========================================================")
@@ -4788,7 +4966,7 @@ def update_menu_navigation(file_prefix: str, api_base_url: str, site_id: int, ap
                                     time.sleep(POLL_INTERVAL)
 
                                 if not file_ready:
-                                    raise FileNotFoundError(f"🚨 Timeout: Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
+                                    raise FileNotFoundError(f"[TIMEOUT] Required configuration file {config_file_name} was not generated or released within {MAX_WAIT_SECONDS} seconds.")
                                 # --- END POLLING LOGIC ---
                                 
                                 # Continue with processing regardless of whether component was downloaded or already existed
@@ -4905,35 +5083,28 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
     logging.info("========================================================")
     
     try:
-        # 1. Read menu_navigation.json (uploads/ first, then uploads/{site_id}/)
-        menu_nav_file = get_menu_navigation_filepath(file_prefix, site_id)
-        if not menu_nav_file:
-            menu_nav_filename = f"{os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix}_menu_navigation.json"
-            append_menu_debug_log("menu_nav_file_not_found", {"expected": menu_nav_filename, "site_id": site_id}, site_id)
-            logging.error(f"Menu navigation file not found. Expected: {menu_nav_filename} in uploads/ or uploads/{{site_id}}/")
+        # 1. Read menu_navigation.json
+        site_folder = get_site_upload_folder(site_id)
+        menu_nav_file = os.path.join(site_folder, f"{file_prefix}_menu_navigation.json")
+        if not os.path.exists(menu_nav_file):
+            logging.error(f"Menu navigation file not found: {menu_nav_file}")
             return False
-        append_menu_debug_log("menu_nav_file_found", {"path": menu_nav_file}, site_id)
         
         with open(menu_nav_file, 'r', encoding='utf-8') as f:
             menu_nav_data = json.load(f)
         
         menu_level = menu_nav_data.get("menuLevel")
         if menu_level is None:
-            append_menu_debug_log("menu_level_missing", {}, site_id)
             logging.warning("menuLevel not found in menu_navigation.json. Skipping mapping.")
             return False
-        append_menu_debug_log("menu_nav_loaded", {"menuLevel": menu_level, "pages_count": len(menu_nav_data.get("pages", []))}, site_id)
         
-        # 2. Locate MiBlockComponentRecords.json (use absolute path)
-        project_root = os.path.dirname(BASE_DIR)
-        records_folder = os.path.join(project_root, "output", str(site_id), f"mi-block-ID-{component_id}")
+        # 2. Locate MiBlockComponentRecords.json
+        records_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id}")
         records_file = os.path.join(records_folder, "MiBlockComponentRecords.json")
         
         if not os.path.exists(records_file):
-            append_menu_debug_log("records_file_not_found", {"path": records_file}, site_id)
             logging.error(f"Records file not found: {records_file}")
             return False
-        append_menu_debug_log("records_file_found", {"path": records_file}, site_id)
         
         with open(records_file, 'r', encoding='utf-8') as f:
             records_data = json.load(f)
@@ -5013,10 +5184,9 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
             return slug
         
         # 5. Helper function to update link in RecordJsonString and extract name/link values
-        def update_record_link(record_json_string: str, page_name: str, parent_page_name: Optional[str] = None, hierarchy_names: Optional[List[str]] = None) -> Tuple[str, Optional[str], Optional[str]]:
+        def update_record_link(record_json_string: str, page_name: str, parent_page_name: Optional[str] = None) -> Tuple[str, Optional[str], Optional[str]]:
             """
             Updates the link field (ending with -link) in RecordJsonString with page name.
-            Uses full hierarchy path when provided (e.g. Accommodations/Guestrooms/Hotel King Guestroom).
             Also extracts the -name and -link values for easy access.
             
             Returns:
@@ -5041,25 +5211,17 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                         link_value = record_json.get(key)
                 
                 if link_key:
-                    # Build the link path: full hierarchy + page (e.g. accommodations/guestrooms/hotel-king-guestroom)
-                    # Use "/" between segments so URL is segment1/segment2/segment3, not segment1/segment2-segment3
-                    if hierarchy_names is not None and len(hierarchy_names) > 0:
-                        path_parts = [generate_url_slug(n) for n in hierarchy_names]
-                        # Include direct parent if not already last in hierarchy (avoids missing middle segments)
-                        if parent_page_name:
-                            parent_slug = generate_url_slug(parent_page_name)
-                            if not path_parts or path_parts[-1] != parent_slug:
-                                path_parts.append(parent_slug)
-                        path_parts.append(generate_url_slug(page_name))
-                        link_path = "/".join(path_parts)
-                    elif parent_page_name:
-                        # Fallback: direct parent + page only
+                    # Generate URL slug from page name
+                    page_slug = generate_url_slug(page_name)
+                    
+                    # Build the link path
+                    if parent_page_name:
+                        # For sub-pages, include parent in path
                         parent_slug = generate_url_slug(parent_page_name)
-                        page_slug = generate_url_slug(page_name)
                         link_path = f"{parent_slug}/{page_slug}"
                     else:
-                        # Top-level: just page slug
-                        link_path = generate_url_slug(page_name)
+                        # For top-level pages, just use the page slug
+                        link_path = page_slug
                     
                     # Update the link with %%strpath%% prefix
                     new_link = f"%%strpath%%{link_path}"
@@ -5082,11 +5244,9 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         # 6. Collect all matched records in a list
         all_matched_records = []
         
-        # Helper function to recursively process pages (hierarchy_so_far = list of ancestor page names from root to parent, for full URL path)
-        def process_page(page_node: Dict[str, Any], page_level: int, records_level: int, parent_page_name: Optional[str] = None, hierarchy_so_far: Optional[List[str]] = None) -> bool:
+        # Helper function to recursively process pages
+        def process_page(page_node: Dict[str, Any], page_level: int, records_level: int, parent_page_name: Optional[str] = None) -> bool:
             """Process a single page and its sub_pages recursively."""
-            if hierarchy_so_far is None:
-                hierarchy_so_far = []
             page_name = page_node.get("page_name", "").strip()
             if not page_name:
                 return False
@@ -5119,10 +5279,10 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
             logging.info(f"Checked {records_checked} records at level {records_level} for page '{page_name}'")
             
             if matched_record:
-                # Update the link in RecordJsonString before saving and extract name/link values (full path: hierarchy + page)
+                # Update the link in RecordJsonString before saving and extract name/link values
                 original_record_json_string = matched_record.get("RecordJsonString", "")
                 updated_record_json_string, name_key, name_value, link_key, link_value = update_record_link(
-                    original_record_json_string, page_name, parent_page_name, hierarchy_names=hierarchy_so_far
+                    original_record_json_string, page_name, parent_page_name
                 )
                 
                 # Create a copy of the matched record with updated link
@@ -5152,17 +5312,14 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                 # Add to the collection
                 all_matched_records.append(matched_record_with_page_info)
                 
-                logging.info(f"[SUCCESS] Matched '{page_name}' (level {page_level}) → added to collection")
-                append_menu_debug_log("page_match", {"page_name": page_name, "level": page_level, "records_level": records_level, "record_id": matched_record.get("Id")}, site_id)
+                logging.info(f"[SUCCESS] Matched '{page_name}' (level {page_level}) -> added to collection")
                 page_node["matchFound"] = True
             else:
-                append_menu_debug_log("page_no_match", {"page_name": page_name, "level": page_level, "records_level": records_level}, site_id)
                 logging.warning(f"[ERROR] No match found for '{page_name}' (level {page_level})")
                 page_node["matchFound"] = False
             
-            # Process sub_pages recursively (pass current page_name as parent and full hierarchy for URL path)
+            # Process sub_pages recursively (pass current page_name as parent)
             sub_pages = page_node.get("sub_pages", [])
-            new_hierarchy = hierarchy_so_far + [page_name] if page_name else hierarchy_so_far
             if sub_pages:
                 # Determine the records level for sub_pages based on menuLevel
                 if menu_level == 0:
@@ -5170,7 +5327,7 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                     for sub_page in sub_pages:
                         sub_page_level = sub_page.get("level", page_level + 1)
                         sub_records_level = sub_page_level
-                        process_page(sub_page, sub_page_level, sub_records_level, page_name, new_hierarchy)
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
                 elif menu_level == 1:
                     # Sub-pages of level 1 pages search in records level 2
                     # But if parent is level 0, sub-pages (level 1) search in level 1
@@ -5182,13 +5339,13 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                             sub_records_level = 2  # Level 2 sub-pages of level 1 parent search in level 2
                         else:
                             sub_records_level = sub_page_level
-                        process_page(sub_page, sub_page_level, sub_records_level, page_name, new_hierarchy)
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
                 else:
                     # Default: increment records level
                     for sub_page in sub_pages:
                         sub_page_level = sub_page.get("level", page_level + 1)
                         sub_records_level = records_level + 1
-                        process_page(sub_page, sub_page_level, sub_records_level, page_name, new_hierarchy)
+                        process_page(sub_page, sub_page_level, sub_records_level, page_name)
             
             return matched_record is not None
         
@@ -5220,13 +5377,14 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
                 records_level = page_level
                 logging.warning(f"Unknown menuLevel {menu_level}, using default mapping")
             
-            logging.info(f"Page '{page.get('page_name')}' (level {page_level}) → searching in records level {records_level}")
-            process_page(page, page_level, records_level, None, [])  # Top-level pages: no parent, empty hierarchy
+            logging.info(f"Page '{page.get('page_name')}' (level {page_level}) -> searching in records level {records_level}")
+            process_page(page, page_level, records_level, None)  # Top-level pages have no parent
         
-        # 6. Save all matched records (uploads/ root - process_menu_navigation reads from there)
+        # 6. Save all matched records to a single JSON file
         if all_matched_records:
-            output_filename = f"{os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix}_matched_records.json"
-            output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+            output_filename = f"{file_prefix}_matched_records.json"
+            site_folder = get_site_upload_folder(site_id)
+            output_filepath = os.path.join(site_folder, output_filename)
             
             matched_records_data = {
                 "total_matched": len(all_matched_records),
@@ -5242,7 +5400,6 @@ def map_pages_to_records(file_prefix: str, site_id: int, component_id: int) -> b
         else:
             logging.warning("No matched records found to save")
         
-        append_menu_debug_log("map_complete", {"matched_count": len(all_matched_records)}, site_id)
         # 7. Save updated menu_navigation.json with matchFound status
         with open(menu_nav_file, 'w', encoding='utf-8') as f:
             json.dump(menu_nav_data, f, indent=4, ensure_ascii=False)
@@ -5271,8 +5428,8 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
     """
     logging.info(f"Calling API to UPDATE {len(records)} existing records using bulk processing...")
     
-    # Payload files in uploads/ root during processing
-    payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
+    site_folder = get_site_upload_folder(site_id)
+    payload_filepath = os.path.join(site_folder, payload_filename)
     
     # Prepare all records for bulk API call
     records_payload_list = []
@@ -5326,7 +5483,7 @@ def call_update_miblock_records_api(api_base_url: str, api_headers: Dict[str, st
         logging.error(f"[BULK] Failed to process menu records in bulk: {resp_data}")
         # Fallback to individual processing if bulk fails
         logging.warning(f"[FALLBACK] Attempting individual record processing...")
-        api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
+        api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
         
         for idx, record_info in record_index_map.items():
             record = record_info["record"]
@@ -5373,10 +5530,10 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     """
     logging.info(f"Calling API to save {len(records)} records in sequential order...")
     
-    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=false"
-    payload_filepath = os.path.join(UPLOAD_FOLDER, payload_filename)
-    saved_records = {}  # Initialize early so orphan block can use it
-
+    api_url = f"{api_base_url}/ccadmin/cms/api/PageApi/SaveMiblockRecord?isDraft=true"
+    site_folder = get_site_upload_folder(site_id)
+    payload_filepath = os.path.join(site_folder, payload_filename)
+    
     # Group records by parent-child
     # IMPORTANT: Maintain order from simplified.json - only sort by level, then preserve original order within each level
     # Sort by level first to ensure parents come before children, but maintain displayOrder within each level
@@ -5408,11 +5565,10 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     logging.info(f"Found {level_1_count} level 1 records and {level_2_plus_count} level 2+ records")
     
     # Second pass: Add level 2+ records to their parent groups
-    # Support level 4: L1 -> L2 -> L3 -> L4 (e.g. Accommodations -> Lifestyle Collection -> Casitas -> One-Bedroom Casita)
-    # Orphaned children: parent is matched (not in new_records)
+    # Also handle orphaned children (parent is matched, so not in new_records)
+    # IMPORTANT: Handle nested levels - level 3 records should be children of level 2, not level 1
     orphaned_children = []
-    level_2_records = {}  # Track level 2 for level 3 children
-    level_3_records = {}  # Track level 3 for level 4 children
+    level_2_records = {}  # Track level 2 records for level 3 to reference
     
     for r in records_sorted:
         rec_level = r.get("level") or r.get("matched_page_level", 0)
@@ -5420,101 +5576,73 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
         parent_name = r.get("parent_page_name")
         
         if rec_level == 2:
+            # Level 2 records: add to level 1 parent group, and track them for level 3
             if not parent_name:
                 logging.warning(f"Level 2 record '{page_name}' has no parent_page_name - skipping grouping")
                 continue
+            
             if parent_name in parent_child_groups:
                 parent_child_groups[parent_name]["children"].append(r)
+                # Sort children by displayOrder to maintain sequence from simplified.json
                 parent_child_groups[parent_name]["children"].sort(key=lambda c: c.get("displayOrder", 999))
+                # Track this level 2 record for level 3 children
                 level_2_records[page_name] = r
                 logging.info(f"[SUCCESS] Added level 2 record '{page_name}' to parent group '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
             else:
+                # Parent is matched (not in new_records), child needs to be saved separately
                 orphaned_children.append(r)
                 logging.info(f"[WARNING] Level 2 record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
         
-        elif rec_level == 3:
-            if not parent_name:
-                logging.warning(f"Level 3 record '{page_name}' has no parent_page_name - skipping grouping")
-                continue
-            if parent_name in level_2_records:
-                level_2_record = level_2_records[parent_name]
-                if "nested_children" not in level_2_record:
-                    level_2_record["nested_children"] = []
-                level_2_record["nested_children"].append(r)
-                level_3_records[page_name] = r
-                logging.info(f"[SUCCESS] Added level 3 record '{page_name}' to level 2 parent '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
-            elif parent_name in parent_child_groups:
-                parent_child_groups[parent_name]["children"].append(r)
-                parent_child_groups[parent_name]["children"].sort(key=lambda c: c.get("displayOrder", 999))
-                level_3_records[page_name] = r
-                logging.warning(f"[FALLBACK] Added level 3 record '{page_name}' to level 1 parent '{parent_name}'")
-            else:
-                orphaned_children.append(r)
-                logging.info(f"[WARNING] Level 3 record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
-        
-        elif rec_level >= 4:
+        elif rec_level >= 3:
+            # Level 3+ records: should be children of level 2, not level 1
             if not parent_name:
                 logging.warning(f"Level {rec_level} record '{page_name}' has no parent_page_name - skipping grouping")
                 continue
-            if parent_name in level_3_records:
-                level_3_record = level_3_records[parent_name]
-                if "l4_children" not in level_3_record:
-                    level_3_record["l4_children"] = []
-                level_3_record["l4_children"].append(r)
-                logging.info(f"[SUCCESS] Added level {rec_level} record '{page_name}' to level 3 parent '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
-            elif parent_name in level_2_records:
+            
+            # Check if parent is a level 2 record (in our records)
+            if parent_name in level_2_records:
+                # Add to the level 2 record's children (we'll create a nested structure)
                 level_2_record = level_2_records[parent_name]
                 if "nested_children" not in level_2_record:
                     level_2_record["nested_children"] = []
                 level_2_record["nested_children"].append(r)
-                logging.warning(f"[FALLBACK] Added level {rec_level} record '{page_name}' to level 2 parent '{parent_name}'")
+                logging.info(f"[SUCCESS] Added level {rec_level} record '{page_name}' to level 2 parent '{parent_name}' (displayOrder: {r.get('displayOrder', 0)})")
+            elif parent_name in parent_child_groups:
+                # Fallback: parent is level 1 (shouldn't happen but handle it)
+                parent_child_groups[parent_name]["children"].append(r)
+                parent_child_groups[parent_name]["children"].sort(key=lambda c: c.get("displayOrder", 999))
+                logging.warning(f"[FALLBACK] Added level {rec_level} record '{page_name}' directly to level 1 parent '{parent_name}' (expected level 2 parent)")
             else:
+                # Parent is matched (not in new_records), child needs to be saved separately
                 orphaned_children.append(r)
                 logging.info(f"[WARNING] Level {rec_level} record '{page_name}' has matched parent '{parent_name}' - will save as orphaned child")
     
-    # Save orphaned children (children whose parents are matched or newly created)
+    # Save orphaned children (children whose parents are matched)
     if orphaned_children:
-        logging.info(f"Found {len(orphaned_children)} orphaned children (parents matched or will be created)")
-        base_pfx = os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix
-        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{base_pfx}_matched_records.json")
+        logging.info(f"Found {len(orphaned_children)} orphaned children (parents are matched)")
+        # Read matched_records to get parent IDs
+        site_folder = get_site_upload_folder(site_id)
+        matched_records_file = os.path.join(site_folder, f"{file_prefix}_matched_records.json")
         parent_id_map = {}
         
         if os.path.exists(matched_records_file):
             with open(matched_records_file, 'r', encoding='utf-8') as f:
                 matched_data = json.load(f)
+            
             for matched_rec in matched_data.get("matched_records", []):
                 matched_page_name = matched_rec.get("matched_page_name", "")
                 matched_record_id = matched_rec.get("Id")
                 if matched_page_name and matched_record_id:
                     parent_id_map[matched_page_name] = matched_record_id
         
-        # Pre-merge new_recordId from payload file so parents saved in a previous run are available
-        if os.path.exists(payload_filepath):
-            try:
-                with open(payload_filepath, 'r', encoding='utf-8') as f:
-                    payload_data = json.load(f)
-                for rec in payload_data.get("records", []):
-                    name = rec.get("page_name") or rec.get("matched_page_name", "")
-                    rid = rec.get("new_recordId") or rec.get("recordId")
-                    if name and rid and int(rid) > 0:
-                        parent_id_map[name] = int(rid)
-                        logging.debug(f"Pre-merged parent_id_map from payload: '{name}' -> {rid}")
-            except Exception as e:
-                logging.warning(f"Could not pre-merge parent IDs from payload: {e}")
-        
-        # Sort orphans by level so parents are saved before children (L2 before L3 before L4)
-        orphaned_children.sort(key=lambda o: (o.get("level") or o.get("matched_page_level", 0), o.get("displayOrder", 999)))
-        
+        # Save orphaned children with their matched parent IDs
         for orphan in orphaned_children:
             orphan_name = orphan.get("page_name") or orphan.get("matched_page_name", "")
             orphan_parent_name = orphan.get("parent_page_name")
             
             if orphan_parent_name in parent_id_map:
-                parent_id = parent_id_map[orphan_parent_name]
-                orphan["parentRecordId"] = int(parent_id) if parent_id else 0
-                logging.info(f"Setting parentRecordId for '{orphan_name}' (L{orphan.get('level')}) to parent '{orphan_parent_name}' ID: {parent_id}")
-            else:
-                logging.warning(f"Parent '{orphan_parent_name}' not in map for '{orphan_name}'. Available: {list(parent_id_map.keys())}")
+                orphan["parentRecordId"] = parent_id_map[orphan_parent_name]
+                logging.info(f"Setting parentRecordId for '{orphan_name}' to matched parent ID: {parent_id_map[orphan_parent_name]}")
             
             # Save orphaned child directly
             orphan_api_record = {
@@ -5537,10 +5665,8 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                 new_orphan_id = orphan_result.get("result")
                 
                 if new_orphan_id:
-                    new_orphan_id_int = int(new_orphan_id)
-                    saved_records[orphan_name] = new_orphan_id_int
-                    orphan["new_recordId"] = new_orphan_id_int
-                    parent_id_map[orphan_name] = new_orphan_id_int  # Add so L3/L4 children can reference this parent
+                    saved_records[orphan_name] = new_orphan_id
+                    orphan["new_recordId"] = new_orphan_id
                     logging.info(f"    [SUCCESS] Orphaned Child ID: {new_orphan_id}")
                     
                     # Update asset if orphan record has images
@@ -5568,7 +5694,9 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
     logging.info(f"Grouped into {len(parent_child_groups)} parent-child groups")
     total_children = sum(len(group["children"]) for group in parent_child_groups.values())
     logging.info(f"Total children records: {total_children}")
-
+    
+    saved_records = {}
+    
     # Process each group: parent → children (sequential, preserves hierarchy)
     for group_idx, group_name in enumerate(record_order):
         group = parent_child_groups[group_name]
@@ -5592,7 +5720,13 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             "displayOrder": parent_rec["displayOrder"],
             "updatedBy": parent_rec["updatedBy"]
         }
-        
+
+        append_debug_log("parent_record_create_request", {
+            "group_name": group_name,
+            "group_index": f"{group_idx+1}/{len(record_order)}",
+            "payload": api_record
+        })
+
         try:
             logging.info(f"  [Parent] Saving '{group_name}'")
             response = requests.post(api_url, headers=api_headers, json=api_record, timeout=30)
@@ -5600,7 +5734,14 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             
             result = response.json()
             new_parent_id = result.get("result")
-            
+
+            append_debug_log("parent_record_create_response", {
+                "group_name": group_name,
+                "payload": api_record,
+                "new_record_id": new_parent_id,
+                "raw_response": result
+            })
+
             if not new_parent_id:
                 logging.error(f"    [ERROR] No result ID")
                 continue
@@ -5633,7 +5774,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
             with open(payload_filepath, 'w', encoding='utf-8') as f:
                 json.dump(payload_data, f, indent=4, ensure_ascii=False)
             
-            logging.info(f"    → Updated {len(children)} children parentRecordId → {new_parent_id}")
+            logging.info(f"    Updated {len(children)} children parentRecordId -> {new_parent_id}")
             
             # STEP 4: Save children (level 2 records)
             for child_idx, child in enumerate(children):
@@ -5672,11 +5813,11 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                         # STEP 4.5: If this is a level 2 record, update level 3 children's parentRecordId
                         nested_children = child.get("nested_children", [])
                         if nested_children:
-                            logging.info(f"    → Updating {len(nested_children)} level 3 children's parentRecordId → {new_child_id}")
+                            logging.info(f"    Updating {len(nested_children)} level 3 children's parentRecordId -> {new_child_id}")
                             for nested_child in nested_children:
                                 nested_child["parentRecordId"] = new_child_id
                                 nested_child_name = nested_child.get("page_name") or nested_child.get("matched_page_name", "")
-                                logging.info(f"      Updated '{nested_child_name}' parentRecordId → {new_child_id}")
+                                logging.info(f"      Updated '{nested_child_name}' parentRecordId -> {new_child_id}")
                         
                         # Update file
                         with open(payload_filepath, 'r', encoding='utf-8') as f:
@@ -5699,7 +5840,7 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                             # This prevents updating wrong records when multiple records have the same page_name
                             if file_parent == child_name and file_page in nested_child_names:
                                 file_rec["parentRecordId"] = new_child_id
-                                logging.debug(f"      Updated file record '{file_page}' (parent: '{file_parent}') parentRecordId → {new_child_id}")
+                                logging.debug(f"      Updated file record '{file_page}' (parent: '{file_parent}') parentRecordId -> {new_child_id}")
                         
                         with open(payload_filepath, 'w', encoding='utf-8') as f:
                             json.dump(payload_data, f, indent=4, ensure_ascii=False)
@@ -5755,46 +5896,6 @@ def call_save_miblock_records_api(api_base_url: str, api_headers: Dict[str, str]
                                     
                                     with open(payload_filepath, 'w', encoding='utf-8') as f:
                                         json.dump(payload_data, f, indent=4, ensure_ascii=False)
-                                    
-                                    # STEP 4.7: Save level 4 children (e.g. One-Bedroom Casita under Casitas)
-                                    l4_children = nested_child.get("l4_children", [])
-                                    for l4_c in l4_children:
-                                        l4_c["parentRecordId"] = new_nested_id
-                                    for l4_idx, l4_child in enumerate(l4_children):
-                                        l4_name = l4_child.get("page_name") or l4_child.get("matched_page_name", "")
-                                        l4_api_record = {
-                                            "componentId": l4_child["componentId"],
-                                            "recordId": l4_child["recordId"],
-                                            "parentRecordId": l4_child["parentRecordId"],
-                                            "recordDataJson": l4_child["recordDataJson"],
-                                            "status": l4_child["status"],
-                                            "tags": l4_child["tags"],
-                                            "displayOrder": l4_child["displayOrder"],
-                                            "updatedBy": l4_child["updatedBy"]
-                                        }
-                                        try:
-                                            logging.info(f"        [Level 4 Child {l4_idx+1}] Saving '{l4_name}' (parent={l4_child['parentRecordId']})")
-                                            l4_resp = requests.post(api_url, headers=api_headers, json=l4_api_record, timeout=30)
-                                            l4_resp.raise_for_status()
-                                            l4_result = l4_resp.json()
-                                            new_l4_id = l4_result.get("result")
-                                            if new_l4_id:
-                                                saved_records[l4_name] = new_l4_id
-                                                l4_child["new_recordId"] = new_l4_id
-                                                logging.info(f"          [SUCCESS] Level 4 Child ID: {new_l4_id}")
-                                                with open(payload_filepath, 'r', encoding='utf-8') as f:
-                                                    payload_data = json.load(f)
-                                                l4_parent = l4_child.get("parent_page_name", "")
-                                                for file_rec in payload_data.get("records", []):
-                                                    fp = file_rec.get("page_name") or file_rec.get("matched_page_name")
-                                                    fpar = file_rec.get("parent_page_name")
-                                                    if fp == l4_name and fpar == l4_parent:
-                                                        file_rec["new_recordId"] = new_l4_id
-                                                        file_rec["parentRecordId"] = l4_child["parentRecordId"]
-                                                with open(payload_filepath, 'w', encoding='utf-8') as f:
-                                                    json.dump(payload_data, f, indent=4, ensure_ascii=False)
-                                        except Exception as e:
-                                            logging.error(f"          [ERROR] Failed to save level 4 child '{l4_name}': {e}")
                                 else:
                                     logging.error(f"      [ERROR] No result ID for level 3 child")
                             except Exception as e:
@@ -5822,24 +5923,21 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
     logging.info("========================================================")
     
     try:
-        menu_nav_file = get_menu_navigation_filepath(file_prefix, site_id)
-        if not menu_nav_file:
-            menu_nav_filename = f"{os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix}_menu_navigation.json"
-            append_menu_debug_log("create_new_records_file_not_found", {"expected": menu_nav_filename}, site_id)
-            logging.error(f"Menu navigation file not found. Expected: {menu_nav_filename}")
+        site_folder = get_site_upload_folder(site_id)
+        menu_nav_file = os.path.join(site_folder, f"{file_prefix}_menu_navigation.json")
+        if not os.path.exists(menu_nav_file):
+            logging.error(f"Menu navigation file not found: {menu_nav_file}")
             return False
         
         with open(menu_nav_file, 'r', encoding='utf-8') as f:
             menu_nav_data = json.load(f)
         
-        append_menu_debug_log("create_new_records_start", {"menuLevel": menu_nav_data.get("menuLevel")}, site_id)
         # Get menuLevel to adjust component mapping
         menu_level = menu_nav_data.get("menuLevel", 1)
         logging.info(f"Menu Level from navigation: {menu_level}")
         
-        # Read MiBlockComponentRecords.json (use absolute path)
-        project_root = os.path.dirname(BASE_DIR)
-        records_folder = os.path.join(project_root, "output", str(site_id), f"mi-block-ID-{component_id}")
+        # Read MiBlockComponentRecords.json to get ComponentId mapping
+        records_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id}")
         records_file = os.path.join(records_folder, "MiBlockComponentRecords.json")
         
         main_parent_component_id = component_id
@@ -5892,16 +5990,11 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 level_1_component_id = main_parent_component_id
             
             if len(child_components_list) >= 2:
-                level_2_component_id = child_components_list[1]  # level 2 (e.g. dropdown)
+                level_2_component_id = child_components_list[1]  # 542063 for level 2
             elif len(child_components_list) >= 1:
                 level_2_component_id = child_components_list[0]  # Fallback if only 1 child
             else:
                 level_2_component_id = main_parent_component_id
-            
-            level_3_component_id = level_2_component_id  # Default: use level 2 for level 3+
-            if len(child_components_list) >= 3:
-                level_3_component_id = child_components_list[2]  # thirdlevel-list for L3/L4
-                logging.info(f"Level 3+: ComponentId={level_3_component_id} (for level 3 and 4 records)")
             
             # Get ParentId for level 2 from any record with level_1_component_id
             for record in component_records:
@@ -5914,7 +6007,6 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             logging.info(f"Level 2: ComponentId={level_2_component_id}, ParentId={parent_record_id_for_level_2}")
         else:
             logging.warning(f"Records file not found: {records_file}. Using main component_id for all levels.")
-            level_3_component_id = level_2_component_id
         
         # Read MiBlockComponentConfig.json to get property alias names for each component level
         config_file = os.path.join(records_folder, "MiBlockComponentConfig.json")
@@ -5949,9 +6041,9 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         else:
             logging.warning(f"Config file not found: {config_file}. Using default property names.")
         
-        # Read matched_records.json (uploads/ root)
-        bprefix = os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix
-        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{bprefix}_matched_records.json")
+        # Read matched_records.json to get page_name -> record Id mapping
+        site_folder = get_site_upload_folder(site_id)
+        matched_records_file = os.path.join(site_folder, f"{file_prefix}_matched_records.json")
         page_name_to_record_id = {}
         
         if os.path.exists(matched_records_file):
@@ -5969,9 +6061,7 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
         
         new_records = []
         
-        def collect_unmatched(page_node, parent_page_name=None, display_order=0, parent_record_id_override=None, hierarchy_so_far=None):
-            if hierarchy_so_far is None:
-                hierarchy_so_far = []
+        def collect_unmatched(page_node, parent_page_name=None, display_order=0, parent_record_id_override=None):
             page_name = page_node.get("page_name", "")
             level = page_node.get("level", 0)
             is_matched = page_node.get("matchFound", False)
@@ -5989,35 +6079,27 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
             if not is_matched:
                 # Page exists and should be in navigation, but doesn't have a menu record yet
                 # Create a new record for it
-                # Determine ComponentId based on level (support up to level 4)
+                # Determine ComponentId based on level
                 if menu_level == 0:
                     if level == 0:
                         record_component_id = main_parent_component_id
                     elif level == 1:
                         record_component_id = level_1_component_id
-                    elif level == 2:
-                        record_component_id = level_2_component_id
                     else:
-                        record_component_id = level_3_component_id
+                        record_component_id = level_2_component_id
                 elif menu_level == 1:
                     if level == 1:
                         record_component_id = level_1_component_id
-                    elif level == 2:
-                        record_component_id = level_2_component_id
                     else:
-                        record_component_id = level_3_component_id  # Level 3 and 4 use thirdlevel-list
+                        record_component_id = level_2_component_id
                 else:
-                    record_component_id = level_1_component_id if level <= 1 else (level_2_component_id if level == 2 else level_3_component_id)
+                    record_component_id = level_1_component_id if level <= 1 else level_2_component_id
                 
-                # Set parentRecordId for new records
+                # Set parentRecordId - Only for level 1, level 2 will be 0 (updated after level 1 is saved)
                 if level == 1:
                     parent_record_id = parent_record_id_for_level_1
-                elif parent_record_id_override is not None:
-                    # Parent is matched - we have its record ID, use it so the child is created under the correct parent
-                    parent_record_id = parent_record_id_override
-                    logging.debug(f"Using parent ID {parent_record_id} for '{page_name}' (parent '{parent_page_name}' is matched)")
                 else:
-                    parent_record_id = 0  # Parent is also new - will be updated after parent is saved
+                    parent_record_id = 0  # Will be updated after parent is saved
                 
                 # Get property aliases for this component
                 property_aliases = component_property_aliases.get(record_component_id, {})
@@ -6040,24 +6122,14 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 # Format the name value - just the page name for all levels
                 name_value = page_name
                 
-                # Generate link value: full path with "/" segments (e.g. accommodations/guestrooms/hotel-king-guestroom)
-                def slug(s):
-                    return s.lower().replace(' ', '-').replace('&', 'and')
-                page_slug = slug(page_name)
+                # Generate link value
+                page_slug = page_name.lower().replace(' ', '-').replace('&', 'and')
                 if level == 1:
                     link_value = f"%%strpath%%{page_slug}"
                 else:
-                    # Level 2+: full hierarchy path, ensure each segment separated by "/"
-                    if hierarchy_so_far:
-                        path_parts = [slug(n) for n in hierarchy_so_far]
-                        if parent_page_name:
-                            parent_slug = slug(parent_page_name)
-                            if not path_parts or path_parts[-1] != parent_slug:
-                                path_parts.append(parent_slug)
-                        path_parts.append(page_slug)
-                        link_value = f"%%strpath%%{'/'.join(path_parts)}"
-                    elif parent_page_name:
-                        parent_slug = slug(parent_page_name)
+                    # Level 2+: include parent in path
+                    if parent_page_name:
+                        parent_slug = parent_page_name.lower().replace(' ', '-').replace('&', 'and')
                         link_value = f"%%strpath%%{parent_slug}/{page_slug}"
                     else:
                         link_value = f"%%strpath%%{page_slug}"
@@ -6072,12 +6144,8 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 # Determine parentComponentId based on level
                 if level == 1:
                     parent_component_id = main_parent_component_id  # Level 1 parent is main container
-                elif level == 2:
-                    parent_component_id = level_1_component_id  # Level 2 parent is level 1 component
-                elif level == 3:
-                    parent_component_id = level_2_component_id  # Level 3 parent is level 2 component
                 else:
-                    parent_component_id = level_3_component_id  # Level 4 parent is level 3 component
+                    parent_component_id = level_1_component_id  # Level 2 parent is level 1 component
                 
                 # Get page status from page_node (based on ShowInNavigation: Yes/No)
                 # Default to True if not specified
@@ -6100,9 +6168,8 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 }
                 new_records.append(new_record)
             
-            # Process sub_pages - pass parent info and full hierarchy for URL path
+            # Process sub_pages - pass parent info even if parent is matched
             current_page_name = page_node.get("page_name", "")
-            new_hierarchy = hierarchy_so_far + [current_page_name] if current_page_name else hierarchy_so_far
             
             # If current page is matched, get its record ID for sub-pages
             parent_override = None
@@ -6111,14 +6178,15 @@ def create_new_records_payload(file_prefix: str, component_id: int, site_id: int
                 logging.debug(f"Parent '{current_page_name}' is matched (Id={parent_override}), will use for sub-pages")
             
             for idx, sub_page in enumerate(page_node.get("sub_pages", [])):
-                collect_unmatched(sub_page, current_page_name, idx, parent_override, new_hierarchy)
+                collect_unmatched(sub_page, current_page_name, idx, parent_override)
         
         for idx, page in enumerate(menu_nav_data.get("pages", [])):
-            collect_unmatched(page, None, idx, None, [])
+            collect_unmatched(page, None, idx)
         
         if new_records:
-            output_filename = f"{os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix}_new_records_payload.json"
-            output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+            output_filename = f"{file_prefix}_new_records_payload.json"
+            site_folder = get_site_upload_folder(site_id)
+            output_filepath = os.path.join(site_folder, output_filename)
             
             payload = {
                 "componentId": component_id,
@@ -6170,9 +6238,9 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
     logging.info("========================================================")
     
     try:
-        # 1. Read matched_records.json (uploads/ root)
-        base_prefix = os.path.basename(file_prefix) if isinstance(file_prefix, str) else file_prefix
-        matched_records_file = os.path.join(UPLOAD_FOLDER, f"{base_prefix}_matched_records.json")
+        # 1. Read matched_records.json
+        site_folder = get_site_upload_folder(site_id)
+        matched_records_file = os.path.join(site_folder, f"{file_prefix}_matched_records.json")
         if not os.path.exists(matched_records_file):
             logging.error(f"Matched records file not found: {matched_records_file}")
             logging.info("Skipping matched records update")
@@ -6186,9 +6254,8 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             logging.warning("No matched records found to create payload")
             return False
         
-        # 2. Read ComponentId mapping and property aliases (use absolute path)
-        project_root = os.path.dirname(BASE_DIR)
-        records_folder = os.path.join(project_root, "output", str(site_id), f"mi-block-ID-{component_id}")
+        # 2. Read ComponentId mapping and property aliases
+        records_folder = os.path.join("output", str(site_id), f"mi-block-ID-{component_id}")
         config_file = os.path.join(records_folder, "MiBlockComponentConfig.json")
         records_file = os.path.join(records_folder, "MiBlockComponentRecords.json")
         
@@ -6227,18 +6294,12 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                 level_1_component_id = main_parent_component_id
             
             if len(child_components_list) >= 2:
-                level_2_component_id = child_components_list[1]  # dropdown (e.g. 593691)
+                level_2_component_id = child_components_list[1]  # 542063 for level 2
             elif len(child_components_list) >= 1:
                 level_2_component_id = child_components_list[0]
             else:
                 level_2_component_id = main_parent_component_id
-
-            level_3_component_id = level_2_component_id
-            if len(child_components_list) >= 3:
-                level_3_component_id = child_components_list[2]  # thirdlevel-list (e.g. 593692)
-        else:
-            level_3_component_id = level_2_component_id
-
+        
         component_property_aliases = {}
         if os.path.exists(config_file):
             with open(config_file, 'r', encoding='utf-8') as f:
@@ -6258,7 +6319,7 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                     elif property_alias.endswith("-link"):
                         component_property_aliases[comp_id]["link_key"] = property_alias
         
-        logging.info(f"Matched records: Main={main_parent_component_id}, Level 1 ComponentId={level_1_component_id}, Level 2 ComponentId={level_2_component_id}, Level 3 ComponentId={level_3_component_id}")
+        logging.info(f"Matched records: Main={main_parent_component_id}, Level 1 ComponentId={level_1_component_id}, Level 2 ComponentId={level_2_component_id}")
         
         # 3. Transform records into API payload format
         api_payloads = []
@@ -6298,17 +6359,12 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             original_component_id = record.get("ComponentId")
             
             # Determine correct ComponentId and ParentId based on level
-            # L3/L4 use thirdlevel-list (593692) - different property aliases (thirdlevel-list-name) vs L2 (dropdown-menu-item-name)
-            # Using wrong component causes "undefined" in CMS
             if matched_page_level == 1:
                 correct_component_id = level_1_component_id
                 correct_parent_id = level_0_record_id  # Level 1 parent is level 0 container
-            elif matched_page_level >= 3:
-                correct_component_id = level_3_component_id  # thirdlevel-list - keeps thirdlevel-list-name
-                correct_parent_id = 0  # Will be updated by fix_parent_record_ids
-            else:
-                correct_component_id = level_2_component_id  # dropdown - dropdown-menu-item-name
-                correct_parent_id = 0  # Will be updated by fix_parent_record_ids
+            else:  # level 2+
+                correct_component_id = level_2_component_id
+                correct_parent_id = 0  # Will be updated after level 1 is saved
             
             # Get tags if available
             tags = record.get("tags", [])
@@ -6316,16 +6372,11 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                 tags = []
             
             # Fix keys in recordDataJson based on correct ComponentId
-            # Use ORIGINAL component aliases if record already has correct component - avoids "undefined" for L3/L4
             try:
                 record_data = json.loads(record_json_string)
                 
-                # Prefer original component if it matches correct - preserves existing keys
-                aliases_component_id = correct_component_id
-                if original_component_id and original_component_id == correct_component_id:
-                    aliases_component_id = original_component_id
-                
-                correct_aliases = component_property_aliases.get(aliases_component_id, {})
+                # Get correct property aliases for the CORRECTED ComponentId
+                correct_aliases = component_property_aliases.get(correct_component_id, {})
                 correct_name_key = correct_aliases.get("name_key")
                 correct_link_key = correct_aliases.get("link_key")
                 
@@ -6342,16 +6393,18 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
                         keys_to_remove.append(key)
                         link_value = value
                 
-                # Only swap keys if we have correct aliases - otherwise keep record_data as-is to avoid "undefined"
-                if correct_name_key or correct_link_key:
-                    for key in keys_to_remove:
-                        del record_data[key]
-                    if correct_name_key and name_value is not None:
-                        record_data[correct_name_key] = name_value
-                        logging.debug(f"Set key: {correct_name_key} = {name_value}")
-                    if correct_link_key and link_value is not None:
-                        record_data[correct_link_key] = link_value
-                        logging.debug(f"Set key: {correct_link_key} = {link_value}")
+                # Remove all old keys
+                for key in keys_to_remove:
+                    del record_data[key]
+                
+                # Add correct keys
+                if correct_name_key and name_value:
+                    record_data[correct_name_key] = name_value
+                    logging.debug(f"Set key: {correct_name_key} = {name_value}")
+                
+                if correct_link_key and link_value:
+                    record_data[correct_link_key] = link_value
+                    logging.debug(f"Set key: {correct_link_key} = {link_value}")
                 
                 record_json_string = json.dumps(record_data, ensure_ascii=False)
             except Exception as e:
@@ -6360,8 +6413,6 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
             # Determine parentComponentId based on level
             if matched_page_level == 1:
                 parent_component_id = main_parent_component_id  # Level 1 parent is main container
-            elif matched_page_level >= 3:
-                parent_component_id = level_2_component_id  # Level 3/4 parent is level 2 (dropdown)
             else:
                 parent_component_id = level_1_component_id  # Level 2 parent is level 1 component
             
@@ -6392,8 +6443,9 @@ def create_save_miblock_records_payload(file_prefix: str, component_id: int, sit
         }
         
         # 4. Save payload to separate file
-        output_filename = f"{base_prefix}_save_miblock_records_payload.json"
-        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+        output_filename = f"{file_prefix}_save_miblock_records_payload.json"
+        site_folder = get_site_upload_folder(site_id)
+        output_filepath = os.path.join(site_folder, output_filename)
         
         with open(output_filepath, 'w', encoding='utf-8') as f:
             json.dump(final_payload, f, indent=4, ensure_ascii=False)

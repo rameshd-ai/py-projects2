@@ -67,18 +67,24 @@ def extract_automation_details(json_data: Dict[str, Any]) -> Optional[Dict[str, 
             if "automation guide" in normalized_page_name:
                 print("DEBUG: Found 'Automation Guide' page.")
                 
-                content_source = page.get('content_blocks', '') or page.get('description', '') 
+                content_source = page.get('content_blocks', '') or page.get('description', '')
+                # The content may have each word/token on its own line (e.g. "https:\n//site.com").
+                # Strip ALL whitespace first so tokens like URLs are re-joined before matching.
+                collapsed_content = re.sub(r'\s+', '', content_source)
+                # Also keep a space-normalised version for patterns that need word boundaries
                 normalized_content = re.sub(r'\s+', ' ', content_source).strip()
-                
-                print(f"DEBUG: Normalized content: {normalized_content[:200]}...")  # First 200 chars
-                
-                link_pattern = r'Site\s*Link\s*:\s*([^\s]+)'
-                site_id_pattern = r'SiteId\s*:\s*(\d+)'
-                alias_pattern = r'Profile\s*Alias\s*:\s*([^\s]+)'
 
-                link_match = re.search(link_pattern, normalized_content, re.IGNORECASE)
-                site_id_match = re.search(site_id_pattern, normalized_content, re.IGNORECASE)
-                alias_match = re.search(alias_pattern, normalized_content, re.IGNORECASE)
+                print(f"DEBUG: Collapsed content (first 200): {collapsed_content[:200]}...")
+
+                # Match against whitespace-free string so broken URLs are captured whole.
+                # URL stops at the next key boundary "SiteId:" to avoid over-matching.
+                link_pattern = r'SiteLink:(https?://[^"]*?)(?=SiteId:|ProfileAlias:|$)'
+                site_id_pattern = r'SiteId:(\d+)'
+                alias_pattern = r'ProfileAlias:([^\s",\[{]+)'
+
+                link_match = re.search(link_pattern, collapsed_content, re.IGNORECASE)
+                site_id_match = re.search(site_id_pattern, collapsed_content, re.IGNORECASE)
+                alias_match = re.search(alias_pattern, collapsed_content, re.IGNORECASE)
 
                 site_link = link_match.group(1).strip() if link_match else None
                 site_id = site_id_match.group(1).strip() if site_id_match else None

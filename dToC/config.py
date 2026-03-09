@@ -34,15 +34,13 @@ PROCESSING_STEPS: List[Dict[str, Any]] = [
         "delay": 1.0, 
         "error_chance": 0.00
     },
-    # Enabled: module creation only
-    {
-        "id": "process_modules",
-        "name": "Fetching and Processing Site Modules",
-        "module": "run_module_processing_step",
-        "delay": 1.5,
-        "error_chance": 0.00
-    },
-    # Disabled: menu navigation
+    # {
+    #     "id": "process_modules",
+    #     "name": "Fetching and Processing Site Modules",
+    #     "module": "run_module_processing_step",
+    #     "delay": 1.5,
+    #     "error_chance": 0.00
+    # },
     # {
     #     "id": "process_menu_navigation",
     #     "name": "Processing Menu Navigation and Records",
@@ -50,15 +48,13 @@ PROCESSING_STEPS: List[Dict[str, Any]] = [
     #     "delay": 2.0,
     #     "error_chance": 0.00
     # },
-    # Enabled: page creation
-    {
-        "id": "process_home_page",
-        "name": "Processing Home Page Templates",
-        "module": "run_homepage_processing_step",
-        "delay": 3.0,
-        "error_chance": 0.00
-    },
-    # Enabled: inner page creation and assembly/publish
+    # {
+    #     "id": "process_home_page",
+    #     "name": "Processing Home Page Templates",
+    #     "module": "run_homepage_processing_step",
+    #     "delay": 3.0,
+    #     "error_chance": 0.00
+    # },
     {
         "id": "process_assembly",
         "name": "Assembling CMS Pages and Publishing",
