@@ -1,0 +1,39 @@
+{
+  "componentName": "Menu-new",
+  "Scopeid": 5,
+  "ParentId": "0",
+  "processAssets": false,
+  "recordList": [
+    {
+      "recordJsonString": {
+        "displayorder": 1,
+        "enable-menu-time": null,
+        "menu-booking-url": null,
+        "menu-currency": null,
+        "menu-description": "All prices are in Thai baht and subject to government tax and 10% service charge.",
+        "menu-disclaimer": null,
+        "menu-icon-class-name": null,
+        "menu-icon-image": [],
+        "menu-icon-image-alt-text": null,
+        "menu-image": "",
+        "menu-image-alt-text": null,
+        "menu-price": null,
+        "menu-price-description": null,
+        "menu-sub-title": null,
+        "menu-time-from-ampm": null,
+        "menu-time-from-hour": null,
+        "menu-time-from-minutes": null,
+        "menu-time-to-ampm": null,
+        "menu-time-to-hour": null,
+        "menu-time-to-minutes": null,
+        "menu-title": "Sample Menu",
+        "menu-type": "Sample Menu",
+        "menu-url": null,
+        "status": 1
+      },
+      "ParentRecordId": 0,
+      "ParentComponentId": 0,
+      "MainParentComponentid": 0
+    }
+  ]
+}

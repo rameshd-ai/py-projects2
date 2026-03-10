@@ -69,8 +69,7 @@
       return;
     }
     setTableVisible(true);
-    var playDisabled = !ga4Configured ? ' disabled' : '';
-    var playTitle = ga4Configured ? 'Run' : 'Configure GA4 in Settings to run';
+    var playTitle = ga4Configured ? 'Run (export to Excel)' : 'Run – enter GA4 Property ID in Settings first';
     tbody.innerHTML = sites.map(function (s) {
       var statusHtml = '';
       if (s.scan_status === 'success' && s.last_scan_at) {
@@ -91,7 +90,8 @@
         '<option value="Milestone"' + (s.site_type === 'Milestone' ? ' selected' : '') + '>Milestone</option>' +
         '</select></td>' +
         '<td class="cell-actions"><div class="actions">' +
-        '<button type="button" class="action-btn action-btn-play' + playDisabled + '" title="' + playTitle + '" data-run-id="' + escapeHtml(s.id) + '">&#9654;</button>' +
+        '<button type="button" class="action-btn action-btn-play" title="' + playTitle + '" data-run-id="' + escapeHtml(s.id) + '">&#9654;</button>' +
+        (s.export_download_url ? '<a href="' + escapeHtml(s.export_download_url) + '" download class="action-btn" title="Download Excel">&#128190;</a>' : '') +
         '<a href="' + escapeHtml(s.live_url) + '" target="_blank" rel="noopener" class="action-btn" title="Open URL">&#128279;</a>' +
         '<button type="button" class="action-btn" title="Delete" data-delete-id="' + escapeHtml(s.id) + '">&#128465;</button>' +
         '</div></td></tr>'
@@ -133,7 +133,8 @@
 
   function runSite(site, playBtn) {
     if (!ga4Configured) {
-      toast('Configure GA4 in Settings first', 'error');
+      toast('Enter GA4 Property ID in Settings first, then try again.', 'error');
+      openSettingsModal();
       return;
     }
     if (playBtn) {
@@ -149,15 +150,24 @@
     fetch(API + '/sites/' + encodeURIComponent(site.id) + '/run', { method: 'POST' })
       .then(function (res) {
         return res.json().then(function (data) {
+          if (res.status === 401 && data.login_url) {
+            window.location.href = data.login_url;
+            return;
+          }
           if (!res.ok) throw new Error(data.detail || res.statusText);
           var s = allSites.find(function (x) { return x.id === site.id; });
           if (s) {
             s.scan_status = data.scan_status;
             s.last_scan_at = data.last_scan_at;
             s.ga4_results = data.ga4_results;
+            s.export_download_url = data.export_download_url || data.download_url;
           }
           renderTable(allSites);
-          toast('Scan completed for ' + site.name, 'success');
+          if (data.download_url) {
+            toast('Export ready. Click the download icon to get the Excel file.', 'success');
+          } else {
+            toast('Scan completed for ' + site.name, 'success');
+          }
         });
       })
       .catch(function (err) {
@@ -260,45 +270,26 @@
     if (e.target === modalBackdrop) closeModal();
   });
 
-  // ---- GA4 Settings modal ----
+  // ---- GA4 Settings modal (OAuth only) ----
   var settingsBackdrop = el('settings-modal-backdrop');
   var settingsClose = el('settings-modal-close');
   var ga4PropertyId = el('ga4-property-id');
-  var credentialsType = el('credentials-type');
-  var serviceAccountGroup = el('service-account-group');
-  var serviceAccountJson = el('service-account-json');
-  var serviceAccountFile = el('service-account-file');
   var ga4PropertyIdError = el('ga4-property-id-error');
-  var serviceAccountJsonError = el('service-account-json-error');
   var settingsModalError = el('settings-modal-error');
   var settingsTestResult = el('settings-test-result');
   var btnTestConnection = el('btn-test-connection');
   var btnSettingsCancel = el('btn-settings-cancel');
   var btnSettingsSave = el('btn-settings-save');
-  var settingsHasExistingSA = false;
 
   function openSettingsModal() {
     settingsModalError.style.display = 'none';
     settingsTestResult.style.display = 'none';
-    ga4PropertyIdError.textContent = '';
-    serviceAccountJsonError.textContent = '';
+    if (ga4PropertyIdError) ga4PropertyIdError.textContent = '';
     fetchGA4Settings().then(function (data) {
       ga4PropertyId.value = data.ga4_property_id || '';
-      credentialsType.value = data.credentials_type || 'OAuth';
-      serviceAccountJson.value = '';
-      settingsHasExistingSA = !!data.has_service_account_json;
-      if (credentialsType.value === 'Service Account') {
-        serviceAccountGroup.style.display = 'block';
-        serviceAccountJson.placeholder = settingsHasExistingSA ? '(saved – leave blank to keep)' : 'Paste JSON content or upload file below';
-      } else {
-        serviceAccountGroup.style.display = 'none';
-      }
       settingsBackdrop.style.display = 'flex';
     }).catch(function () {
       ga4PropertyId.value = '';
-      credentialsType.value = 'OAuth';
-      serviceAccountGroup.style.display = 'none';
-      settingsHasExistingSA = false;
       settingsBackdrop.style.display = 'flex';
     });
   }
@@ -307,124 +298,62 @@
     settingsBackdrop.style.display = 'none';
   }
 
-  credentialsType.addEventListener('change', function () {
-    if (credentialsType.value === 'Service Account') {
-      serviceAccountGroup.style.display = 'block';
-    } else {
-      serviceAccountGroup.style.display = 'none';
-      serviceAccountJsonError.textContent = '';
-    }
-  });
-
-  serviceAccountFile.addEventListener('change', function () {
-    var f = serviceAccountFile.files[0];
-    if (!f) return;
-    var r = new FileReader();
-    r.onload = function () {
-      try {
-        var j = JSON.parse(r.result);
-        serviceAccountJson.value = JSON.stringify(j, null, 2);
-        serviceAccountJsonError.textContent = '';
-      } catch (e) {
-        serviceAccountJsonError.textContent = 'Invalid JSON file';
-      }
-    };
-    r.readAsText(f);
-    serviceAccountFile.value = '';
-  });
-
   function validateGA4Form() {
     var ok = true;
-    ga4PropertyIdError.textContent = '';
-    serviceAccountJsonError.textContent = '';
+    if (ga4PropertyIdError) ga4PropertyIdError.textContent = '';
     var pid = (ga4PropertyId.value || '').trim();
     if (!pid) {
-      ga4PropertyIdError.textContent = 'GA4 Property ID is required';
+      if (ga4PropertyIdError) ga4PropertyIdError.textContent = 'GA4 Property ID is required';
       ok = false;
     } else if (!/^\d{8,}$/.test(pid)) {
-      ga4PropertyIdError.textContent = 'Must be numeric (8+ digits)';
+      if (ga4PropertyIdError) ga4PropertyIdError.textContent = 'Must be numeric (8+ digits)';
       ok = false;
-    }
-    if (credentialsType.value === 'Service Account') {
-      var sa = (serviceAccountJson.value || '').trim();
-      if (!sa) {
-        serviceAccountJsonError.textContent = 'Service Account JSON is required';
-        ok = false;
-      } else {
-        try {
-          JSON.parse(sa);
-        } catch (e) {
-          serviceAccountJsonError.textContent = 'Invalid JSON';
-          ok = false;
-        }
-      }
     }
     return ok;
   }
 
-  btnTestConnection.addEventListener('click', function () {
-    settingsTestResult.style.display = 'none';
-    ga4PropertyIdError.textContent = '';
-    var pid = (ga4PropertyId.value || '').trim();
-    if (!pid) {
-      ga4PropertyIdError.textContent = 'GA4 Property ID is required';
-      return;
-    }
-    if (!/^\d{8,}$/.test(pid)) {
-      ga4PropertyIdError.textContent = 'Must be numeric (8+ digits)';
-      return;
-    }
-    if (credentialsType.value === 'Service Account' && !(serviceAccountJson.value || '').trim()) {
-      serviceAccountJsonError.textContent = 'Service Account JSON is required for test';
-      return;
-    }
-    btnTestConnection.disabled = true;
-    fetch(API + '/settings/ga4/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ga4_property_id: pid,
-        credentials_type: credentialsType.value,
-        service_account_json: credentialsType.value === 'Service Account' ? (serviceAccountJson.value || '').trim() : undefined
+  if (btnTestConnection) {
+    btnTestConnection.addEventListener('click', function () {
+      if (settingsTestResult) settingsTestResult.style.display = 'none';
+      if (ga4PropertyIdError) ga4PropertyIdError.textContent = '';
+      var pid = (ga4PropertyId.value || '').trim();
+      if (!pid) {
+        if (ga4PropertyIdError) ga4PropertyIdError.textContent = 'GA4 Property ID is required';
+        return;
+      }
+      if (!/^\d{8,}$/.test(pid)) {
+        if (ga4PropertyIdError) ga4PropertyIdError.textContent = 'Must be numeric (8+ digits)';
+        return;
+      }
+      btnTestConnection.disabled = true;
+      fetch(API + '/settings/ga4/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ga4_property_id: pid })
       })
-    })
-      .then(function (res) {
-        return res.json().then(function (data) {
-          settingsTestResult.style.display = 'block';
-          if (data.success) {
-            settingsTestResult.className = 'test-result success';
-            settingsTestResult.textContent = data.message || 'Connection successful';
-          } else {
-            settingsTestResult.className = 'test-result error';
-            settingsTestResult.textContent = data.message || 'Connection failed';
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (settingsTestResult) {
+            settingsTestResult.style.display = 'block';
+            settingsTestResult.className = data.success ? 'test-result success' : 'test-result error';
+            settingsTestResult.textContent = data.message || (data.success ? 'Property ID valid.' : 'Invalid');
           }
-        });
-      })
-      .catch(function () {
-        settingsTestResult.style.display = 'block';
-        settingsTestResult.className = 'test-result error';
-        settingsTestResult.textContent = 'Connection test failed';
-      })
-      .finally(function () {
-        btnTestConnection.disabled = false;
-      });
-  });
+        })
+        .catch(function () {
+          if (settingsTestResult) {
+            settingsTestResult.style.display = 'block';
+            settingsTestResult.className = 'test-result error';
+            settingsTestResult.textContent = 'Test failed';
+          }
+        })
+        .finally(function () { btnTestConnection.disabled = false; });
+    });
+  }
 
   btnSettingsSave.addEventListener('click', function () {
     settingsModalError.style.display = 'none';
     if (!validateGA4Form()) return;
-    var payload = {
-      ga4_property_id: (ga4PropertyId.value || '').trim(),
-      credentials_type: credentialsType.value
-    };
-    if (credentialsType.value === 'Service Account') {
-      var sa = (serviceAccountJson.value || '').trim();
-      if (sa) payload.service_account_json = sa;
-      else if (!settingsHasExistingSA) {
-        serviceAccountJsonError.textContent = 'Service Account JSON is required';
-        return;
-      }
-    }
+    var payload = { ga4_property_id: (ga4PropertyId.value || '').trim() };
     btnSettingsSave.disabled = true;
     fetch(API + '/settings/ga4', {
       method: 'PUT',

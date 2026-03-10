@@ -884,6 +884,10 @@ def process_sub_process():
                 from processing_steps.html_menu import run_html_menu_step
                 step_config = {"delay": 1}
                 result = run_html_menu_step(job_id, step_config, workflow_context)
+            elif module_id == 'htmlMenuSecondary':
+                from processing_steps.secondary_language_menu import run_secondary_language_menu_step
+                result = run_secondary_language_menu_step(job_id)
+                job_config = load_job_config(job_id)
             elif module_id == 'faqManager':
                 source_link = data.get('source_link')
                 if not source_link:

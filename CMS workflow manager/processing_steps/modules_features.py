@@ -19,7 +19,7 @@ def run_modules_features_step(job_id: str, step_config: Dict, workflow_context: 
     # Process modules
     module_mapping = {
         "socialFeed": "Social Feed (Zuicer)",
-        "htmlMenu": "Dine Menu: Inner Pages",
+        "htmlMenu": "Dine Menu: Primary Language",
         "faqManager": "FAQ Manager Migration",
         "ltoMigration": "LTO Migration: CMS to MiBlock",
         "rfpForm": "RFP Form Migration (Db)",
@@ -32,7 +32,7 @@ def run_modules_features_step(job_id: str, step_config: Dict, workflow_context: 
     # Dine Menu: Do NOT auto-run here - it runs only when user clicks "Process menu" in the Dine Menu popup.
     # Auto-running here caused duplicate records (menu migration ran twice: once in Step 4, once from popup).
     if job_config.get("htmlMenu", False):
-        selected_modules.append("Dine Menu: Inner Pages")
+        selected_modules.append("Dine Menu: Primary Language")
         module_results["htmlMenu"] = {
             "success": True,
             "message": "Dine Menu configured - process via popup when ready"

@@ -34,21 +34,23 @@ PROCESSING_STEPS: List[Dict[str, Any]] = [
         "delay": 1.0, 
         "error_chance": 0.00
     },
+    # Enabled: module creation only
     {
-        "id": "process_modules", 
-        "name": "Fetching and Processing Site Modules", 
-        "module": "run_module_processing_step", 
-        "delay": 1.5, 
+        "id": "process_modules",
+        "name": "Fetching and Processing Site Modules",
+        "module": "run_module_processing_step",
+        "delay": 1.5,
         "error_chance": 0.00
     },
-    {
-        "id": "process_menu_navigation",
-        "name": "Processing Menu Navigation and Records",
-        "module": "run_menu_navigation_step",
-        "delay": 2.0,
-        "error_chance": 0.00
-    },
-    # Commented out until menu issue is fixed - page creation disabled
+    # Disabled: menu navigation
+    # {
+    #     "id": "process_menu_navigation",
+    #     "name": "Processing Menu Navigation and Records",
+    #     "module": "run_menu_navigation_step",
+    #     "delay": 2.0,
+    #     "error_chance": 0.00
+    # },
+    # Disabled: page creation for now
     # {
     #     "id": "process_home_page",
     #     "name": "Processing Home Page Templates",

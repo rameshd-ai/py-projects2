@@ -203,6 +203,55 @@ def get_active_pages_from_api_all(base_url, site_id, headers):
         print(f"[ERROR] Failed to fetch active pages: {e}")
         return []
 
+
+def get_site_languages(base_url: str, site_id: Union[int, str], headers: Dict[str, str]) -> tuple:
+    """
+    Fetches site languages from the CMS PageApi.
+
+    Request body: { "siteId": site_id }
+    Response: list of language objects, e.g. mappingId, isPrimary, languageCode,
+              destinationLanguageId, urlLanguageCode, languageName.
+
+    Args:
+        base_url (str): The base URL for the API (e.g. destination site URL).
+        site_id: Site ID (int or string).
+        headers (dict): The authorization headers for the API request.
+
+    Returns:
+        tuple: (languages_list, raw_response).
+          - languages_list: list of language dicts (empty if not a list or failed).
+          - raw_response: full JSON response for saving (None on request failure).
+    """
+    site_id_param = int(site_id) if isinstance(site_id, str) and site_id.isdigit() else site_id
+    api_url = f"{base_url}/ccadmin/cms/api/PageApi/GetSiteLanguages?siteId={site_id_param}"
+    try:
+        response = requests.get(api_url, headers=headers, timeout=30)
+        raw = None
+        try:
+            raw = response.json()
+        except Exception:
+            raw = {"_raw_text": response.text[:2000] if response.text else ""}
+        if not response.ok:
+            logging.error(
+                f"[ERROR] GetSiteLanguages failed: status={response.status_code} url={api_url} body={response.text[:500]}"
+            )
+            return ([], raw if raw is not None else None)
+        response.raise_for_status()
+        if isinstance(raw, list):
+            return (raw, raw)
+        # Wrapped response (e.g. {"data": [...]})
+        for key in ("data", "languages", "result", "items"):
+            if isinstance(raw.get(key), list):
+                return (raw[key], raw)
+        return ([], raw)
+    except requests.RequestException as e:
+        logging.error(f"[ERROR] GetSiteLanguages request failed: {e}")
+        return ([], None)
+    except (ValueError, TypeError) as e:
+        logging.error(f"[ERROR] GetSiteLanguages invalid response: {e}")
+        return ([], None)
+
+
 def getComponentDetailsUsingVcompAlias(vcompalias, base_url, headers):
     """
     Fetches VComponents from CMS API and returns the raw JSON response.
@@ -301,10 +350,11 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
                         response = requests.post(api_url, headers=headers, json=record, timeout=timeout_value)
                         response.raise_for_status()
                         result = response.json()
-                        
-                        if result.get("result"):
-                            # Extract the created record ID from response
-                            created_id = result.get('result')
+                        # For update (recordId > 0), some APIs return success: true instead of result: id
+                        is_update = isinstance(record.get("recordId"), (int, float)) and int(record.get("recordId") or 0) > 0
+                        if result.get("result") or (is_update and result.get("success")):
+                            # Extract the created/updated record ID from response
+                            created_id = result.get('result') or (result.get('recordId') if is_update else None) or (record.get("recordId") if is_update else None)
                             # Handle different response formats
                             if isinstance(created_id, int):
                                 record_id = created_id
@@ -324,6 +374,7 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
                             break  # Success, exit retry loop
                         else:
                             error_msg = f"API response indicates failure for record: {record}"
+                            logging.warning("SaveMiblockRecord response (not success): %s", result)
                             print(f"[ERROR] {error_msg}", flush=True)
                             if attempt < max_retries - 1:
                                 print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
@@ -709,6 +760,10 @@ def CreateComponentRecord(base_url, headers, payload):
     """
     # 1. Construct the final API endpoint URL
     api_url = f"{base_url}/api/MiblockApi/CreateComponentRecord"
+
+    # Ensure processAssets is false in the payload
+    payload = dict(payload) if payload else {}
+    payload["processAssets"] = False
 
     print(f"[API] Attempting POST to: {api_url}")
     

@@ -674,6 +674,65 @@ def safe_int(value: Any, default: int = 0) -> int:
         return default
 
 
+def build_and_save_record_ids_summary(
+    job_id: str,
+    final_payload: List[Dict],
+    *,
+    language_label: str = "primary",
+) -> bool:
+    """
+    Builds a summary of all created record IDs (L0, L1, L2) from the menu payload
+    and saves it as JSON in the job folder. Used for primary and secondary language.
+    - Primary: record_ids_summary.json
+    - Secondary: pass language_label e.g. "secondary_lang1" -> record_ids_summary_secondary_lang1.json
+    """
+    try:
+        job_folder = get_job_folder(job_id)
+        if language_label == "primary":
+            filename = "record_ids_summary.json"
+        else:
+            # e.g. secondary_lang1 -> record_ids_summary_secondary_lang1.json
+            filename = f"record_ids_summary_{language_label}.json".replace(" ", "_")
+        out_path = os.path.join(job_folder, filename)
+
+        out = {
+            "job_id": job_id,
+            "language": language_label,
+            "source_file": "menu_api_response_final.json",
+            "menus": [],
+        }
+        for mi, menu in enumerate(final_payload):
+            sections = menu.get("MenuSections", [])
+            l0_id = sections[0].get("ParentRecordId") if sections else None
+            menu_entry = {
+                "menu_index": mi + 1,
+                "menu_title": menu.get("recordJsonString", {}).get("menu-title"),
+                "L0_record_id": l0_id,
+                "sections": [],
+            }
+            for si, sec in enumerate(sections):
+                l1_id = sec.get("NewRecordId_L1")
+                items = sec.get("MenuItems", [])
+                item_ids = [it.get("NewRecordId_L2") for it in items if it.get("NewRecordId_L2")]
+                menu_entry["sections"].append({
+                    "section_index": si + 1,
+                    "section_name": sec.get("recordJsonString", {}).get("section-name"),
+                    "L1_record_id": l1_id,
+                    "L2_record_ids": item_ids,
+                })
+            out["menus"].append(menu_entry)
+
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(out, f, indent=2)
+        logger.info("Record IDs summary saved to %s", out_path)
+        print(f"[OK] Record IDs summary saved: {filename}", flush=True)
+        return True
+    except Exception as e:
+        logger.exception("Failed to save record IDs summary: %s", e)
+        print(f"[WARNING] Could not save record IDs summary: {e}", flush=True)
+        return False
+
+
 def process_menu_levels(job_id: str, destination_url: str, destination_site_id: str, destination_token: str) -> bool:
     """
     Processes all menu levels (0, 1, 2, 3a, 3b) and creates records in destination
@@ -1067,6 +1126,9 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     except Exception as e:
         logger.error(f"Error saving L2 final payload: {e}")
         return False
+
+    # Save record IDs summary for primary language (and for secondary language when that flow runs)
+    build_and_save_record_ids_summary(job_id, final_payload, language_label="primary")
     
     logger.info("All menu levels processing completed successfully (L0, L1, L2 only; addons/prices are flat in level_2)")
     return True

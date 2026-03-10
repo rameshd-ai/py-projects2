@@ -4,9 +4,12 @@ from uuid import UUID
 
 from flask import Blueprint, request, jsonify
 
+from app.config import settings
 from apps.new_site_review.db.settings_store import get_ga4_settings
 from apps.new_site_review.db.store import site_store
 from apps.new_site_review.models.site import SiteType
+from apps.new_site_review.routers.auth import get_credentials
+from apps.new_site_review.services.export_service import build_export
 
 sites_bp = Blueprint("sites", __name__)
 
@@ -24,6 +27,8 @@ def _to_response(site):
         out["scan_status"] = site.scan_status
     if getattr(site, "ga4_results", None):
         out["ga4_results"] = site.ga4_results
+    if getattr(site, "export_download_url", None):
+        out["export_download_url"] = site.export_download_url
     return out
 
 
@@ -102,18 +107,14 @@ def delete_site(site_id):
     return "", 204
 
 
-def _mock_ga4_fetch(site):
-    """Placeholder: return mock GA4 metrics. Replace with real Google Analytics Data API call."""
-    return {
-        "sessions": 1250,
-        "users": 890,
-        "page_views": 4200,
-        "events": 8100,
-    }
+def _login_url():
+    base = (settings.app_base_url or "").rstrip("/")
+    return f"{base}/new-site-review/api/auth/login"
 
 
 @sites_bp.route("/<site_id>/run", methods=["POST"])
 def run_site_scan(site_id):
+    """Export site to Excel (GSC + GA4 + crawl). Requires OAuth login."""
     try:
         uid = UUID(site_id)
     except ValueError:
@@ -123,18 +124,45 @@ def run_site_scan(site_id):
         return jsonify({"detail": "Site not found"}), 404
     ga4 = get_ga4_settings()
     if not ga4 or not ga4.is_configured():
-        return jsonify({"detail": "GA4 settings not configured. Open Settings to configure."}), 422
+        return jsonify({"detail": "GA4 Property ID not configured. Open Settings and enter your GA4 Property ID."}), 422
+    creds = get_credentials()
+    if not creds:
+        return jsonify({
+            "detail": "Sign in with Google to export data.",
+            "login_required": True,
+            "login_url": _login_url(),
+        }), 401
     site_store.update(uid, scan_status="running")
     try:
-        metrics = _mock_ga4_fetch(site)
+        filename, download_path = build_export(
+            site_id=site_id,
+            site_name=site.name,
+            live_url=site.live_url,
+        )
         site_store.update(
             uid,
             scan_status="success",
             last_scan_at=datetime.utcnow(),
-            ga4_results=metrics,
+            ga4_results={"export": filename},
+            export_download_url=download_path,
         )
         site = site_store.get(uid)
-        return jsonify(_to_response(site))
+        return jsonify({
+            **_to_response(site),
+            "download_url": download_path,
+            "filename": filename,
+        })
+    except RuntimeError as e:
+        msg = str(e)
+        if "Not logged in" in msg or "Sign in" in msg:
+            site_store.update(uid, scan_status="failed")
+            return jsonify({
+                "detail": msg,
+                "login_required": True,
+                "login_url": _login_url(),
+            }), 401
+        site_store.update(uid, scan_status="failed")
+        return jsonify({"detail": msg}), 500
     except Exception as e:
         site_store.update(uid, scan_status="failed")
         return jsonify({"detail": str(e)}), 500
