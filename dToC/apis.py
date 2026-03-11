@@ -783,8 +783,17 @@ def GetPageCategoryList(base_url, headers):
         # 3. Trigger exception for HTTP error codes (4xx, 5xx)
         response.raise_for_status()
         time.sleep(2)
-        # 4. Return JSON body (expected to be a list of categories)
-        return response.json()
+        # 4. Return JSON body (list of categories, or unwrap if API returns { "Data": [...] } etc.)
+        data = response.json()
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            if data.get("error"):
+                return data
+            for key in ("Data", "data", "Categories", "categories", "Result", "result"):
+                if isinstance(data.get(key), list):
+                    return data[key]
+        return data
 
     except requests.exceptions.HTTPError as http_err:
         status_code = response.status_code if 'response' in locals() else 'N/A'
@@ -959,10 +968,10 @@ def GetAllVComponents(base_url: str, headers: Dict[str, str], page_size: int = 1
             
             # --- 3. Send API Request ---
             response = requests.post(
-                api_url, 
-                headers=headers, 
-                data=json_payload_string, 
-                timeout=30 # Increased timeout for potentially long requests
+                api_url,
+                headers=headers,
+                data=json_payload_string,
+                timeout=120  # V-Component list can be large; allow 2 min per page
             )
             response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
             

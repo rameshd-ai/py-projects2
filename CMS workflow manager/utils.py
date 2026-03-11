@@ -6,7 +6,7 @@ import json
 import time
 import importlib
 import logging
-from typing import Dict, Any, Generator
+from typing import Dict, Any, Generator, Callable, Optional
 from config import PROCESSING_STEPS, UPLOAD_FOLDER, OUTPUT_FOLDER
 
 logging.basicConfig(level=logging.INFO)
@@ -73,6 +73,44 @@ def save_job_config(job_id: str, config: Dict[str, Any]) -> bool:
     except Exception as e:
         logger.error(f"Failed to save config for {job_id}: {e}")
         return False
+
+
+def make_destination_token_refresh_callback(job_id: str) -> Optional[Callable[[], Optional[Dict[str, str]]]]:
+    """
+    Returns a callable that refreshes the destination CMS token and returns new headers.
+    Used by addUpdateRecordsToCMS when the API returns 401 or session expired so we retry with a new token.
+    Returns None if job_id is empty or config is missing URL/profile alias.
+    """
+    if not (job_id or "").strip():
+        return None
+
+    def _refresh() -> Optional[Dict[str, str]]:
+        try:
+            from apis import generate_cms_token
+            config = load_job_config(job_id)
+            url = (config.get("destinationUrl") or "").strip()
+            profile = (config.get("destinationProfileAliasId") or "").strip()
+            if not url or not profile:
+                logger.warning("Cannot refresh destination token: missing destinationUrl or destinationProfileAliasId")
+                return None
+            resp = generate_cms_token(url, profile)
+            if not resp or not resp.get("token"):
+                logger.warning("Destination token refresh: no token in response")
+                return None
+            token = resp["token"]
+            config["destination_cms_token"] = token
+            save_job_config(job_id, config)
+            logger.info("Destination CMS token refreshed successfully for job %s", job_id)
+            return {
+                "Content-Type": "application/json",
+                "ms_cms_clientapp": "ProgrammingApp",
+                "Authorization": f"Bearer {token}",
+            }
+        except Exception as e:
+            logger.warning("Destination token refresh failed: %s", e)
+            return None
+
+    return _refresh
 
 
 def execute_single_step(job_id: str, step_number: int) -> Dict[str, Any]:

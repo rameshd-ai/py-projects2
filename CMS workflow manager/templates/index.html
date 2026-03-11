@@ -746,12 +746,21 @@
                     <h1>WebSite Creation Workflow</h1>
                     <p>OSB/Template/Custom project</p>
                 </div>
-                <a href="/jobs" class="header-link" style="background: white !important; color: #2563eb !important; border: 2px solid white !important; padding: 12px 24px !important; font-size: 15px !important; font-weight: 600 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    View All Jobs
-                </a>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <a href="/jobs" class="header-link" style="background: white !important; color: #2563eb !important; border: 2px solid white !important; padding: 12px 24px !important; font-size: 15px !important; font-weight: 600 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 6px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        View All Jobs
+                    </a>
+                    <button type="button" onclick="if(confirm('Stop the server? The app will close.')) { window.location.href='/shutdown'; }" style="background: #dc2626 !important; color: white !important; border: none !important; padding: 12px 24px !important; font-size: 15px !important; font-weight: 600 !important; border-radius: 8px !important; cursor: pointer !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; display: inline-flex; align-items: center; gap: 6px;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                        </svg>
+                        Shutdown
+                    </button>
+                </div>
             </div>
 
         <!-- Jobs Link Banner (Additional Prominent Link) -->
@@ -1213,14 +1222,14 @@
 
                         <!-- Navigation -->
                         <div class="wizard-navigation">
-                            <button class="btn btn-secondary" id="prevBtn" onclick="previousStep()" disabled>
+                            <button class="btn btn-secondary" id="prevBtn" type="button" disabled>
                                 Previous
                             </button>
                             <div style="display: flex; gap: 12px;">
-                                <button class="btn btn-secondary" id="skipNextBtn" onclick="skipCurrentStep()">
+                                <button class="btn btn-secondary" id="skipNextBtn" type="button">
                                     Skip
                                 </button>
-                                <button class="btn btn-primary" id="nextBtn" onclick="nextStep()">
+                                <button class="btn btn-primary" id="nextBtn" type="button">
                                     Process
                                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
@@ -1375,19 +1384,22 @@
             document.getElementById('currentStepNum').textContent = currentStep;
 
             // Update buttons
-            document.getElementById('prevBtn').disabled = currentStep === 1 || workflowInProgress;
+            const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             const skipNextBtn = document.getElementById('skipNextBtn');
-            nextBtn.disabled = workflowInProgress;
-            // Skip = skip current step (no processing). Hide on step 1; disable when workflow in progress
-            const showSkipBtn = currentStep > 1;
-            skipNextBtn.style.display = showSkipBtn ? '' : 'none';
-            skipNextBtn.disabled = workflowInProgress;
-            
-            if (currentStep === totalSteps) {
-                nextBtn.innerHTML = 'Process <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-            } else {
-                nextBtn.innerHTML = 'Process <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>';
+            if (prevBtn) prevBtn.disabled = currentStep === 1 || workflowInProgress;
+            if (nextBtn) {
+                nextBtn.disabled = (currentStep !== 1 && workflowInProgress);
+                if (currentStep === totalSteps) {
+                    nextBtn.innerHTML = 'Process <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                } else {
+                    nextBtn.innerHTML = 'Process <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>';
+                }
+            }
+            if (skipNextBtn) {
+                const showSkipBtn = currentStep > 1;
+                skipNextBtn.style.display = showSkipBtn ? '' : 'none';
+                skipNextBtn.disabled = workflowInProgress;
             }
 
             // Update summary if on last step
@@ -1679,6 +1691,7 @@
                 showCompletion();
             }
         }
+        window.nextStep = nextStep;
         
         function showProcessingModal(message = 'Processing...') {
             // Remove existing modal if any
@@ -2052,58 +2065,56 @@
             }
         }
 
-        // Load job configuration and populate form
+        // Load job configuration and populate form (used when resuming from View All Jobs)
         async function loadJobConfiguration() {
             if (!jobId || jobId.startsWith('job_') === false) {
-                return; // Only load if it's an existing job ID
+                return;
             }
-            
             try {
                 const response = await fetch(`/api/job-config/${jobId}`);
-                const result = await response.json();
-                
-                if (result.success && result.config) {
-                    const config = result.config;
-                    
-                    // Populate Step 1 fields
-                    if (config.sourceUrl) document.getElementById('sourceUrl').value = config.sourceUrl;
-                    if (config.sourceSiteId) document.getElementById('sourceSiteId').value = config.sourceSiteId;
-                    if (config.sourceProfileAliasId) document.getElementById('sourceProfileAliasId').value = config.sourceProfileAliasId;
-                    if (config.destinationUrl) document.getElementById('destinationUrl').value = config.destinationUrl;
-                    if (config.destinationSiteId) document.getElementById('destinationSiteId').value = config.destinationSiteId;
-                    if (config.destinationProfileAliasId) document.getElementById('destinationProfileAliasId').value = config.destinationProfileAliasId;
-                    if (config.locationId) document.getElementById('locationId').value = config.locationId;
-                    if (config.createFrom) document.getElementById('createFrom').value = config.createFrom;
-                    if (config.applicationPool) document.getElementById('applicationPool').value = config.applicationPool;
-                    if (config.siteName) document.getElementById('siteName').value = config.siteName;
-                    if (config.siteUrl) document.getElementById('siteUrl').value = config.siteUrl;
-                    if (config.iisCertificate) document.getElementById('iisCertificate').value = config.iisCertificate;
-                    if (config.alternativeBindings) document.getElementById('alternativeBindings').value = config.alternativeBindings;
-                    if (config.createCopyAsset) document.getElementById('createCopyAsset').value = config.createCopyAsset;
-                    if (config.copyPhysicalFiles) document.getElementById('copyPhysicalFiles').value = config.copyPhysicalFiles;
-                    if (config.secondaryLanguageSite) document.getElementById('secondaryLanguageSite').value = config.secondaryLanguageSite;
-                    if (config.siteLanguage) document.getElementById('siteLanguage').value = config.siteLanguage;
-                    if (config.siteCountry) document.getElementById('siteCountry').value = config.siteCountry;
-                    if (config.translationRequired) document.getElementById('translationRequired').value = config.translationRequired;
-                    if (config.trackingCode) document.getElementById('trackingCode').value = config.trackingCode;
-                    
-                    // Handle radio buttons
-                    if (config.createSiteType) {
-                        const radio = document.querySelector(`input[name="createSiteType"][value="${config.createSiteType}"]`);
-                        if (radio) radio.checked = true;
-                    }
-                    
-                    // Populate Step 2 fields
-                    if (config.fontPulled) document.getElementById('fontPulled').checked = config.fontPulled;
-                    
-                    // Populate Step 3 fields
-                    if (config.miblockMigration) document.getElementById('miblockMigration').checked = config.miblockMigration;
-                    if (config.migrationApproach) document.getElementById('migrationApproach').value = config.migrationApproach;
-                    
-                    // Populate Step 4 - sub-processes status will be checked after loadJobStatus
-                    
-                    toggleBrandUploadFields();
+                const result = await response.json().catch(() => ({}));
+                const config = result.config || result.configuration || result.job_config;
+                if (!config || typeof config !== 'object') {
+                    if (!response.ok) console.warn('Job config not loaded:', response.status, result.error || '');
+                    return;
                 }
+                function setVal(id, val) {
+                    const el = document.getElementById(id);
+                    if (el && val !== undefined && val !== null) el.value = String(val);
+                }
+                function setCheck(id, val) {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = Boolean(val);
+                }
+                // Step 1 fields (set even when empty so resume shows saved data)
+                setVal('sourceUrl', config.sourceUrl);
+                setVal('sourceSiteId', config.sourceSiteId);
+                setVal('sourceProfileAliasId', config.sourceProfileAliasId);
+                setVal('destinationUrl', config.destinationUrl);
+                setVal('destinationSiteId', config.destinationSiteId);
+                setVal('destinationProfileAliasId', config.destinationProfileAliasId);
+                setVal('locationId', config.locationId);
+                setVal('createFrom', config.createFrom);
+                setVal('applicationPool', config.applicationPool);
+                setVal('siteName', config.siteName);
+                setVal('siteUrl', config.siteUrl);
+                setVal('iisCertificate', config.iisCertificate);
+                setVal('alternativeBindings', config.alternativeBindings);
+                setVal('createCopyAsset', config.createCopyAsset);
+                setVal('copyPhysicalFiles', config.copyPhysicalFiles);
+                setVal('secondaryLanguageSite', config.secondaryLanguageSite);
+                setVal('siteLanguage', config.siteLanguage);
+                setVal('siteCountry', config.siteCountry);
+                setVal('translationRequired', config.translationRequired);
+                setVal('trackingCode', config.trackingCode);
+                if (config.createSiteType) {
+                    const radio = document.querySelector(`input[name="createSiteType"][value="${config.createSiteType}"]`);
+                    if (radio) radio.checked = true;
+                }
+                setCheck('fontPulled', config.fontPulled);
+                setCheck('miblockMigration', config.miblockMigration);
+                setVal('migrationApproach', config.migrationApproach);
+                toggleBrandUploadFields();
             } catch (error) {
                 console.error('Error loading job configuration:', error);
             }
@@ -2182,6 +2193,10 @@
                             }
                         } else {
                             // Not processed and not disabled: keep Process button so user can run Dine Menu / FAQ
+                            // Do not overwrite button if a request is in flight (processing class)
+                            if (moduleItem.classList.contains('processing')) {
+                                return;
+                            }
                             moduleItem.classList.remove('skipped');
                             const btn = moduleItem.querySelector('.sub-process-btn');
                             if (btn) {
@@ -2299,11 +2314,11 @@
                 }
             }
             
-            // Process the module
+            // Process the module (primary menu reprocess = update existing records)
             if (moduleId === 'htmlMenu') {
-                await processSubProcessDirectly('htmlMenu');
+                await processSubProcessDirectly('htmlMenu', { reprocess: true });
             } else if (moduleId === 'htmlMenuSecondary') {
-                handleSecondaryLanguageClick();
+                await processSubProcessDirectly('htmlMenuSecondary');
             } else if (moduleId === 'faqManager') {
                 showFaqManagerModal();
             } else {
@@ -2313,31 +2328,25 @@
 
         // Initialize - load job status and update UI
         (async function init() {
-            // If resuming a job, load its configuration
+            // If resuming from View All Jobs, load config first so Step 1 has data
             if (jobId && urlJobId) {
                 await loadJobConfiguration();
             }
-            
             await loadJobStatus();
             await checkSubProcessStatus();
-            
-            // Set current step based on completed steps
-            const stepIds = ['site_setup', 'brand_theme', 'content_plugin', 'modules_features', 'finalize'];
-            let lastCompletedStep = 0;
-            for (let i = 0; i < stepIds.length; i++) {
-                if (stepStatus[i + 1] === 'success') {
-                    lastCompletedStep = i + 1;
-                }
-            }
-            // Set current step to the next incomplete step
-            if (lastCompletedStep < totalSteps) {
-                currentStep = lastCompletedStep + 1;
+            // When resuming, show Step 1 first so user sees their saved data
+            if (urlJobId) {
+                currentStep = 1;
             } else {
-                currentStep = totalSteps;
+                const stepIds = ['site_setup', 'brand_theme', 'content_plugin', 'modules_features', 'finalize'];
+                let lastCompletedStep = 0;
+                for (let i = 0; i < stepIds.length; i++) {
+                    if (stepStatus[i + 1] === 'success') lastCompletedStep = i + 1;
+                }
+                currentStep = lastCompletedStep < totalSteps ? lastCompletedStep + 1 : totalSteps;
             }
-            
             updateUI();
-            toggleBrandUploadFields(); // Apply initial state for file uploads
+            toggleBrandUploadFields();
         })();
 
         // Sub-Process Functions
@@ -2376,18 +2385,31 @@
                 formData.step_number = 4;
                 formData.module_id = moduleId;
                 
-                // Process the sub-process
-                const response = await fetch('/api/process-sub-process', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        job_id: jobId,
-                        module_id: moduleId,
-                        form_data: formData
-                    })
-                });
-                
-                const result = await response.json();
+                // Process the sub-process (long timeout for menu steps)
+                const timeoutMs = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 600000 : 120000;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                let response;
+                try {
+                    response = await fetch('/api/process-sub-process', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            job_id: jobId,
+                            module_id: moduleId,
+                            form_data: formData
+                        }),
+                        signal: controller.signal
+                    });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+                let result;
+                try {
+                    result = await response.json();
+                } catch (parseErr) {
+                    throw new Error(response && response.status ? 'Server returned ' + response.status + ' (non-JSON)' : 'No response from server');
+                }
                 
                 if (result.success) {
                     // Mark as processed
@@ -2399,17 +2421,35 @@
                     
                     // Check if all sub-processes are done
                     checkStep4Completion();
+                } else if (response.status === 429 || (result.error && result.error.indexOf('Already processing') !== -1)) {
+                    // Keep button as Processing... so user does not click again
+                    if (processBtn) {
+                        processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                        processBtn.disabled = true;
+                    }
+                    alert(result.error || 'This step is still running. Please wait for it to finish.');
                 } else {
                     throw new Error(result.error || 'Failed to process sub-process');
                 }
             } catch (error) {
                 console.error('Error processing sub-process:', error);
-                alert('Failed to process sub-process: ' + error.message);
-                subProcess.classList.remove('processing');
-                if (processBtn) {
-                    processBtn.disabled = false;
-                    processBtn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
-                    processBtn.style.cursor = '';
+                const isAlreadyProcessing = error.message && error.message.indexOf('Already processing') !== -1;
+                if (isAlreadyProcessing && processBtn) {
+                    processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                    processBtn.disabled = true;
+                    alert('This step is still running. Please wait for it to finish.');
+                } else {
+                    const isFailedFetch = (error.message === 'Failed to fetch' || error.name === 'AbortError');
+                    const msg = isFailedFetch
+                        ? 'Connection error. Check that the server is running (e.g. python app.py). If the step takes many minutes, it may have timed out—try again.'
+                        : ('Failed to process sub-process: ' + error.message);
+                    alert(msg);
+                    subProcess.classList.remove('processing');
+                    if (processBtn) {
+                        processBtn.disabled = false;
+                        processBtn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
+                        processBtn.style.cursor = '';
+                    }
                 }
             }
         }
@@ -2419,7 +2459,8 @@
             await processSubProcessDirectly('htmlMenu');
         }
         
-        async function processSubProcessDirectly(moduleId) {
+        async function processSubProcessDirectly(moduleId, options) {
+            options = options || {};
             const subProcess = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
             const processBtn = subProcess?.querySelector('.sub-process-btn');
             
@@ -2442,11 +2483,20 @@
             
             // Set processing state – keep button disabled until process finishes
             subProcess.classList.add('processing');
+            const processingLabel = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             if (processBtn) {
                 processBtn.disabled = true;
-                processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                processBtn.innerHTML = processingLabel;
                 processBtn.style.cursor = 'not-allowed';
             }
+            // Keep card button label correct (e.g. extensions may change it to "Get Answer")
+            const keepCardLabelInterval = setInterval(() => {
+                const item = document.querySelector(`.sub-process-item[data-module="${moduleId}"]`);
+                const btn = item?.querySelector('.sub-process-btn');
+                if (item?.classList.contains('processing') && btn && btn.disabled && !btn.innerHTML.includes('Processing') && !btn.innerHTML.includes('Processed')) {
+                    btn.innerHTML = processingLabel;
+                }
+            }, 400);
             
             try {
                 // Collect form data
@@ -2463,18 +2513,29 @@
                 }
                 // Add other modules as needed
                 
-                // Process the sub-process
-                const response = await fetch('/api/process-sub-process', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        job_id: jobId,
-                        module_id: moduleId,
-                        form_data: formData
-                    })
-                });
-                
-                const result = await response.json();
+                // Process the sub-process (long timeout for primary/secondary menu – can take several minutes)
+                const timeoutMs = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 600000 : 120000;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                const body = { job_id: jobId, module_id: moduleId, form_data: formData };
+                if (options.reprocess) body.reprocess = true;
+                let response;
+                try {
+                    response = await fetch('/api/process-sub-process', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(body),
+                        signal: controller.signal
+                    });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+                let result;
+                try {
+                    result = await response.json();
+                } catch (parseErr) {
+                    throw new Error(response && response.status ? 'Server returned ' + response.status + ' (non-JSON)' : 'No response from server');
+                }
                 
                 if (result.success) {
                     // Mark as processed (state is saved on backend) – only then re-enable
@@ -2529,19 +2590,39 @@
                     
                     // Check if all sub-processes are done
                     checkStep4Completion();
+                } else if (response.status === 429 || (result.error && result.error.indexOf('Already processing') !== -1)) {
+                    // Keep button as Processing... so user does not click again
+                    if (processBtn) {
+                        processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                        processBtn.disabled = true;
+                    }
+                    alert(result.error || 'This step is still running. Please wait for it to finish.');
                 } else {
                     throw new Error(result.error || 'Failed to process sub-process');
                 }
             } catch (error) {
                 console.error('Error processing sub-process:', error);
-                alert('Failed to process sub-process: ' + error.message);
-                subProcess.classList.remove('processing');
-                if (processBtn) {
-                    processBtn.disabled = false;
-                    processBtn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
-                    processBtn.style.background = '#10b981';
-                    processBtn.style.cursor = '';
+                const isAlreadyProcessing = error.message && error.message.indexOf('Already processing') !== -1;
+                if (isAlreadyProcessing && processBtn) {
+                    processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                    processBtn.disabled = true;
+                    alert('This step is still running. Please wait for it to finish.');
+                } else {
+                    const isFailedFetch = (error.message === 'Failed to fetch' || error.name === 'AbortError');
+                    const msg = isFailedFetch
+                        ? 'Connection error. Check that the server is running (e.g. python app.py). If the step takes many minutes, it may have timed out—try again.'
+                        : ('Failed to process sub-process: ' + error.message);
+                    alert(msg);
+                    subProcess.classList.remove('processing');
+                    if (processBtn) {
+                        processBtn.disabled = false;
+                        processBtn.innerHTML = (moduleId === 'htmlMenu' || moduleId === 'htmlMenuSecondary') ? 'Start Process' : 'Process';
+                        processBtn.style.background = '#10b981';
+                        processBtn.style.cursor = '';
+                    }
                 }
+            } finally {
+                clearInterval(keepCardLabelInterval);
             }
         }
 
@@ -2982,7 +3063,7 @@
                     </div>
 
                     <div style="padding: 16px 24px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-                        <div style="display: flex; gap: 12px;">
+                        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                             <button type="button" onclick="processSecondaryLanguageFromModal()" id="processSecondaryLangBtn" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 14px;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'" title="Process all configured secondary languages">Process all</button>
                         </div>
                         <div style="display: flex; gap: 12px;">
@@ -3156,31 +3237,33 @@
                     return;
                 }
                 if (stepsLogEl) stepsLogEl.innerHTML += '<div style="margin-top: 8px; color: #059669; font-weight: 600;"><i class="fas fa-check"></i> All steps completed.</div>';
-                processedSubProcesses['htmlMenuSecondary'] = true;
-                const card = document.querySelector('.sub-process-item[data-module="htmlMenuSecondary"]');
-                if (card) {
-                    card.classList.add('processed');
-                    card.classList.remove('processing');
-                    const btn = card.querySelector('.sub-process-btn');
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-check"></i> Processed';
-                        btn.style.background = '#10b981';
-                        btn.onclick = () => reprocessModule('htmlMenuSecondary');
-                        btn.title = 'Click to reprocess';
+                if (result.success) {
+                    processedSubProcesses['htmlMenuSecondary'] = true;
+                    const card = document.querySelector('.sub-process-item[data-module="htmlMenuSecondary"]');
+                    if (card) {
+                        card.classList.add('processed');
+                        card.classList.remove('processing');
+                        const btn = card.querySelector('.sub-process-btn');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-check"></i> Processed';
+                            btn.style.background = '#10b981';
+                            btn.onclick = () => reprocessModule('htmlMenuSecondary');
+                            btn.title = 'Click to reprocess';
+                        }
+                        if (!card.querySelector('.reprocess-btn')) {
+                            const rp = document.createElement('button');
+                            rp.className = 'reprocess-btn';
+                            rp.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
+                            rp.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                            rp.onclick = () => reprocessModule('htmlMenuSecondary');
+                            if (btn) btn.parentNode.appendChild(rp);
+                        }
                     }
-                    if (!card.querySelector('.reprocess-btn')) {
-                        const rp = document.createElement('button');
-                        rp.className = 'reprocess-btn';
-                        rp.innerHTML = '<i class="fas fa-redo"></i> Reprocess';
-                        rp.style.cssText = 'padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;';
-                        rp.onclick = () => reprocessModule('htmlMenuSecondary');
-                        if (btn) btn.parentNode.appendChild(rp);
-                    }
+                    setTimeout(function() { closeSecondaryLanguageModal(); }, 1500);
+                } else {
+                    if (processBtn) { processBtn.disabled = false; processBtn.innerHTML = 'Process all'; processBtn.style.cursor = ''; }
                 }
-                setTimeout(function() {
-                    closeSecondaryLanguageModal();
-                }, 1500);
             } catch (err) {
                 console.error('Secondary language process error:', err);
                 if (processBtn) { processBtn.disabled = false; processBtn.innerHTML = 'Process'; processBtn.style.cursor = ''; }
@@ -3497,6 +3580,16 @@
                 modal.remove();
             }
         }
+
+        // Bind Step 1 navigation buttons in code so they work even if global scope is affected (e.g. extensions)
+        (function bindNavButtons() {
+            var nextBtn = document.getElementById('nextBtn');
+            var prevBtn = document.getElementById('prevBtn');
+            var skipNextBtn = document.getElementById('skipNextBtn');
+            if (nextBtn) nextBtn.addEventListener('click', function() { nextStep(); });
+            if (prevBtn) prevBtn.addEventListener('click', function() { previousStep(); });
+            if (skipNextBtn) skipNextBtn.addEventListener('click', function() { skipCurrentStep(); });
+        })();
     </script>
 </body>
 </html>

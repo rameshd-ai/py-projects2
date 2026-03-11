@@ -151,15 +151,17 @@ def run_secondary_language_menu_step(
     job_id: str,
     lang_key: str = None,
     reprocess_only: bool = False,
+    paper_check: bool = False,
 ) -> Dict[str, Any]:
     """
     Runs secondary language processing for the given job.
     - lang_key: optional 'lang1', 'lang2', 'lang3' to process only that language.
     - reprocess_only: if True (and lang_key set), only run Step 3 (update records); skip Step 0, 1, 2.
+    - paper_check: if True, run Step 3 in dry_run (build payloads, write preview file; no API/DB writes).
     Step 0: Export MiBlock for primary (destination) site, unzip, create component map.
     Step 1: Generate login token for each (or selected) secondary language URL.
     Step 2: For each (or selected) site, get menu data and save to job folder.
-    Step 3: Update secondary language records with menu data.
+    Step 3: Update secondary language records with menu data (or paper check only when paper_check=True).
     """
     steps_log: List[Dict[str, str]] = []
     job_config = load_job_config(job_id)
@@ -194,11 +196,11 @@ def run_secondary_language_menu_step(
 
     if reprocess_only and lang_key:
         # Only Step 3: update records for this language
-        steps_log.append({"step": 3, "message": f"Re-processing: updating records for {lang_key} only..."})
-        logger.info(f"[{job_id}] Secondary language reprocess only: {lang_key}")
+        steps_log.append({"step": 3, "message": f"Re-processing: updating records for {lang_key} only..." + (" (paper check, no DB writes)" if paper_check else "")})
+        logger.info(f"[{job_id}] Secondary language reprocess only: {lang_key}, paper_check={paper_check}")
         try:
             from .secondary_language_update import run_secondary_language_update_step
-            update_result = run_secondary_language_update_step(job_id, steps_log, lang_key=lang_key)
+            update_result = run_secondary_language_update_step(job_id, steps_log, lang_key=lang_key, dry_run=paper_check)
             updated_count = update_result.get("updated_count", 0)
             if not update_result.get("success"):
                 steps_log.append({"step": 3, "message": update_result.get("error", "Update failed")})
@@ -278,12 +280,12 @@ def run_secondary_language_menu_step(
     steps_log.append({"step": 2, "message": f"Step 2 done. Menu files saved: {len(menu_files)}"})
 
     # ---------- Step 3: Update secondary language records with menu data ----------
-    steps_log.append({"step": 3, "message": "Updating secondary language records with menu data (align by sequence)..."})
-    logger.info(f"[{job_id}] Secondary language Step 3: Update records (lang_key={lang_key})")
+    steps_log.append({"step": 3, "message": "Updating secondary language records with menu data (align by sequence)..." + (" (paper check, no DB writes)" if paper_check else "")})
+    logger.info(f"[{job_id}] Secondary language Step 3: Update records (lang_key={lang_key}, paper_check={paper_check})")
     updated_count = 0
     try:
         from .secondary_language_update import run_secondary_language_update_step
-        update_result = run_secondary_language_update_step(job_id, steps_log, lang_key=lang_key)
+        update_result = run_secondary_language_update_step(job_id, steps_log, lang_key=lang_key, dry_run=paper_check)
         updated_count = update_result.get("updated_count", 0)
         if not update_result.get("success"):
             steps_log.append({"step": 3, "message": f"Update step reported: {update_result.get('error', 'unknown')}"})

@@ -853,6 +853,8 @@ def process_sub_process():
             "job_config": job_config,
             "job_id": job_id
         }
+        if data.get("reprocess", False):
+            workflow_context["reprocess"] = True
         
         # Prevent concurrent processing of same job+module (avoids duplicate records)
         lock_key = f"{job_id}:{module_id}"
@@ -888,7 +890,8 @@ def process_sub_process():
                 from processing_steps.secondary_language_menu import run_secondary_language_menu_step
                 lang_key = data.get('lang_key')  # optional: 'lang1', 'lang2', 'lang3'
                 reprocess_only = data.get('reprocess_only', False)
-                result = run_secondary_language_menu_step(job_id, lang_key=lang_key, reprocess_only=reprocess_only)
+                paper_check = data.get('paper_check', False)
+                result = run_secondary_language_menu_step(job_id, lang_key=lang_key, reprocess_only=reprocess_only, paper_check=paper_check)
                 job_config = load_job_config(job_id)
             elif module_id == 'faqManager':
                 source_link = data.get('source_link')
@@ -902,22 +905,24 @@ def process_sub_process():
             
             if result and result.get("success", True):
                 from utils import save_job_config
-                if 'processed_modules' not in job_config:
-                    job_config['processed_modules'] = {}
-                job_config['processed_modules'][module_id] = True
-                job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
-                if module_id == 'htmlMenuSecondary':
-                    if 'processed_secondary_languages' not in job_config:
-                        job_config['processed_secondary_languages'] = {}
-                    lang_key = data.get('lang_key')
-                    if lang_key:
-                        job_config['processed_secondary_languages'][lang_key] = True
-                    else:
-                        sec = job_config.get('secondaryLanguage') or {}
-                        for k in ('lang1', 'lang2', 'lang3'):
-                            if (sec.get(k) or {}).get('sourceUrl'):
-                                job_config['processed_secondary_languages'][k] = True
-                save_job_config(job_id, job_config)
+                # Do not mark as processed when paper_check: user must run again without paper check to apply
+                if not data.get('paper_check', False):
+                    if 'processed_modules' not in job_config:
+                        job_config['processed_modules'] = {}
+                    job_config['processed_modules'][module_id] = True
+                    job_config['processed_modules'][f"{module_id}_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                    if module_id == 'htmlMenuSecondary':
+                        if 'processed_secondary_languages' not in job_config:
+                            job_config['processed_secondary_languages'] = {}
+                        lang_key = data.get('lang_key')
+                        if lang_key:
+                            job_config['processed_secondary_languages'][lang_key] = True
+                        else:
+                            sec = job_config.get('secondaryLanguage') or {}
+                            for k in ('lang1', 'lang2', 'lang3'):
+                                if (sec.get(k) or {}).get('sourceUrl'):
+                                    job_config['processed_secondary_languages'][k] = True
+                    save_job_config(job_id, job_config)
                 logging.info(f"Marked {module_id} as processed for job {job_id}")
                 return jsonify({"success": True, "module_id": module_id, "result": result})
             else:
@@ -962,6 +967,16 @@ def download_faq_file():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route('/shutdown', methods=['GET', 'POST'])
+def shutdown_server():
+    """Stop the Flask server (only from localhost). Use when you can't close the terminal."""
+    if request.remote_addr not in ('127.0.0.1', '::1', 'localhost'):
+        return jsonify({"success": False, "error": "Only localhost allowed"}), 403
+    logging.info("Shutdown requested via /shutdown")
+    os._exit(0)
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
 

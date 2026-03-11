@@ -3,7 +3,7 @@ import json
 import time
 import importlib
 import traceback
-from typing import Dict, Any, Generator
+from typing import Dict, Any, Generator, Optional
 
 from config import PROCESSING_STEPS
 
@@ -49,6 +49,8 @@ def generate_progress_stream(filepath: str) -> Generator[str, None, None]:
         module_func_name = step.get("module")
 
         # Notify client that this step is starting
+        # Include site_id if already available in step_data (set by generate_token step)
+        _site_id_for_event = step_data.get("site_id") if isinstance(step_data, dict) else None
         yield _build_sse_event(
             {
                 "status": "in_progress",
@@ -56,6 +58,7 @@ def generate_progress_stream(filepath: str) -> Generator[str, None, None]:
                 "step_index": index,
                 "total_steps": total_steps,
                 "message": f"Starting step {index}/{total_steps}: {step_name}",
+                "site_id": _site_id_for_event,
             }
         )
 
@@ -140,3 +143,70 @@ def generate_progress_stream(filepath: str) -> Generator[str, None, None]:
     )
 
 
+def generate_rerun_stream(file_prefix: str) -> Generator[str, None, None]:
+    """
+    Runs only the 'process_assembly' step for an already-processed file_prefix.
+    Used by the Page Status modal re-run feature to replay selected pages.
+    """
+    # Find the assembly step config from PROCESSING_STEPS
+    assembly_step = next((s for s in PROCESSING_STEPS if s.get("id") == "process_assembly"), None)
+    if not assembly_step:
+        yield _build_sse_event({"status": "error", "step_id": "process_assembly",
+                                "message": "process_assembly step not found in config."})
+        return
+
+    yield _build_sse_event({
+        "status": "start",
+        "step_id": "initial",
+        "message": f"Re-run assembly started for prefix: {file_prefix}",
+        "file_prefix": file_prefix,
+    })
+
+    yield _build_sse_event({
+        "status": "in_progress",
+        "step_id": "process_assembly",
+        "step_index": 1,
+        "total_steps": 1,
+        "message": "Assembling CMS Pages (re-run)...",
+    })
+
+    step_start_time = time.time()
+    try:
+        module = importlib.import_module("processing_steps.process_assembly")
+        step_func = getattr(module, assembly_step["module"])
+        step_data = {"file_prefix": file_prefix}
+        step_data = step_func(step_data, assembly_step, {"file_prefix": file_prefix}, file_name=file_prefix, is_rerun=True)
+
+        step_duration = round(time.time() - step_start_time, 2)
+
+        output_files = step_data.get("output_files") if isinstance(step_data, dict) else None
+
+        yield _build_sse_event({
+            "status": "done",
+            "step_id": "process_assembly",
+            "step_index": 1,
+            "total_steps": 1,
+            "message": "Re-run assembly completed.",
+            "duration": step_duration,
+        })
+
+        yield _build_sse_event({
+            "status": "complete",
+            "step_id": "final",
+            "message": "Re-run completed successfully.",
+            "file_prefix": file_prefix,
+            "output_files": output_files,
+        })
+
+    except Exception as exc:
+        step_duration = round(time.time() - step_start_time, 2)
+        tb_str = traceback.format_exc()
+        yield _build_sse_event({
+            "status": "error",
+            "step_id": "process_assembly",
+            "step_index": 1,
+            "total_steps": 1,
+            "message": f"Re-run failed: {exc}",
+            "traceback": tb_str,
+            "duration": step_duration,
+        })

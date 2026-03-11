@@ -160,7 +160,80 @@ def get_debug_log_filepath(site_id: Optional[int] = None) -> str:
     site_folder = get_site_upload_folder(site_id)
     return os.path.join(site_folder, "assembly_debug.log")
 
+# --- PERSISTENT "PAGES TO PUBLISH" (for one-click publish after stop) ---
+PAGES_TO_PUBLISH_PENDING_FILENAME = "pages_to_publish_pending.json"
+
+def get_pages_to_publish_pending_path(site_id: Optional[int]) -> str:
+    """Path to the JSON file that persists created-but-unpublished page entries for this site."""
+    site_folder = get_site_upload_folder(site_id)
+    return os.path.join(site_folder, PAGES_TO_PUBLISH_PENDING_FILENAME)
+
+def append_page_to_publish_pending(site_id: Optional[int], entry: Dict[str, Any]) -> None:
+    """Append a page to the pending publish file.
+    Stores only page_id and page_name — avoids serializing large/complex objects
+    (header_footer_details with HTML, mapping_payload) that may not be JSON-safe.
+    """
+    if site_id is None:
+        logging.warning("[PUBLISH PENDING] site_id is None, cannot persist pending page.")
+        return
+    path = get_pages_to_publish_pending_path(site_id)
+    # Store only the two essential fields needed to publish later
+    slim_entry = {
+        "page_id": entry.get("page_id"),
+        "page_name": entry.get("page_name", ""),
+    }
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        existing: List[Dict[str, Any]] = []
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    existing = json.load(f)
+            except Exception:
+                existing = []
+        if not isinstance(existing, list):
+            existing = []
+        existing.append(slim_entry)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2)
+        logging.info(f"[PUBLISH PENDING] Persisted page_id={slim_entry['page_id']} page='{slim_entry['page_name']}' to {path}")
+    except Exception as e:
+        logging.error(f"[PUBLISH PENDING] Failed to persist page to {path}: {e}")
+
+def load_pending_pages_to_publish(site_id: Optional[int]) -> List[Dict[str, Any]]:
+    """Load the list of pending page entries from disk, or empty list if missing/invalid."""
+    if site_id is None:
+        return []
+    path = get_pages_to_publish_pending_path(site_id)
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except Exception as e:
+        logging.warning(f"[PUBLISH PENDING] Failed to load {path}: {e}")
+        return []
+
+def clear_pending_pages_to_publish(site_id: Optional[int]) -> None:
+    """Remove the pending publish file so it does not get published again."""
+    if site_id is None:
+        return
+    path = get_pages_to_publish_pending_path(site_id)
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception as e:
+        logging.warning(f"[PUBLISH PENDING] Failed to remove {path}: {e}")
+
 DEBUG_LOG_FILE = get_debug_log_filepath()  # Default (will be updated per site)
+
+# Tracks whether the current assembly run was stopped by the user (more reliable than checking file)
+_ASSEMBLY_WAS_STOPPED: bool = False
+
+def _set_assembly_was_stopped(value: bool) -> None:
+    global _ASSEMBLY_WAS_STOPPED
+    _ASSEMBLY_WAS_STOPPED = value
 
 def sanitize_page_name_for_filesystem(page_name: str) -> str:
     """
@@ -226,6 +299,72 @@ def set_current_site_id(site_id: Optional[int]) -> None:
     global _CURRENT_SITE_ID, DEBUG_LOG_FILE
     _CURRENT_SITE_ID = site_id
     DEBUG_LOG_FILE = get_debug_log_filepath(site_id)
+
+
+# ---------------------------------------------------------------------------
+# Stop / Resume helpers
+# ---------------------------------------------------------------------------
+# In-memory set of page hierarchy keys already completed in this or a prior run
+_COMPLETED_PAGES: set = set()
+
+# When True, assembly was started as a re-run (selected pages only); skip assembly_run_start so Page Status keeps full list
+_ASSEMBLY_IS_RERUN: bool = False
+
+
+def _stop_flag_path() -> Optional[str]:
+    if _CURRENT_SITE_ID is None:
+        return None
+    return os.path.join(UPLOAD_FOLDER, str(_CURRENT_SITE_ID), 'STOP_REQUESTED')
+
+
+def _completed_pages_path() -> Optional[str]:
+    if _CURRENT_SITE_ID is None:
+        return None
+    return os.path.join(UPLOAD_FOLDER, str(_CURRENT_SITE_ID), 'completed_pages.json')
+
+
+def _is_stop_requested() -> bool:
+    """Returns True if a stop has been requested via the STOP_REQUESTED file."""
+    path = _stop_flag_path()
+    return bool(path and os.path.exists(path))
+
+
+def _load_completed_pages_from_disk() -> set:
+    """Load completed page hierarchy keys from disk."""
+    path = _completed_pages_path()
+    if not path or not os.path.exists(path):
+        return set()
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return set(data.get('completed', []))
+    except Exception:
+        return set()
+
+
+def _clear_completed_pages() -> None:
+    """Delete the completed_pages.json file (fresh run)."""
+    path = _completed_pages_path()
+    if path and os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+
+def _mark_page_completed(hierarchy_key: str) -> None:
+    """Add hierarchy_key to the in-memory set and persist to completed_pages.json."""
+    global _COMPLETED_PAGES
+    _COMPLETED_PAGES.add(hierarchy_key)
+    path = _completed_pages_path()
+    if not path:
+        return
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump({'completed': sorted(_COMPLETED_PAGES)}, f, indent=2)
+    except Exception as e:
+        logging.warning(f"[RESUME] Failed to persist completed page '{hierarchy_key}': {e}")
 
 def append_debug_log(section: str, data: Dict[str, Any], site_id: Optional[int] = None) -> None:
     """
@@ -1506,8 +1645,8 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     
     payload = {
         "pageId": 0,
-        "pageName": page_name_only,  # Just the page name without parent path
-        "pageAlias": generate_page_alias(page_name_only),  # Only the page name, category_id handles parent
+        "pageName": page_name_only,
+        "pageAlias": generate_page_alias(page_name_only),
         "pageContent": base64_encoded_content,
         "isPageStudioPage": True,
         "pageUpdatedBy": 0,
@@ -1516,12 +1655,13 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
         "pageMetaDescription": DefaultDescription,
         "pageStopSEO": 1,
         "pageCategoryId": category_id,
+        "PageCategoryId": category_id,  # Some .NET APIs expect PascalCase
         "pageProfileId": 0,
         "tags": ""
         }
     print(f"New page payload ready for '{page_name}'.")
     print(f"New page payload ready for '{payload}'.")
-    logging.info(f"[DEBUG] Page name: '{page_name}', Page alias: '{payload['pageAlias']}'")
+    logging.info(f"[CREATE PAGE] pageName='{page_name_only}', pageCategoryId={category_id} (0 = root/top-level)")
     print("before")
     print(page_template_id)
 
@@ -1582,13 +1722,15 @@ def pageAction(base_url, headers,final_html,page_name,page_template_id,DefaultTi
     # Instead of publishing immediately, queue this page for publish at the end
     # Use page_name_for_folder for publish queue so it can find components in the correct folder
     try:
-        PAGES_TO_PUBLISH.append({
+        entry = {
             "page_id": page_id,
             "page_name": page_name_for_folder,  # Use folder name for component lookup
             "header_footer_details": header_footer_details,
             "mapping_payload": mapping_payload
-        })
-        logging.info(f"[PUBLISH QUEUE] Queued page '{page_name}' (ID: {page_id}) for publish at end of assembly (folder: '{page_name_for_folder}').")
+        }
+        PAGES_TO_PUBLISH.append(entry)
+        append_page_to_publish_pending(site_id, entry)
+        logging.info(f"[PUBLISH QUEUE] Queued page '{page_name}' (ID: {page_id}) for end of assembly (folder: '{page_name_for_folder}').")
     except Exception as e:
         logging.error(f"[ERROR] Failed to queue page '{page_name}' (ID: {page_id}) for publish: {e}")
         logging.exception("Full traceback:")
@@ -2299,6 +2441,42 @@ def publish_queued_pages(base_url: str, headers: Dict[str, str], site_id: int) -
     
     logging.info(f"[PUBLISH] Queued publish complete: {success_count}/{total_pages} pages processed.")
     return success_count
+
+
+def publish_created_pages_from_pending_file(base_url: str, headers: Dict[str, str], site_id: int) -> tuple:
+    """
+    Publish only the pages that were created but not yet published (e.g. after a stopped run).
+    Reads from the persistent pages_to_publish_pending.json file, publishes each page via publishPage,
+    then clears the file.
+
+    Returns:
+        (success_count, total_count, error_message).
+        total_count is 0 if no pending file or empty; error_message is None on success.
+    """
+    pending = load_pending_pages_to_publish(site_id)
+    if not pending:
+        return 0, 0, None
+    total = len(pending)
+    success_count = 0
+    for idx, entry in enumerate(pending, 1):
+        page_id = entry.get("page_id")
+        page_name = entry.get("page_name", f"Page-{page_id}")
+        if not page_id:
+            continue
+        logging.info(f"[TIMING] Waiting 3 seconds before publish of '{page_name}' (ID: {page_id}) [{idx}/{total}]...")
+        time.sleep(3)
+        page_name_for_folder = page_name.split("/")[-1] if "/" in page_name else page_name
+        try:
+            # Pass empty header_footer_details and no mapping_payload (not stored to keep file small/safe).
+            # publishPage will still look up ComponentRecordsTree.json from disk by page_name.
+            publishPage(base_url, headers, page_id, site_id, {}, mapping_payload=None, page_name=page_name_for_folder)
+            logging.info(f"[PUBLISH PENDING] Published '{page_name}' (ID: {page_id}) [{idx}/{total}]")
+            success_count += 1
+        except Exception as e:
+            logging.error(f"[ERROR] publishPage failed for '{page_name}' (ID: {page_id}): {e}")
+    clear_pending_pages_to_publish(site_id)
+    return success_count, total, None
+
 
 def cleanup_files_to_site_folder(file_prefix: str, site_id: Optional[int]) -> None:
     """
@@ -3989,8 +4167,20 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
             "status": "SKIPPED: Page had no components defined.",
             "cms_component_name": "N/A"
         }
-        ASSEMBLY_STATUS_LOG.append(status_entry) 
+        ASSEMBLY_STATUS_LOG.append(status_entry)
         logging.warning(f"Page **{page_name}** (Level {page_level}) has no components to process. Logged as skipped.")
+        # Write no_content debug log so the Page Status UI doesn't leave this page as "in_progress"
+        append_debug_log(
+            "page_no_content",
+            {
+                "page_name": page_name,
+                "page_level": page_level,
+                "hierarchy": " > ".join(hierarchy + [page_name]),
+                "components": components,
+                "sections_count": 0,
+                "reason": "Page had no components defined"
+            },
+        )
         return
 
     # --- ACCUMULATION PHASE: Component Loop (NOW APPLIES TO ALL PAGES) ---
@@ -4159,6 +4349,9 @@ def _process_page_components(page_data: Dict[str, Any], page_level: int, hierarc
                 page_id = result.get("PageId") if isinstance(result, dict) else None
                 if page_id:
                     logging.info(f"[SUCCESS] Page '{page_name}' processed successfully (PageId: {page_id})")
+                    # Track completion for stop/resume feature
+                    hierarchy_key = " > ".join(hierarchy + [page_name]) if hierarchy else page_name
+                    _mark_page_completed(hierarchy_key)
                 else:
                     logging.warning(f"[WARNING] pageAction completed for '{page_name}' but PageId not found in response")
         except Exception as e:
@@ -4192,7 +4385,19 @@ def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, h
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
-    
+
+    # --- Stop / resume checks ---
+    if _is_stop_requested():
+        logging.info(f"[STOP] Stop requested. Halting at '{current_page_name}' (level {page_level}).")
+        append_debug_log("assembly_stopped", {"stopped_at": current_page_name, "level": page_level})
+        _set_assembly_was_stopped(True)
+        return
+
+    hierarchy_key_l4 = " > ".join(hierarchy + [current_page_name])
+    if hierarchy_key_l4 in _COMPLETED_PAGES:
+        logging.info(f"[RESUME] Skipping already-completed page '{hierarchy_key_l4}'.")
+        return
+
     # Fetch categories list
     categories = GetPageCategoryList(api_base_url, api_headers)
     logging.info(f"API categories loaded: {categories}")
@@ -4202,9 +4407,9 @@ def assemble_page_templates_level4(page_data: Dict[str, Any], page_level: int, h
         logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
         return
     
-    # Category Matching Logic - For level 4+ pages, use the TOP-LEVEL section from hierarchy
-    # (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink" should use "Eat and Drink" category)
-    category_base_name = hierarchy[0] if hierarchy else current_page_name
+    # Category Matching Logic - For level 4 pages, use the direct parent (last entry in hierarchy)
+    # so that each page is categorised under its immediate parent, not always the top-level.
+    category_base_name = hierarchy[-1] if hierarchy else current_page_name
     normalized_page_name = normalize_page_name(category_base_name)
     
     # Search category ID by normalized name for robust matching
@@ -4223,7 +4428,25 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
     logging.info(f"\n--- Level {page_level} Page: {page_data.get('page_name')} ---")
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
-    
+
+    # --- Stop / resume checks ---
+    if _is_stop_requested():
+        logging.info(f"[STOP] Stop requested. Halting at '{current_page_name}' (level {page_level}).")
+        append_debug_log("assembly_stopped", {"stopped_at": current_page_name, "level": page_level})
+        _set_assembly_was_stopped(True)
+        return
+
+    hierarchy_key_l3 = " > ".join(hierarchy + [current_page_name])
+    if hierarchy_key_l3 in _COMPLETED_PAGES:
+        logging.info(f"[RESUME] Skipping already-completed page '{hierarchy_key_l3}'.")
+        new_hierarchy_l3 = hierarchy + [current_page_name]
+        new_level_l3 = page_level + 1
+        for sub_page_data in page_data.get("sub_pages", []):
+            assemble_page_templates_level4(sub_page_data, new_level_l3, new_hierarchy_l3,
+                                           component_cache, api_base_url, site_id, api_headers,
+                                           component_cache_for_mapping=component_cache_for_mapping or component_cache)
+        return
+
     # Check page filter - if set and current page doesn't match any filter, skip
     page_filters = _parse_page_filter(page_filter)
     if page_filters and current_page_name not in page_filters:
@@ -4238,15 +4461,23 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
     
     # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
-        logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
+        err_detail = categories.get('details', categories.get('error', 'Unknown error'))
+        logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {err_detail}")
+        append_debug_log(
+            "page_error",
+            {
+                "page_name": current_page_name,
+                "page_level": page_level,
+                "hierarchy": " > ".join(hierarchy + [current_page_name]),
+                "error": f"categories API error: {err_detail}",
+            },
+        )
         return
 
     # Category Matching Logic
-    # For level 3+ pages (e.g. "Our Food" under "Restaurant Anzu" under "Eat and Drink"),
-    # we always want to use the TOP-LEVEL section (e.g. "Eat and Drink") to determine
-    # the category, so that all grandchildren share the same category as their parent section.
-    # The top-level page name is stored in hierarchy[0] when present.
-    category_base_name = hierarchy[0] if hierarchy else parent_page_name
+    # For level 3 pages, use the direct parent page name (parent_page_name = L2 page name)
+    # so that each page is categorised under its immediate parent, not always the top-level.
+    category_base_name = parent_page_name
     normalized_page_name = normalize_page_name(category_base_name)
     
     # Search category ID by normalized name for robust matching
@@ -4263,9 +4494,22 @@ def assemble_page_templates_level3(page_data: Dict[str, Any], page_level: int, h
         # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
         logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
         # matched_category_id remains 0, as initialized above.
-    
-    _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
-    
+
+    try:
+        _process_page_components(page_data, page_level, hierarchy, component_cache, api_base_url, site_id, api_headers, matched_category_id, component_cache_for_mapping=component_cache_for_mapping or component_cache)
+    except Exception as e:
+        logging.error(f"[ERROR] Processing failed for page '{current_page_name}': {e}")
+        logging.exception("Full traceback:")
+        append_debug_log(
+            "page_error",
+            {
+                "page_name": current_page_name,
+                "page_level": page_level,
+                "hierarchy": " > ".join(hierarchy + [current_page_name]),
+                "error": str(e),
+            },
+        )
+
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
     for sub_page_data in page_data.get("sub_pages", []):
@@ -4287,7 +4531,28 @@ def assemble_page_templates_level2(
     # Initialize the ID variable at the start. Default to 0 if no match is found.
     matched_category_id = 0
     current_page_name = page_data.get('page_name', 'UNKNOWN_PAGE')
-    
+
+    # --- Stop / resume checks ---
+    if _is_stop_requested():
+        logging.info(f"[STOP] Stop requested. Halting assembly at page '{current_page_name}' (level {page_level}).")
+        append_debug_log("assembly_stopped", {"stopped_at": current_page_name, "level": page_level})
+        _set_assembly_was_stopped(True)
+        return
+
+    hierarchy_key_l2 = " > ".join(hierarchy + [current_page_name])
+    if hierarchy_key_l2 in _COMPLETED_PAGES:
+        logging.info(f"[RESUME] Skipping already-completed page '{hierarchy_key_l2}'.")
+        # Still recurse into sub-pages in case some are not yet completed
+        new_hierarchy_l2 = hierarchy + [current_page_name]
+        new_level_l2 = page_level + 1
+        for sub_page_data in page_data.get("sub_pages", []):
+            assemble_page_templates_level3(sub_page_data, new_level_l2, new_hierarchy_l2,
+                                           component_cache, api_base_url, site_id, api_headers,
+                                           current_page_name,
+                                           component_cache_for_mapping=component_cache_for_mapping or component_cache,
+                                           page_filter=page_filter)
+        return
+
     page_filters = _parse_page_filter(page_filter)
 
     # Debug log for level 2 page start
@@ -4323,7 +4588,9 @@ def assemble_page_templates_level2(
                     break
             if not has_matching_subpage:
                 logging.info(f"[DEBUG] Skipping page '{current_page_name}' (doesn't match filter(s) {sorted(page_filters)})")
-                append_debug_log("level2_page_skipped", {"page_name": current_page_name, "reason": "doesn't match filter and has no matching sub-page", "page_filter": page_filter})
+                # Don't write level2_page_skipped on re-run: it would overwrite existing Success/No Content/Stopped in Page Status
+                if not _ASSEMBLY_IS_RERUN:
+                    append_debug_log("level2_page_skipped", {"page_name": current_page_name, "hierarchy": " > ".join(hierarchy + [current_page_name]), "reason": "doesn't match filter and has no matching sub-page", "page_filter": page_filter})
                 return
         else:
             # Page matches one of the filters - log this
@@ -4336,46 +4603,79 @@ def assemble_page_templates_level2(
 
     logging.info(f"\n--- Level {page_level} Page: {current_page_name} ---")
     
-    # Fetch categories list (already implemented in the provided GetPageCategoryList)
+    # Fetch categories list (PageApi.GetPageCategoryList) — used to set parent category for this page
     categories = GetPageCategoryList(api_base_url, api_headers)
-    logging.info(f"API categories loaded: {categories}")
+    if isinstance(categories, list):
+        sample_names = [c.get("CategoryName") or c.get("categoryName") for c in categories[:20]]
+        logging.info(f"[L2] GetPageCategoryList returned {len(categories)} categories. Looking for parent '{parent_page_name}'. Sample: {sample_names}")
     
     # Check for API errors
     if isinstance(categories, dict) and categories.get("error"):
-        logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {categories.get('details')}")
+        err_detail = categories.get('details', categories.get('error', 'Unknown error'))
+        logging.error(f"[ERROR] Unable to load page categories. Aborting processing for page '{current_page_name}'. Error: {err_detail}")
+        append_debug_log(
+            "level2_page_skipped",
+            {
+                "page_name": current_page_name,
+                "hierarchy": " > ".join(hierarchy + [current_page_name]),
+                "reason": f"categories API error: {err_detail}",
+                "page_filter": page_filter,
+            },
+        )
         return
 
-    # Category Matching Logic
-    normalized_page_name = normalize_page_name(parent_page_name)
-    
-    # Search category ID by normalized name for robust matching
-    for cat in categories:
-        cat_name = cat.get("CategoryName")
-        
-        # NOTE: normalize_page_name must be available/imported
-        if cat_name and normalize_page_name(cat_name) == normalized_page_name:
-            matched_category_id = cat.get("CategoryId", 0)
-            logging.info(f"[SUCCESS] MATCHED Category '{current_page_name}' -> CategoryId = {matched_category_id}")
-            # Exit loop immediately after finding a match
-            break 
+    # Category Matching Logic: use PARENT page name (e.g. "Our Resort") to get category so child (e.g. "Resort Amenities") is under it
+    normalized_parent = normalize_page_name(parent_page_name)
+    category_list = categories if isinstance(categories, list) else []
+
+    def _get_cat_id(c):
+        """Get category ID from API object (supports CategoryId, categoryId, Id)."""
+        raw = c.get("CategoryId") or c.get("categoryId") or c.get("Id") or 0
+        try:
+            return int(raw) if raw is not None else 0
+        except (TypeError, ValueError):
+            return 0
+
+    def _get_cat_name(c):
+        """Get category name from API object (supports CategoryName, categoryName)."""
+        return c.get("CategoryName") or c.get("categoryName") or ""
+
+    for cat in category_list:
+        cat_name = _get_cat_name(cat)
+        if cat_name and normalize_page_name(cat_name) == normalized_parent:
+            matched_category_id = _get_cat_id(cat)
+            logging.info(f"[SUCCESS] L2 category: parent '{parent_page_name}' (normalized: {normalized_parent}) -> CategoryId = {matched_category_id} for page '{current_page_name}'")
+            break
     else:
-        # This executes only if the loop completes without finding a match (i.e., if 'break' was never hit)
-        logging.warning(f"[WARNING] No matching category found for page '{current_page_name}', using CategoryId = 0")
-        # matched_category_id remains 0, as initialized above.
+        available = [_get_cat_name(c) for c in category_list if _get_cat_name(c)]
+        logging.warning(f"[WARNING] No category matched parent '{parent_page_name}' (normalized: {normalized_parent}) for page '{current_page_name}'. Using CategoryId = 0. Available categories: {available[:20]}{'...' if len(available) > 20 else ''}")
 
     # The variable 'matched_category_id' now holds the correct ID (or 0 if none was found).
-    _process_page_components(
-        page_data, 
-        page_level, 
-        hierarchy, 
-        component_cache, 
-        api_base_url, 
-        site_id, 
-        api_headers,
-        category_id=matched_category_id, # <-- CORRECTED
-        component_cache_for_mapping=component_cache_for_mapping or component_cache
-    )
-    
+    try:
+        _process_page_components(
+            page_data,
+            page_level,
+            hierarchy,
+            component_cache,
+            api_base_url,
+            site_id,
+            api_headers,
+            category_id=matched_category_id,
+            component_cache_for_mapping=component_cache_for_mapping or component_cache
+        )
+    except Exception as e:
+        logging.error(f"[ERROR] Processing failed for page '{current_page_name}': {e}")
+        logging.exception("Full traceback:")
+        append_debug_log(
+            "page_error",
+            {
+                "page_name": current_page_name,
+                "page_level": page_level,
+                "hierarchy": " > ".join(hierarchy + [current_page_name]),
+                "error": str(e),
+            },
+        )
+
     # --- Recursive Call Setup ---
     new_hierarchy = hierarchy + [current_page_name]
     new_level = page_level + 1
@@ -4455,11 +4755,41 @@ def normalize_page_name(name: str) -> str:
 #     logging.info("========================================================")
 
 
+def _running_flag_path() -> Optional[str]:
+    if _CURRENT_SITE_ID is None:
+        return None
+    return os.path.join(UPLOAD_FOLDER, str(_CURRENT_SITE_ID), 'ASSEMBLY_RUNNING')
+
+
+def _set_assembly_running(running: bool) -> None:
+    path = _running_flag_path()
+    if not path:
+        return
+    if running:
+        try:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S"))
+        except Exception:
+            pass
+    else:
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+        except Exception:
+            pass
+
+
 def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cache: List[Dict[str, Any]], api_base_url: str, site_id: int, api_headers: Dict[str, str]):
     logging.info("\n========================================================")
     logging.info("START: Component-Based Template Assembly (Level 1 Traversal)")
     logging.info("========================================================")
-    
+
+    # Write a run-start marker so page_status API can isolate the latest run (skip on re-run so we keep full page list)
+    global _ASSEMBLY_IS_RERUN
+    if not _ASSEMBLY_IS_RERUN:
+        append_debug_log("assembly_run_start", {"started_at": time.strftime("%Y-%m-%d %H:%M:%S")})
+
     pages = processed_json.get('pages', [])
     if not pages:
         logging.warning("No 'pages' list found in the processed JSON. Aborting assembly.")
@@ -4469,6 +4799,38 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
     page_filter = None
     page_filters: set = set()
     global_config = load_global_config(site_id)
+
+    # --- Stop / Resume initialisation ---
+    global _COMPLETED_PAGES
+    is_resume = bool(global_config.get('is_resume', False)) if global_config else False
+    if is_resume:
+        _COMPLETED_PAGES = _load_completed_pages_from_disk()
+        logging.info(f"[RESUME] Resume mode: {len(_COMPLETED_PAGES)} page(s) already completed will be skipped.")
+        append_debug_log("assembly_resume", {"completed_count": len(_COMPLETED_PAGES),
+                                              "completed_pages": sorted(_COMPLETED_PAGES)})
+        # Clear the is_resume flag so a subsequent plain run is fresh
+        if global_config:
+            global_config['is_resume'] = False
+            try:
+                cfg_path = os.path.join(UPLOAD_FOLDER, str(site_id), 'global_config.json')
+                with open(cfg_path, 'w', encoding='utf-8') as _f:
+                    json.dump(global_config, _f, indent=2)
+            except Exception:
+                pass
+    else:
+        _COMPLETED_PAGES = set()
+        _clear_completed_pages()
+        logging.info("[FRESH RUN] Starting fresh — cleared completed-pages tracking.")
+
+    # Clear any leftover STOP_REQUESTED file from a previous run
+    _sfp = _stop_flag_path()
+    if _sfp and os.path.exists(_sfp):
+        try:
+            os.remove(_sfp)
+            logging.info("[STOP] Cleared stale STOP_REQUESTED flag from previous run.")
+        except Exception:
+            pass
+
     if global_config:
         raw_filter = global_config.get("debug_page_filter", "")
         if raw_filter and raw_filter.strip():
@@ -4521,12 +4883,25 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
     initial_level = 1
     initial_hierarchy: List[str] = []
 
+    _set_assembly_running(True)
     for top_level_page in pages:
         current_page_name = top_level_page.get('page_name', 'UNKNOWN_PAGE')
+
+        # --- Stop / resume checks ---
+        if _is_stop_requested():
+            logging.info(f"[STOP] Stop requested. Halting assembly at page '{current_page_name}'.")
+            append_debug_log("assembly_stopped", {"stopped_at": current_page_name, "level": 1})
+            _set_assembly_running(False)
+            _set_assembly_was_stopped(True)
+            return
+
+        if current_page_name in _COMPLETED_PAGES:
+            logging.info(f"[RESUME] Skipping already-completed page '{current_page_name}'.")
+            # Still recurse so sub-pages can be checked
         
         # If page_filters is set and current page doesn't match any filter, skip processing its components
         # but still allow traversal to sub-pages (which might match the filter)
-        should_process_components = True
+        should_process_components = current_page_name not in _COMPLETED_PAGES
         logging.info(f"[DEBUG] Processing page '{current_page_name}' with filter(s) {sorted(page_filters) if page_filters else 'none'}")
         
         if page_filters and current_page_name not in page_filters:
@@ -4570,18 +4945,30 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         # Only process page components if should_process_components is True
         if should_process_components:
             logging.info(f"[DEBUG] Processing components for '{current_page_name}' (should_process_components=True)")
-            # Call processor for page
-            _process_page_components(
-                top_level_page,
-                initial_level,
-                initial_hierarchy,
-                component_cache,
-                api_base_url,
-                site_id,
-                api_headers,
-                category_id,  # passing resolved category id
-                component_cache_for_mapping=component_cache  # Pass component cache for mapping
-            )
+            try:
+                _process_page_components(
+                    top_level_page,
+                    initial_level,
+                    initial_hierarchy,
+                    component_cache,
+                    api_base_url,
+                    site_id,
+                    api_headers,
+                    category_id,
+                    component_cache_for_mapping=component_cache
+                )
+            except Exception as e:
+                logging.error(f"[ERROR] Processing failed for page '{current_page_name}': {e}")
+                logging.exception("Full traceback:")
+                append_debug_log(
+                    "page_error",
+                    {
+                        "page_name": current_page_name,
+                        "page_level": initial_level,
+                        "hierarchy": current_page_name,
+                        "error": str(e),
+                    },
+                )
         else:
             logging.warning(f"[SKIP] Skipping component processing for '{current_page_name}' (filter(s): {sorted(page_filters)}, should_process_components=False)")
             logging.info(f"[SKIP] Will still traverse to sub-pages to find filter(s): {sorted(page_filters)}")
@@ -4594,8 +4981,9 @@ def assemble_page_templates_level1(processed_json: Dict[str, Any], component_cac
         # Do NOT sort or reorder - maintain sequence as defined in JSON
         for sub_page_data in top_level_page.get("sub_pages", []):
             assemble_page_templates_level2(sub_page_data, next_level, new_hierarchy, component_cache, api_base_url, site_id, api_headers, parent_page_name, component_cache_for_mapping=component_cache, page_filter=page_filter)
-        # else:
-        #     pass
+
+    _set_assembly_running(False)
+    logging.info("[ASSEMBLY] Cleared ASSEMBLY_RUNNING flag.")
 
     logging.info("\n========================================================")
     logging.info("END: Component-Based Template Assembly Traversal Complete")
@@ -6504,30 +6892,38 @@ def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: L
     """
     Collects all component IDs and their associated pages that will be needed during assembly.
     Returns a list of tuples: (componentId, component_name, cms_component_name, page_name)
-    
+
     Note: The same component can appear multiple times if used on different pages.
-    
+
     Args:
         processed_json: The processed JSON containing pages
         component_cache: The component cache for lookups
-        page_filter: Optional page name to filter by (e.g., "About Us"). If None, processes all pages.
+        page_filter: Optional page name(s) to filter by. Comma-separated for multiple (e.g. "Resort Amenities, Resort Map").
+                     If None, processes all pages.
     """
     component_info_list = []
-    
-    def traverse_pages(page_node: Dict[str, Any], page_name: str, filter_name: Optional[str] = None):
+
+    # Parse comma-separated filter into a set of names (re-run selected pages only)
+    filter_set: Optional[set] = None
+    if page_filter and page_filter.strip():
+        filter_set = _parse_page_filter(page_filter)
+        if not filter_set:
+            filter_set = None
+
+    def traverse_pages(page_node: Dict[str, Any], page_name: str, filter_names: Optional[set] = None):
         """Recursively traverse all pages to collect component names with their page context.
-        
+
         Args:
             page_node: The page node to traverse
             page_name: The name of the current page
-            filter_name: Optional page name to filter by. If set, only collect components for pages matching this name.
+            filter_names: Optional set of page names to filter by. If set, only collect components for pages in this set.
         """
-        # Only collect components if no filter is set, or if this page matches the filter
-        should_collect = filter_name is None or page_name == filter_name
-        
+        # Only collect components if no filter is set, or if this page is in the filter set
+        should_collect = filter_names is None or page_name in filter_names
+
         if should_collect:
             components = page_node.get('components', [])
-            logging.debug(f"[PRE-DOWNLOAD] Collecting {len(components)} components for page '{page_name}' (matches filter: {filter_name is None or page_name == filter_name})")
+            logging.debug(f"[PRE-DOWNLOAD] Collecting {len(components)} components for page '{page_name}' (matches filter: {filter_names is None or (filter_names and page_name in filter_names)})")
             for component_name in components:
                 # Check if component is available in cache
                 api_result = check_component_availability(component_name, component_cache)
@@ -6539,70 +6935,29 @@ def collect_all_component_ids(processed_json: Dict[str, Any], component_cache: L
         else:
             components = page_node.get('components', [])
             if components:
-                logging.debug(f"[PRE-DOWNLOAD] Skipping {len(components)} components for page '{page_name}' (doesn't match filter '{filter_name}')")
+                logging.debug(f"[PRE-DOWNLOAD] Skipping {len(components)} components for page '{page_name}' (not in filter {filter_names})")
         
-        # Recursively process sub_pages (always traverse to find matching sub-pages, but only collect if matches filter)
+        # Recursively process sub_pages (traverse to find matching sub-pages, only collect if in filter)
         for sub_page in page_node.get('sub_pages', []):
             sub_page_name = sub_page.get('page_name', 'Unnamed_SubPage')
-            traverse_pages(sub_page, sub_page_name, filter_name)
+            traverse_pages(sub_page, sub_page_name, filter_names)
     
-    # Traverse all top-level pages (or filtered page)
+    # Traverse all top-level pages; when filter_set is set we only collect for pages in that set
     pages = processed_json.get('pages', [])
-    
-    # Filter pages if page_filter is set
-    if page_filter:
-        # Helper to recursively find a page by name (including sub-pages)
-        def find_page_recursive(page_list, target_name, parent_page=None):
-            """Recursively search for a page with matching name."""
-            for page in page_list:
-                current_name = page.get('page_name', '')
-                logging.debug(f"[PRE-DOWNLOAD] Checking page '{current_name}' against target '{target_name}'")
-                if current_name == target_name:
-                    # Found the target page - return parent if it exists, otherwise return the page itself
-                    logging.info(f"[PRE-DOWNLOAD] Found target page '{target_name}'! Parent: {parent_page.get('page_name') if parent_page else 'None'}")
-                    if parent_page:
-                        return [parent_page]  # Return parent so we can traverse to the sub-page
-                    else:
-                        return [page]  # Top-level page match
-                # Check sub-pages
-                sub_pages = page.get('sub_pages', [])
-                if sub_pages:
-                    logging.debug(f"[PRE-DOWNLOAD] Checking {len(sub_pages)} sub-pages of '{current_name}'")
-                    result = find_page_recursive(sub_pages, target_name, page)
-                    if result:
-                        logging.info(f"[PRE-DOWNLOAD] Found '{target_name}' in sub-pages of '{current_name}'. Returning parent.")
-                        return result  # Found in sub-pages, return parent
-            return []
-        
-        # Search for the filtered page (including in sub-pages)
-        filtered_pages = find_page_recursive(pages, page_filter)
-        if not filtered_pages:
-            # Get all page names recursively for better error message
-            def get_all_page_names_recursive(page_list, level=1):
-                names = []
-                for page in page_list:
-                    names.append(f"Level {level}: {page.get('page_name', 'UNKNOWN')}")
-                    for sub_page in page.get('sub_pages', []):
-                        names.extend(get_all_page_names_recursive([sub_page], level + 1))
-                return names
-            all_names = get_all_page_names_recursive(pages)
-            logging.warning(f"[PRE-DOWNLOAD] No page found with name '{page_filter}'. Available pages:\n  " + "\n  ".join(all_names))
-            return []
-        pages = filtered_pages
-        logging.info(f"[PRE-DOWNLOAD] Filtering to page: '{page_filter}' (found in hierarchy, starting from parent: {pages[0].get('page_name')})")
+    if filter_set:
+        logging.info(f"[PRE-DOWNLOAD] Filtering to selected page(s) only: {sorted(filter_set)}")
     
     for page in pages:
         page_name = page.get('page_name', 'Unnamed_Page')
-        logging.info(f"[PRE-DOWNLOAD] Traversing page '{page_name}' with filter '{page_filter}'")
-        # Pass the filter to traverse_pages so it only collects components for matching pages
-        traverse_pages(page, page_name, page_filter)
+        logging.info(f"[PRE-DOWNLOAD] Traversing page '{page_name}' with filter {filter_set}")
+        traverse_pages(page, page_name, filter_set)
     
     logging.info(f"[PRE-DOWNLOAD] Collected {len(component_info_list)} component-page pairs to pre-download")
-    if page_filter and component_info_list:
-        # Verify all collected components are for the filtered page
+    if filter_set and component_info_list:
+        # Verify all collected components are for filtered pages only
         for comp_id, comp_name, cms_name, collected_page_name in component_info_list:
-            if collected_page_name != page_filter:
-                logging.warning(f"[PRE-DOWNLOAD] WARNING: Collected component '{comp_name}' for page '{collected_page_name}' but filter is '{page_filter}'!")
+            if collected_page_name not in filter_set:
+                logging.warning(f"[PRE-DOWNLOAD] WARNING: Collected component '{comp_name}' for page '{collected_page_name}' but not in filter {filter_set}!")
     return component_info_list
 
 
@@ -6705,6 +7060,12 @@ def pre_download_all_components(
                         # Fall through to download logic below
                     else:
                         # Source folder exists and has content - proceed with cloning
+                        # If source and destination are the same path, no copy needed
+                        if os.path.normcase(os.path.abspath(source_folder)) == os.path.normcase(os.path.abspath(save_folder)):
+                            logging.info(f"  Source and destination are the same — skipping copy for component {component_id}.")
+                            download_results[(component_id, page_name)] = (True, save_folder)
+                            continue
+
                         # Remove destination if it exists
                         if os.path.exists(save_folder):
                             logging.info(f"  Removing existing folder: {save_folder}")
@@ -6930,9 +7291,16 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     """
     logging.info("========================================================")
     logging.info("Started Assembly")
+    global _ASSEMBLY_IS_RERUN
+    _ASSEMBLY_IS_RERUN = bool(kwargs.get("is_rerun", False))
+    if _ASSEMBLY_IS_RERUN:
+        logging.info("[RE-RUN] Page Status will keep showing full list (no new run-start marker).")
+    # Reset the stopped flag so a fresh run starts cleanly
+    _set_assembly_was_stopped(False)
     # Ensure publish queue is clean for this run so we don't re-publish pages from previous runs
     PAGES_TO_PUBLISH.clear()
     # --- 1. Setup/File Extraction ---
+    # (site_id will be set below; we'll load/merge pending file after we have it)
     data_to_process = processed_json
     if len(args) > 1 and isinstance(args[1], dict):
         data_to_process = args[1]
@@ -6964,6 +7332,14 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
         if site_specific_settings:
             settings = site_specific_settings
             logging.info(f"[SITE] Loaded settings from site-specific folder: {site_id}")
+        # Merge any previously persisted "created but not published" pages into the queue
+        # (e.g. from a stopped run) so they get published at end of this run.
+        # Do NOT clear the file here — clear only after we actually publish (end of run or "Publish created pages").
+        # That way if user stops again before publish, the file still exists and the button works.
+        pending = load_pending_pages_to_publish(site_id)
+        if pending:
+            PAGES_TO_PUBLISH.extend(pending)
+            logging.info(f"[PUBLISH PENDING] Restored {len(pending)} page(s) from pending file for publish at end of run.")
 
     try:
         api_base_url = settings.get("target_site_url")
@@ -7097,15 +7473,24 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
     # Menu navigation is now a separate processing step before this one
 
     # --- 5.5. FINAL PAGE PUBLISH (DEFERRED) ---
-    try:
-        logging.info("\n========================================================")
-        logging.info("STEP 5.5: PUBLISHING ALL QUEUED PAGES")
-        logging.info("========================================================")
-        published_count = publish_queued_pages(api_base_url, api_headers, site_id)
-        logging.info(f"[PUBLISH] Completed publishing of {published_count} queued pages.")
-    except Exception as e:
-        logging.error(f"[ERROR] Deferred publish step failed: {e}")
-        logging.exception("Full traceback:")
+    # Only publish if assembly completed normally.
+    # Check BOTH the in-memory flag AND the stop file (dual check for reliability).
+    _stop_was_requested = _ASSEMBLY_WAS_STOPPED or _is_stop_requested()
+    logging.info(f"[STOP CHECK] _ASSEMBLY_WAS_STOPPED={_ASSEMBLY_WAS_STOPPED}, _is_stop_requested()={_is_stop_requested()}, skip_publish={_stop_was_requested}")
+    if _stop_was_requested:
+        logging.info("[STOP] Assembly was stopped by user. Skipping publish step — created pages remain in pending file for one-click publish.")
+        logging.info(f"[STOP] Pending pages in queue: {len(PAGES_TO_PUBLISH)}")
+    else:
+        try:
+            logging.info("\n========================================================")
+            logging.info("STEP 5.5: PUBLISHING ALL QUEUED PAGES")
+            logging.info("========================================================")
+            published_count = publish_queued_pages(api_base_url, api_headers, site_id)
+            logging.info(f"[PUBLISH] Completed publishing of {published_count} queued pages.")
+            clear_pending_pages_to_publish(site_id)
+        except Exception as e:
+            logging.error(f"[ERROR] Deferred publish step failed: {e}")
+            logging.exception("Full traceback:")
 
     # --- 6. SAVE THE STATUS FILE AS CSV ---
     STATUS_SUFFIX = "_assembly_report.csv" 
@@ -7203,6 +7588,6 @@ def run_assembly_processing_step(processed_json: Union[Dict[str, Any], str], *ar
         "timing_summary": timing_summary
     }
 
-    ASSEMBLY_STATUS_LOG.clear() 
+    ASSEMBLY_STATUS_LOG.clear()
     TIMING_TRACKER.clear()  # Clear for next run
     return final_output

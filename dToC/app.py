@@ -29,7 +29,8 @@ _setup_console_logging()
 # Import config and utils files
 # Note: You must ensure 'config.py' defines UPLOAD_FOLDER, MAX_CONTENT_LENGTH, and allowed_file
 from config import UPLOAD_FOLDER, MAX_CONTENT_LENGTH, PROCESSING_STEPS, allowed_file
-from utils import generate_progress_stream 
+from utils import generate_progress_stream, generate_rerun_stream
+from processing_steps.process_assembly import load_settings, publish_created_pages_from_pending_file, load_pending_pages_to_publish
 
 # Configure environment to ignore output and uploads folders before Flask app initialization
 # This prevents Flask's auto-reloader from restarting when files are created during processing
@@ -358,6 +359,446 @@ def get_global_config():
             "success": False,
             "message": f"Error reading global config: {str(e)}"
         }), 500
+
+
+# --- Page Status: parse assembly_debug.log for a site ---
+@app.route('/api/projects/<site_id>/page_status', methods=['GET'])
+def get_page_status(site_id):
+    log_file = os.path.join(app.config['UPLOAD_FOLDER'], site_id, 'assembly_debug.log')
+    if not os.path.exists(log_file):
+        return jsonify({"success": False, "message": "No assembly log found for this project"}), 404
+
+    pages = {}          # key: hierarchy string -> page info dict
+    last_content_key = None   # hierarchy key of last page that had content (for mapping_payload correlation)
+
+    try:
+        # Read all lines, then find the LAST assembly_run_start marker so we
+        # only show data from the most recent run (log is append-only across runs).
+        with open(log_file, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+
+        last_run_start_idx = 0
+        for i, line in enumerate(all_lines):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                if entry.get('section') == 'assembly_run_start':
+                    last_run_start_idx = i
+            except json.JSONDecodeError:
+                continue
+
+        # Only parse lines from the latest run onwards
+        lines_to_parse = all_lines[last_run_start_idx:]
+
+        for line in lines_to_parse:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            section   = entry.get('section', '')
+            data      = entry.get('data', {})
+            timestamp = entry.get('timestamp', '')
+
+            if section == 'level1_page_start':
+                page_name = data.get('page_name', 'UNKNOWN')
+                key = page_name
+                if key not in pages:
+                    pages[key] = {
+                        'page_name': page_name,
+                        'hierarchy': page_name,
+                        'level': 1,
+                        'status': 'in_progress',
+                        'page_id': None,
+                        'timestamp': timestamp,
+                    }
+
+            elif section == 'level2_page_start':
+                page_name = data.get('page_name', 'UNKNOWN')
+                key = data.get('hierarchy', page_name)
+                if key not in pages:
+                    pages[key] = {
+                        'page_name': page_name,
+                        'hierarchy': key,
+                        'level': 2,
+                        'status': 'in_progress',
+                        'page_id': None,
+                        'timestamp': timestamp,
+                    }
+
+            elif section == 'page_content_check':
+                page_name   = data.get('page_name', 'UNKNOWN')
+                key         = data.get('hierarchy', page_name)
+                has_content = data.get('has_content', False)
+                if has_content:
+                    last_content_key = key
+                else:
+                    if key in pages:
+                        pages[key]['status'] = 'no_content'
+                    last_content_key = None
+
+            elif section == 'mapping_payload':
+                page_id = data.get('page_id')
+                if last_content_key and last_content_key in pages:
+                    pages[last_content_key]['status'] = 'success'
+                    pages[last_content_key]['page_id'] = page_id
+                    last_content_key = None
+
+            elif section == 'page_no_content':
+                page_name = data.get('page_name', 'UNKNOWN')
+                key = data.get('hierarchy', page_name)
+                if key not in pages:
+                    pages[key] = {
+                        'page_name': page_name,
+                        'hierarchy': key,
+                        'level': data.get('page_level', 1),
+                        'status': 'no_content',
+                        'page_id': None,
+                        'timestamp': timestamp,
+                    }
+                else:
+                    pages[key]['status'] = 'no_content'
+
+            elif section == 'level2_page_skipped':
+                page_name = data.get('page_name', 'UNKNOWN')
+                key = data.get('hierarchy', page_name)  # use hierarchy if available
+                if key not in pages:
+                    pages[key] = {
+                        'page_name': page_name,
+                        'hierarchy': key,
+                        'level': 2,
+                        'status': 'skipped',
+                        'page_id': None,
+                        'timestamp': timestamp,
+                    }
+                else:
+                    pages[key]['status'] = 'skipped'
+
+            elif section == 'page_error':
+                page_name = data.get('page_name', 'UNKNOWN')
+                key = data.get('hierarchy', page_name)
+                if key not in pages:
+                    pages[key] = {
+                        'page_name': page_name,
+                        'hierarchy': key,
+                        'level': data.get('page_level', 1),
+                        'status': 'error',
+                        'page_id': None,
+                        'timestamp': timestamp,
+                    }
+                else:
+                    pages[key]['status'] = 'error'
+
+            elif section == 'assembly_stopped':
+                # Mark any still-in_progress pages as stopped
+                for p in pages.values():
+                    if p['status'] == 'in_progress':
+                        p['status'] = 'stopped'
+
+        pages_list = sorted(pages.values(), key=lambda x: x.get('timestamp', ''))
+
+        # Mark pages that are created but not yet published as 'publish_pending' (not 'success')
+        pending_entries = load_pending_pages_to_publish(int(site_id))
+        pending_page_ids = {int(e.get('page_id')) for e in pending_entries if e.get('page_id') is not None}
+        for p in pages_list:
+            if p.get('status') == 'success' and p.get('page_id') is not None:
+                if int(p['page_id']) in pending_page_ids:
+                    p['status'] = 'publish_pending'
+
+        # Detect assembly state
+        is_stopped = any(p['status'] == 'stopped' for p in pages_list)
+        stuck_in_progress = any(p['status'] == 'in_progress' for p in pages_list)
+
+        stop_flag_file = os.path.join(app.config['UPLOAD_FOLDER'], site_id, 'STOP_REQUESTED')
+        stop_requested = os.path.exists(stop_flag_file)
+
+        # ASSEMBLY_RUNNING is created when assembly starts and deleted when it ends.
+        # If it's absent but pages are still in_progress, the server was killed — mark them stopped.
+        running_flag_file = os.path.join(app.config['UPLOAD_FOLDER'], site_id, 'ASSEMBLY_RUNNING')
+        assembly_running = os.path.exists(running_flag_file)
+
+        if stuck_in_progress and not assembly_running:
+            for p in pages_list:
+                if p['status'] == 'in_progress':
+                    p['status'] = 'stopped'
+            stuck_in_progress = False
+            is_stopped = True
+
+        is_running = assembly_running and stuck_in_progress and not stop_requested
+
+        # Check if completed_pages.json exists (indicates at least one page was done before stop/kill)
+        completed_pages_file = os.path.join(app.config['UPLOAD_FOLDER'], site_id, 'completed_pages.json')
+        has_completed_pages = os.path.exists(completed_pages_file)
+        can_resume = has_completed_pages and (is_stopped or stuck_in_progress)
+
+        summary = {
+            'total':           len(pages_list),
+            'success':         sum(1 for p in pages_list if p['status'] == 'success'),
+            'publish_pending': sum(1 for p in pages_list if p['status'] == 'publish_pending'),
+            'no_content':      sum(1 for p in pages_list if p['status'] == 'no_content'),
+            'skipped':         sum(1 for p in pages_list if p['status'] == 'skipped'),
+            'in_progress':     sum(1 for p in pages_list if p['status'] == 'in_progress'),
+            'stopped':         sum(1 for p in pages_list if p['status'] == 'stopped'),
+            'error':           sum(1 for p in pages_list if p['status'] == 'error'),
+        }
+        pending_count = len(pending_entries)
+        return jsonify({
+            "success": True,
+            "site_id": site_id,
+            "pages": pages_list,
+            "summary": summary,
+            "pending_count": pending_count,
+            "can_resume": can_resume,
+            "is_stopped": is_stopped or stuck_in_progress,
+            "is_running": is_running,
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error reading page status for site {site_id}: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# --- Re-run selected pages for a site ---
+@app.route('/api/projects/<site_id>/rerun_pages', methods=['POST'])
+def rerun_pages(site_id):
+    """
+    Accepts a list of page names, sets debug_page_filter in the site global_config,
+    and returns a stream URL for the re-run.
+    """
+    try:
+        data = request.get_json() or {}
+        pages = data.get('pages', [])
+        if not pages:
+            return jsonify({"success": False, "message": "No pages provided."}), 400
+
+        site_folder = os.path.join(app.config['UPLOAD_FOLDER'], site_id)
+        os.makedirs(site_folder, exist_ok=True)
+
+        # Find file_prefix from root uploads (config files live there, not in site subfolder)
+        upload_root = app.config['UPLOAD_FOLDER']
+        file_prefix = None
+        best_mtime = 0
+        for fname in os.listdir(upload_root):
+            if fname.endswith('_config.json') and not fname.startswith('global'):
+                fpath = os.path.join(upload_root, fname)
+                if not os.path.isfile(fpath):
+                    continue
+                try:
+                    with open(fpath, 'r', encoding='utf-8') as f:
+                        cfg_data = json.load(f)
+                    if str(cfg_data.get('site_id', '')) == str(site_id):
+                        mtime = os.path.getmtime(fpath)
+                        if mtime > best_mtime:
+                            best_mtime = mtime
+                            file_prefix = cfg_data.get('file_prefix') or fname.replace('_config.json', '')
+                except Exception:
+                    continue
+        if not file_prefix:
+            return jsonify({"success": False, "message": "No config file found for this site. Cannot determine file prefix."}), 404
+
+        # Update debug_page_filter in site global_config
+        global_config_path = os.path.join(site_folder, 'global_config.json')
+        global_cfg = {}
+        if os.path.exists(global_config_path):
+            try:
+                with open(global_config_path, 'r', encoding='utf-8') as f:
+                    global_cfg = json.load(f)
+            except Exception:
+                pass
+        global_cfg['debug_page_filter'] = ', '.join(pages)
+        with open(global_config_path, 'w', encoding='utf-8') as f:
+            json.dump(global_cfg, f, indent=2)
+
+        # Also update root global_config so the assembly step finds it
+        root_global_config = os.path.join(app.config['UPLOAD_FOLDER'], 'global_config.json')
+        root_cfg = {}
+        if os.path.exists(root_global_config):
+            try:
+                with open(root_global_config, 'r', encoding='utf-8') as f:
+                    root_cfg = json.load(f)
+            except Exception:
+                pass
+        root_cfg['debug_page_filter'] = ', '.join(pages)
+        with open(root_global_config, 'w', encoding='utf-8') as f:
+            json.dump(root_cfg, f, indent=2)
+
+        return jsonify({
+            "success": True,
+            "file_prefix": file_prefix,
+            "pages": pages,
+            "stream_url": f"/stream_rerun/{file_prefix}"
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error setting up rerun for site {site_id}: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/api/projects/<site_id>/stop', methods=['POST'])
+def stop_assembly(site_id):
+    """Creates a STOP_REQUESTED sentinel file so the running assembly halts at the next page boundary."""
+    try:
+        site_folder = os.path.join(app.config['UPLOAD_FOLDER'], site_id)
+        os.makedirs(site_folder, exist_ok=True)
+        stop_file = os.path.join(site_folder, 'STOP_REQUESTED')
+        with open(stop_file, 'w', encoding='utf-8') as f:
+            f.write('stop')
+        app.logger.info(f"[STOP] Stop requested for site {site_id}")
+        return jsonify({"success": True, "message": "Stop requested. Assembly will halt at the next page boundary."}), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/api/projects/<site_id>/resume', methods=['POST'])
+def resume_assembly(site_id):
+    """Sets is_resume=true in global_config and returns an SSE stream URL to continue from where assembly stopped."""
+    try:
+        site_folder = os.path.join(app.config['UPLOAD_FOLDER'], site_id)
+        if not os.path.exists(site_folder):
+            return jsonify({"success": False, "message": f"Site folder not found for site_id {site_id}"}), 404
+
+        # Find the most recent file_prefix whose config matches this site_id.
+        # Config files live at the ROOT uploads/ folder (not inside the site subfolder).
+        upload_root = app.config['UPLOAD_FOLDER']
+        file_prefix = None
+        best_mtime = 0
+        for fname in os.listdir(upload_root):
+            if fname.endswith('_config.json') and not fname.startswith('global'):
+                fpath = os.path.join(upload_root, fname)
+                if not os.path.isfile(fpath):
+                    continue
+                try:
+                    with open(fpath, 'r', encoding='utf-8') as f:
+                        cfg_data = json.load(f)
+                    if str(cfg_data.get('site_id', '')) == str(site_id):
+                        mtime = os.path.getmtime(fpath)
+                        if mtime > best_mtime:
+                            best_mtime = mtime
+                            file_prefix = cfg_data.get('file_prefix') or fname.replace('_config.json', '')
+                except Exception:
+                    continue
+        if not file_prefix:
+            return jsonify({"success": False, "message": "No config file found for this site."}), 404
+
+        # Set is_resume=True and clear the page filter so ALL remaining pages are processed
+        for cfg_path in [
+            os.path.join(site_folder, 'global_config.json'),
+            os.path.join(app.config['UPLOAD_FOLDER'], 'global_config.json'),
+        ]:
+            cfg = {}
+            if os.path.exists(cfg_path):
+                try:
+                    with open(cfg_path, 'r', encoding='utf-8') as f:
+                        cfg = json.load(f)
+                except Exception:
+                    pass
+            cfg['is_resume'] = True
+            cfg['debug_page_filter'] = ''
+            with open(cfg_path, 'w', encoding='utf-8') as f:
+                json.dump(cfg, f, indent=2)
+
+        # Remove any leftover stop flag
+        stop_file = os.path.join(site_folder, 'STOP_REQUESTED')
+        if os.path.exists(stop_file):
+            os.remove(stop_file)
+
+        return jsonify({
+            "success": True,
+            "file_prefix": file_prefix,
+            "stream_url": f"/stream_rerun/{file_prefix}"
+        }), 200
+
+    except Exception as e:
+        app.logger.error(f"Error setting up resume for site {site_id}: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+def _get_file_prefix_and_settings_for_site(site_id):
+    """Find file_prefix for this site_id and load settings (target_site_url, cms_login_token). Returns (file_prefix, settings) or (None, None)."""
+    upload_root = app.config['UPLOAD_FOLDER']
+    site_folder = os.path.join(upload_root, str(site_id))
+    for folder in (site_folder, upload_root):
+        if not os.path.isdir(folder):
+            continue
+        for fname in os.listdir(folder):
+            if fname.endswith('_config.json') and not fname.startswith('global'):
+                fpath = os.path.join(folder, fname)
+                if not os.path.isfile(fpath):
+                    continue
+                try:
+                    with open(fpath, 'r', encoding='utf-8') as f:
+                        cfg_data = json.load(f)
+                    if str(cfg_data.get('site_id', '')) != str(site_id):
+                        continue
+                    file_prefix = cfg_data.get('file_prefix') or fname.replace('_config.json', '')
+                    settings = load_settings(file_prefix, int(site_id))
+                    if settings:
+                        return file_prefix, settings
+                except Exception:
+                    continue
+    return None, None
+
+
+@app.route('/api/projects/<site_id>/publish_created_pages', methods=['GET', 'POST'])
+def publish_created_pages(site_id):
+    """GET: return pending count for UI. POST: publish only created-but-unpublished pages (one-click after stop)."""
+    try:
+        if request.method == 'GET':
+            pending = load_pending_pages_to_publish(int(site_id))
+            return jsonify({"success": True, "pending_count": len(pending)}), 200
+
+        site_folder = os.path.join(app.config['UPLOAD_FOLDER'], str(site_id))
+        if not os.path.exists(site_folder):
+            return jsonify({"success": False, "message": f"Site folder not found for site_id {site_id}"}), 404
+
+        pending = load_pending_pages_to_publish(int(site_id))
+        if not pending:
+            return jsonify({
+                "success": True,
+                "published": 0,
+                "total": 0,
+                "message": "No created-but-unpublished pages found. Run assembly and create at least one page, or pages may already be published."
+            }), 200
+
+        _fp, settings = _get_file_prefix_and_settings_for_site(site_id)
+        if not settings:
+            return jsonify({"success": False, "message": "Could not load API config for this site. Save config with token first."}), 404
+
+        api_base_url = settings.get("target_site_url")
+        raw_token = settings.get("cms_login_token")
+        if not api_base_url or not raw_token or not str(raw_token).strip():
+            return jsonify({"success": False, "message": "API URL or CMS token missing in config."}), 400
+
+        api_headers = {
+            'Content-Type': 'application/json',
+            'ms_cms_clientapp': 'ProgrammingApp',
+            'Authorization': f'Bearer {raw_token}',
+        }
+
+        success_count, total_count, err = publish_created_pages_from_pending_file(api_base_url, api_headers, int(site_id))
+        return jsonify({
+            "success": True,
+            "published": success_count,
+            "total": total_count,
+            "message": f"Published {success_count} of {total_count} created page(s)." if total_count else "No pages to publish."
+        }), 200
+    except Exception as e:
+        app.logger.exception("publish_created_pages failed")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route('/stream_rerun/<file_prefix>')
+def stream_rerun(file_prefix):
+    """SSE endpoint that re-runs only the assembly step for an existing file_prefix."""
+    return Response(
+        generate_rerun_stream(file_prefix),
+        mimetype='text/event-stream'
+    )
 
 
 # --- NEW: Update Global Config ---

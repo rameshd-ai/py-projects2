@@ -141,8 +141,14 @@
                     <div class="w-full lg:w-3/5 p-6 bg-gray-50/70 overflow-y-auto custom-scrollbar">
                         <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">2. Execution Status</h2>
 
-                        <div id="statusMessage" data-status="initial" class="mb-8 p-5 rounded-xl text-base font-bold bg-gray-200 shadow-lg transition duration-500 ease-in-out transform hover:scale-[1.005]">
-                            Awaiting file upload...
+                        <div class="flex items-start gap-3 mb-8">
+                            <div id="statusMessage" data-status="initial" class="flex-1 p-5 rounded-xl text-base font-bold bg-gray-200 shadow-lg transition duration-500 ease-in-out transform hover:scale-[1.005]">
+                                Awaiting file upload...
+                            </div>
+                            <button id="stopBtn" onclick="requestStop()"
+                                class="hidden mt-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl shadow transition duration-150 whitespace-nowrap flex-shrink-0">
+                                ⏹ Stop
+                            </button>
                         </div>
 
                         <h3 class="text-xl font-semibold text-gray-700 mb-5 flex items-center">
@@ -242,6 +248,101 @@
                     <div class="spinner mx-auto mb-4"></div>
                     <p>Loading projects...</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page Status Modal -->
+    <div id="pageStatusModal" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 860px; width: 95%;">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Page Status</h2>
+                    <p id="pageStatusSiteLabel" class="text-sm text-gray-500 mt-1"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="modalStopBtn" onclick="requestStopFromModal()"
+                        class="hidden px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition duration-150">
+                        ⏹ Stop Assembly
+                    </button>
+                    <button onclick="closePageStatusModal()" class="text-gray-500 hover:text-gray-700 ml-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary chips -->
+            <div id="pageStatusSummary" class="flex flex-wrap gap-2 mb-4"></div>
+            <p id="pageStatusLastUpdated" class="text-xs text-gray-400 mb-2 hidden">Last updated: —</p>
+
+            <!-- Filter bar -->
+            <div class="flex gap-2 mb-3">
+                <input id="pageStatusSearch" type="text" placeholder="Search page name or hierarchy…"
+                    oninput="filterPageStatusTable()"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <select id="pageStatusFilter" onchange="filterPageStatusTable()"
+                    class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">All statuses</option>
+                    <option value="success">Success</option>
+                    <option value="publish_pending">Publish Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="stopped">Stopped</option>
+                    <option value="no_content">No Content</option>
+                    <option value="skipped">Skipped</option>
+                </select>
+            </div>
+
+            <!-- Selection toolbar -->
+            <div class="flex items-center gap-3 mb-2">
+                <label class="flex items-center gap-1 text-sm text-gray-600 cursor-pointer select-none">
+                    <input type="checkbox" id="pageStatusSelectAll" onchange="toggleSelectAllPages(this.checked)"
+                        class="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer" />
+                    Select all visible
+                </label>
+                <span id="pageStatusSelCount" class="text-xs text-gray-400">0 selected</span>
+                <div class="ml-auto flex items-center gap-2">
+                    <button id="resumeAssemblyBtn" onclick="resumeAssembly()"
+                        class="hidden px-4 py-1.5 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition duration-150">
+                        ▶ Resume Assembly
+                    </button>
+                    <button id="publishCreatedPagesBtn" onclick="publishCreatedPages()"
+                        class="px-4 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition duration-150"
+                        disabled title="Publish only the pages already created (e.g. after stopping mid-run)">
+                        📤 Publish created pages
+                    </button>
+                    <button id="rerunSelectedBtn" onclick="rerunSelectedPages()"
+                        class="px-4 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition duration-150"
+                        disabled>
+                        ▶ Re-run Selected
+                    </button>
+                </div>
+            </div>
+
+            <!-- Re-run progress bar -->
+            <div id="rerunProgress" class="hidden mb-3 p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
+                <div class="flex items-center gap-2">
+                    <div class="spinner border-t-blue-600 w-4 h-4"></div>
+                    <span id="rerunProgressMsg">Starting re-run…</span>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-auto" style="max-height: 360px;">
+                <table class="w-full text-sm border-collapse">
+                    <thead class="sticky top-0 bg-gray-100 text-gray-700">
+                        <tr>
+                            <th class="px-3 py-2 border-b border-gray-300 w-8"></th>
+                            <th class="text-left px-3 py-2 border-b border-gray-300 font-semibold cursor-pointer hover:bg-gray-200 select-none" onclick="sortPageStatusTable('page_name')">Page <span id="sort-page_name"></span></th>
+                            <th class="text-left px-3 py-2 border-b border-gray-300 font-semibold cursor-pointer hover:bg-gray-200 select-none" onclick="sortPageStatusTable('hierarchy')">Hierarchy <span id="sort-hierarchy"></span></th>
+                            <th class="text-left px-3 py-2 border-b border-gray-300 font-semibold cursor-pointer hover:bg-gray-200 select-none" onclick="sortPageStatusTable('status')">Status <span id="sort-status"></span></th>
+                            <th class="text-left px-3 py-2 border-b border-gray-300 font-semibold cursor-pointer hover:bg-gray-200 select-none" onclick="sortPageStatusTable('page_id')">Page ID <span id="sort-page_id"></span></th>
+                            <th class="text-left px-3 py-2 border-b border-gray-300 font-semibold cursor-pointer hover:bg-gray-200 select-none" onclick="sortPageStatusTable('timestamp')">Timestamp ▼ <span id="sort-timestamp"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="pageStatusTableBody">
+                        <tr><td colspan="6" class="text-center py-8 text-gray-400">Loading…</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -351,7 +452,19 @@
 
                 eventSource.addEventListener('update', (event) => {
                     const data = JSON.parse(event.data);
-                    
+
+                    // Capture site_id as soon as it arrives so Stop button works
+                    if (data.site_id && !_activeSiteId) {
+                        _activeSiteId = String(data.site_id);
+                        const stopBtn = document.getElementById('stopBtn');
+                        stopBtn.classList.remove('hidden');
+                        stopBtn.disabled = false;
+                        stopBtn.textContent = '⏹ Stop';
+                        stopBtn.className = stopBtn.className
+                            .replace('bg-gray-400','bg-red-600')
+                            .replace('hover:bg-gray-400','hover:bg-red-700');
+                    }
+
                     if (data.status === 'start') {
                         updateStatusMessage(`**Processing Started:** ${data.message}`, 'info');
                     } else if (data.status === 'in_progress') {
@@ -363,6 +476,8 @@
                         updateStatusMessage(`**Step Complete:** ${data.message}`, 'info');
                     } else if (data.status === 'complete') {
                         updateStatusMessage(`**SUCCESS!** ${data.message}`, 'complete');
+                        document.getElementById('stopBtn').classList.add('hidden');
+                        _activeSiteId = null;
                         
                         // 1. Show the final output section
                         finalOutputSection.classList.remove('hidden');
@@ -377,9 +492,13 @@
                         // Pass duration for the step that failed (if available)
                         updateStep(data.step_id, 'error', data.duration);
                         updateStatusMessage(`**ERROR:** Processing Failed at **${data.step_id}**. ${data.message}`, 'error');
+                        document.getElementById('stopBtn').classList.add('hidden');
+                        _activeSiteId = null;
                         eventSource.close();
                     } else if (data.status === 'close') {
                         console.log("Stream closed by server.");
+                        document.getElementById('stopBtn').classList.add('hidden');
+                        _activeSiteId = null;
                         eventSource.close();
                         submitButton.disabled = false;
                     }
@@ -387,6 +506,8 @@
 
                 eventSource.onerror = (err) => {
                     console.error("EventSource failed:", err);
+                    document.getElementById('stopBtn').classList.add('hidden');
+                    _activeSiteId = null;
                     if (statusMessage.dataset.status !== 'complete' && statusMessage.dataset.status !== 'error') {
                         updateStatusMessage('Connection lost or stream failed unexpectedly. Check server logs.', 'error');
                     }
@@ -508,13 +629,23 @@
                                     ${project.file_count} file(s)
                                 </div>
                             </div>
-                            <button 
-                                onclick="deleteProject('${project.site_id}')" 
-                                class="ml-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 font-semibold text-sm flex items-center"
-                            >
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                Delete
-                            </button>
+                            <div class="flex gap-2 ml-4">
+                                <button 
+                                    onclick="openPageStatusModal('${project.site_id}', '${siteUrl.replace(/'/g, "\\'")}')" 
+                                    class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-200 font-semibold text-sm flex items-center"
+                                    title="View page processing status"
+                                >
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                    Pages
+                                </button>
+                                <button 
+                                    onclick="deleteProject('${project.site_id}')" 
+                                    class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 font-semibold text-sm flex items-center"
+                                >
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    Delete
+                                </button>
+                            </div>
                         </div>
                     `;
                     }).join('');
@@ -619,6 +750,445 @@
             if (e.target === this) {
                 closeConfigModal();
             }
+        });
+
+        // ── Page Status Modal ──────────────────────────────────────────────
+        let _pageStatusData = [];   // full rows from API
+        let _pageStatusSiteId = null;
+        let _pageStatusRefreshInterval = null;  // auto-refresh while modal is open
+        let _rerunEventSource = null;
+        let _activeSiteId     = null;  // site_id of currently running stream (for stop button)
+        let _sortKey = 'timestamp';
+        let _sortAsc = false;
+
+        const STATUS_META = {
+            success:         { label: 'Success',         bg: 'bg-green-100',   text: 'text-green-700'   },
+            publish_pending: { label: 'Publish Pending', bg: 'bg-indigo-100',  text: 'text-indigo-700'  },
+            in_progress:     { label: 'In Progress',    bg: 'bg-blue-100',    text: 'text-blue-700'    },
+            stopped:         { label: 'Stopped',        bg: 'bg-red-100',     text: 'text-red-600'     },
+            no_content:      { label: 'No Content',     bg: 'bg-yellow-100', text: 'text-yellow-700'  },
+            skipped:         { label: 'Skipped',        bg: 'bg-gray-100',    text: 'text-gray-500'    },
+            error:           { label: 'Error',          bg: 'bg-red-100',    text: 'text-red-700'     },
+        };
+
+        function applyPageStatusResponse(data) {
+            if (!data.success) return false;
+            _pageStatusData = data.pages || [];
+            const lastEl = document.getElementById('pageStatusLastUpdated');
+            if (lastEl) {
+                lastEl.classList.remove('hidden');
+                const now = new Date();
+                lastEl.textContent = 'Last updated: ' + now.toLocaleTimeString();
+            }
+            if (data.is_running) {
+                document.getElementById('modalStopBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('modalStopBtn').classList.add('hidden');
+            }
+            if (data.can_resume) {
+                document.getElementById('resumeAssemblyBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('resumeAssemblyBtn').classList.add('hidden');
+            }
+            const s = data.summary || {};
+            const chips = [
+                { label: `Total: ${s.total}`,                     cls: 'bg-gray-200 text-gray-700' },
+                { label: `✓ Success: ${s.success || 0}`,           cls: 'bg-green-100 text-green-700' },
+                { label: `📤 Publish Pending: ${s.publish_pending || 0}`, cls: 'bg-indigo-100 text-indigo-700' },
+                { label: `⏳ In Progress: ${s.in_progress}`,       cls: 'bg-blue-100 text-blue-700' },
+                { label: `⏹ Stopped: ${s.stopped || 0}`,         cls: 'bg-red-100 text-red-600' },
+                { label: `⚠ No Content: ${s.no_content}`,         cls: 'bg-yellow-100 text-yellow-700' },
+                { label: `⏭ Skipped: ${s.skipped}`,              cls: 'bg-gray-100 text-gray-500' },
+                { label: `✗ Error: ${s.error || 0}`,             cls: 'bg-red-100 text-red-700' },
+            ];
+            document.getElementById('pageStatusSummary').innerHTML = chips
+                .map(c => `<span class="px-3 py-1 rounded-full text-xs font-semibold ${c.cls}">${c.label}</span>`)
+                .join('');
+            const pendingCount = data.pending_count != null ? data.pending_count : (s.publish_pending || 0);
+            const publishBtn = document.getElementById('publishCreatedPagesBtn');
+            if (publishBtn) {
+                publishBtn.disabled = pendingCount === 0;
+                publishBtn.textContent = pendingCount > 0 ? `Publish created pages (${pendingCount})` : 'Publish created pages';
+            }
+            renderPageStatusTable(applySortToRows(_pageStatusData));
+            return true;
+        }
+
+        async function refreshPageStatusData() {
+            if (!_pageStatusSiteId) return;
+            const modal = document.getElementById('pageStatusModal');
+            if (modal.classList.contains('hidden')) return;
+            try {
+                const res = await fetch(`/api/projects/${_pageStatusSiteId}/page_status`);
+                const data = await res.json();
+                applyPageStatusResponse(data);
+                updatePublishCreatedPagesButton();
+            } catch (err) {
+                console.warn('Page status refresh failed:', err);
+            }
+        }
+
+        async function openPageStatusModal(siteId, siteLabel) {
+            _pageStatusSiteId = siteId;
+            if (_pageStatusRefreshInterval) { clearInterval(_pageStatusRefreshInterval); _pageStatusRefreshInterval = null; }
+            document.getElementById('pageStatusModal').classList.remove('hidden');
+            document.getElementById('pageStatusSiteLabel').textContent = `Site: ${siteLabel} (ID: ${siteId})`;
+            document.getElementById('pageStatusSummary').innerHTML = '';
+            document.getElementById('pageStatusSearch').value = '';
+            document.getElementById('pageStatusFilter').value = '';
+            document.getElementById('pageStatusSelectAll').checked = false;
+            document.getElementById('rerunSelectedBtn').disabled = true;
+            document.getElementById('resumeAssemblyBtn').classList.add('hidden');
+            document.getElementById('modalStopBtn').classList.add('hidden');
+            document.getElementById('rerunProgress').classList.add('hidden');
+            document.getElementById('pageStatusTableBody').innerHTML =
+                '<tr><td colspan="6" class="text-center py-8 text-gray-400"><div class="spinner mx-auto"></div></td></tr>';
+            updatePublishCreatedPagesButton();
+
+            try {
+                const res  = await fetch(`/api/projects/${siteId}/page_status`);
+                const data = await res.json();
+                if (!data.success) {
+                    document.getElementById('pageStatusTableBody').innerHTML =
+                        `<tr><td colspan="6" class="text-center py-6 text-red-500">${data.message}</td></tr>`;
+                    return;
+                }
+                _sortKey = 'timestamp';
+                _sortAsc = false;
+                applyPageStatusResponse(data);
+                updatePublishCreatedPagesButton();
+                _pageStatusRefreshInterval = setInterval(refreshPageStatusData, 4000);
+            } catch (err) {
+                document.getElementById('pageStatusTableBody').innerHTML =
+                    `<tr><td colspan="6" class="text-center py-6 text-red-500">Error: ${err.message}</td></tr>`;
+            }
+        }
+
+        async function updatePublishCreatedPagesButton() {
+            if (!_pageStatusSiteId) return;
+            const btn = document.getElementById('publishCreatedPagesBtn');
+            try {
+                const res = await fetch(`/api/projects/${_pageStatusSiteId}/publish_created_pages`);
+                const data = await res.json();
+                const n = (data.success && data.pending_count != null) ? data.pending_count : 0;
+                btn.disabled = n === 0;
+                btn.textContent = n > 0 ? `Publish created pages (${n})` : 'Publish created pages';
+            } catch (_) {
+                btn.disabled = true;
+                btn.textContent = 'Publish created pages';
+            }
+        }
+
+        async function publishCreatedPages() {
+            if (!_pageStatusSiteId) return;
+            const btn = document.getElementById('publishCreatedPagesBtn');
+            btn.disabled = true;
+            btn.textContent = 'Publishing…';
+            try {
+                const res = await fetch(`/api/projects/${_pageStatusSiteId}/publish_created_pages`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    const msg = data.published !== undefined
+                        ? `Published ${data.published} of ${data.total} page(s).`
+                        : (data.message || 'Done.');
+                    alert(msg);
+                } else {
+                    alert(data.message || 'Publish failed.');
+                }
+            } catch (err) {
+                alert('Request failed: ' + err.message);
+            }
+            btn.textContent = 'Publish created pages';
+            updatePublishCreatedPagesButton();
+            refreshPageStatusData();
+        }
+
+        function closePageStatusModal() {
+            document.getElementById('pageStatusModal').classList.add('hidden');
+            if (_pageStatusRefreshInterval) { clearInterval(_pageStatusRefreshInterval); _pageStatusRefreshInterval = null; }
+            if (_rerunEventSource) { _rerunEventSource.close(); _rerunEventSource = null; }
+        }
+
+        function renderPageStatusTable(rows) {
+            const tbody = document.getElementById('pageStatusTableBody');
+            // Preserve selection across polling refresh: capture currently selected page names before re-render
+            const selectedPages = new Set();
+            document.querySelectorAll('.page-row-cb:checked').forEach(cb => {
+                const name = cb.getAttribute('data-page');
+                if (name) selectedPages.add(name);
+            });
+
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-gray-400">No pages found.</td></tr>';
+                updateSelectionCount();
+                return;
+            }
+            tbody.innerHTML = rows.map((p, i) => {
+                const m     = STATUS_META[p.status] || { label: p.status, bg: 'bg-gray-100', text: 'text-gray-600' };
+                const badge = `<span class="px-2 py-0.5 rounded-full text-xs font-semibold ${m.bg} ${m.text}">${m.label}</span>`;
+                const pageId = p.page_id
+                    ? `<span class="font-mono text-xs text-gray-600">${p.page_id}</span>`
+                    : '<span class="text-gray-300">—</span>';
+                const checked = selectedPages.has(p.page_name) ? ' checked' : '';
+                return `<tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="px-3 py-2 text-center">
+                        <input type="checkbox" data-page="${escHtml(p.page_name)}"
+                            onchange="updateSelectionCount()"
+                            class="page-row-cb w-4 h-4 rounded border-gray-300 text-blue-600 cursor-pointer"${checked} />
+                    </td>
+                    <td class="px-3 py-2 font-medium text-gray-800 whitespace-nowrap">${escHtml(p.page_name)}</td>
+                    <td class="px-3 py-2 text-gray-500 text-xs">${escHtml(p.hierarchy)}</td>
+                    <td class="px-3 py-2">${badge}</td>
+                    <td class="px-3 py-2">${pageId}</td>
+                    <td class="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">${p.timestamp || '—'}</td>
+                </tr>`;
+            }).join('');
+            updateSelectionCount();
+        }
+
+        function filterPageStatusTable() {
+            const search = document.getElementById('pageStatusSearch').value.toLowerCase();
+            const status = document.getElementById('pageStatusFilter').value;
+            let filtered = _pageStatusData.filter(p => {
+                const matchText = !search ||
+                    p.page_name.toLowerCase().includes(search) ||
+                    p.hierarchy.toLowerCase().includes(search);
+                const matchStatus = !status || p.status === status;
+                return matchText && matchStatus;
+            });
+            filtered = applySortToRows(filtered);
+            document.getElementById('pageStatusSelectAll').checked = false;
+            renderPageStatusTable(filtered);
+        }
+
+        function applySortToRows(rows) {
+            return [...rows].sort((a, b) => {
+                const va = (a[_sortKey] || '').toString();
+                const vb = (b[_sortKey] || '').toString();
+                return _sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+            });
+        }
+
+        function sortPageStatusTable(key) {
+            if (_sortKey === key) {
+                _sortAsc = !_sortAsc;
+            } else {
+                _sortKey = key;
+                _sortAsc = true;
+            }
+            // Update header indicators
+            ['page_name','hierarchy','status','page_id','timestamp'].forEach(k => {
+                const el = document.getElementById(`sort-${k}`);
+                if (el) el.textContent = '';
+            });
+            const indicator = document.getElementById(`sort-${key}`);
+            if (indicator) indicator.textContent = _sortAsc ? ' ▲' : ' ▼';
+            // Update Timestamp header label (it starts with the arrow baked in)
+            const tsHeader = document.querySelector('[onclick="sortPageStatusTable(\'timestamp\')"]');
+            if (tsHeader) tsHeader.childNodes[0].textContent = 'Timestamp';
+            filterPageStatusTable();
+        }
+
+        function toggleSelectAllPages(checked) {
+            document.querySelectorAll('.page-row-cb').forEach(cb => cb.checked = checked);
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            const cbs    = document.querySelectorAll('.page-row-cb');
+            const checked = [...cbs].filter(c => c.checked);
+            document.getElementById('pageStatusSelCount').textContent = `${checked.length} selected`;
+            document.getElementById('rerunSelectedBtn').disabled = checked.length === 0;
+            // Sync select-all state
+            const allCb = document.getElementById('pageStatusSelectAll');
+            allCb.checked = cbs.length > 0 && checked.length === cbs.length;
+            allCb.indeterminate = checked.length > 0 && checked.length < cbs.length;
+        }
+
+        async function rerunSelectedPages() {
+            const pages = [...document.querySelectorAll('.page-row-cb:checked')]
+                .map(cb => cb.dataset.page);
+            if (!pages.length) return;
+
+            if (_rerunEventSource) { _rerunEventSource.close(); _rerunEventSource = null; }
+
+            const progressBox = document.getElementById('rerunProgress');
+            const progressMsg = document.getElementById('rerunProgressMsg');
+            progressBox.classList.remove('hidden');
+            progressBox.className = progressBox.className.replace(/bg-\S+|border-\S+|text-\S+/g, '').trim();
+            progressBox.classList.add('bg-blue-50', 'border-blue-200', 'text-blue-700');
+            progressMsg.textContent = `Submitting re-run for: ${pages.join(', ')}…`;
+            document.getElementById('rerunSelectedBtn').disabled = true;
+
+            try {
+                const res  = await fetch(`/api/projects/${_pageStatusSiteId}/rerun_pages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pages })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    progressBox.classList.replace('bg-blue-50','bg-red-50');
+                    progressBox.classList.replace('border-blue-200','border-red-200');
+                    progressBox.classList.replace('text-blue-700','text-red-700');
+                    progressMsg.textContent = `Error: ${data.message}`;
+                    document.getElementById('rerunSelectedBtn').disabled = false;
+                    return;
+                }
+
+                progressMsg.textContent = `Re-run started for: ${pages.join(', ')} — assembling pages…`;
+
+                // Connect to SSE stream
+                _rerunEventSource = new EventSource(data.stream_url);
+                _rerunEventSource.addEventListener('update', (e) => {
+                    const msg = JSON.parse(e.data);
+                    if (msg.status === 'error') {
+                        progressBox.classList.replace('bg-blue-50','bg-red-50');
+                        progressBox.classList.replace('border-blue-200','border-red-200');
+                        progressBox.classList.replace('text-blue-700','text-red-700');
+                        progressMsg.textContent = `Failed: ${msg.message}`;
+                        _rerunEventSource.close(); _rerunEventSource = null;
+                        document.getElementById('rerunSelectedBtn').disabled = false;
+                    } else if (msg.status === 'complete') {
+                        progressBox.classList.replace('bg-blue-50','bg-green-50');
+                        progressBox.classList.replace('border-blue-200','border-green-200');
+                        progressBox.classList.replace('text-blue-700','text-green-700');
+                        progressMsg.textContent = `Re-run complete! Refreshing status…`;
+                        _rerunEventSource.close(); _rerunEventSource = null;
+                        // Reload page status after a short delay
+                        setTimeout(() => openPageStatusModal(_pageStatusSiteId,
+                            document.getElementById('pageStatusSiteLabel').textContent.split('Site: ')[1] || _pageStatusSiteId), 1500);
+                    } else if (msg.message) {
+                        progressMsg.textContent = msg.message;
+                    }
+                });
+                _rerunEventSource.onerror = () => {
+                    progressMsg.textContent += ' (connection lost)';
+                    _rerunEventSource.close(); _rerunEventSource = null;
+                    document.getElementById('rerunSelectedBtn').disabled = false;
+                };
+
+            } catch (err) {
+                progressMsg.textContent = `Error: ${err.message}`;
+                document.getElementById('rerunSelectedBtn').disabled = false;
+            }
+        }
+
+        // ── Stop from modal (uses _pageStatusSiteId) ─────────────────────────
+        async function requestStopFromModal() {
+            const siteId = _pageStatusSiteId;
+            if (!siteId) return;
+            const btn = document.getElementById('modalStopBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Stopping…';
+            try {
+                const res  = await fetch(`/api/projects/${siteId}/stop`, { method: 'POST' });
+                const data = await res.json();
+                btn.textContent = data.success ? '⏹ Stop Requested' : '⏹ Stop Assembly';
+                btn.disabled = !data.success;
+                if (data.success) {
+                    btn.classList.replace('bg-red-600', 'bg-gray-400');
+                    btn.classList.replace('hover:bg-red-700', 'hover:bg-gray-400');
+                    // Also hide main Stop button if same site
+                    if (_activeSiteId === siteId) {
+                        document.getElementById('stopBtn').classList.add('hidden');
+                        _activeSiteId = null;
+                    }
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = '⏹ Stop Assembly';
+            }
+        }
+
+        // ── Stop from main stream area (uses _activeSiteId) ──────────────────
+        async function requestStop() {
+            if (!_activeSiteId) return;
+            const btn = document.getElementById('stopBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Stopping…';
+            try {
+                const res  = await fetch(`/api/projects/${_activeSiteId}/stop`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    btn.textContent = '⏹ Stop Requested';
+                    btn.classList.replace('bg-red-600', 'bg-gray-400');
+                    btn.classList.replace('hover:bg-red-700', 'hover:bg-gray-400');
+                } else {
+                    btn.textContent = '⏹ Stop';
+                    btn.disabled = false;
+                    alert('Stop failed: ' + data.message);
+                }
+            } catch (err) {
+                btn.textContent = '⏹ Stop';
+                btn.disabled = false;
+                alert('Stop request error: ' + err.message);
+            }
+        }
+
+        // ── Resume stopped/killed assembly ────────────────────────────────────
+        async function resumeAssembly() {
+            if (!_pageStatusSiteId) return;
+            if (_rerunEventSource) { _rerunEventSource.close(); _rerunEventSource = null; }
+
+            const resumeBtn   = document.getElementById('resumeAssemblyBtn');
+            const progressBox = document.getElementById('rerunProgress');
+            const progressMsg = document.getElementById('rerunProgressMsg');
+
+            resumeBtn.disabled = true;
+            progressBox.classList.remove('hidden');
+            progressBox.className = progressBox.className.replace(/bg-\S+|border-\S+|text-\S+/g, '').trim();
+            progressBox.classList.add('bg-orange-50', 'border-orange-200', 'text-orange-700', 'mb-3', 'p-3', 'rounded-lg', 'border', 'text-sm');
+            progressMsg.textContent = 'Resuming assembly — connecting…';
+
+            try {
+                const res  = await fetch(`/api/projects/${_pageStatusSiteId}/resume`, { method: 'POST' });
+                const data = await res.json();
+                if (!data.success) {
+                    progressBox.classList.replace('bg-orange-50','bg-red-50');
+                    progressMsg.textContent = `Error: ${data.message}`;
+                    resumeBtn.disabled = false;
+                    return;
+                }
+
+                progressMsg.textContent = 'Resuming — assembling remaining pages…';
+                _rerunEventSource = new EventSource(data.stream_url);
+                _rerunEventSource.addEventListener('update', (e) => {
+                    const msg = JSON.parse(e.data);
+                    if (msg.status === 'error') {
+                        progressBox.classList.replace('bg-orange-50','bg-red-50');
+                        progressMsg.textContent = `Failed: ${msg.message}`;
+                        _rerunEventSource.close(); _rerunEventSource = null;
+                        resumeBtn.disabled = false;
+                    } else if (msg.status === 'complete') {
+                        progressBox.classList.replace('bg-orange-50','bg-green-50');
+                        progressMsg.textContent = 'Resume complete! Refreshing status…';
+                        _rerunEventSource.close(); _rerunEventSource = null;
+                        resumeBtn.classList.add('hidden');
+                        setTimeout(() => openPageStatusModal(_pageStatusSiteId,
+                            document.getElementById('pageStatusSiteLabel').textContent.split('Site: ')[1] || _pageStatusSiteId), 1500);
+                    } else if (msg.message) {
+                        progressMsg.textContent = msg.message;
+                    }
+                });
+                _rerunEventSource.onerror = () => {
+                    progressMsg.textContent += ' (connection lost)';
+                    _rerunEventSource.close(); _rerunEventSource = null;
+                    resumeBtn.disabled = false;
+                };
+
+            } catch (err) {
+                progressMsg.textContent = `Error: ${err.message}`;
+                resumeBtn.disabled = false;
+            }
+        }
+
+        function escHtml(str) {
+            return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        document.getElementById('pageStatusModal').addEventListener('click', function(e) {
+            if (e.target === this) closePageStatusModal();
         });
     </script>
 </body>

@@ -296,16 +296,46 @@ def getComponentDetailsUsingVcompAlias(vcompalias, base_url, headers):
     
 
 
-def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
+def _cms_retry_delay(attempt: int, max_retries: int, is_busy_or_rate_limit: bool = False) -> float:
+    """Exponential backoff for CMS API retries. Busy/rate-limit uses longer delays."""
+    base = 6 if is_busy_or_rate_limit else 4
+    delay = min(base * (2 ** attempt), 120)
+    return float(delay)
+
+
+def _is_transient_error(result: dict) -> bool:
+    """True if API response suggests a transient/busy error worth retrying."""
+    if not result or not isinstance(result, dict):
+        return False
+    msg = (result.get("message") or result.get("error") or result.get("errorMessage") or "").lower()
+    text = json.dumps(result).lower()
+    return any(k in text or k in msg for k in ("busy", "timeout", "try again", "rate", "limit", "unavailable", "overload", "retry", "too many", "throttl"))
+
+
+def _is_auth_error(response, result: dict) -> bool:
+    """True if response indicates logout/token expired (401 or auth-related message in body)."""
+    if getattr(response, "status_code", None) == 401:
+        return True
+    if not result or not isinstance(result, dict):
+        return False
+    msg = (result.get("message") or result.get("error") or result.get("errorMessage") or "").lower()
+    text = json.dumps(result).lower()
+    return any(k in text or k in msg for k in ("unauthorized", "login", "session expired", "token expired", "logout", "sign in", "authentication", "bearer", "401"))
+
+
+def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10, refresh_token_callback=None):
     """
     Calls the CMS API to save/update miBlock records using the provided payload.
-    Now supports batch processing to improve performance.
+    Supports retries, exponential backoff, and optional token refresh on auth/logout.
 
     Args:
         base_url (str): The base URL for the API.
         headers (dict): The authorization headers for the API request.
         payload (dict): The entire cleaned payload dictionary containing records to be saved.
         batch_size (int): Number of records to process in each batch (default: 10).
+        refresh_token_callback: Optional callable() -> dict. If provided and the API returns 401 or
+            auth-related error (e.g. session expired, logout), this is called once per record to get
+            new headers; the request is retried with the new token.
 
     Returns:
         tuple: (bool, dict or str): A boolean indicating success or failure,
@@ -328,7 +358,8 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
     print(f"[BATCH] Processing {total_records} records in batches of {batch_size}", flush=True)
     
     try:
-        # Process records in batches
+        # Use caller's headers dict so token refresh updates it for subsequent batches (L1, L2, etc.)
+        current_headers = headers
         for batch_start in range(0, total_records, batch_size):
             batch_end = min(batch_start + batch_size, total_records)
             batch_records = all_records[batch_start:batch_end]
@@ -337,50 +368,79 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
             
             print(f"[BATCH] Processing batch {batch_num}/{total_batches} ({len(batch_records)} records)...", flush=True)
             
-            # Process each record in the batch
             for record_set_id, record, record_index in batch_records:
-                max_retries = 3
-                retry_delay = 5  # seconds
+                max_retries = 6
                 success = False
+                last_was_rate_limit = False
+                token_refreshed_for_record = False
                 
                 for attempt in range(max_retries):
                     try:
-                        # Increase timeout for menu records (60 seconds)
                         timeout_value = 60
-                        response = requests.post(api_url, headers=headers, json=record, timeout=timeout_value)
+                        response = requests.post(api_url, headers=current_headers, json=record, timeout=timeout_value)
+                        status = getattr(response, "status_code", None)
+                        last_was_rate_limit = status in (429, 503)
+                        result = None
+                        try:
+                            result = response.json()
+                        except Exception:
+                            pass
+                        # On 401 or auth error in body: try token refresh once per record
+                        if (status == 401 or _is_auth_error(response, result)) and refresh_token_callback and not token_refreshed_for_record:
+                            new_headers = None
+                            try:
+                                new_headers = refresh_token_callback()
+                            except Exception as e:
+                                logging.warning("Token refresh callback failed: %s", e)
+                            if new_headers and isinstance(new_headers, dict):
+                                current_headers.update(new_headers)
+                                token_refreshed_for_record = True
+                                print(f"[AUTH] Token refreshed for destination; retrying record {record_index + 1}...", flush=True)
+                                continue
                         response.raise_for_status()
-                        result = response.json()
+                        if result is None:
+                            try:
+                                result = response.json()
+                            except Exception:
+                                result = {}
                         # For update (recordId > 0), some APIs return success: true instead of result: id
                         is_update = isinstance(record.get("recordId"), (int, float)) and int(record.get("recordId") or 0) > 0
                         if result.get("result") or (is_update and result.get("success")):
-                            # Extract the created/updated record ID from response
                             created_id = result.get('result') or (result.get('recordId') if is_update else None) or (record.get("recordId") if is_update else None)
-                            # Handle different response formats
                             if isinstance(created_id, int):
                                 record_id = created_id
                             elif isinstance(created_id, dict):
                                 record_id = created_id.get('recordId', created_id.get('id', 0))
                             else:
                                 record_id = created_id
-                            
-                            # Store response by index to maintain order
-                            # Pad with None if needed to maintain index alignment
                             while len(responses) <= record_index:
                                 responses.append(None)
                             responses[record_index] = record_id
-                            
                             print(f"[OK] Record {record_index + 1} created with ID: {record_id}", flush=True)
                             success = True
-                            break  # Success, exit retry loop
+                            break
                         else:
                             error_msg = f"API response indicates failure for record: {record}"
                             logging.warning("SaveMiblockRecord response (not success): %s", result)
                             print(f"[ERROR] {error_msg}", flush=True)
-                            if attempt < max_retries - 1:
-                                print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
-                                time.sleep(retry_delay)
+                            transient = _is_transient_error(result)
+                            if attempt < max_retries - 1 and transient:
+                                delay = _cms_retry_delay(attempt, max_retries, is_busy_or_rate_limit=True)
+                                print(f"[RETRY] Retrying record {record_index + 1} in {delay:.0f}s (attempt {attempt + 2}/{max_retries}, server busy/transient)...", flush=True)
+                                time.sleep(delay)
+                            elif attempt < max_retries - 1:
+                                delay = _cms_retry_delay(attempt, max_retries, is_busy_or_rate_limit=False)
+                                print(f"[RETRY] Retrying record {record_index + 1} in {delay:.0f}s (attempt {attempt + 2}/{max_retries})...", flush=True)
+                                time.sleep(delay)
                             else:
-                                return False, error_msg
+                                if transient:
+                                    while len(responses) <= record_index:
+                                        responses.append(None)
+                                    responses[record_index] = None
+                                    print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts (busy/transient), continuing...", flush=True)
+                                    logger.warning("Record %s failed after retries (transient): %s", record_index + 1, result)
+                                else:
+                                    return False, error_msg
                     except requests.exceptions.Timeout as e:
                         error_msg = f"Timeout error for record {record_index + 1}: {e}"
                         print(f"[TIMEOUT] {error_msg} - NOT retrying (retries can create duplicate records if original succeeded)", flush=True)
@@ -388,15 +448,43 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
                         while len(responses) <= record_index:
                             responses.append(None)
                         responses[record_index] = None
-                        break  # Do NOT retry - record may have been created; retrying = duplicates
+                        break
+                    except requests.HTTPError as e:
+                        # Catch before RequestException (HTTPError is a subclass)
+                        status = e.response.status_code if e.response is not None else None
+                        last_was_rate_limit = status in (429, 503)
+                        if status == 401 and refresh_token_callback and not token_refreshed_for_record:
+                            try:
+                                new_headers = refresh_token_callback()
+                                if new_headers and isinstance(new_headers, dict):
+                                    current_headers.update(new_headers)
+                                    token_refreshed_for_record = True
+                                    print(f"[AUTH] Token refreshed for destination; retrying record {record_index + 1}...", flush=True)
+                                    continue
+                            except Exception as refresh_err:
+                                logging.warning("Token refresh callback failed: %s", refresh_err)
+                        error_msg = f"HTTP {status} for record {record_index + 1}: {e}"
+                        print(f"[ERROR] {error_msg}", flush=True)
+                        delay = _cms_retry_delay(attempt, max_retries, is_busy_or_rate_limit=last_was_rate_limit)
+                        if attempt < max_retries - 1:
+                            retry_after = e.response.headers.get("Retry-After") if e.response else None
+                            wait = float(retry_after) if retry_after and str(retry_after).isdigit() else delay
+                            print(f"[RETRY] Retrying record {record_index + 1} in {wait:.0f}s (attempt {attempt + 2}/{max_retries})...", flush=True)
+                            time.sleep(wait)
+                        else:
+                            while len(responses) <= record_index:
+                                responses.append(None)
+                            responses[record_index] = None
+                            print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts (HTTP {status}), continuing...", flush=True)
+                            logger.warning("Record %s failed after retries (HTTP %s)", record_index + 1, status)
                     except requests.RequestException as e:
                         error_msg = f"Request error for record {record_index + 1}: {e}"
                         print(f"[ERROR] {error_msg}", flush=True)
+                        delay = _cms_retry_delay(attempt, max_retries, is_busy_or_rate_limit=last_was_rate_limit)
                         if attempt < max_retries - 1:
-                            print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
-                            time.sleep(retry_delay)
+                            print(f"[RETRY] Retrying record {record_index + 1} in {delay:.0f}s (attempt {attempt + 2}/{max_retries})...", flush=True)
+                            time.sleep(delay)
                         else:
-                            # On final attempt failure, store None and continue
                             while len(responses) <= record_index:
                                 responses.append(None)
                             responses[record_index] = None
@@ -405,24 +493,22 @@ def addUpdateRecordsToCMS(base_url, headers, payload, batch_size=10):
                     except Exception as e:
                         error_msg = f"Unexpected error processing record {record_index + 1}: {e}"
                         print(f"[ERROR] {error_msg}", flush=True)
+                        delay = _cms_retry_delay(attempt, max_retries, is_busy_or_rate_limit=False)
                         if attempt < max_retries - 1:
-                            print(f"[RETRY] Retrying record {record_index + 1} (attempt {attempt + 2}/{max_retries})...", flush=True)
-                            time.sleep(retry_delay)
+                            print(f"[RETRY] Retrying record {record_index + 1} in {delay:.0f}s (attempt {attempt + 2}/{max_retries})...", flush=True)
+                            time.sleep(delay)
                         else:
-                            # On final attempt failure, store None and continue
                             while len(responses) <= record_index:
                                 responses.append(None)
                             responses[record_index] = None
-                            print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts, continuing with next record...", flush=True)
-                            logger.warning(f"Record {record_index + 1} failed after {max_retries} attempts due to unexpected error")
+                            print(f"[WARNING] Record {record_index + 1} failed after {max_retries} attempts, continuing...", flush=True)
+                            logger.warning(f"Record {record_index + 1} failed after {max_retries} attempts: %s", e)
                 
-                # Small delay between records to avoid overwhelming the server
                 if record_index < len(all_records) - 1:
                     time.sleep(0.5)
             
-            # Small delay between batches (reduced from per-record delay)
             if batch_end < total_records:
-                time.sleep(1)  # Reduced from 5 seconds before and 2 seconds after
+                time.sleep(1)
         
         print(f"[SUCCESS] All {total_records} records processed successfully", flush=True)
         return True, responses

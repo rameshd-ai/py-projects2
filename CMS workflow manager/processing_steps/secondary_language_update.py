@@ -18,10 +18,23 @@ import logging
 from typing import Dict, Any, List, Tuple, Optional
 
 from apis import addUpdateRecordsToCMS
-from utils import get_job_folder, load_job_config
+from utils import get_job_folder, load_job_config, make_destination_token_refresh_callback
 from config import BASE_DIR
 
 logger = logging.getLogger(__name__)
+
+# #region agent log
+_DEBUG_LOG = os.path.join(BASE_DIR, ".cursor", "debug.log")
+def _agent_log(msg: str, data: Dict, hypothesis_id: str = None):
+    try:
+        payload = {"timestamp": int(time.time() * 1000), "location": "secondary_language_update.py", "message": msg, "data": data}
+        if hypothesis_id:
+            payload["hypothesisId"] = hypothesis_id
+        with open(_DEBUG_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+# #endregion
 
 RESOURCE_DIR = os.path.join(BASE_DIR, "resource")
 MENU_FIELD_MAPPER_PATH = os.path.join(RESOURCE_DIR, "menu_field_mapper.json")
@@ -102,6 +115,8 @@ def _api_data_to_record_json_string(level: str, api_data: Dict, field_mapper: Di
         api_key = mapper.get(cms_key, cms_key)
         if level_key == "level_2" and isinstance(api_data, dict):
             value = _get_level2_api_value(api_data, cms_key, api_key)
+        elif level_key == "level_0" and isinstance(api_data, dict) and cms_key in ("menu-title", "menu-type"):
+            value = api_data.get("Name") or api_data.get("name") or api_data.get(api_key)
         else:
             value = api_data.get(api_key) if isinstance(api_data, dict) else None
         if value is None:
@@ -266,11 +281,15 @@ def _ensure_orphan_primaries_and_reexport(
     records: List[Dict],
     component_ids: Dict[str, int],
     log: List[Dict],
+    dry_run: bool = False,
 ) -> List[Dict]:
     """
     Find secondary records with no primary (PrimaryLanguageRecordId 0 or null).
     For each, create an inactive primary record using the secondary's data, then re-export and return new records list.
+    When dry_run is True, skip all API calls and re-export; return records as-is.
     """
+    if dry_run:
+        return records
     from apis import getComponentInfo, export_mi_block_component
     from .html_menu import get_menu_component_names
 
@@ -315,7 +334,8 @@ def _ensure_orphan_primaries_and_reexport(
             "updatedBy": 0,
         }
         api_payload = {f"orphan_primary_{rec['Id']}": [payload]}
-        success, _ = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=1)
+        refresh_cb = make_destination_token_refresh_callback(job_id)
+        success, _ = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=1, refresh_token_callback=refresh_cb)
         if success:
             created += 1
         time.sleep(1)
@@ -365,14 +385,16 @@ def run_secondary_language_update_step(
     job_id: str,
     steps_log: Optional[List[Dict]] = None,
     lang_key: Optional[str] = None,
+    dry_run: bool = False,
 ) -> Dict[str, Any]:
     """
     Updates existing secondary language records with menu data from each secondary site.
     - lang_key: if set ('lang1', 'lang2', 'lang3'), only update that language; otherwise all configured.
-    - Optionally creates inactive primary records for orphan secondaries, then re-exports.
+    - dry_run: if True, build payloads and write secondary_update_paper_check.json only; no API calls, no DB writes.
+    - Optionally creates inactive primary records for orphan secondaries, then re-exports (skipped when dry_run).
     - Loads export records, site_languages, component map, and secondary menu JSON per lang.
     - Aligns secondary menu data to primary sequence by position.
-    - Calls SaveMiblockRecord for each secondary record with updated recordDataJson.
+    - Calls SaveMiblockRecord for each secondary record with updated recordDataJson (unless dry_run).
     """
     log = steps_log if steps_log is not None else []
 
@@ -427,8 +449,8 @@ def run_secondary_language_update_step(
         return {"success": False, "error": "No componentRecords", "steps": log}
     records = records_data["componentRecords"]
 
-    # Orphan handling: create inactive primary for secondary-only records, then re-export
-    records = _ensure_orphan_primaries_and_reexport(job_id, job_folder, job_config, records, component_ids, log)
+    # Orphan handling: create inactive primary for secondary-only records, then re-export (skipped when dry_run)
+    records = _ensure_orphan_primaries_and_reexport(job_id, job_folder, job_config, records, component_ids, log, dry_run=dry_run)
 
     # Primary sequence: order of records in destination (menu1, then its sections, then its items, then menu2, ...)
     # Use record_ids_summary.json if present (same sequence as when primary records were created), else from export
@@ -442,6 +464,16 @@ def run_secondary_language_update_step(
     if not primary_sequence:
         _step("Update skipped: no primary sequence.")
         return {"success": False, "error": "No primary sequence", "steps": log}
+
+    # Visibility: how much primary we have (so user sees "primary and secondary" picture)
+    primary_l0 = sum(1 for lev, _ in primary_sequence if lev == 0)
+    primary_l1 = sum(1 for lev, _ in primary_sequence if lev == 1)
+    primary_l2 = sum(1 for lev, _ in primary_sequence if lev == 2)
+    _step(f"Primary (anchor): {primary_l0} menus (L0), {primary_l1} sections (L1), {primary_l2} items (L2) = {len(primary_sequence)} slots. Updating existing secondary records only (1st↔1st, 2nd↔2nd, …). No new records created.")
+
+    # #region agent log
+    _agent_log("Step 3 update starting", {"job_id": job_id, "records_count": len(records), "primary_sequence_len": len(primary_sequence)}, "H5")
+    # #endregion
 
     # Map (primary_record_id, lang_id) -> secondary record (so 1st primary's secondary gets 1st secondary data)
     secondary_by_primary_lang: Dict[Tuple[int, int], Dict] = {}
@@ -482,8 +514,12 @@ def run_secondary_language_update_step(
         "ms_cms_clientapp": "ProgrammingApp",
         "Authorization": f"Bearer {destination_token}",
     }
+    refresh_token_cb = make_destination_token_refresh_callback(job_id)
     updated_count = 0
+    paper_check_payloads: List[Dict] = []
     _step(f"Destination (all updates go here): {destination_url}")
+    if dry_run:
+        _step("Paper check mode: no data will be written to the database.")
 
     # Process one secondary language at a time; updates follow primary sequence (1st primary's secondary = 1st secondary data)
     for idx, (lang_key_iter, lang_cfg) in enumerate(configured_langs):
@@ -512,16 +548,72 @@ def run_secondary_language_update_step(
         if len(data_sequence) != len(primary_sequence):
             _step(f"Data length {len(data_sequence)} vs primary sequence {len(primary_sequence)}; aligning by min.")
 
+        # Build secondary records in same tree order (L0, L1, L2...) for this language.
+        # Used as fallback when PrimaryLanguageRecordId is 0/null so main parent (L0) records still get updated.
+        secondary_sequence_for_lang = _build_secondary_records_sequence_for_language(records, component_ids, lang_id)
+
+        # L0-by-ordinal fallback: when index-based match fails (e.g. different tree sizes), match 1st primary menu -> 1st secondary L0, 2nd -> 2nd, etc.
+        primary_l0_ids_ordered = [pid for lev, pid in primary_sequence if lev == 0]
+        secondary_l0_recs_ordered = [rec for lev, rec in secondary_sequence_for_lang if lev == 0]
+        # L0 menu data by ordinal: so we can update each secondary L0 with the correct menu title (e.g. 2nd menu "Grand Sunday Brunch" -> "週日早午餐") even when flat sequence lengths differ
+        level_0_template = (template.get("level 0") or {}).get("recordList") or [{}]
+        level_0_template = level_0_template[0] if level_0_template else {}
+
+        # #region agent log
+        _agent_log("secondary_lang sequence lengths", {"primary_sequence_len": len(primary_sequence), "data_sequence_len": len(data_sequence), "secondary_seq_len": len(secondary_sequence_for_lang), "lang_id": lang_id}, "H5")
+        # #endregion
+
         per_lang_count = 0
         api_failures = 0
+        skipped_level_mismatch = 0
+        skipped_no_secondary_rec = 0
+        slots_over_data_length = max(0, len(primary_sequence) - len(data_sequence))
         for i, (level, primary_id) in enumerate(primary_sequence):
-            if i >= len(data_sequence):
-                break
-            data_level, record_data_json = data_sequence[i]
+            # For L0 (menus), use menu data by ordinal so 2nd/3rd menus get correct secondary title even when primary vs secondary slot counts differ
+            if level == 0:
+                try:
+                    l0_ordinal = primary_l0_ids_ordered.index(primary_id)
+                except ValueError:
+                    l0_ordinal = -1
+                if 0 <= l0_ordinal < len(menu_list):
+                    record_data_json = _api_data_to_record_json_string("level_0", menu_list[l0_ordinal], field_mapper, level_0_template)
+                    data_level = 0
+                else:
+                    if i >= len(data_sequence):
+                        break
+                    data_level, record_data_json = data_sequence[i]
+            else:
+                if i >= len(data_sequence):
+                    break
+                data_level, record_data_json = data_sequence[i]
             if data_level != level:
+                skipped_level_mismatch += 1
+                if skipped_level_mismatch == 1:
+                    _step(f"Level mismatch at index {i}: primary level={level} vs data level={data_level} (alignment may be wrong).")
                 continue
             secondary_rec = secondary_by_primary_lang.get((primary_id, lang_id))
+            used_position_fallback = False
+            if not secondary_rec and i < len(secondary_sequence_for_lang) and secondary_sequence_for_lang[i][0] == level:
+                secondary_rec = secondary_sequence_for_lang[i][1]
+                used_position_fallback = True
+                if level == 0:
+                    logger.info("[Step 3] L0 (main parent) updated by position (PrimaryLanguageRecordId missing or 0)")
+            # L0 ordinal fallback: if still no match (e.g. tree sizes differ), match 1st primary menu -> 1st secondary L0, 2nd -> 2nd, so 1072855 -> 1072856 gets Chinese
+            if not secondary_rec and level == 0:
+                try:
+                    l0_ordinal = primary_l0_ids_ordered.index(primary_id)
+                except ValueError:
+                    l0_ordinal = -1
+                if 0 <= l0_ordinal < len(secondary_l0_recs_ordered):
+                    secondary_rec = secondary_l0_recs_ordered[l0_ordinal]
+                    used_position_fallback = True
+                    logger.info("[Step 3] L0 matched by ordinal: primary_id=%s -> secondary_id=%s (ordinal %s)", primary_id, secondary_rec.get("Id"), l0_ordinal)
             if not secondary_rec:
+                skipped_no_secondary_rec += 1
+                # #region agent log
+                if level == 0:
+                    _agent_log("L0 skipped no secondary rec", {"primary_id": primary_id, "lang_id": lang_id, "index_i": i}, "H1")
+                # #endregion
                 continue
             try:
                 existing_dict = json.loads(secondary_rec.get("RecordJsonString") or "{}")
@@ -536,6 +628,20 @@ def run_secondary_language_update_step(
                 display_order = safe_int(updated_dict.get("displayorder"), 0) or int(secondary_rec.get("DisplayOrder") or 0)
             except Exception:
                 display_order = int(secondary_rec.get("DisplayOrder") or 0)
+            if level == 0:
+                try:
+                    menu_title_sent = json.loads(record_data_json).get("menu-title") if record_data_json else None
+                except Exception:
+                    menu_title_sent = None
+                # #region agent log
+                _agent_log("L0 payload before API", {"primary_id": primary_id, "secondary_id": secondary_rec["Id"], "menu_title_sent": menu_title_sent, "used_position_fallback": used_position_fallback, "record_data_json_len": len(record_data_json)}, "H1")
+                _agent_log("L0 data_sequence slot", {"index_i": i, "menu_title_in_payload": menu_title_sent}, "H2")
+                # #endregion
+                logger.info(
+                    "[Step 3] L0 update: primary_id=%s secondary_id=%s menu-title=%s",
+                    primary_id, secondary_rec["Id"], menu_title_sent
+                )
+                _step(f"L0 primary {primary_id} -> secondary {secondary_rec['Id']}: menu-title={menu_title_sent!r}")
             payload = {
                 "componentId": int(secondary_rec["ComponentId"]),
                 "recordId": int(secondary_rec["Id"]),
@@ -547,16 +653,70 @@ def run_secondary_language_update_step(
                 "updatedBy": 0,
             }
             api_payload = {f"update_{secondary_rec['Id']}": [payload]}
-            success, api_response = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=1)
-            if success:
+            if dry_run:
+                paper_check_payloads.append({
+                    "recordId": secondary_rec["Id"],
+                    "level": level,
+                    "lang_key": lang_key_iter,
+                    "payload_key": f"update_{secondary_rec['Id']}",
+                    "payload": api_payload,
+                })
                 per_lang_count += 1
                 updated_count += 1
             else:
-                api_failures += 1
-                logger.warning("[Step 3] API update failed for record id %s: %s", secondary_rec["Id"], api_response)
+                success, api_response = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=1, refresh_token_callback=refresh_token_cb)
+                # #region agent log
+                if level == 0:
+                    _agent_log("L0 API result", {"secondary_id": secondary_rec["Id"], "success": success, "api_response_preview": str(api_response)[:200] if api_response is not None else None}, "H3")
+                # #endregion
+                if success:
+                    per_lang_count += 1
+                    updated_count += 1
+                else:
+                    api_failures += 1
+                    logger.warning("[Step 3] API update failed for record id %s: %s", secondary_rec["Id"], api_response)
+                    if level == 0:
+                        _step(f"L0 update FAILED for secondary_id={secondary_rec['Id']}: {api_response}")
         if api_failures:
             logger.info("[Step 3] %s: api_failures=%s", lang_key_iter, api_failures)
         _step(f"Destination {destination_url} <- {lang_key_iter} ({lang_name}, source {source_url}): updated {per_lang_count} records.")
+        if skipped_level_mismatch or skipped_no_secondary_rec or slots_over_data_length:
+            _step(f"[{lang_key_iter}] Skipped: {skipped_level_mismatch} level-mismatch, {skipped_no_secondary_rec} no secondary record; {slots_over_data_length} primary slots had no data (primary {len(primary_sequence)} vs data {len(data_sequence)}).")
+
+    if dry_run and paper_check_payloads:
+        paper_check_path = os.path.join(job_folder, "secondary_update_paper_check.json")
+        try:
+            with open(paper_check_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "dry_run": True,
+                    "total_would_update": len(paper_check_payloads),
+                    "payloads_preview": [
+                        {"recordId": p["recordId"], "level": p["level"], "lang_key": p["lang_key"], "payload_key": p["payload_key"]}
+                        for p in paper_check_payloads
+                    ],
+                    "payloads": paper_check_payloads,
+                }, f, indent=2, ensure_ascii=False)
+            _step(f"Paper check complete: {len(paper_check_payloads)} records would be updated. No data written to DB. See {os.path.basename(paper_check_path)}. Run again without paper check to apply.")
+        except Exception as e:
+            _step(f"Paper check: could not write preview file: {e}")
+        updated_count = 0
+    elif dry_run:
+        _step("Paper check complete: no secondary records would be updated (none matched).")
 
     _step(f"Step 3 done. Total secondary records updated: {updated_count}.")
-    return {"success": True, "steps": log, "updated_count": updated_count}
+    # Persist step log to job folder so user can inspect after DB run
+    try:
+        steps_log_path = os.path.join(job_folder, "secondary_update_steps_log.json")
+        with open(steps_log_path, "w", encoding="utf-8") as f:
+            json.dump({
+                "job_id": job_id,
+                "dry_run": dry_run,
+                "updated_count": updated_count,
+                "steps": log,
+                "written_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            }, f, indent=2, ensure_ascii=False)
+        if not dry_run:
+            _step(f"Step log saved to {os.path.basename(steps_log_path)}.")
+    except Exception as e:
+        logger.warning("Could not write secondary_update_steps_log.json: %s", e)
+    return {"success": True, "steps": log, "updated_count": updated_count, "dry_run": dry_run}

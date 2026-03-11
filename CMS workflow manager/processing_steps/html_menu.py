@@ -11,14 +11,14 @@ import logging
 import zipfile
 import html
 import re
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from urllib.parse import urlparse
 
 from apis import (
     menu_download_api, getComponentInfo, export_mi_block_component,
     CreateComponentRecord, addUpdateRecordsToCMS
 )
-from utils import get_job_folder, get_job_output_folder, ensure_job_folders
+from utils import get_job_folder, get_job_output_folder, ensure_job_folders, make_destination_token_refresh_callback
 from config import BASE_DIR
 
 logger = logging.getLogger(__name__)
@@ -63,8 +63,8 @@ def clean_text(text: Any) -> Any:
     # Decode HTML entities (e.g., &nbsp; -> space, &amp; -> &)
     cleaned = html.unescape(text)
     
-    # Remove HTML tags if any remain
-    cleaned = re.sub(r'<[^>]+>', '', cleaned)
+    # Remove HTML tags if any remain (DISABLED - keep <li>, <p>, etc. in menu text)
+    # cleaned = re.sub(r'<[^>]+>', '', cleaned)
     
     # Replace semicolons with space, but KEEP pipes (|) as they are used as separators in item names
     cleaned = re.sub(r';+', ' ', cleaned)
@@ -733,10 +733,58 @@ def build_and_save_record_ids_summary(
         return False
 
 
-def process_menu_levels(job_id: str, destination_url: str, destination_site_id: str, destination_token: str) -> bool:
+def _normalize_title(s: Any) -> str:
+    """Normalize menu/section title for use as lookup key."""
+    if s is None:
+        return ""
+    return (str(s).strip() or "")
+
+
+def _load_record_ids_summary_for_reprocess(job_id: str) -> Tuple[
+    Optional[Dict[str, int]],
+    Optional[Dict[Tuple[str, str], int]],
+    Optional[Dict[Tuple[str, str, int], int]],
+]:
     """
-    Processes all menu levels (0, 1, 2, 3a, 3b) and creates records in destination
-    Based on reference implementation from osb menu - faq migration
+    Load record_ids_summary.json and return lookups keyed by (menu_title), (menu_title, section_name),
+    (menu_title, section_name, item_idx) so reprocess updates the correct records even if order differs.
+    Returns (None, None, None) if missing/invalid.
+    """
+    try:
+        summary_path = os.path.join(get_job_folder(job_id), "record_ids_summary.json")
+        if not os.path.isfile(summary_path):
+            return (None, None, None)
+        with open(summary_path, "r", encoding="utf-8") as f:
+            summary = json.load(f)
+        menus = summary.get("menus") or []
+        l0_by_title: Dict[str, int] = {}
+        l1_by_key: Dict[Tuple[str, str], int] = {}
+        l2_by_key: Dict[Tuple[str, str, int], int] = {}
+        for m in menus:
+            menu_title = _normalize_title(m.get("menu_title"))
+            l0_id = m.get("L0_record_id")
+            if menu_title and l0_id is not None:
+                l0_by_title[menu_title] = int(l0_id)
+            for s in m.get("sections") or []:
+                section_name = _normalize_title(s.get("section_name"))
+                l1_id = s.get("L1_record_id")
+                if menu_title and section_name and l1_id is not None:
+                    l1_by_key[(menu_title, section_name)] = int(l1_id)
+                for item_idx, l2_id in enumerate(s.get("L2_record_ids") or []):
+                    if l2_id is not None and menu_title and section_name:
+                        l2_by_key[(menu_title, section_name, item_idx)] = int(l2_id)
+        if not l0_by_title:
+            return (None, None, None)
+        return (l0_by_title, l1_by_key, l2_by_key)
+    except Exception as e:
+        logger.warning("Could not load record_ids_summary for reprocess: %s", e)
+        return (None, None, None)
+
+
+def process_menu_levels(job_id: str, destination_url: str, destination_site_id: str, destination_token: str, reprocess: bool = False) -> bool:
+    """
+    Processes all menu levels (0, 1, 2) and creates or updates records in destination.
+    When reprocess=True, uses existing record IDs from record_ids_summary.json to update instead of create.
     """
     print("\n" + "="*80, flush=True)
     print(f"[MENU PROCESSING] STARTING MENU LEVEL PROCESSING", flush=True)
@@ -770,11 +818,44 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         return False
     print(f"[OK] Final payload loaded successfully. Menu records: {len(final_payload)}", flush=True)
     
+    l0_by_title: Optional[Dict[str, int]] = None
+    l1_by_key: Optional[Dict[Tuple[str, str], int]] = None
+    l2_by_key: Optional[Dict[Tuple[str, str, int], int]] = None
+    if reprocess:
+        l0_by_title, l1_by_key, l2_by_key = _load_record_ids_summary_for_reprocess(job_id)
+        if l0_by_title:
+            n_l0 = len(l0_by_title)
+            n_l1 = len(l1_by_key) if l1_by_key else 0
+            n_l2 = len(l2_by_key) if l2_by_key else 0
+            print(f"[REPROCESS] Updating existing records by title/name: {n_l0} L0, {n_l1} L1, {n_l2} L2", flush=True)
+            logger.info("Reprocess: using record IDs from record_ids_summary.json (matched by menu/section title)")
+            # Inject L0 IDs so sections have correct ParentRecordId for L1 updates
+            for menu_record in final_payload:
+                menu_title = _normalize_title(menu_record.get("recordJsonString", {}).get("menu-title"))
+                l0_id = (l0_by_title or {}).get(menu_title)
+                if l0_id:
+                    for section in menu_record.get("MenuSections") or []:
+                        section["ParentRecordId"] = l0_id
+            # Inject L1 IDs so items have correct ParentRecordId for L2 updates
+            for menu_record in final_payload:
+                menu_title = _normalize_title(menu_record.get("recordJsonString", {}).get("menu-title"))
+                for section in menu_record.get("MenuSections") or []:
+                    section_name = _normalize_title(section.get("recordJsonString", {}).get("section-name"))
+                    l1_id = (l1_by_key or {}).get((menu_title, section_name))
+                    if l1_id:
+                        section["NewRecordId_L1"] = l1_id
+                        for item in section.get("MenuItems") or []:
+                            item["ParentRecordId"] = l1_id
+        else:
+            logger.warning("Reprocess requested but no record_ids_summary found; will create new records")
+            reprocess = False
+    
     headers = {
         'Content-Type': 'application/json',
         'ms_cms_clientapp': 'ProgrammingApp',
         'Authorization': f'Bearer {destination_token}',
     }
+    refresh_token_cb = make_destination_token_refresh_callback(job_id)
     
     # Extract component IDs from map (names from payload template)
     component_names = get_menu_component_names()
@@ -827,10 +908,14 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
         record_data_dict.pop("displayorder", None)
         record_data = json.dumps(record_data_dict)
         
-        # Build API payload
+        # Build API payload (reprocess: use existing ID by menu title; else create with 0)
+        l0_record_id = 0
+        if reprocess and l0_by_title:
+            menu_title = _normalize_title(menu_record.get("recordJsonString", {}).get("menu-title"))
+            l0_record_id = l0_by_title.get(menu_title, 0) or 0
         single_record_payload = {
             "componentId": int(l0_component_id),
-            "recordId": 0,
+            "recordId": l0_record_id,
             "parentRecordId": 0,
             "recordDataJson": record_data,
             "status": root_status_boolean,
@@ -845,7 +930,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     if l0_records:
         print(f"[BATCH] Sending {len(l0_records)} Level 0 records in batches...", flush=True)
         api_payload = {f"{l0_component_id}_L0": l0_records}
-        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
+        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10, refresh_token_callback=refresh_token_cb)
         
         if success:
             # Map responses back to menu records (responseData is now a list indexed by order)
@@ -902,6 +987,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     
     for menu_record in final_payload:
         _, menu_sections_list = process_menu_level_0_only(menu_record)
+        menu_title = _normalize_title(menu_record.get("recordJsonString", {}).get("menu-title"))
         
         for section_record in menu_sections_list:
             parent_record_id = section_record.get("ParentRecordId", 0)
@@ -923,10 +1009,14 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
             record_data_dict.pop("displayorder", None)
             record_data = json.dumps(record_data_dict)
             
-            # Build API payload
+            # Build API payload (reprocess: use existing L1 ID by menu+section name)
+            l1_record_id = 0
+            if reprocess and l1_by_key:
+                section_name = _normalize_title(section_record.get("recordJsonString", {}).get("section-name"))
+                l1_record_id = l1_by_key.get((menu_title, section_name), 0) or 0
             single_record_payload = {
                 "componentId": int(l1_component_id),
-                "recordId": 0,
+                "recordId": l1_record_id,
                 "parentRecordId": parent_record_id,
                 "recordDataJson": record_data,
                 "status": root_status_boolean,
@@ -941,7 +1031,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     if l1_records:
         print(f"[BATCH] Sending {len(l1_records)} Level 1 records in batches...", flush=True)
         api_payload = {f"{l1_component_id}_L1": l1_records}
-        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
+        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10, refresh_token_callback=refresh_token_cb)
         
         if success:
             # Map responses back to section records (responseData is now a list indexed by order)
@@ -1016,10 +1106,13 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     for menu_record in final_payload:
         _, menu_sections_list = process_menu_level_0_only(menu_record)
         all_item_lists = process_menu_sections_level_1_only(menu_sections_list)
+        menu_title = _normalize_title(menu_record.get("recordJsonString", {}).get("menu-title"))
         
         skipped_items = []
-        for item_list in all_item_lists:
-            for item_record in item_list:
+        for sec_idx, item_list in enumerate(all_item_lists):
+            section_record = menu_sections_list[sec_idx] if sec_idx < len(menu_sections_list) else {}
+            section_name = _normalize_title(section_record.get("recordJsonString", {}).get("section-name"))
+            for item_idx, item_record in enumerate(item_list):
                 parent_record_id = item_record.get("ParentRecordId", 0)
                 # Check for both 0 and empty string (empty string is falsy but not equal to 0)
                 if not parent_record_id or parent_record_id == 0 or parent_record_id == "":
@@ -1054,10 +1147,13 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
                 payload_json_string.pop("displayorder", None)
                 record_data = json.dumps(payload_json_string)
                 
-                # Build API payload
+                # Build API payload (reprocess: use existing L2 ID by menu+section+item index)
+                l2_record_id = 0
+                if reprocess and l2_by_key:
+                    l2_record_id = l2_by_key.get((menu_title, section_name, item_idx), 0) or 0
                 single_record_payload = {
                     "componentId": int(l2_component_id),
-                    "recordId": 0,
+                    "recordId": l2_record_id,
                     "parentRecordId": parent_record_id,
                     "recordDataJson": record_data,
                     "status": root_status_boolean,
@@ -1079,7 +1175,7 @@ def process_menu_levels(job_id: str, destination_url: str, destination_site_id: 
     if l2_records:
         print(f"[BATCH] Sending {len(l2_records)} Level 2 records in batches...", flush=True)
         api_payload = {f"{l2_component_id}_L2": l2_records}
-        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10)
+        success, responseData = addUpdateRecordsToCMS(destination_url, headers, api_payload, batch_size=10, refresh_token_callback=refresh_token_cb)
         
         if success:
             # Map responses back to item records (responseData is now a list indexed by order)
@@ -1189,6 +1285,10 @@ def run_html_menu_step(job_id: str, step_config: Dict, workflow_context: Dict) -
         raise ValueError(error_msg)
     
     ensure_job_folders(job_id)
+    reprocess = workflow_context.get("reprocess", False)
+    if reprocess:
+        print("\n[REPROCESS] Primary menu reprocess: will update existing records (no new export)", flush=True)
+        logger.info("Dine Menu reprocess: updating existing records using record_ids_summary.json")
     
     print("\n" + "="*80, flush=True)
     print(f"[DINE MENU] STARTING MENU MIGRATION PROCESS", flush=True)
@@ -1221,21 +1321,31 @@ def run_html_menu_step(job_id: str, step_config: Dict, workflow_context: Dict) -
             raise Exception("Failed to create final menu payload")
         print("[OK] Step 3 completed: Final payload created", flush=True)
         
-        # Step 4: Preprocess (export component, create map)
-        print("\n[STEP 4] Preprocessing menu data (exporting component)...", flush=True)
-        logger.info("Step 4: Preprocessing menu data (exporting component)...")
-        mi_block_folder = preprocess_menu_data(job_id, destination_url, destination_site_id, destination_token)
-        if not mi_block_folder:
-            raise Exception("Failed to preprocess menu data")
-        print("[OK] Step 4 completed: Component exported and map created", flush=True)
+        # Step 4: Preprocess (export component, create map) – skip on reprocess (use existing map)
+        mi_block_folder = None
+        if not reprocess:
+            print("\n[STEP 4] Preprocessing menu data (exporting component)...", flush=True)
+            logger.info("Step 4: Preprocessing menu data (exporting component)...")
+            mi_block_folder = preprocess_menu_data(job_id, destination_url, destination_site_id, destination_token)
+            if not mi_block_folder:
+                raise Exception("Failed to preprocess menu data")
+            print("[OK] Step 4 completed: Component exported and map created", flush=True)
+        else:
+            job_folder = get_job_folder(job_id)
+            for name in os.listdir(job_folder):
+                path = os.path.join(job_folder, name)
+                if os.path.isdir(path) and name.startswith("mi-block-ID-"):
+                    mi_block_folder = path
+                    break
+            print("\n[STEP 4] Skipped (reprocess): using existing component map", flush=True)
         
-        # Step 5: Process menu levels and create records (THIS IS WHERE APIs ARE CALLED)
+        # Step 5: Process menu levels (create or update records)
         print("\n" + "="*80, flush=True)
         print(f"[STEP 5] PROCESSING MENU LEVELS AND CALLING APIs", flush=True)
         print("="*80, flush=True)
-        print("[IMPORTANT] This step will call APIs to create menu records in destination site", flush=True)
-        logger.info("Step 5: Processing menu levels...")
-        if not process_menu_levels(job_id, destination_url, destination_site_id, destination_token):
+        print("[IMPORTANT] This step will call APIs to " + ("update" if reprocess else "create") + " menu records in destination site", flush=True)
+        logger.info("Step 5: Processing menu levels (reprocess=%s)...", reprocess)
+        if not process_menu_levels(job_id, destination_url, destination_site_id, destination_token, reprocess=reprocess):
             raise Exception("Failed to process menu levels")
         print("\n[OK] Step 5 completed: All menu levels processed and APIs called", flush=True)
         
